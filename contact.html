@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contact IEC Inc.</title>
+<meta name="description" content="Contact IEC Inc. — start a focused conversation about healthcare growth, real estate, international business or technology mandates.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a class="brand" href="index.html">IEC <span>Inc.</span></a>
+    <nav class="site-nav">
+      <a href="index.html">Home</a>
+      <a href="about.html">About</a>
+      <a href="services.html">Capabilities</a>
+      <a href="healthcare.html">Healthcare</a>
+      <a href="real-estate.html">Real Estate</a>
+      <a href="international.html">International</a>
+      <a href="technology.html">Technology</a>
+      <a href="project-advisory.html">Advisory</a>
+      <a href="contact.html" class="active">Contact</a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <div class="eyebrow">Contact IEC</div>
+      <h1>Start a focused conversation.</h1>
+      <p class="lede">Tell us the opportunity, the market and the outcome you are working toward. IEC will respond to determine whether there is a strong strategic fit.</p>
+      <p style="margin-top:18px"><strong>Prefer direct contact?</strong> <a href="tel:+18578671767" style="color:#fff">+1 (857) 867-1767</a> &middot; <a href="https://wa.me/18578671767" target="_blank" rel="noopener" style="color:#fff">WhatsApp IEC &nearr;</a></p>
+    </div>
+    <div>
+      <img src="assets/hero.jpg" alt="Boston skyline and IEC's home market">
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="eyebrow">Prepare for a useful first conversation</div>
+    <h2>Share enough context to identify the right next step.</h2>
+    <p>A concise, well-framed inquiry helps IEC assess fit and prepare for a productive response.</p>
+    <ul class="check">
+      <li>Your organization and role</li>
+      <li>The opportunity, sector and target market</li>
+      <li>Current stage and principal decision-makers</li>
+      <li>Preferred timing and desired outcome</li>
+      <li>Any confidentiality or coordination considerations</li>
+    </ul>
+  </div>
+</section>
+
+<section class="section soft">
+  <div class="wrap">
+    <div class="eyebrow">Direct contact</div>
+    <h2>Connect with our Boston office.</h2>
+    <p>For confidential business-development, healthcare, real estate and international partnership discussions.</p>
+    <div class="contact-lines">
+      <div><strong>Email</strong><a href="mailto:info@iecincglobal.com">info@iecincglobal.com</a></div>
+      <div><strong>Phone &amp; WhatsApp</strong><a href="tel:+18578671767">+1 (857) 867-1767</a></div>
+      <div><strong>Office</strong>923 Hyde Park Avenue<br>Boston, MA 02136</div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="eyebrow">Discussion areas</div>
+    <h2>Choose the most relevant path.</h2>
+    <div class="cards">
+      <div class="card"><h3>Healthcare Growth</h3><p>MSO development, medical and dental scale-up, concierge and healthcare technology.</p></div>
+      <div class="card"><h3>Real Estate</h3><p>Healthcare properties, hospitality, commercial assets and cross-border opportunities.</p></div>
+      <div class="card"><h3>International Business</h3><p>Market entry, distribution, strategic partnerships and institutional engagement.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="section soft">
+  <div class="wrap">
+    <div class="eyebrow">Send an inquiry</div>
+    <h2>Tell us how IEC can help.</h2>
+    <p>Complete the form and your email application will open with the inquiry prepared for info@iecincglobal.com. Review it, then press Send.</p>
+    <form id="inquiry-form" class="form-grid">
+      <div class="field">
+        <label for="f-name">Full name *</label>
+        <input id="f-name" name="name" type="text" required autocomplete="name">
+      </div>
+      <div class="field">
+        <label for="f-email">Email address *</label>
+        <input id="f-email" name="email" type="email" required autocomplete="email">
+      </div>
+      <div class="field">
+        <label for="f-phone">Phone number</label>
+        <input id="f-phone" name="phone" type="tel" autocomplete="tel">
+      </div>
+      <div class="field">
+        <label for="f-org">Organization</label>
+        <input id="f-org" name="organization" type="text" autocomplete="organization">
+      </div>
+      <div class="field full">
+        <label for="f-area">Area of interest *</label>
+        <select id="f-area" name="area" required>
+          <option value="">Select a discussion area</option>
+          <option>Healthcare Growth &amp; Management</option>
+          <option>Real Estate &amp; Hospitality</option>
+          <option>International Business Development</option>
+          <option>AI &amp; Digital Platforms</option>
+          <option>Project &amp; Transaction Advisory</option>
+          <option>General Inquiry</option>
+        </select>
+      </div>
+      <div class="field full">
+        <label for="f-msg">How can we help? *</label>
+        <textarea id="f-msg" name="message" required></textarea>
+      </div>
+      <div class="field full">
+        <button class="btn dark" type="submit">Send inquiry by email &rarr;</button>
+        <p class="fineprint">Your information remains in your email application until you choose to send it.</p>
+      </div>
+    </form>
+  </div>
+</section>
+
+<script>
+document.getElementById('inquiry-form').addEventListener('submit', function (e) {
+  e.preventDefault();
+  var v = function (id) { return document.getElementById(id).value.trim(); };
+  var subject = 'IEC inquiry — ' + (v('f-area') || 'General Inquiry');
+  var body = [
+    'Name: ' + v('f-name'),
+    'Email: ' + v('f-email'),
+    'Phone: ' + v('f-phone'),
+    'Organization: ' + v('f-org'),
+    'Area of interest: ' + v('f-area'),
+    '',
+    v('f-msg')
+  ].join('\n');
+  window.location.href = 'mailto:info@iecincglobal.com?subject=' +
+    encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+});
+</script>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <div class="brand" style="color:#fff">IEC <span>Inc.</span></div>
+        <p style="font-size:14.5px;max-width:38ch;margin-top:8px">International Empire Consultants, Inc. — Boston-based business development and strategic consulting across healthcare, technology, real estate and international markets.</p>
+      </div>
+      <nav>
+        <a href="index.html">Home</a>
+        <a href="about.html">About</a>
+        <a href="services.html">Capabilities</a>
+        <a href="healthcare.html">Healthcare</a>
+        <a href="real-estate.html">Real Estate</a>
+        <a href="international.html">International</a>
+        <a href="technology.html">Technology</a>
+        <a href="project-advisory.html">Advisory</a>
+        <a href="contact.html">Contact</a>
+      </nav>
+    </div>
+    <div class="copyright">&copy; 2026 International Empire Consultants, Inc. All rights reserved.</div>
+  </div>
+</footer>
+</body>
+</html>
