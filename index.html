@@ -76,7 +76,7 @@
 
 <script src="/desk/desk.js"></script>
 <script>
-/* Suzy login check-in — greets DrMorgan, asks what's new, reports the latest briefing. Shows once per login. */
+/* Suzy walks into your office with the update — right after sign-in. Shows once per login. */
 (function(){
   // Only show right after a fresh login — login.html sets this flag on success
   if (!sessionStorage.getItem('suzy-checkin-pending')) return;
@@ -86,14 +86,30 @@
   box.innerHTML = `
   <style>
     #suzy-checkin{position:fixed;inset:0;z-index:90;display:flex;align-items:center;justify-content:center;
-      background:rgba(8,10,18,.72);backdrop-filter:blur(6px);padding:18px;box-sizing:border-box}
-    #suzy-checkin .sc-card{max-width:520px;width:100%;max-height:88vh;overflow:auto;border-radius:18px;
+      background:rgba(8,10,18,.72);backdrop-filter:blur(6px);padding:18px;box-sizing:border-box;
+      animation:sc-fade .4s ease both}
+    @keyframes sc-fade{from{opacity:0}to{opacity:1}}
+    #suzy-checkin .sc-stage{display:flex;gap:26px;align-items:flex-end;max-width:780px;width:100%;box-sizing:border-box}
+    #suzy-checkin .sc-suzy{flex:none;text-align:center;
+      animation:suzy-walk-in 1.8s cubic-bezier(.25,.7,.35,1) both,suzy-bob .45s ease-in-out 4}
+    @keyframes suzy-walk-in{from{transform:translateX(-42vw);opacity:0}to{transform:translateX(0);opacity:1}}
+    @keyframes suzy-bob{0%,100%{margin-top:0}50%{margin-top:-12px}}
+    #suzy-checkin .sc-fig{width:120px;height:120px;border-radius:50%;object-fit:cover;display:block;margin:0 auto;
+      border:3px solid #f0b942;box-shadow:0 18px 44px rgba(0,0,0,.5);background:#232b48}
+    #suzy-checkin .sc-suzy.talking .sc-fig{animation:suzy-talk .55s ease-in-out infinite}
+    @keyframes suzy-talk{0%,100%{transform:scale(1)}50%{transform:scale(1.045)}}
+    #suzy-checkin .sc-shadow{width:90px;height:14px;margin:10px auto 0;border-radius:50%;background:rgba(0,0,0,.45);filter:blur(4px)}
+    #suzy-checkin .sc-name{margin-top:8px;font-size:13px;font-weight:800;color:#f0b942;letter-spacing:.14em}
+    #suzy-checkin .sc-role{font-size:11px;color:#a7b0c8}
+    #suzy-checkin .sc-card{position:relative;flex:1;min-width:0;max-height:88vh;overflow:auto;border-radius:18px;
       background:linear-gradient(160deg,#141a2e,#0d1224);border:1px solid rgba(240,185,66,.28);
       box-shadow:0 24px 80px rgba(0,0,0,.55);padding:26px 24px;color:#eef1f8;box-sizing:border-box;
-      font-family:Inter,system-ui,sans-serif}
+      font-family:Inter,system-ui,sans-serif;animation:sc-card-in .6s ease 1s both}
+    @keyframes sc-card-in{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:none}}
+    #suzy-checkin .sc-card::before{content:"";position:absolute;left:-9px;bottom:64px;width:18px;height:18px;
+      background:#141a2e;border-left:1px solid rgba(240,185,66,.28);border-bottom:1px solid rgba(240,185,66,.28);
+      transform:rotate(45deg)}
     #suzy-checkin .sc-head{display:flex;gap:14px;align-items:center;margin-bottom:6px}
-    #suzy-checkin .sc-ava{width:52px;height:52px;border-radius:50%;object-fit:cover;flex:none;
-      border:2px solid #f0b942;background:#232b48}
     #suzy-checkin .sc-head h3{margin:0;font-family:'Space Grotesk',Inter,sans-serif;font-size:19px}
     #suzy-checkin .sc-head p{margin:2px 0 0;font-size:13px;color:#a7b0c8}
     #suzy-checkin .sc-sec{margin:12px 0}
@@ -117,30 +133,47 @@
     #suzy-checkin .sc-voice{margin-left:auto;flex:none;border:1px solid rgba(240,185,66,.5);background:transparent;
       color:#f0b942;border-radius:999px;padding:8px 14px;font-size:13px;cursor:pointer;white-space:nowrap}
     #suzy-checkin .sc-voice.playing{background:#f0b942;color:#14110a}
+    @media (max-width:640px){
+      #suzy-checkin .sc-stage{flex-direction:column;align-items:center;gap:16px}
+      #suzy-checkin .sc-card{width:100%}
+      #suzy-checkin .sc-card::before{left:50%;top:-9px;bottom:auto;transform:translateX(-50%) rotate(135deg)}
+      #suzy-checkin .sc-fig{width:88px;height:88px}
+      @keyframes suzy-walk-in{from{transform:translateY(-30vh);opacity:0}to{transform:none;opacity:1}}
+    }
+    @media (prefers-reduced-motion:reduce){
+      #suzy-checkin,#suzy-checkin .sc-suzy,#suzy-checkin .sc-card{animation:none}
+    }
   </style>
-  <div class="sc-card">
-    <div class="sc-main">
-      <div class="sc-head">
-        <img class="sc-ava" src="/desk/assets/team/suzy.jpg" alt="Suzy" onerror="this.style.display='none'">
-        <div><h3 id="sc-greet">Hello, DrMorgan.</h3><p>Suzy here — your secretary. Here's the latest:</p></div>
-        <button class="sc-voice" id="sc-voice" title="Read the briefing aloud">🔊 Listen</button>
-      </div>
-      <div id="sc-report"><p style="color:#a7b0c8;font-size:14px">Pulling today's briefing…</p></div>
-      <div class="sc-ask">
-        <p><b>Before you dive in — anything new for the crew today?</b><br><span style="color:#a7b0c8;font-size:13px">New projects, priorities, or changes — I'll put it on Muse's desk.</span></p>
-        <div class="sc-chips">
-          <button data-c="New project: ">New project</button>
-          <button data-c="New priority: ">New priority</button>
-          <button data-c="">Nothing new</button>
-        </div>
-        <textarea id="sc-note" placeholder="Tell me what's new…"></textarea>
-        <div class="sc-row">
-          <button class="btn sc-send" id="sc-send">Send to my Office inbox</button>
-          <button class="btn sc-close" id="sc-close">Thanks, Suzy</button>
-        </div>
-      </div>
+  <div class="sc-stage">
+    <div class="sc-suzy" id="sc-suzy">
+      <img class="sc-fig" src="/desk/assets/team/suzy.jpg" alt="Suzy" onerror="this.style.display='none'">
+      <div class="sc-shadow"></div>
+      <div class="sc-name">SUZY</div>
+      <div class="sc-role">your secretary</div>
     </div>
-    <div class="sc-done" id="sc-done">✓ Noted — it's on Muse's desk.<br><br><button class="btn sc-close" id="sc-done-close" style="padding:11px 34px;border-radius:10px;border:none;cursor:pointer">Back to the Suite</button></div>
+    <div class="sc-card">
+      <div class="sc-main">
+        <div class="sc-head">
+          <div><h3 id="sc-greet">Hello, DrMorgan.</h3><p>I walked over with this morning's update:</p></div>
+          <button class="sc-voice" id="sc-voice" title="Read the briefing aloud">🔊 Listen</button>
+        </div>
+        <div id="sc-report"><p style="color:#a7b0c8;font-size:14px">Pulling today's briefing…</p></div>
+        <div class="sc-ask">
+          <p><b>Before you dive in — anything new for the crew today?</b><br><span style="color:#a7b0c8;font-size:13px">New projects, priorities, or changes — I'll put it on Muse's desk.</span></p>
+          <div class="sc-chips">
+            <button data-c="New project: ">New project</button>
+            <button data-c="New priority: ">New priority</button>
+            <button data-c="">Nothing new</button>
+          </div>
+          <textarea id="sc-note" placeholder="Tell me what's new…"></textarea>
+          <div class="sc-row">
+            <button class="btn sc-send" id="sc-send">Send to my Office inbox</button>
+            <button class="btn sc-close" id="sc-close">Thanks, Suzy</button>
+          </div>
+        </div>
+      </div>
+      <div class="sc-done" id="sc-done">✓ Noted — it's on Muse's desk.<br><br><button class="btn sc-close" id="sc-done-close" style="padding:11px 34px;border-radius:10px;border:none;cursor:pointer">Back to the Suite</button></div>
+    </div>
   </div>`;
   document.body.appendChild(box);
 
@@ -149,20 +182,24 @@
   document.getElementById('sc-greet').textContent = tod + ', DrMorgan.';
 
   const escS = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const suzyFig = () => document.getElementById('sc-suzy');
 
   /* Suzy's voice — human American voice, pre-recorded briefing audio. */
   let suzyAudio = null;
   function stopVoice(){
     try{ if (suzyAudio){ suzyAudio.pause(); suzyAudio.currentTime = 0; } }catch(e){}
-    const b = document.getElementById('sc-voice'); if (b) b.classList.remove('playing'); }
+    const b = document.getElementById('sc-voice'); if (b) b.classList.remove('playing');
+    const f = suzyFig(); if (f) f.classList.remove('talking');
+  }
   function speakBriefing(){
     stopVoice();
     const btn = document.getElementById('sc-voice');
     try{
       suzyAudio = new Audio('/desk/data/suzy-briefing.mp3?v=' + Date.now());
-      suzyAudio.onended = suzyAudio.onerror = () => { if (btn) btn.classList.remove('playing'); };
+      suzyAudio.onended = suzyAudio.onerror = stopVoice;
       if (btn) btn.classList.add('playing');
-      suzyAudio.play().catch(() => { if (btn) btn.classList.remove('playing'); });
+      const f = suzyFig(); if (f) f.classList.add('talking');
+      suzyAudio.play().catch(stopVoice);
     }catch(e){}
   }
   document.getElementById('sc-voice').addEventListener('click', () => {
@@ -197,6 +234,7 @@
   const close = () => { stopVoice(); box.remove(); };
   document.getElementById('sc-close').addEventListener('click', close);
   document.getElementById('sc-done-close').addEventListener('click', close);
+  box.addEventListener('click', e => { if (e.target === box) close(); });
   document.getElementById('sc-send').addEventListener('click', () => {
     const v = document.getElementById('sc-note').value.trim();
     if (!v) return;
