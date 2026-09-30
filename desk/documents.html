@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Documents — IEC Suite</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/desk/desk.css">
+</head>
+<body data-page="docs">
+<div class="orbs" aria-hidden="true"><span class="orb gold"></span><span class="orb teal"></span><span class="orb violet"></span></div>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="side-brand">
+      <img class="logo-img" src="/assets/iec-logo.png" alt="IEC Inc.">
+      <div><h1>IEC <span>Suite</span></h1><p>International Empire Consultants, Inc.</p></div>
+    </div>
+    <nav id="nav"></nav>
+    <div class="side-foot">
+      <div class="themes" id="themes">
+        <button data-t="iec" style="--sw1:#f0b942;--sw2:#3b82f6" title="IEC Brand"></button>
+        <button data-t="midnight" style="--sw1:#f0b942;--sw2:#2dd4bf" title="Midnight Gold"></button>
+        <button data-t="amethyst" style="--sw1:#d8b4fe;--sw2:#f0abfc" title="Royal Amethyst"></button>
+        <button data-t="ocean" style="--sw1:#7dd3fc;--sw2:#5eead4" title="Deep Ocean"></button>
+        <button data-t="ember" style="--sw1:#fdba74;--sw2:#fbbf24" title="Sunset Ember"></button>
+        <button data-t="emerald" style="--sw1:#6ee7b7;--sw2:#f0b942" title="Emerald Noir"></button>
+        <button data-t="rose" style="--sw1:#fda4af;--sw2:#f0abfc" title="Rose Noir"></button>
+        <label class="cpick" title="Accent color"><input type="color" id="pick-gold" value="#f0b942"></label>
+        <label class="cpick" title="Highlight color"><input type="color" id="pick-teal" value="#2dd4bf"></label>
+        <button class="creset" id="pick-reset" title="Reset colors">⟲</button>
+      </div>
+      <button class="signout" id="signout"><i>🚪</i>Sign out</button>
+      <a class="public-link" href="/welcome.html">← Public site</a>
+      <div class="clockbox">
+        <div id="clock">--:--</div>
+        <div id="dateline">—</div>
+      </div>
+    </div>
+  </aside>
+
+  <main>
+    <div class="section-head"><h2>Documents</h2><span class="hint" id="doc-count"></span></div>
+
+    <div class="card dropzone" id="drop">
+      <div class="dz-inner">
+        <span class="dz-ico">📤</span>
+        <b>Drop files here or <u>browse</u></b>
+        <p>Private to the Suite · up to 4 MB per file</p>
+        <input type="file" id="file" multiple hidden>
+      </div>
+      <div class="prog" id="prog" style="display:none"><i id="progbar"></i></div>
+    </div>
+    <div class="err" id="derr"></div>
+
+    <div class="feed" id="docs"><div class="empty">Loading documents…</div></div>
+
+    <footer>© 2026 International Empire Consultants, Inc. · IEC Suite</footer>
+  </main>
+</div>
+
+<script src="/desk/desk.js"></script>
+<script>
+const drop = $('drop'), fileInput = $('file'), derr = $('derr');
+
+const fmtSize = n => n > 1048576 ? (n/1048576).toFixed(1)+' MB' : Math.max(1, Math.round(n/1024))+' KB';
+const showErr = m => { derr.textContent = m; derr.classList.add('show'); setTimeout(()=>derr.classList.remove('show'), 5000); };
+
+async function load(){
+  const box = $('docs');
+  try{
+    const r = await fetch('/api/desk-docs');
+    const d = await r.json();
+    if(!d.ok) throw new Error(d.error || 'load failed');
+    $('doc-count').textContent = d.docs.length ? d.docs.length + ' file' + (d.docs.length>1?'s':'') : '';
+    box.innerHTML = d.docs.length ? d.docs.map(x =>
+      `<div class="card docrow">
+         <span class="doc-ico">📄</span>
+         <div class="doc-meta"><b>${esc(x.name)}</b><span>${fmtSize(x.size)} · ${esc(new Date(x.uploadedAt).toLocaleDateString([], {month:'short',day:'numeric',year:'numeric'}))}</span></div>
+         <div class="note-actions">
+           <a href="/api/desk-docs?dl=${encodeURIComponent(x.url)}"><button>⬇ download</button></a>
+           <button data-del="${esc(x.url)}">✕</button>
+         </div>
+       </div>`).join('')
+      : '<div class="empty">No documents yet — drop the first one above.</div>';
+  }catch(e){ box.innerHTML = '<div class="empty">Could not load documents.</div>'; }
+}
+$('docs').addEventListener('click', async e => {
+  const b = e.target.closest('[data-del]'); if(!b) return;
+  if(!confirm('Delete this document?')) return;
+  await fetch('/api/desk-docs?url=' + encodeURIComponent(b.dataset.del), { method: 'DELETE' });
+  load();
+});
+
+async function upload(files){
+  for(const f of files){
+    if(f.size > 4*1024*1024){ showErr(`"${f.name}" is over 4 MB — pick a smaller file.`); continue; }
+    $('prog').style.display = ''; $('progbar').style.width = '30%';
+    const fd = new FormData(); fd.append('file', f);
+    try{
+      const r = await fetch('/api/desk-docs', { method: 'POST', body: fd });
+      const d = await r.json();
+      if(!d.ok) throw new Error(d.error);
+      $('progbar').style.width = '100%';
+    }catch(e){ showErr('Upload failed: ' + (e.message === 'too_large' ? 'file over 4 MB.' : 'try again.')); }
+  }
+  $('prog').style.display = 'none'; $('progbar').style.width = '0';
+  load();
+}
+drop.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', () => { upload(fileInput.files); fileInput.value = ''; });
+['dragover','dragenter'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', e => upload(e.dataTransfer.files));
+load();
+</script>
+</body>
+</html>
