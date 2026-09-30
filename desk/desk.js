@@ -7,6 +7,7 @@ const avatarFor = name => DESK + '/assets/team/' + String(name || '').toLowerCas
 /* ---- nav ---- */
 const NAV = [
   { href: '/',                 icon: '🏠', label: 'Home',         page: 'home' },
+  { href: '/desk/office.html',   icon: '🏢', label: "Muse's Office", page: 'office' },
   { href: '/desk/projects.html',     icon: '📁', label: 'Projects',     page: 'projects' },
   { href: '/desk/team.html',          icon: '👥', label: 'Team',         page: 'team' },
   { href: '/desk/meeting-room.html',  icon: '🏛️', label: 'Meeting Room', page: 'meeting', badge: '8 AM' },

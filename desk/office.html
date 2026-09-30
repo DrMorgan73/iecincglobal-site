@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Muse's Office — IEC Suite</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/desk/desk.css">
+</head>
+<body data-page="office">
+<div class="orbs" aria-hidden="true"><span class="orb gold"></span><span class="orb teal"></span><span class="orb violet"></span></div>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="side-brand">
+      <img class="logo-img" src="/assets/iec-logo.png" alt="IEC Inc.">
+      <div><h1>IEC <span>Suite</span></h1><p>International Empire Consultants, Inc.</p></div>
+    </div>
+    <nav id="nav"></nav>
+    <div class="side-foot">
+      <div class="themes" id="themes">
+        <button data-t="iec" style="--sw1:#f0b942;--sw2:#3b82f6" title="IEC Brand"></button>
+        <button data-t="midnight" style="--sw1:#f0b942;--sw2:#2dd4bf" title="Midnight Gold"></button>
+        <button data-t="amethyst" style="--sw1:#d8b4fe;--sw2:#f0abfc" title="Royal Amethyst"></button>
+        <button data-t="ocean" style="--sw1:#7dd3fc;--sw2:#5eead4" title="Deep Ocean"></button>
+        <button data-t="ember" style="--sw1:#fdba74;--sw2:#fbbf24" title="Sunset Ember"></button>
+        <button data-t="emerald" style="--sw1:#6ee7b7;--sw2:#f0b942" title="Emerald Noir"></button>
+        <button data-t="rose" style="--sw1:#fda4af;--sw2:#f0abfc" title="Rose Noir"></button>
+        <label class="cpick" title="Accent color"><input type="color" id="pick-gold" value="#f0b942"></label>
+        <label class="cpick" title="Highlight color"><input type="color" id="pick-teal" value="#2dd4bf"></label>
+        <button class="creset" id="pick-reset" title="Reset colors">⟲</button>
+      </div>
+      <button class="signout" id="signout"><i>🚪</i>Sign out</button>
+      <a class="public-link" href="/welcome.html">← Public site</a>
+      <div class="clockbox">
+        <div id="clock">--:--</div>
+        <div id="dateline">—</div>
+      </div>
+    </div>
+  </aside>
+
+  <main>
+    <div class="office-hero card">
+      <div class="office-avatar">M</div>
+      <div>
+        <h2>Muse's Office</h2>
+        <p class="office-role">Office Manager · I run the 15-person virtual team, own every build end to end,
+        and report only what moved, what stalled, and what needs DrMorgan's word.</p>
+      </div>
+    </div>
+
+    <div class="section-head"><h2>On my desk</h2><span class="hint">live from this Suite</span></div>
+    <div class="stats" id="desk-stats">
+      <div class="stat"><div class="stat-num gold" id="st-inbox">0</div><div class="stat-lbl">notes for Muse</div></div>
+      <div class="stat"><div class="stat-num" id="st-opps">0</div><div class="stat-lbl">open opportunities</div></div>
+      <div class="stat"><div class="stat-num" id="st-contacts">0</div><div class="stat-lbl">CRM contacts</div></div>
+      <div class="stat"><div class="stat-num" id="st-crew">14</div><div class="stat-lbl">team members</div></div>
+    </div>
+
+    <div class="section-head"><h2>Leave work for Muse</h2><span class="hint">drop a note on my desk</span></div>
+    <div class="card form-card">
+      <input id="note-title" maxlength="120" placeholder="What needs doing?">
+      <textarea id="note-body" rows="3" maxlength="2000" placeholder="Details, links, deadlines…"></textarea>
+      <button class="btn" id="note-add">Leave it on my desk →</button>
+      <p class="fine">Notes left here stay in this Suite on this device. To hand work to me directly, message me in our chat.</p>
+    </div>
+    <div class="feed" id="inbox"><div class="empty">Nothing on my desk. Enjoy the quiet.</div></div>
+
+    <div class="section-head"><h2>The team I run</h2><span class="hint">your virtual crew</span></div>
+    <div class="grid" id="crew"></div>
+
+    <footer>© 2026 International Empire Consultants, Inc. · IEC Suite</footer>
+  </main>
+</div>
+
+<script src="/desk/desk.js"></script>
+<script>
+const CREW = [
+  ['Suzy','Agenda','Owns the schedule and to-do list; watches every agent and flags stalls.'],
+  ['Vera','Partnerships & deals','Weekly hit-list of 5 verified partnership, JV and investor targets.'],
+  ['Iris','Project watchers','Five watchers: NEXUS, CURAVIA, MEDEXEC, INSSNAPP, 24HourDoctor.'],
+  ['Sage','Expertise','The BD playbook — how DrMorgan wins, written down.'],
+  ['Hazel','Connections','Keeps the relationship graph warm; weekly nudges.'],
+  ['Gemma','Opportunity','Finds and ranks the deals worth chasing.'],
+  ['Judy','Deal evaluator','Verdicts: SOLID · COULD BE · DON\u2019T WASTE YOUR TIME.'],
+  ['Piper','News WIIFM','Daily before 8 AM: what the news means for us.'],
+  ['Audrey','Compliance','Audits every project against the MA baseline.'],
+  ['Stella','Sharpening','Weekly betterment pass over everything we ship.'],
+  ['Ivy','Niche scout','Hunts unmet niches and uniqueness.'],
+  ['Nora','Usage','Watches Muse usage and reminds every 10%.'],
+  ['Tess','Inbox triage','Sorts the inbox daily; surfaces the top 5. Never deletes without a word.'],
+  ['Rosa','CRM keeper','Owns the client CRM: dedupe, segments, flags.'],
+];
+$('crew').innerHTML = CREW.map(([n,r,d]) =>
+  `<div class="card named"><h3>${esc(n)}</h3><div class="role">${esc(r)}</div><p>${esc(d)}</p></div>`).join('');
+
+const INBOX_KEY = 'muse-office-inbox';
+const getInbox = () => { try{ return JSON.parse(localStorage.getItem(INBOX_KEY)) || []; }catch{ return []; } };
+const setInbox = v => { try{ localStorage.setItem(INBOX_KEY, JSON.stringify(v)); }catch{} };
+
+function renderInbox(){
+  const items = getInbox();
+  const open = items.filter(i => !i.done).length;
+  $('st-inbox').textContent = open;
+  const box = $('inbox');
+  if(!items.length){ box.innerHTML = '<div class="empty">Nothing on my desk. Enjoy the quiet.</div>'; return; }
+  box.innerHTML = items.map((n,i) =>
+    `<div class="card note${n.done ? ' done' : ''}">
+       <b>${esc(n.title)}</b>${n.body ? `<p>${esc(n.body)}</p>` : ''}
+       <span class="meta">${esc(n.at || '')}</span>
+       <div class="note-actions">
+         <button data-a="done" data-i="${i}">${n.done ? '↩ reopen' : '✓ done'}</button>
+         <button data-a="del" data-i="${i}">✕</button>
+       </div>
+     </div>`).join('');
+}
+$('inbox').addEventListener('click', e => {
+  const b = e.target.closest('button'); if(!b) return;
+  const items = getInbox(), i = +b.dataset.i;
+  if(b.dataset.a === 'del') items.splice(i,1);
+  else items[i].done = !items[i].done;
+  setInbox(items); renderInbox();
+});
+$('note-add').addEventListener('click', () => {
+  const t = $('note-title').value.trim(); if(!t) return;
+  const items = getInbox();
+  items.unshift({ title: t, body: $('note-body').value.trim(),
+    at: new Date().toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'}), done: false });
+  setInbox(items); $('note-title').value = ''; $('note-body').value = '';
+  renderInbox();
+});
+
+(function stats(){
+  try{
+    $('st-opps').textContent = (JSON.parse(localStorage.getItem('morgan-desk-opportunities')) || []).length;
+    $('st-contacts').textContent = (JSON.parse(localStorage.getItem('morgan-desk-contacts')) || []).length;
+  }catch{}
+})();
+renderInbox();
+</script>
+</body>
+</html>
