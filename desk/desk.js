@@ -15,6 +15,8 @@ const NAV = [
   { href: '/desk/contacts.html',      icon: '📇', label: 'Contacts',     page: 'contacts', badgeId: 'nav-contacts' },
   { href: '/desk/deals.html',         icon: '⚖️', label: 'Deals',        page: 'deals' },
   { href: '/desk/news.html',           icon: '📰', label: 'News',         page: 'news' },
+  { href: '/desk/strategy.html',      icon: '🎯', label: 'Strategy',     page: 'strategy' },
+  { href: '/desk/trade.html',         icon: '📈', label: 'Trade Pilot',  page: 'trade' },
   { href: '/desk/documents.html',      icon: '📄', label: 'Documents',    page: 'docs' },
 ];
 (function buildNav(){

@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trade Pilot — IEC Suite</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/desk/desk.css">
+</head>
+<body data-page="trade">
+<div class="orbs" aria-hidden="true"><span class="orb gold"></span><span class="orb teal"></span><span class="orb violet"></span></div>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="side-brand">
+      <img class="logo-img" src="/assets/iec-logo.png" alt="IEC Inc.">
+      <div><h1>IEC <span>Suite</span></h1><p>International Empire Consultants, Inc.</p></div>
+    </div>
+    <nav id="nav"></nav>
+    <div class="side-foot">
+      <div class="themes" id="themes">
+        <button data-t="iec" style="--sw1:#f0b942;--sw2:#3b82f6" title="IEC Brand"></button>
+        <button data-t="midnight" style="--sw1:#f0b942;--sw2:#2dd4bf" title="Midnight Gold"></button>
+        <button data-t="amethyst" style="--sw1:#d8b4fe;--sw2:#f0abfc" title="Royal Amethyst"></button>
+        <button data-t="ocean" style="--sw1:#7dd3fc;--sw2:#5eead4" title="Deep Ocean"></button>
+        <button data-t="ember" style="--sw1:#fdba74;--sw2:#fbbf24" title="Sunset Ember"></button>
+        <button data-t="emerald" style="--sw1:#6ee7b7;--sw2:#f0b942" title="Emerald Noir"></button>
+        <button data-t="rose" style="--sw1:#fda4af;--sw2:#f0abfc" title="Rose Noir"></button>
+        <label class="cpick" title="Accent color"><input type="color" id="pick-gold" value="#f0b942"></label>
+        <label class="cpick" title="Highlight color"><input type="color" id="pick-teal" value="#2dd4bf"></label>
+        <button class="creset" id="pick-reset" title="Reset colors">⟲</button>
+      </div>
+      <button class="signout" id="signout"><i>🚪</i>Sign out</button>
+      <a class="public-link" href="/welcome.html">← Public site</a>
+      <div class="clockbox">
+        <div id="clock">--:--</div>
+        <div id="dateline">—</div>
+      </div>
+    </div>
+  </aside>
+
+  <main>
+    <div class="section-head"><h2>Trade pilot</h2><span class="hint"><span class="tag red">PRIVATE</span> DrMorgan &amp; Muse only</span></div>
+
+    <div class="card"><h3>Status</h3>
+      <p><b>Strategy v2 selected — paper pilot pending your word.</b> No live capital, no real orders. Paper only until you explicitly authorize otherwise.</p>
+    </div>
+
+    <div class="card"><h3>Why v1 failed</h3>
+      <p>Aggressive intraday bot lost <b>-10.4%</b> in every backtest window (profit factor 0.02–0.15). Causes: entries with no edge, average win $6.67 vs average loss $28, fees burned 4–7% on 41–69 trades per window, no regime awareness — it lost money inside a +34% BTC rally.</p>
+    </div>
+
+    <div class="card"><h3>Strategy v2 — Slow Dual-Momentum <span class="tag gold">Sasha's pick</span></h3>
+      <p><b>Rule:</b> hold BTC only when the daily close is above the 200-day moving average; otherwise sit in cash. One parameter, ~5 trades a year, fee-immune.</p>
+      <p><b>12-month backtest (real Coinbase data):</b> +1.47% return, profit factor 1.10, max drawdown -22.3% — vs buy-and-hold <b>-27.41%</b> with -53.1% drawdown. Captured +19.5% of the big rally leg.</p>
+      <p><b>Build spec:</b> daily check 00:05 UTC · all-in per signal · <b>-25% kill-switch</b> with 30-day halt · monthly review vs buy-and-hold · 6-month paper run.</p>
+      <p class="hint">Runners-up: Connors RSI(2) dip-buying (+1.57%, PF 3.79, tiny sample) and wide-stop 50-day breakout (+3.25%, 2 trades). All beat buy-and-hold; all reported with honest thin samples.</p>
+    </div>
+
+    <div class="card"><h3>Next step</h3>
+      <p>Your call: start the 6-month paper pilot tracking, or sit on it. Nothing moves without your word.</p>
+    </div>
+
+    <footer>© 2026 International Empire Consultants, Inc. · IEC Suite</footer>
+  </main>
+</div>
+
+<script src="/desk/desk.js"></script>
+</body>
+</html>
