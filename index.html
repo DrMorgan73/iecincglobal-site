@@ -112,12 +112,16 @@
     #suzy-checkin .sc-send{background:#f0b942;color:#14110a}
     #suzy-checkin .sc-close{background:rgba(255,255,255,.08);color:#dfe5f2}
     #suzy-checkin .sc-done{display:none;text-align:center;padding:26px 6px;font-size:15px}
+    #suzy-checkin .sc-voice{margin-left:auto;flex:none;border:1px solid rgba(240,185,66,.5);background:transparent;
+      color:#f0b942;border-radius:999px;padding:8px 14px;font-size:13px;cursor:pointer;white-space:nowrap}
+    #suzy-checkin .sc-voice.playing{background:#f0b942;color:#14110a}
   </style>
   <div class="sc-card">
     <div class="sc-main">
       <div class="sc-head">
         <img class="sc-ava" src="/desk/assets/team/suzy.jpg" alt="Suzy" onerror="this.style.display='none'">
         <div><h3 id="sc-greet">Hello, DrMorgan.</h3><p>Suzy here — your secretary. Here's the latest:</p></div>
+        <button class="sc-voice" id="sc-voice" title="Read the briefing aloud">🔊 Listen</button>
       </div>
       <div id="sc-report"><p style="color:#a7b0c8;font-size:14px">Pulling today's briefing…</p></div>
       <div class="sc-ask">
@@ -144,6 +148,43 @@
   document.getElementById('sc-greet').textContent = tod + ', DrMorgan.';
 
   const escS = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+  /* Suzy's voice — reads the briefing aloud via the browser's speech engine. */
+  let suzyVoice = null;
+  function pickVoice(){
+    try{
+      const vs = speechSynthesis.getVoices();
+      suzyVoice = vs.find(v => /en[-_]US/i.test(v.lang) && /female|samantha|zira|aria|jenny|google us english/i.test(v.name))
+        || vs.find(v => /en[-_]US/i.test(v.lang))
+        || vs.find(v => /^en/i.test(v.lang)) || vs[0] || null;
+    }catch(e){}
+  }
+  const canSpeak = 'speechSynthesis' in window;
+  if (canSpeak){ pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
+  function stopVoice(){ try{ speechSynthesis.cancel(); }catch(e){}
+    const b = document.getElementById('sc-voice'); if (b) b.classList.remove('playing'); }
+  function speakBriefing(d){
+    if (!canSpeak) return;
+    stopVoice();
+    const btn = document.getElementById('sc-voice');
+    let t = tod + ', DrMorgan. Here is your briefing. ';
+    (d.sections || []).forEach(s => { t += s.h + ': ' + (s.lines || []).join('. ') + '. '; });
+    if ((d.needs_him || []).length) t += 'Needs you: ' + d.needs_him.join('. ') + '. ';
+    t += 'Before you dive in — anything new for the crew today?';
+    try{
+      const u = new SpeechSynthesisUtterance(t);
+      if (suzyVoice) u.voice = suzyVoice;
+      u.onend = u.onerror = () => { if (btn) btn.classList.remove('playing'); };
+      if (btn) btn.classList.add('playing');
+      speechSynthesis.speak(u);
+    }catch(e){}
+  }
+  document.getElementById('sc-voice').addEventListener('click', () => {
+    const btn = document.getElementById('sc-voice');
+    if (btn.classList.contains('playing')){ stopVoice(); return; }
+    if (box._briefing) speakBriefing(box._briefing);
+  });
+
   fetch('/desk/data/suzy.json', {cache: 'no-store'}).then(r => r.json()).then(d => {
     let h = '';
     (d.sections || []).forEach(s => {
@@ -153,6 +194,8 @@
       h += `<div class="sc-need sc-sec"><h4>Needs you</h4>` + d.needs_him.map(l => `<p>• ${escS(l)}</p>`).join('') + `</div>`;
     h += `<p style="color:#7c86a0;font-size:12px;margin-top:8px">Briefing from ${escS(d.date || 'today')} · refreshed every morning ~07:30 ET</p>`;
     document.getElementById('sc-report').innerHTML = h;
+    box._briefing = d;
+    speakBriefing(d); /* attempt auto-play; 🔊 button replays if the browser blocked it */
   }).catch(() => {
     document.getElementById('sc-report').innerHTML = '<p style="color:#a7b0c8;font-size:14px">Today\'s briefing is on its way — check the main chat.</p>';
   });
@@ -165,7 +208,7 @@
     if (chipVal && !t.value.startsWith(chipVal)) t.value = chipVal + t.value;
     if (!chipVal) t.value = 'Nothing new.';
   }));
-  const close = () => box.remove();
+  const close = () => { stopVoice(); box.remove(); };
   document.getElementById('sc-close').addEventListener('click', close);
   document.getElementById('sc-done-close').addEventListener('click', close);
   document.getElementById('sc-send').addEventListener('click', () => {
