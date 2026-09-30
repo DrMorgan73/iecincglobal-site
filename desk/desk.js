@@ -49,14 +49,39 @@ refreshBadges();
 })();
 
 /* ---- desktop moods ---- */
-const THEMES = ['midnight','amethyst','ocean','ember','emerald','rose'];
+const THEMES = ['iec','midnight','amethyst','ocean','ember','emerald','rose'];
+const CUSTOM_KEY = 'morgan-desk-custom-colors';
+function getCustom(){ try{ return JSON.parse(localStorage.getItem(CUSTOM_KEY)) || {}; }catch{ return {}; } }
+function applyCustom(){
+  const c = getCustom(), r = document.documentElement.style;
+  if(c.gold) r.setProperty('--gold', c.gold); else r.removeProperty('--gold');
+  if(c.teal) r.setProperty('--teal', c.teal); else r.removeProperty('--teal');
+  const g = document.getElementById('pick-gold'), t = document.getElementById('pick-teal');
+  if(g) g.value = c.gold || getComputedStyle(document.documentElement).getPropertyValue('--gold').trim() || '#f0b942';
+  if(t) t.value = c.teal || getComputedStyle(document.documentElement).getPropertyValue('--teal').trim() || '#2dd4bf';
+}
+function saveCustom(gold, teal){
+  const c = getCustom();
+  if(gold !== undefined) c.gold = gold;
+  if(teal !== undefined) c.teal = teal;
+  try{ localStorage.setItem(CUSTOM_KEY, JSON.stringify(c)); }catch{}
+  applyCustom();
+}
+
 function setTheme(t){
   if(!THEMES.includes(t)) t = 'midnight';
   document.documentElement.dataset.theme = t;
   try{ localStorage.setItem('morgan-desk-theme', t); }catch{}
   document.querySelectorAll('#themes button').forEach(b => b.classList.toggle('on', b.dataset.t === t));
+  applyCustom();
 }
 try{ setTheme(localStorage.getItem('morgan-desk-theme') || 'midnight'); }catch{ setTheme('midnight'); }
+(function wirePickers(){
+  const g = document.getElementById('pick-gold'), t = document.getElementById('pick-teal'), r = document.getElementById('pick-reset');
+  if(g) g.addEventListener('input', () => saveCustom(g.value, undefined));
+  if(t) t.addEventListener('input', () => saveCustom(undefined, t.value));
+  if(r) r.addEventListener('click', () => { try{ localStorage.removeItem(CUSTOM_KEY); }catch{} applyCustom(); });
+})();
 (function wireThemes(){
   const box = $('themes'); if(!box) return;
   box.addEventListener('click', e => {

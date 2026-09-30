@@ -15,18 +15,22 @@
 <div class="shell">
   <aside class="sidebar">
     <div class="side-brand">
-      <div class="logo">S</div>
+      <img class="logo-img" src="/assets/iec-logo.png" alt="IEC Inc.">
       <div><h1>IEC <span>Suite</span></h1><p>International Empire Consultants, Inc.</p></div>
     </div>
     <nav id="nav"></nav>
     <div class="side-foot">
       <div class="themes" id="themes">
+        <button data-t="iec" style="--sw1:#f0b942;--sw2:#3b82f6" title="IEC Brand"></button>
         <button data-t="midnight" style="--sw1:#f0b942;--sw2:#2dd4bf" title="Midnight Gold"></button>
         <button data-t="amethyst" style="--sw1:#d8b4fe;--sw2:#f0abfc" title="Royal Amethyst"></button>
         <button data-t="ocean" style="--sw1:#7dd3fc;--sw2:#5eead4" title="Deep Ocean"></button>
         <button data-t="ember" style="--sw1:#fdba74;--sw2:#fbbf24" title="Sunset Ember"></button>
         <button data-t="emerald" style="--sw1:#6ee7b7;--sw2:#f0b942" title="Emerald Noir"></button>
         <button data-t="rose" style="--sw1:#fda4af;--sw2:#f0abfc" title="Rose Noir"></button>
+        <label class="cpick" title="Accent color"><input type="color" id="pick-gold" value="#f0b942"></label>
+        <label class="cpick" title="Highlight color"><input type="color" id="pick-teal" value="#2dd4bf"></label>
+        <button class="creset" id="pick-reset" title="Reset colors">⟲</button>
       </div>
       <button class="signout" id="signout"><i>🚪</i>Sign out</button>
       <a class="public-link" href="/welcome.html">← Public site</a>

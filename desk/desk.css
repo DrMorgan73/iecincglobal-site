@@ -296,3 +296,14 @@ footer{text-align:center;color:var(--dim);font-size:12.5px;padding:26px;letter-s
   padding:8px;border:1px dashed var(--line);border-radius:10px;transition:all .2s}
 .public-link:hover{color:var(--gold);border-color:rgba(240,185,66,.4)}
 .page-crumb{font-size:12px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}
+.logo-img{width:52px;height:52px;border-radius:15px;object-fit:contain;background:#fff;padding:3px;flex:none;box-shadow:0 6px 24px rgba(240,185,66,.35)}
+[data-theme="iec"]{
+  --bg:#081226; --gold:#f0b942; --gold-deep:#c98f1f; --teal:#3b82f6;
+  --text:#eef1f7; --dim:#9aa3b8; --line:rgba(255,255,255,.09); --red:#f87171;
+  --card:rgba(255,255,255,.032);
+}
+.cpick{display:inline-flex;align-items:center;margin-left:8px}
+.cpick input[type=color]{width:26px;height:26px;border:1px solid var(--line);border-radius:8px;background:transparent;padding:2px;cursor:pointer}
+.creset{background:transparent;border:1px solid var(--line);color:var(--dim);border-radius:8px;width:26px;height:26px;margin-left:6px;cursor:pointer;font-size:14px;line-height:1}
+.creset:hover{color:var(--gold);border-color:var(--gold)}
+

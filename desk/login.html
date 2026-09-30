@@ -19,6 +19,7 @@ body{font-family:'Inter',system-ui,sans-serif;color:var(--text);background:var(-
 .card{width:min(420px,100%);background:rgba(255,255,255,.032);border:1px solid var(--line);border-radius:20px;
   padding:38px 36px;backdrop-filter:blur(8px)}
 .brand{display:flex;align-items:center;gap:14px;margin-bottom:26px}
+.logo-img{width:52px;height:52px;border-radius:15px;object-fit:contain;background:#fff;padding:3px;flex:none;box-shadow:0 6px 24px rgba(240,185,66,.35)}
 .logo{width:52px;height:52px;border-radius:15px;display:grid;place-items:center;font-family:'Space Grotesk';font-weight:700;
   font-size:26px;color:#0a0d14;flex:none;background:linear-gradient(135deg,#ffe9b0,var(--gold) 45%,var(--gold-deep));
   box-shadow:0 6px 24px rgba(240,185,66,.35)}
@@ -48,7 +49,7 @@ button:disabled{opacity:.6;cursor:wait;transform:none}
 <div class="orbs" aria-hidden="true"><span class="orb gold"></span><span class="orb teal"></span></div>
 <div class="card">
   <div class="brand">
-    <div class="logo">S</div>
+    <img class="logo-img" src="/assets/iec-logo.png" alt="IEC Inc.">
     <div><h1>IEC <span>Suite</span></h1><p>International Empire Consultants, Inc.</p></div>
   </div>
   <h2>Private sign-in</h2>
