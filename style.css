@@ -156,3 +156,7 @@ details.credits a { color: #aeb9c8; }
 
 .copyright a { color: inherit; opacity: .72; text-decoration: none; }
 .copyright a:hover { opacity: 1; text-decoration: underline; }
+
+/* Direct-connect nav button */
+.site-nav a.nav-cta { background: #2b5cab; color: #fff; font-weight: 700; padding: 10px 26px; border-radius: 8px; border-bottom: none; margin-left: 10px; }
+.site-nav a.nav-cta:hover { background: #1e4a94; color: #fff; border-bottom: none; }
