@@ -1,4 +1,4 @@
-// Morgan Desk sign-out — Vercel Edge Function.
+// IEC Suite sign-out — Vercel Edge Function.
 // Clears the `desk_session` cookie and sends the browser to the sign-in page.
 
 export const config = { runtime: 'edge' };

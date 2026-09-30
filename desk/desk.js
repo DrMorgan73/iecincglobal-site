@@ -1,4 +1,4 @@
-/* Morgan Desk — shared shell: nav, clock, themes, sign-out, helpers. */
+/* IEC Suite — shared shell: nav, clock, themes, sign-out, helpers. */
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','&lt;':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const DESK = '/desk';

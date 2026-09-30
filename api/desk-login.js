@@ -1,4 +1,4 @@
-// Morgan Desk sign-in — Vercel Edge Function.
+// IEC Suite sign-in — Vercel Edge Function.
 // POST {username, password} as JSON. Compares against env credentials using a
 // constant-time comparison and, on success, sets the signed `desk_session`
 // cookie (HttpOnly, 7 days).

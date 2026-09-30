@@ -1,4 +1,4 @@
-// Morgan Desk private gate — Vercel Edge Middleware.
+// IEC Suite private gate — Vercel Edge Middleware.
 // Protects "/" and "/desk/*". Unauthenticated visitors are redirected to
 // the sign-in page at /desk/login.html. Corporate pages are untouched
 // (they never match the matcher below).

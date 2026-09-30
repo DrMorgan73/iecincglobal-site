@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Meeting Room — Morgan Desk</title>
+<title>Meeting Room — IEC Suite</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -15,8 +15,8 @@
 <div class="shell">
   <aside class="sidebar">
     <div class="side-brand">
-      <div class="logo">M</div>
-      <div><h1>Morgan <span>Desk</span></h1><p>International Empire Consultants, Inc.</p></div>
+      <div class="logo">S</div>
+      <div><h1>IEC <span>Suite</span></h1><p>International Empire Consultants, Inc.</p></div>
     </div>
     <nav id="nav"></nav>
     <div class="side-foot">
@@ -42,7 +42,7 @@
     <div class="card hero" style="margin-bottom:16px">
       <div>
         <h2 id="meeting-title">IEC Team Meeting</h2>
-        <p id="meeting-sub">Today · 8:00 AM ET · Morgan Desk</p>
+        <p id="meeting-sub">Today · 8:00 AM ET · IEC Suite</p>
       </div>
       <div class="countdown"><div id="countdown">--</div><div class="hint">until doors open</div></div>
     </div>
@@ -51,7 +51,7 @@
     <div class="section-head"><h2>Around the table</h2><span class="hint" id="attendee-count"></span></div>
     <div class="grid offices" id="meeting-attendees"></div>
 
-    <footer>© 2026 International Empire Consultants, Inc. · Morgan Desk</footer>
+    <footer>© 2026 International Empire Consultants, Inc. · IEC Suite</footer>
   </main>
 </div>
 
@@ -81,7 +81,7 @@ let OFFICES = [];
     ]);
     $('meeting-title').textContent = meeting.title || 'IEC Team Meeting';
     $('meeting-sub').textContent = (meeting.date ? new Date(meeting.date + 'T12:00:00').toLocaleDateString([], {weekday:'long', month:'long', day:'numeric'}) + ' · ' : '')
-      + (meeting.time || '8:00 AM ET') + ' · ' + (meeting.location || 'Morgan Desk');
+      + (meeting.time || '8:00 AM ET') + ' · ' + (meeting.location || 'IEC Suite');
     $('agenda').innerHTML = (meeting.agenda || []).map(a =>
       `<div class="feed-item"><div class="feed-time">${esc(a.t)}</div><div class="feed-body">${esc(a.body)}</div></div>`).join('')
       || '<div class="empty">No agenda items.</div>';
