@@ -76,6 +76,114 @@
 
 <script src="/desk/desk.js"></script>
 <script>
+/* Suzy login check-in — greets DrMorgan, asks what's new, reports the latest briefing. Once per session. */
+(function(){
+  if (sessionStorage.getItem('suzy-checkin')) return;
+  const box = document.createElement('div');
+  box.id = 'suzy-checkin';
+  box.innerHTML = `
+  <style>
+    #suzy-checkin{position:fixed;inset:0;z-index:90;display:flex;align-items:center;justify-content:center;
+      background:rgba(8,10,18,.72);backdrop-filter:blur(6px);padding:18px;box-sizing:border-box}
+    #suzy-checkin .sc-card{max-width:520px;width:100%;max-height:88vh;overflow:auto;border-radius:18px;
+      background:linear-gradient(160deg,#141a2e,#0d1224);border:1px solid rgba(240,185,66,.28);
+      box-shadow:0 24px 80px rgba(0,0,0,.55);padding:26px 24px;color:#eef1f8;box-sizing:border-box;
+      font-family:Inter,system-ui,sans-serif}
+    #suzy-checkin .sc-head{display:flex;gap:14px;align-items:center;margin-bottom:6px}
+    #suzy-checkin .sc-ava{width:52px;height:52px;border-radius:50%;object-fit:cover;flex:none;
+      border:2px solid #f0b942;background:#232b48}
+    #suzy-checkin .sc-head h3{margin:0;font-family:'Space Grotesk',Inter,sans-serif;font-size:19px}
+    #suzy-checkin .sc-head p{margin:2px 0 0;font-size:13px;color:#a7b0c8}
+    #suzy-checkin .sc-sec{margin:12px 0}
+    #suzy-checkin .sc-sec h4{margin:0 0 4px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#f0b942}
+    #suzy-checkin .sc-sec p{margin:2px 0;font-size:14px;line-height:1.45;color:#dfe5f2}
+    #suzy-checkin .sc-need{border:1px solid rgba(240,120,120,.4);border-radius:10px;padding:10px 12px;margin:12px 0;background:rgba(120,30,30,.18)}
+    #suzy-checkin .sc-need h4{color:#ff9d9d}
+    #suzy-checkin .sc-ask{margin-top:14px;border-top:1px solid rgba(255,255,255,.1);padding-top:14px}
+    #suzy-checkin .sc-ask p{font-size:14px;margin:0 0 10px}
+    #suzy-checkin .sc-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+    #suzy-checkin .sc-chips button{border:1px solid rgba(240,185,66,.5);background:transparent;color:#f0b942;
+      border-radius:999px;padding:7px 14px;font-size:13px;cursor:pointer}
+    #suzy-checkin .sc-chips button.on{background:#f0b942;color:#14110a}
+    #suzy-checkin textarea{width:100%;box-sizing:border-box;border-radius:10px;border:1px solid rgba(255,255,255,.16);
+      background:rgba(255,255,255,.05);color:#eef1f8;padding:10px;font-size:14px;font-family:inherit;min-height:64px;resize:vertical}
+    #suzy-checkin .sc-row{display:flex;gap:10px;margin-top:12px}
+    #suzy-checkin .sc-row .btn{flex:1;text-align:center;cursor:pointer;border-radius:10px;padding:11px;font-size:14px;font-weight:600;border:none}
+    #suzy-checkin .sc-send{background:#f0b942;color:#14110a}
+    #suzy-checkin .sc-close{background:rgba(255,255,255,.08);color:#dfe5f2}
+    #suzy-checkin .sc-done{display:none;text-align:center;padding:26px 6px;font-size:15px}
+  </style>
+  <div class="sc-card">
+    <div class="sc-main">
+      <div class="sc-head">
+        <img class="sc-ava" src="/desk/assets/team/suzy.jpg" alt="Suzy" onerror="this.style.display='none'">
+        <div><h3 id="sc-greet">Hello, DrMorgan.</h3><p>Suzy here — your secretary. Here's the latest:</p></div>
+      </div>
+      <div id="sc-report"><p style="color:#a7b0c8;font-size:14px">Pulling today's briefing…</p></div>
+      <div class="sc-ask">
+        <p><b>Before you dive in — anything new for the crew today?</b><br><span style="color:#a7b0c8;font-size:13px">New projects, priorities, or changes — I'll put it on Muse's desk.</span></p>
+        <div class="sc-chips">
+          <button data-c="New project: ">New project</button>
+          <button data-c="New priority: ">New priority</button>
+          <button data-c="">Nothing new</button>
+        </div>
+        <textarea id="sc-note" placeholder="Tell me what's new…"></textarea>
+        <div class="sc-row">
+          <button class="btn sc-send" id="sc-send">Send to my Office inbox</button>
+          <button class="btn sc-close" id="sc-close">Thanks, Suzy</button>
+        </div>
+      </div>
+    </div>
+    <div class="sc-done" id="sc-done">✓ Noted — it's on Muse's desk.<br><br><button class="btn sc-close" id="sc-done-close" style="padding:11px 34px;border-radius:10px;border:none;cursor:pointer">Back to the Suite</button></div>
+  </div>`;
+  document.body.appendChild(box);
+  sessionStorage.setItem('suzy-checkin', '1');
+
+  const hr = new Date().getHours();
+  const tod = hr < 12 ? 'Good morning' : hr < 18 ? 'Good afternoon' : 'Good evening';
+  document.getElementById('sc-greet').textContent = tod + ', DrMorgan.';
+
+  const escS = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  fetch('/desk/data/suzy.json', {cache: 'no-store'}).then(r => r.json()).then(d => {
+    let h = '';
+    (d.sections || []).forEach(s => {
+      h += `<div class="sc-sec"><h4>${escS(s.h)}</h4>` + (s.lines || []).map(l => `<p>• ${escS(l)}</p>`).join('') + `</div>`;
+    });
+    if ((d.needs_him || []).length)
+      h += `<div class="sc-need sc-sec"><h4>Needs you</h4>` + d.needs_him.map(l => `<p>• ${escS(l)}</p>`).join('') + `</div>`;
+    h += `<p style="color:#7c86a0;font-size:12px;margin-top:8px">Briefing from ${escS(d.date || 'today')} · refreshed every morning ~07:30 ET</p>`;
+    document.getElementById('sc-report').innerHTML = h;
+  }).catch(() => {
+    document.getElementById('sc-report').innerHTML = '<p style="color:#a7b0c8;font-size:14px">Today\'s briefing is on its way — check the main chat.</p>';
+  });
+
+  let chipVal = '';
+  box.querySelectorAll('.sc-chips button').forEach(b => b.addEventListener('click', () => {
+    box.querySelectorAll('.sc-chips button').forEach(x => x.classList.remove('on'));
+    b.classList.add('on'); chipVal = b.dataset.c;
+    const t = document.getElementById('sc-note');
+    if (chipVal && !t.value.startsWith(chipVal)) t.value = chipVal + t.value;
+    if (!chipVal) t.value = 'Nothing new.';
+  }));
+  const close = () => box.remove();
+  document.getElementById('sc-close').addEventListener('click', close);
+  document.getElementById('sc-done-close').addEventListener('click', close);
+  document.getElementById('sc-send').addEventListener('click', () => {
+    const v = document.getElementById('sc-note').value.trim();
+    if (!v) return;
+    try {
+      const k = 'muse-office-inbox';
+      const items = JSON.parse(localStorage.getItem(k)) || [];
+      items.unshift({ title: 'Suzy intake — ' + (v.length > 60 ? v.slice(0, 60) + '…' : v), body: v,
+        at: new Date().toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'}), done: false });
+      localStorage.setItem(k, JSON.stringify(items));
+    } catch(e) {}
+    box.querySelector('.sc-main').style.display = 'none';
+    document.getElementById('sc-done').style.display = 'block';
+  });
+})();
+</script>
+<script>
 (async function(){
   try{
     const [projects, agents] = await Promise.all([
