@@ -11,6 +11,7 @@ const NAV = [
   { href: '/desk/projects.html',     icon: '📁', label: 'Projects',     page: 'projects' },
   { href: '/desk/team.html',          icon: '👥', label: 'Team',         page: 'team' },
   { href: '/desk/meeting-room.html',  icon: '🏛️', label: 'Meeting Room', page: 'meeting', badge: '8 AM' },
+  { href: '/desk/suzy-chat.html',     icon: '💬', label: 'Chat with Suzy', page: 'suzy-chat' },
   { href: '/desk/opportunities.html', icon: '💼', label: 'Opportunities',page: 'opps', badgeId: 'nav-opps' },
   { href: '/desk/contacts.html',      icon: '📇', label: 'Contacts',     page: 'contacts', badgeId: 'nav-contacts' },
   { href: '/desk/deals.html',         icon: '⚖️', label: 'Deals',        page: 'deals' },
@@ -144,3 +145,73 @@ const VLABEL = { solid:'Solid', couldbe:'Could be', pass:"Don't waste your time"
 const dot = s => ({live:'green', building:'amber', pilot:'blue', shelved:'gray', standby:'gray'}[s] || 'gray');
 const OPP_KEY = 'morgan-desk-opportunities';
 const loadOpps = () => { try { return JSON.parse(localStorage.getItem(OPP_KEY)) || []; } catch { return []; } };
+
+/* ---- live popups: the Suite feels alive ---- */
+(function livePopups(){
+  // Styles
+  const st = document.createElement('style');
+  st.textContent = `
+    #live-toasts{position:fixed;bottom:18px;right:18px;z-index:200;display:flex;flex-direction:column;gap:10px;max-width:340px}
+    .live-toast{display:flex;gap:12px;align-items:flex-start;background:rgba(16,20,32,.96);
+      border:1px solid rgba(240,185,66,.3);border-radius:14px;padding:12px 14px;
+      box-shadow:0 8px 32px rgba(0,0,0,.5);animation:toastIn .35s cubic-bezier(.2,.9,.3,1.2);
+      cursor:pointer;backdrop-filter:blur(8px)}
+    .live-toast.out{animation:toastOut .3s ease forwards}
+    @keyframes toastIn{from{opacity:0;transform:translateX(60px) scale(.95)}to{opacity:1;transform:none}}
+    @keyframes toastOut{to{opacity:0;transform:translateX(60px) scale(.95)}}
+    .live-toast img{width:40px;height:40px;border-radius:50%;object-fit:cover;flex:none;border:1px solid rgba(240,185,66,.4)}
+    .live-toast .lt-body{flex:1;min-width:0}
+    .live-toast .lt-name{font-size:13px;font-weight:700;color:#f0b942;margin-bottom:2px}
+    .live-toast .lt-text{font-size:13px;line-height:1.4;color:#dfe5f2}
+    .live-toast .lt-time{font-size:11px;color:#7c86a0;margin-top:4px}
+    @media(max-width:480px){#live-toasts{left:18px;max-width:none}}
+  `;
+  document.head.appendChild(st);
+
+  const box = document.createElement('div');
+  box.id = 'live-toasts';
+  document.body.appendChild(box);
+
+  window.suzyToast = function(name, text, avatar){
+    const t = document.createElement('div');
+    t.className = 'live-toast';
+    const av = avatar || avatarFor(name);
+    t.innerHTML = `<img src="${av}" alt="" onerror="this.style.display='none'">
+      <div class="lt-body"><div class="lt-name">${esc(name)}</div>
+      <div class="lt-text">${esc(text)}</div>
+      <div class="lt-time">just now</div></div>`;
+    t.addEventListener('click', () => dismiss(t));
+    box.appendChild(t);
+    // Keep max 3
+    while (box.children.length > 3) box.firstChild.remove();
+    setTimeout(() => dismiss(t), 8000);
+    function dismiss(el){
+      el.classList.add('out');
+      setTimeout(() => el.remove(), 320);
+    }
+  };
+
+  // Ambient crew activity — makes the Suite feel live
+  const ACTIVITY = [
+    ['Vera', 'Reviewing this week\u2019s partnership targets…'],
+    ['Tess', 'Inbox triage running — nothing urgent.'],
+    ['Gemma', 'Scanning for new opportunities…'],
+    ['Piper', 'Morning news digest queued for 8 AM.'],
+    ['Iris', 'All project watchers green.'],
+    ['Rosa', 'CRM standing by for your upload.'],
+    ['Judy', 'Deal evaluator ready when you are.'],
+    ['Suzy', 'Crew check-in complete — all on schedule.'],
+  ];
+  let ai = Math.floor(Math.random() * ACTIVITY.length);
+  // First popup shortly after load, then every 3-5 minutes
+  setTimeout(() => {
+    const [n, txt] = ACTIVITY[ai++ % ACTIVITY.length];
+    window.suzyToast(n, txt);
+  }, 12000);
+  setInterval(() => {
+    // Don't popup if user is idle (no interaction in 10 min) or tab hidden
+    if (document.hidden) return;
+    const [n, txt] = ACTIVITY[ai++ % ACTIVITY.length];
+    window.suzyToast(n, txt);
+  }, 3 * 60 * 1000 + Math.random() * 2 * 60 * 1000);
+})();

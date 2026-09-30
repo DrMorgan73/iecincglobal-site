@@ -149,40 +149,25 @@
 
   const escS = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-  /* Suzy's voice — reads the briefing aloud via the browser's speech engine. */
-  let suzyVoice = null;
-  function pickVoice(){
-    try{
-      const vs = speechSynthesis.getVoices();
-      suzyVoice = vs.find(v => /en[-_]US/i.test(v.lang) && /female|samantha|zira|aria|jenny|google us english/i.test(v.name))
-        || vs.find(v => /en[-_]US/i.test(v.lang))
-        || vs.find(v => /^en/i.test(v.lang)) || vs[0] || null;
-    }catch(e){}
-  }
-  const canSpeak = 'speechSynthesis' in window;
-  if (canSpeak){ pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
-  function stopVoice(){ try{ speechSynthesis.cancel(); }catch(e){}
+  /* Suzy's voice — human American voice, pre-recorded briefing audio. */
+  let suzyAudio = null;
+  function stopVoice(){
+    try{ if (suzyAudio){ suzyAudio.pause(); suzyAudio.currentTime = 0; } }catch(e){}
     const b = document.getElementById('sc-voice'); if (b) b.classList.remove('playing'); }
-  function speakBriefing(d){
-    if (!canSpeak) return;
+  function speakBriefing(){
     stopVoice();
     const btn = document.getElementById('sc-voice');
-    let t = tod + ', DrMorgan. Here is your briefing. ';
-    (d.sections || []).forEach(s => { t += s.h + ': ' + (s.lines || []).join('. ') + '. '; });
-    if ((d.needs_him || []).length) t += 'Needs you: ' + d.needs_him.join('. ') + '. ';
-    t += 'Before you dive in — anything new for the crew today?';
     try{
-      const u = new SpeechSynthesisUtterance(t);
-      if (suzyVoice) u.voice = suzyVoice;
-      u.onend = u.onerror = () => { if (btn) btn.classList.remove('playing'); };
+      suzyAudio = new Audio('/desk/data/suzy-briefing.mp3?v=' + Date.now());
+      suzyAudio.onended = suzyAudio.onerror = () => { if (btn) btn.classList.remove('playing'); };
       if (btn) btn.classList.add('playing');
-      speechSynthesis.speak(u);
+      suzyAudio.play().catch(() => { if (btn) btn.classList.remove('playing'); });
     }catch(e){}
   }
   document.getElementById('sc-voice').addEventListener('click', () => {
     const btn = document.getElementById('sc-voice');
     if (btn.classList.contains('playing')){ stopVoice(); return; }
-    if (box._briefing) speakBriefing(box._briefing);
+    speakBriefing();
   });
 
   fetch('/desk/data/suzy.json', {cache: 'no-store'}).then(r => r.json()).then(d => {
@@ -195,7 +180,7 @@
     h += `<p style="color:#7c86a0;font-size:12px;margin-top:8px">Briefing from ${escS(d.date || 'today')} · refreshed every morning ~07:30 ET</p>`;
     document.getElementById('sc-report').innerHTML = h;
     box._briefing = d;
-    speakBriefing(d); /* attempt auto-play; 🔊 button replays if the browser blocked it */
+    speakBriefing(); /* attempt auto-play; 🔊 button replays if the browser blocked it */
   }).catch(() => {
     document.getElementById('sc-report').innerHTML = '<p style="color:#a7b0c8;font-size:14px">Today\'s briefing is on its way — check the main chat.</p>';
   });

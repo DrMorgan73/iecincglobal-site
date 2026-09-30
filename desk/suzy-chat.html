@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chat with Suzy — IEC Suite</title>
+<link rel="stylesheet" href="/desk/desk.css">
+<style>
+  .chat-wrap{max-width:640px;margin:0 auto;padding:20px 16px 100px;min-height:100vh}
+  .chat-head{display:flex;align-items:center;gap:14px;padding:16px;border-radius:16px;
+    background:linear-gradient(135deg,rgba(240,185,66,.12),rgba(240,185,66,.04));
+    border:1px solid rgba(240,185,66,.25);margin-bottom:18px}
+  .chat-ava{width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid #f0b942}
+  .chat-head h2{margin:0;font-size:18px}
+  .chat-head p{margin:2px 0 0;font-size:13px;color:#a7b0c8}
+  .live-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#4ade80;
+    margin-right:6px;animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+  #chat-msgs{display:flex;flex-direction:column;gap:12px;margin-bottom:16px}
+  .msg{max-width:82%;padding:11px 14px;border-radius:14px;font-size:14px;line-height:1.5;
+    animation:slideIn .25s ease}
+  @keyframes slideIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .msg.suzy{align-self:flex-start;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);
+    border-bottom-left-radius:4px;white-space:pre-wrap}
+  .msg.me{align-self:flex-end;background:#f0b942;color:#14110a;border-bottom-right-radius:4px;font-weight:500}
+  .msg.typing{display:flex;gap:5px;padding:14px 16px}
+  .msg.typing span{width:7px;height:7px;border-radius:50%;background:#a7b0c8;animation:blink 1.2s infinite}
+  .msg.typing span:nth-child(2){animation-delay:.2s}
+  .msg.typing span:nth-child(3){animation-delay:.4s}
+  @keyframes blink{0%,80%,100%{opacity:.3}40%{opacity:1}}
+  .chat-input{position:fixed;bottom:0;left:0;right:0;padding:12px 16px calc(12px + env(safe-area-inset-bottom));
+    background:rgba(10,12,20,.95);backdrop-filter:blur(10px);border-top:1px solid rgba(255,255,255,.08)}
+  .chat-input .row{max-width:640px;margin:0 auto;display:flex;gap:10px}
+  .chat-input input{flex:1;border-radius:12px;border:1px solid rgba(255,255,255,.16);
+    background:rgba(255,255,255,.06);color:#fff;padding:12px 14px;font-size:15px;outline:none}
+  .chat-input input:focus{border-color:#f0b942}
+  .chat-input button{border:none;border-radius:12px;background:#f0b942;color:#14110a;
+    font-weight:700;padding:12px 20px;font-size:15px;cursor:pointer}
+  .chat-input button:disabled{opacity:.5}
+</style>
+</head>
+<body>
+<div class="chat-wrap">
+  <div class="chat-head">
+    <img class="chat-ava" src="/desk/assets/team/suzy.jpg" alt="Suzy" onerror="this.style.display='none'">
+    <div>
+      <h2>Suzy</h2>
+      <p><span class="live-dot"></span>Online — your agenda &amp; crew chief</p>
+    </div>
+  </div>
+  <div id="chat-msgs"></div>
+</div>
+<div class="chat-input">
+  <div class="row">
+    <input id="chat-text" type="text" placeholder="Message Suzy…" autocomplete="off" maxlength="2000">
+    <button id="chat-send">Send</button>
+  </div>
+</div>
+<script>
+(function(){
+  const msgs = document.getElementById('chat-msgs');
+  const input = document.getElementById('chat-text');
+  const sendBtn = document.getElementById('chat-send');
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+  function addMsg(text, who){
+    const d = document.createElement('div');
+    d.className = 'msg ' + who;
+    d.textContent = text;
+    msgs.appendChild(d);
+    d.scrollIntoView({behavior:'smooth', block:'end'});
+    return d;
+  }
+
+  function setTyping(on){
+    let t = document.getElementById('suzy-typing');
+    if (on && !t){
+      t = document.createElement('div');
+      t.id = 'suzy-typing';
+      t.className = 'msg suzy typing';
+      t.innerHTML = '<span></span><span></span><span></span>';
+      msgs.appendChild(t);
+      t.scrollIntoView({behavior:'smooth', block:'end'});
+    } else if (!on && t){ t.remove(); }
+  }
+
+  // Greeting on open
+  const hour = new Date().getHours();
+  const tod = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
+  setTimeout(() => addMsg(`Good ${tod}, DrMorgan. Suzy here — what can I do for you?`, 'suzy'), 400);
+
+  async function send(){
+    const text = input.value.trim();
+    if (!text) return;
+    input.value = '';
+    sendBtn.disabled = true;
+    addMsg(text, 'me');
+    // Save to Office inbox if it looks like something for the crew/Muse
+    if (/crew|muse|tell|pass|let.*know|new|update|remind|follow.?up|urgent|important/i.test(text) && text.length > 15){
+      try{
+        const inbox = JSON.parse(localStorage.getItem('muse-office-inbox') || '[]');
+        inbox.unshift({from: 'DrMorgan via Suzy chat', text: text, at: new Date().toISOString(), done: false});
+        localStorage.setItem('muse-office-inbox', JSON.stringify(inbox.slice(0, 50)));
+      }catch(e){}
+    }
+    setTyping(true);
+    try{
+      const r = await fetch('/api/suzy-chat', {
+        method: 'POST',
+        headers: {'content-type':'application/json'},
+        body: JSON.stringify({message: text})
+      });
+      const d = await r.json();
+      // Small delay so it feels human, not instant-robot
+      await new Promise(res => setTimeout(res, 600 + Math.random() * 800));
+      setTyping(false);
+      if (d.ok && d.reply) addMsg(d.reply, 'suzy');
+      else addMsg("Hmm, that didn't go through — try me again in a moment.", 'suzy');
+    }catch(e){
+      setTyping(false);
+      addMsg("I'm having trouble reaching the office — try again in a moment.", 'suzy');
+    }
+    sendBtn.disabled = false;
+    input.focus();
+  }
+
+  sendBtn.addEventListener('click', send);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') send(); });
+  input.focus();
+})();
+</script>
+</body>
+</html>
