@@ -92,6 +92,7 @@ const CREW = [
   ['Nora','Usage','Watches Muse usage and reminds every 10%.'],
   ['Tess','Inbox triage','Sorts the inbox daily; surfaces the top 5. Never deletes without a word.'],
   ['Rosa','CRM keeper','Owns the client CRM: dedupe, segments, flags.'],
+  ['Eleanor','Legal counsel','40 years: contracts, litigation, real estate. On call.'],
 ];
 $('crew').innerHTML = CREW.map(([n,r,d]) =>
   `<div class="card named"><h3>${esc(n)}</h3><div class="role">${esc(r)}</div><p>${esc(d)}</p></div>`).join('');
