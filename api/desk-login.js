@@ -41,14 +41,14 @@ export default async function handler(req) {
   try { body = await req.json(); } catch { return json({ ok: false }, 400); }
 
   const username = String(body.username || '').trim();
-  const password = String(body.password || '');
-  const expUser = process.env.DESK_USER || '';
-  const expPass = process.env.DESK_PASS || '';
+  const password = String(body.password || '').trim();
+  const expUser = (process.env.DESK_USER || '').trim();
+  const expPass = (process.env.DESK_PASS || '').trim();
   const secret = process.env.DESK_SESSION_SECRET || '';
 
   let ok = false;
   if (username && password && expUser && expPass && secret &&
-      /^[A-Za-z0-9_-]{1,64}$/.test(username)) {
+      /^[A-Za-z0-9_.@-]{1,64}$/.test(username)) {
     ok = timingSafeEqual(username, expUser) && timingSafeEqual(password, expPass);
   }
   if (!ok) return json({ ok: false }, 401);
