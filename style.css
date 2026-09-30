@@ -153,3 +153,6 @@ details.credits a { color: #aeb9c8; }
   details.credits ul { columns: 1; }
   .stats-band { padding: 32px 24px; }
 }
+
+.copyright a { color: inherit; opacity: .72; text-decoration: none; }
+.copyright a:hover { opacity: 1; text-decoration: underline; }

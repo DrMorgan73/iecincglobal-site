@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What's New — Morgan Desk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/desk/desk.css">
+</head>
+<body data-page="news">
+<div class="orbs" aria-hidden="true"><span class="orb gold"></span><span class="orb teal"></span><span class="orb violet"></span></div>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="side-brand">
+      <div class="logo">M</div>
+      <div><h1>Morgan <span>Desk</span></h1><p>International Empire Consultants, Inc.</p></div>
+    </div>
+    <nav id="nav"></nav>
+    <div class="side-foot">
+      <div class="themes" id="themes">
+        <button data-t="midnight" style="--sw1:#f0b942;--sw2:#2dd4bf" title="Midnight Gold"></button>
+        <button data-t="amethyst" style="--sw1:#d8b4fe;--sw2:#f0abfc" title="Royal Amethyst"></button>
+        <button data-t="ocean" style="--sw1:#7dd3fc;--sw2:#5eead4" title="Deep Ocean"></button>
+        <button data-t="ember" style="--sw1:#fdba74;--sw2:#fbbf24" title="Sunset Ember"></button>
+        <button data-t="emerald" style="--sw1:#6ee7b7;--sw2:#f0b942" title="Emerald Noir"></button>
+        <button data-t="rose" style="--sw1:#fda4af;--sw2:#f0abfc" title="Rose Noir"></button>
+      </div>
+      <button class="signout" id="signout"><i>🚪</i>Sign out</button>
+      <a class="public-link" href="/welcome.html">← Public site</a>
+      <div class="clockbox">
+        <div id="clock">--:--</div>
+        <div id="dateline">—</div>
+      </div>
+    </div>
+  </aside>
+
+  <main>
+    <div class="section-head"><h2>What's new</h2><span class="hint" id="news-count"></span></div>
+    <div class="feed" id="news"><div class="empty">Loading the latest…</div></div>
+
+    <footer>© 2026 International Empire Consultants, Inc. · Morgan Desk</footer>
+  </main>
+</div>
+
+<script src="/desk/desk.js"></script>
+<script>
+let NEWS = [];
+const kindTag = k => ({ deliverable:'<span class="tag blue">deliverable</span>', briefing:'<span class="tag gold">briefing</span>', alert:'<span class="tag red">alert</span>', news:'<span class="tag">news</span>' }[k] || '');
+
+(async function(){
+  try{
+    const data = await fetch('/desk/data/presentations.json').then(r => r.json());
+    NEWS = (data.presentations || []).map((p, i) => ({...p, _i: i}));
+    NEWS.sort((a, b) => String(b.id || '').localeCompare(String(a.id || '')));
+    $('news-count').textContent = NEWS.length + ' updates';
+    $('news').innerHTML = NEWS.map(p => `
+      <button class="feed-item tap" data-news="${p._i}" style="width:100%;text-align:left;background:none;border:none;cursor:pointer">
+        <div class="feed-time">${esc(p.created || '')} · by ${esc(p.agent || '')} ${kindTag(p.kind)}</div>
+        <div class="feed-body"><b style="color:var(--text)">${esc(p.title || '')}</b><br>${esc(p.summary || '')}</div>
+      </button>`).join('');
+  }catch{
+    $('news').innerHTML = '<div class="empty">The news feed could not be loaded.</div>';
+  }
+})();
+
+$('news').addEventListener('click', e => {
+  const c = e.target.closest('[data-news]'); if(!c) return;
+  const p = NEWS[+c.dataset.news]; if(!p) return;
+  openDrawer(`
+    <span class="tag gold">${esc(p.agent || '')}'s update</span>
+    <h2 style="margin:14px 0 8px;font-family:'Space Grotesk'">${esc(p.title || '')}</h2>
+    <p class="hint" style="margin-bottom:10px">${esc(p.created || '')} ${kindTag(p.kind)}</p>
+    <p style="white-space:pre-wrap;font-size:14.5px;color:var(--text)">${esc(p.body || '')}</p>`);
+});
+</script>
+</body>
+</html>

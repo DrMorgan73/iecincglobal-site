@@ -1,0 +1,152 @@
+{
+  "crews": [
+    {
+      "agents": [
+        "nexus",
+        "curavia",
+        "medexec",
+        "inssnapp",
+        "doctor24"
+      ],
+      "heartbeat": "daily 08:00 ET",
+      "id": "watchers",
+      "name": "Iris",
+      "role": "Project watchers — one per project: build health, deployment state, error signals, compliance flags.",
+      "status": "standby",
+      "dept": "watch"
+    },
+    {
+      "heartbeat": "on-demand",
+      "id": "expertise",
+      "name": "Sage",
+      "role": "DrMorgan's BD & partnerships playbook — the right play for the situation, ranked with tradeoffs.",
+      "status": "standby",
+      "dept": "growth"
+    },
+    {
+      "heartbeat": "weekly",
+      "id": "connections",
+      "name": "Hazel",
+      "role": "The network, tracked: who matters, last contact, next nudge, warm-intro paths. LinkedIn via CSV export.",
+      "status": "standby",
+      "dept": "growth"
+    },
+    {
+      "heartbeat": "continuous",
+      "id": "opportunity",
+      "name": "Gemma",
+      "role": "Deal finder across real estate + healthcare. Weekly digest, instant ping on high-conviction finds.",
+      "status": "standby",
+      "dept": "growth"
+    },
+    {
+      "heartbeat": "on-demand",
+      "id": "deal-evaluator",
+      "name": "Judy",
+      "role": "Every opportunity gets a verdict: SOLID, COULD BE, or DON'T WASTE YOUR TIME. The kill list is the product.",
+      "status": "standby",
+      "dept": "growth"
+    },
+    {
+      "heartbeat": "daily before 08:00 ET",
+      "id": "news-wiifm",
+      "name": "Piper",
+      "role": "Reads the morning news through his lenses and answers: what's in it for me today? Sourced, no padding.",
+      "status": "standby",
+      "dept": "intel"
+    },
+    {
+      "name": "Audrey",
+      "role": "Compliance audit — every project, including MEDEXEC, against the MA/HIPAA baseline. Findings with fixes, ranked.",
+      "heartbeat": "Mondays ~07:49 ET",
+      "status": "standby",
+      "dept": "compliance"
+    },
+    {
+      "name": "Stella",
+      "role": "Sharpening sweep — weekly betterment ideas for every project.",
+      "heartbeat": "Thursdays ~07:49 ET",
+      "status": "standby",
+      "dept": "intel"
+    },
+    {
+      "name": "Ivy",
+      "role": "Niche scout — hunts unmet market niches and uniqueness angles.",
+      "heartbeat": "Tuesdays ~07:49 ET",
+      "status": "standby",
+      "dept": "intel"
+    },
+    {
+      "name": "Nora",
+      "role": "Usage reminders — alerts DrMorgan at every 10% of Muse usage.",
+      "heartbeat": "on usage",
+      "status": "standby",
+      "dept": "ops"
+    }
+  ],
+  "team": [
+    {
+      "name": "Suzy",
+      "role": "Agenda agent — owns his calendar, to-dos, and project email. Watches every other agent and flags stalls, failures, and decisions needing him.",
+      "schedule": "weekday mornings ~07:49 ET",
+      "dept": "exec"
+    },
+    {
+      "name": "Vera",
+      "role": "Deal agent — weekly partnership hit-list: 5 verified targets, outreach drafts, call-prep brief. Drafts only, never sends.",
+      "schedule": "Mondays ~08:30 ET",
+      "dept": "growth"
+    },
+    {
+      "name": "Tess",
+      "role": "Inbox triage — sorts the spam-heavy inbox every morning and surfaces the top 5 needing his eyes. Never deletes, archives, or sends.",
+      "schedule": "daily ~08:15 ET",
+      "dept": "ops"
+    },
+    {
+      "name": "Rosa",
+      "role": "CRM keeper — dedupes and segments the client CRM, flags clients waiting on the next opportunity.",
+      "schedule": "on demand",
+      "dept": "ops"
+    },
+    {
+      "name": "Mara",
+      "role": "Email agent — drafts and sends his email (approval-gated), owns the standard signature.",
+      "schedule": "on demand",
+      "dept": "ops"
+    }
+  ],
+  "updated": "2026-09-29",
+  "departments": [
+    {
+      "id": "exec",
+      "name": "Executive Office",
+      "tagline": "DrMorgan's front office — agenda, priorities, the daily plan."
+    },
+    {
+      "id": "growth",
+      "name": "Growth & Deals",
+      "tagline": "Partnerships, deal flow, and the network that feeds them."
+    },
+    {
+      "id": "watch",
+      "name": "Project Watch",
+      "tagline": "Build health and deployment state across every project."
+    },
+    {
+      "id": "intel",
+      "name": "Intelligence & Research",
+      "tagline": "News, niches, and betterment ideas."
+    },
+    {
+      "id": "ops",
+      "name": "Operations",
+      "tagline": "Inbox, CRM, comms, and the guardrails."
+    },
+    {
+      "id": "compliance",
+      "name": "Compliance",
+      "tagline": "Audits and the rules that keep us clean."
+    }
+  ]
+}

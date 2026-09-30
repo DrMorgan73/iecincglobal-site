@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contacts — Morgan Desk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/desk/desk.css">
+</head>
+<body data-page="contacts">
+<div class="orbs" aria-hidden="true"><span class="orb gold"></span><span class="orb teal"></span><span class="orb violet"></span></div>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="side-brand">
+      <div class="logo">M</div>
+      <div><h1>Morgan <span>Desk</span></h1><p>International Empire Consultants, Inc.</p></div>
+    </div>
+    <nav id="nav"></nav>
+    <div class="side-foot">
+      <div class="themes" id="themes">
+        <button data-t="midnight" style="--sw1:#f0b942;--sw2:#2dd4bf" title="Midnight Gold"></button>
+        <button data-t="amethyst" style="--sw1:#d8b4fe;--sw2:#f0abfc" title="Royal Amethyst"></button>
+        <button data-t="ocean" style="--sw1:#7dd3fc;--sw2:#5eead4" title="Deep Ocean"></button>
+        <button data-t="ember" style="--sw1:#fdba74;--sw2:#fbbf24" title="Sunset Ember"></button>
+        <button data-t="emerald" style="--sw1:#6ee7b7;--sw2:#f0b942" title="Emerald Noir"></button>
+        <button data-t="rose" style="--sw1:#fda4af;--sw2:#f0abfc" title="Rose Noir"></button>
+      </div>
+      <button class="signout" id="signout"><i>🚪</i>Sign out</button>
+      <a class="public-link" href="/welcome.html">← Public site</a>
+      <div class="clockbox">
+        <div id="clock">--:--</div>
+        <div id="dateline">—</div>
+      </div>
+    </div>
+  </aside>
+
+  <main>
+    <div class="section-head">
+      <div><h2>Contact CRM</h2><p class="hint">Upload a CSV or add manually. Columns: name, email, phone, company, tags, notes, source. Saved only in this browser — never uploaded.</p></div>
+    </div>
+    <div class="crm-layout">
+      <form id="contact-form" class="card form-card" autocomplete="off">
+        <h3>New contact</h3>
+        <label>Full name<input id="contact-name" name="name" required maxlength="80" placeholder="e.g. Jane Haddad"></label>
+        <div class="row2">
+          <label>Email<input name="email" type="email" maxlength="80" placeholder="jane@…"></label>
+          <label>Phone<input name="phone" maxlength="30" placeholder="617-…"></label>
+        </div>
+        <div class="row2">
+          <label>Company<input name="company" maxlength="80" placeholder="…"></label>
+          <label>Source<input name="source" maxlength="40" placeholder="ERC, LinkedIn, referral…"></label>
+        </div>
+        <label>Tags<input name="tags" maxlength="80" placeholder="erc-client, investor, kol…"></label>
+        <label>Notes<textarea name="notes" rows="2" maxlength="300" placeholder="Relationship, deal history, waiting on…"></textarea></label>
+        <button type="submit" class="btn">Add contact →</button>
+      </form>
+      <div class="card pipeline-card">
+        <div class="pipe-head">
+          <h3>Contacts</h3>
+          <div class="contacts-tools">
+            <input id="contact-search" class="search" placeholder="Search name, company, tag…">
+            <label class="btn small file-btn">Upload CSV<input type="file" id="csv-file" accept=".csv,text/csv" hidden></label>
+            <button class="btn small ghost" id="csv-export" type="button">Export</button>
+          </div>
+        </div>
+        <div id="contacts-list"></div>
+      </div>
+    </div>
+
+    <footer>© 2026 International Empire Consultants, Inc. · Morgan Desk</footer>
+  </main>
+</div>
+
+<script src="/desk/desk.js"></script>
+<script>
+const CKEY = 'morgan-desk-contacts';
+const loadContacts = () => { try { return JSON.parse(localStorage.getItem(CKEY)) || []; } catch { return []; } };
+const saveContacts = c => { try{ localStorage.setItem(CKEY, JSON.stringify(c)); }catch{} refreshBadges(); };
+const newId = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
+const todayShort = () => new Date().toLocaleDateString([], {month:'short', day:'numeric'});
+let cquery = '';
+
+function renderContacts(){
+  const cs = loadContacts();
+  const q = cquery.trim().toLowerCase();
+  const list = cs.filter(c => !q || [c.name,c.email,c.phone,c.company,c.tags,c.notes,c.source].join(' ').toLowerCase().includes(q));
+  $('contacts-list').innerHTML = list.length ? list.map(c => `
+    <div class="opp">
+      <div class="opp-top">
+        <div>
+          <div class="opp-name">${esc(c.name)}${c.company ? ` <span class="opp-meta">· ${esc(c.company)}</span>` : ''}</div>
+          <div class="opp-meta">${[c.email, c.phone].filter(Boolean).map(esc).join(' · ') || '—'}${c.tags ? '<br>#' + esc(c.tags) : ''}${c.source ? ' · ' + esc(c.source) : ''}</div>
+        </div>
+        <button class="opp-del c-del" data-id="${c.id}" title="Remove">✕</button>
+      </div>
+      ${c.notes ? `<div class="opp-notes">${esc(c.notes)}</div>` : ''}
+    </div>`).join('')
+    : `<div class="empty">${cs.length ? 'No matches.' : 'No contacts yet — upload a CSV or add one manually.'}</div>`;
+}
+
+$('contact-form').addEventListener('submit', e => {
+  e.preventDefault();
+  const f = new FormData(e.target);
+  const name = (f.get('name') || '').trim();
+  if(!name) return;
+  const cs = loadContacts();
+  cs.unshift({ id:newId(), name, email:(f.get('email')||'').trim(), phone:(f.get('phone')||'').trim(),
+    company:(f.get('company')||'').trim(), tags:(f.get('tags')||'').trim(),
+    notes:(f.get('notes')||'').trim(), source:(f.get('source')||'').trim(), added:todayShort() });
+  saveContacts(cs); e.target.reset(); renderContacts();
+});
+
+$('contacts-list').addEventListener('click', e => {
+  const b = e.target.closest('.c-del'); if(!b) return;
+  saveContacts(loadContacts().filter(c => c.id !== b.dataset.id));
+  renderContacts();
+});
+
+$('contact-search').addEventListener('input', e => { cquery = e.target.value; renderContacts(); });
+
+function parseCSV(text){
+  const rows = []; let row = [], val = '', q = false;
+  for(let i = 0; i < text.length; i++){
+    const c = text[i];
+    if(q){
+      if(c === '"'){ if(text[i+1] === '"'){ val += '"'; i++; } else q = false; }
+      else val += c;
+    }
+    else if(c === '"') q = true;
+    else if(c === ','){ row.push(val); val = ''; }
+    else if(c === '\n' || c === '\r'){
+      if(c === '\r' && text[i+1] === '\n') i++;
+      row.push(val); val = '';
+      if(row.some(x => x.trim() !== '')) rows.push(row);
+      row = [];
+    }
+    else val += c;
+  }
+  if(val !== '' || row.length){ row.push(val); if(row.some(x => x.trim() !== '')) rows.push(row); }
+  return rows;
+}
+const HMAP = {
+  name:['name','full name','contact','contact name'],
+  email:['email','e-mail','email address'],
+  phone:['phone','mobile','tel','telephone','phone number'],
+  company:['company','organization','org','firm'],
+  tags:['tags','tag','labels','category'],
+  notes:['notes','note','comments'],
+  source:['source','origin','list']
+};
+function mapHeaders(h){
+  const idx = {};
+  h.forEach((col, i) => {
+    const n = col.trim().toLowerCase();
+    for(const k in HMAP) if(HMAP[k].includes(n) && !(k in idx)) idx[k] = i;
+  });
+  return idx;
+}
+
+$('csv-file').addEventListener('change', e => {
+  const f = e.target.files[0]; if(!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try{
+      const rows = parseCSV(String(r.result));
+      if(rows.length < 2) throw 0;
+      const idx = mapHeaders(rows[0]);
+      const fresh = rows.slice(1).map(cols => ({
+        id:newId(),
+        name:((cols[idx.name] ?? '').trim()) || 'Unnamed',
+        email:(cols[idx.email] ?? '').trim(), phone:(cols[idx.phone] ?? '').trim(),
+        company:(cols[idx.company] ?? '').trim(), tags:(cols[idx.tags] ?? '').trim(),
+        notes:(cols[idx.notes] ?? '').trim(), source:(cols[idx.source] ?? '').trim(),
+        added:todayShort()
+      })).filter(c => c.name !== 'Unnamed' || c.email || c.phone);
+      const all = loadContacts();
+      const seen = new Set(all.map(c => ((c.email || '').toLowerCase()) + '|' + c.name.toLowerCase()));
+      const added = fresh.filter(c => {
+        const k = (c.email || '').toLowerCase() + '|' + c.name.toLowerCase();
+        if(seen.has(k)) return false; seen.add(k); return true;
+      });
+      saveContacts([...added, ...all]); renderContacts();
+      alert(`Imported ${added.length} contact${added.length === 1 ? '' : 's'}${fresh.length - added.length ? ` (${fresh.length - added.length} duplicates skipped)` : ''}.`);
+    }catch{ alert('Could not read that CSV — check the file and try again.'); }
+    e.target.value = '';
+  };
+  r.readAsText(f);
+});
+
+$('csv-export').addEventListener('click', () => {
+  const cs = loadContacts();
+  if(!cs.length){ alert('No contacts to export.'); return; }
+  const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const csv = 'name,email,phone,company,tags,notes,source\n' +
+    cs.map(c => [c.name,c.email,c.phone,c.company,c.tags,c.notes,c.source].map(q).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'}));
+  a.download = 'morgan-desk-contacts.csv'; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+});
+
+renderContacts();
+</script>
+</body>
+</html>

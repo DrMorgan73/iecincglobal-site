@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Projects — Morgan Desk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/desk/desk.css">
+</head>
+<body data-page="projects">
+<div class="orbs" aria-hidden="true"><span class="orb gold"></span><span class="orb teal"></span><span class="orb violet"></span></div>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="side-brand">
+      <div class="logo">M</div>
+      <div><h1>Morgan <span>Desk</span></h1><p>International Empire Consultants, Inc.</p></div>
+    </div>
+    <nav id="nav"></nav>
+    <div class="side-foot">
+      <div class="themes" id="themes">
+        <button data-t="midnight" style="--sw1:#f0b942;--sw2:#2dd4bf" title="Midnight Gold"></button>
+        <button data-t="amethyst" style="--sw1:#d8b4fe;--sw2:#f0abfc" title="Royal Amethyst"></button>
+        <button data-t="ocean" style="--sw1:#7dd3fc;--sw2:#5eead4" title="Deep Ocean"></button>
+        <button data-t="ember" style="--sw1:#fdba74;--sw2:#fbbf24" title="Sunset Ember"></button>
+        <button data-t="emerald" style="--sw1:#6ee7b7;--sw2:#f0b942" title="Emerald Noir"></button>
+        <button data-t="rose" style="--sw1:#fda4af;--sw2:#f0abfc" title="Rose Noir"></button>
+      </div>
+      <button class="signout" id="signout"><i>🚪</i>Sign out</button>
+      <a class="public-link" href="/welcome.html">← Public site</a>
+      <div class="clockbox">
+        <div id="clock">--:--</div>
+        <div id="dateline">—</div>
+      </div>
+    </div>
+  </aside>
+
+  <main>
+    <div class="section-head"><h2>Projects</h2><span class="hint" id="proj-count"></span></div>
+    <div class="grid projects" id="projects"><div class="empty">Loading projects…</div></div>
+
+    <footer>© 2026 International Empire Consultants, Inc. · Morgan Desk</footer>
+  </main>
+</div>
+
+<script src="/desk/desk.js"></script>
+<script>
+const SLABEL = { live:'Live', building:'Building', pilot:'Pilot', shelved:'Shelved', standby:'Standby' };
+let PROJECTS = [];
+
+(async function(){
+  try{
+    const data = await fetch('/desk/data/projects.json').then(r => r.json());
+    PROJECTS = (data.projects || []).map((p, i) => ({...p, _i: i}));
+    $('proj-count').textContent = PROJECTS.length + ' tracked';
+    $('projects').innerHTML = PROJECTS.map(p => `
+      <button class="card proj tap" data-proj="${p._i}">
+        <span class="tag ${esc(p.status)}">${SLABEL[p.status] || p.status}</span>
+        <h3 style="margin-top:10px">${esc(p.name)}</h3>
+        <p>${esc(p.blurb || '')}</p>
+        <div class="crew-hb" style="margin-top:12px"><b>${esc(p.team || '')}</b></div>
+        <div class="proj-upd"><span class="dot ${dot(p.status)}"></span> Updated ${esc(p.updated)}</div>
+      </button>`).join('');
+  }catch{
+    $('projects').innerHTML = '<div class="empty">Project data not loaded.</div>';
+  }
+})();
+
+$('projects').addEventListener('click', e => {
+  const c = e.target.closest('[data-proj]'); if(!c) return;
+  const p = PROJECTS[+c.dataset.proj]; if(!p) return;
+  const st = (p.milestones || []).map(m =>
+    `<li><span class="${m.done ? 'done' : ''}">${m.done ? '✅' : '⏳'} ${esc(m.title)}</span></li>`).join('');
+  openDrawer(`
+    <span class="tag ${esc(p.status)}">${SLABEL[p.status] || p.status}</span>
+    <h2 style="margin:14px 0 8px;font-family:'Space Grotesk'">${esc(p.name)}</h2>
+    <p style="color:var(--dim);font-size:14.5px">${esc(p.blurb || '')}</p>
+    ${st ? `<h4 style="margin:16px 0 8px;font-family:'Space Grotesk'">Milestones</h4><ul class="milestones">${st}</ul>` : ''}
+    <div class="crew-hb" style="margin-top:14px">Team: <b>${esc(p.team || '')}</b> · Updated ${esc(p.updated)}</div>`);
+});
+</script>
+</body>
+</html>

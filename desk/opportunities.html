@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Opportunities — Morgan Desk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/desk/desk.css">
+</head>
+<body data-page="opps">
+<div class="orbs" aria-hidden="true"><span class="orb gold"></span><span class="orb teal"></span><span class="orb violet"></span></div>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="side-brand">
+      <div class="logo">M</div>
+      <div><h1>Morgan <span>Desk</span></h1><p>International Empire Consultants, Inc.</p></div>
+    </div>
+    <nav id="nav"></nav>
+    <div class="side-foot">
+      <div class="themes" id="themes">
+        <button data-t="midnight" style="--sw1:#f0b942;--sw2:#2dd4bf" title="Midnight Gold"></button>
+        <button data-t="amethyst" style="--sw1:#d8b4fe;--sw2:#f0abfc" title="Royal Amethyst"></button>
+        <button data-t="ocean" style="--sw1:#7dd3fc;--sw2:#5eead4" title="Deep Ocean"></button>
+        <button data-t="ember" style="--sw1:#fdba74;--sw2:#fbbf24" title="Sunset Ember"></button>
+        <button data-t="emerald" style="--sw1:#6ee7b7;--sw2:#f0b942" title="Emerald Noir"></button>
+        <button data-t="rose" style="--sw1:#fda4af;--sw2:#f0abfc" title="Rose Noir"></button>
+      </div>
+      <button class="signout" id="signout"><i>🚪</i>Sign out</button>
+      <a class="public-link" href="/welcome.html">← Public site</a>
+      <div class="clockbox">
+        <div id="clock">--:--</div>
+        <div id="dateline">—</div>
+      </div>
+    </div>
+  </aside>
+
+  <main>
+    <div class="section-head">
+      <div><h2>Opportunity CRM</h2><p class="hint">Intake → verdict → pipeline. Saved privately in this browser.</p></div>
+    </div>
+    <div class="crm-layout">
+      <form id="intake" class="card form-card" autocomplete="off">
+        <h3>New opportunity</h3>
+        <label>Opportunity name<input id="intake-name" name="name" required maxlength="80" placeholder="e.g. Beacon St brownstone"></label>
+        <div class="row2">
+          <label>Type<select name="type"><option>Residential</option><option>Commercial</option><option>Land</option><option>Mixed-use</option></select></label>
+          <label>Side<select name="side"><option>Sell</option><option>Buy</option></select></label>
+        </div>
+        <div class="row2">
+          <label>Value ($)<input name="value" type="number" min="0" step="1000" placeholder="750000"></label>
+          <label>Source<input name="source" maxlength="40" placeholder="LinkedIn, referral, NEXUS…"></label>
+        </div>
+        <label>Contact<input name="contact" maxlength="80" placeholder="Name · phone or email"></label>
+        <label>Deal Evaluator verdict<select name="verdict"><option value="unscored">Unscored</option><option value="solid">SOLID</option><option value="couldbe">COULD BE</option><option value="pass">DON'T WASTE YOUR TIME</option></select></label>
+        <label>Notes<textarea name="notes" rows="3" maxlength="500" placeholder="The math, the fit, the edge…"></textarea></label>
+        <button type="submit" class="btn">Add to pipeline →</button>
+      </form>
+      <div class="card pipeline-card">
+        <div class="pipe-head">
+          <h3>Pipeline</h3>
+          <div class="filters" id="filters">
+            <button data-f="all" class="on">All</button>
+            <button data-f="solid">Solid</button>
+            <button data-f="couldbe">Could be</button>
+            <button data-f="pass">Pass</button>
+            <button data-f="unscored">Unscored</button>
+          </div>
+        </div>
+        <div id="pipeline"></div>
+      </div>
+    </div>
+
+    <footer>© 2026 International Empire Consultants, Inc. · Morgan Desk</footer>
+  </main>
+</div>
+
+<script src="/desk/desk.js"></script>
+<script>
+const saveOpps = o => { try{ localStorage.setItem(OPP_KEY, JSON.stringify(o)); }catch{} refreshBadges(); };
+let filter = 'all';
+
+function renderOpps(){
+  const opps = loadOpps();
+  const list = opps.filter(o => filter === 'all' || o.verdict === filter);
+  $('pipeline').innerHTML = list.length ? list.map(o => `
+    <div class="opp">
+      <div class="opp-top">
+        <div>
+          <div class="opp-name">${esc(o.name)}</div>
+          <div class="opp-meta">${esc(o.type)} · ${esc(o.side)} · <b style="color:var(--gold)">${money(o.value)}</b>${o.source ? ' · ' + esc(o.source) : ''}${o.contact ? '<br>' + esc(o.contact) : ''}</div>
+        </div>
+        <span class="verdict ${esc(o.verdict)}">${VLABEL[o.verdict] || 'Unscored'}</span>
+      </div>
+      ${o.notes ? `<div class="opp-notes">${esc(o.notes)}</div>` : ''}
+      <div class="opp-foot">
+        <span class="opp-meta">Added ${esc(o.added)}</span>
+        <button class="opp-del" data-id="${o.id}" title="Remove">✕ remove</button>
+      </div>
+    </div>`).join('')
+    : `<div class="empty">No opportunities yet — add your first one on the left.</div>`;
+}
+
+$('intake').addEventListener('submit', e => {
+  e.preventDefault();
+  const f = new FormData(e.target);
+  const opps = loadOpps();
+  opps.unshift({
+    id: Date.now().toString(36),
+    name: (f.get('name') || '').trim() || 'Untitled',
+    type: f.get('type'), side: f.get('side'),
+    value: f.get('value') || '', source: (f.get('source') || '').trim(),
+    contact: (f.get('contact') || '').trim(), verdict: f.get('verdict'),
+    notes: (f.get('notes') || '').trim(),
+    added: new Date().toLocaleDateString([], {month:'short', day:'numeric'})
+  });
+  saveOpps(opps); e.target.reset(); renderOpps();
+});
+
+$('pipeline').addEventListener('click', e => {
+  const b = e.target.closest('.opp-del');
+  if(!b) return;
+  saveOpps(loadOpps().filter(o => o.id !== b.dataset.id));
+  renderOpps();
+});
+
+$('filters').addEventListener('click', e => {
+  const b = e.target.closest('button'); if(!b) return;
+  filter = b.dataset.f;
+  document.querySelectorAll('#filters button').forEach(x => x.classList.toggle('on', x === b));
+  renderOpps();
+});
+
+renderOpps();
+</script>
+</body>
+</html>
