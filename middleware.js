@@ -1,7 +1,8 @@
 // IEC Suite private gate — Vercel Edge Middleware.
-// Protects "/" and "/desk/*". Unauthenticated visitors are redirected to
-// the sign-in page at /desk/login.html. Corporate pages are untouched
-// (they never match the matcher below).
+// The public home page (welcome.html) is served at "/" for visitors.
+// The Suite (index.html at "/") and "/desk/*" stay behind sign-in:
+// unauthenticated visitors there are redirected to /desk/login.html.
+// Corporate pages are untouched (they never match the matcher below).
 //
 // Env required: DESK_SESSION_SECRET (HMAC key for the session cookie).
 
@@ -53,5 +54,10 @@ export default async function middleware(request) {
   if (pathname === '/desk/login.html') return undefined;
   const session = getCookie(request.headers.get('cookie'), 'desk_session');
   if (session && (await validSession(session))) return undefined;
+  // Public visitors get the public home page at the root.
+  // The Suite sign-in stays one click away via "Team sign-in".
+  if (pathname === '/' || pathname === '/index.html') {
+    return fetch(new URL('/welcome.html', request.url));
+  }
   return Response.redirect(new URL('/desk/login.html', request.url));
 }
