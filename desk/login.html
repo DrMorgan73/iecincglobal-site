@@ -72,7 +72,7 @@ f.addEventListener('submit', async e => {
       method: 'POST', headers: {'content-type':'application/json'},
       body: JSON.stringify({ username: document.getElementById('u').value.trim(), password: document.getElementById('p').value })
     });
-    if(r.ok){ location.href = '/'; return; }
+    if(r.ok){ sessionStorage.setItem('suzy-checkin-pending', '1'); location.href = '/'; return; }
     err.classList.add('show');
   }catch{ err.classList.add('show'); }
   go.disabled = false; go.textContent = 'Sign in →';

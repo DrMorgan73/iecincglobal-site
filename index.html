@@ -76,9 +76,11 @@
 
 <script src="/desk/desk.js"></script>
 <script>
-/* Suzy login check-in — greets DrMorgan, asks what's new, reports the latest briefing. Once per session. */
+/* Suzy login check-in — greets DrMorgan, asks what's new, reports the latest briefing. Shows once per login. */
 (function(){
-  if (sessionStorage.getItem('suzy-checkin')) return;
+  // Only show right after a fresh login — login.html sets this flag on success
+  if (!sessionStorage.getItem('suzy-checkin-pending')) return;
+  sessionStorage.removeItem('suzy-checkin-pending');
   const box = document.createElement('div');
   box.id = 'suzy-checkin';
   box.innerHTML = `
@@ -141,7 +143,6 @@
     <div class="sc-done" id="sc-done">✓ Noted — it's on Muse's desk.<br><br><button class="btn sc-close" id="sc-done-close" style="padding:11px 34px;border-radius:10px;border:none;cursor:pointer">Back to the Suite</button></div>
   </div>`;
   document.body.appendChild(box);
-  sessionStorage.setItem('suzy-checkin', '1');
 
   const hr = new Date().getHours();
   const tod = hr < 12 ? 'Good morning' : hr < 18 ? 'Good afternoon' : 'Good evening';
