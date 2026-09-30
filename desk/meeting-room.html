@@ -43,17 +43,37 @@
 
   <main>
     <div class="section-head"><h2>Meeting Room</h2><span class="live"><i></i>reserved</span></div>
-    <div class="card hero" style="margin-bottom:16px">
-      <div>
-        <h2 id="meeting-title">IEC Team Meeting</h2>
-        <p id="meeting-sub">Today · 8:00 AM ET · IEC Suite</p>
+
+    <div class="boardroom">
+      <div class="mode-row">
+        <div class="mode-toggle" role="tablist" aria-label="Meeting size">
+          <button data-mode="team" class="active" role="tab">Team meeting</button>
+          <button data-mode="full" role="tab">Call full team meeting</button>
+        </div>
+        <span class="hint" id="attendee-count"></span>
       </div>
-      <div class="countdown"><div id="countdown">--</div><div class="hint">until doors open</div></div>
+
+      <div class="media-wall" aria-label="Media wall">
+        <div class="mscreen">
+          <h4>Agenda</h4>
+          <ul id="wall-agenda"><li class="dim">Loading…</li></ul>
+        </div>
+        <div class="mscreen main">
+          <span class="live-dot" id="wall-live" hidden></span>
+          <h3 id="wall-title">IEC Team Meeting</h3>
+          <p id="wall-sub">Today · 8:00 AM ET</p>
+          <div class="wall-count" id="wall-countdown">--</div>
+          <div class="wall-cap">until doors open</div>
+        </div>
+        <div class="mscreen">
+          <h4>Around the table</h4>
+          <ul id="wall-attendees"><li class="dim">Loading…</li></ul>
+        </div>
+      </div>
+
+      <div class="table-scene" id="table-scene" aria-label="Boardroom table"></div>
+      <p class="hint" style="margin-top:10px">Tap a chair to open that member's office.</p>
     </div>
-    <div class="section-head"><h2>Agenda</h2></div>
-    <div class="feed" id="agenda"><div class="empty">Loading the agenda…</div></div>
-    <div class="section-head"><h2>Around the table</h2><span class="hint" id="attendee-count"></span></div>
-    <div class="grid offices" id="meeting-attendees"></div>
 
     <footer>© 2026 International Empire Consultants, Inc. · IEC Suite</footer>
   </main>
@@ -61,6 +81,12 @@
 
 <script src="/desk/desk.js"></script>
 <script>
+const SEAT_COLORS = ['#f0b942','#2dd4bf','#a78bfa','#f472b6','#60a5fa','#34d399','#fb923c','#facc15'];
+function seatColor(name){ let h = 0; for (const c of String(name)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return SEAT_COLORS[h % SEAT_COLORS.length]; }
+function initials(name){ return String(name).split(/[\s.]+/).filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase(); }
+
+let TEAM = [], CREWS = [], MEETING = null, MODE = 'team';
+
 function nextMeetingTime(){
   const n = new Date();
   const t = new Date(n);
@@ -68,59 +94,92 @@ function nextMeetingTime(){
   return t;
 }
 function tickCountdown(){
-  const el = $('countdown'); if(!el) return;
+  const el = $('wall-countdown'); if(!el) return;
   const diff = nextMeetingTime() - new Date();
-  if(diff <= 0){ el.textContent = 'LIVE'; return; }
+  const live = $('wall-live');
+  if(diff <= 0){ el.textContent = 'LIVE'; if(live) live.hidden = false; return; }
   const h = Math.floor(diff / 3600000), m = Math.floor(diff % 3600000 / 60000), s = Math.floor(diff % 60000 / 1000);
   el.textContent = (h ? h + 'h ' : '') + String(m).padStart(2, '0') + 'm ' + String(s).padStart(2, '0') + 's';
 }
-setInterval(tickCountdown, 1000);
 
-let OFFICES = [];
+function renderWall(){
+  if(MEETING){
+    $('wall-title').textContent = MEETING.title || 'IEC Team Meeting';
+    $('wall-sub').textContent = (MEETING.date ? new Date(MEETING.date + 'T12:00:00').toLocaleDateString([], {weekday:'long', month:'long', day:'numeric'}) + ' · ' : '')
+      + (MEETING.time || '8:00 AM ET') + ' · ' + (MEETING.location || 'IEC Suite');
+    $('wall-agenda').innerHTML = (MEETING.agenda || []).map(a =>
+      `<li><b>${esc(a.t)}</b><span>${esc(a.body)}</span></li>`).join('') || '<li class="dim">No agenda items.</li>';
+  }
+}
+
+function seated(){
+  const members = MODE === 'full' ? [...TEAM, ...CREWS] : TEAM;
+  return [{ name: 'DrMorgan', role: 'President & CEO — chairs the meeting', boss: true },
+    ...members.map(m => ({ name: m.name, role: m.role, dept: m.dept }))];
+}
+
+function renderBoardroom(){
+  const seats = seated();
+  const n = seats.length;
+  const scene = $('table-scene');
+  const rx = 41, ry = 34;
+  scene.classList.toggle('many', n > 10);
+  const chairs = seats.map((s, i) => {
+    const a = -Math.PI / 2 + i * (2 * Math.PI / n);
+    const x = (50 + rx * Math.cos(a)).toFixed(2), y = (50 + ry * Math.sin(a)).toFixed(2);
+    return `<button class="seat${s.boss ? ' boss' : ''}" style="left:${x}%;top:${y}%" data-seat="${i}" aria-label="${esc(s.name)}'s chair">
+      <span class="seat-avatar" style="--c:${seatColor(s.name)}">${esc(initials(s.name))}</span>
+      <span class="seat-chair"></span>
+      <span class="seat-plate">${esc(s.name)}</span>
+    </button>`;
+  }).join('');
+  scene.innerHTML = `
+    <div class="round-table"><div class="table-emblem">IEC</div></div>
+    ${chairs}`;
+  $('attendee-count').textContent = n + ' seated';
+  $('wall-attendees').innerHTML = seats.map(s =>
+    `<li><i style="background:${seatColor(s.name)}"></i><span>${esc(s.name)}</span></li>`).join('');
+}
+
+function openSeat(i){
+  const s = seated()[+i]; if(!s) return;
+  openDrawer(`
+    <div class="drawer-avatar" style="--c:${seatColor(s.name)}">${esc(initials(s.name))}</div>
+    <span class="tag gold">${s.boss ? 'Chair' : 'Around the table'}</span>
+    <h2 style="margin:14px 0 8px;font-family:'Space Grotesk'">${esc(s.name)}</h2>
+    <p style="color:var(--dim);font-size:14.5px">${esc(s.role || '')}</p>`);
+}
+
+document.querySelectorAll('.mode-toggle button').forEach(b =>
+  b.addEventListener('click', () => {
+    document.querySelectorAll('.mode-toggle button').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    MODE = b.dataset.mode;
+    renderBoardroom();
+  }));
+
+$('table-scene').addEventListener('click', e => {
+  const c = e.target.closest('[data-seat]'); if(!c) return;
+  openSeat(c.dataset.seat);
+});
+
 (async function(){
   try{
     const [meeting, agents] = await Promise.all([
       fetch('/desk/data/meeting.json').then(r => r.json()),
       fetch('/desk/data/agents.json').then(r => r.json())
     ]);
-    $('meeting-title').textContent = meeting.title || 'IEC Team Meeting';
-    $('meeting-sub').textContent = (meeting.date ? new Date(meeting.date + 'T12:00:00').toLocaleDateString([], {weekday:'long', month:'long', day:'numeric'}) + ' · ' : '')
-      + (meeting.time || '8:00 AM ET') + ' · ' + (meeting.location || 'IEC Suite');
-    $('agenda').innerHTML = (meeting.agenda || []).map(a =>
-      `<div class="feed-item"><div class="feed-time">${esc(a.t)}</div><div class="feed-body">${esc(a.body)}</div></div>`).join('')
-      || '<div class="empty">No agenda items.</div>';
-    const TEAM = agents.team || [], CREWS = agents.crews || [], DEPARTMENTS = agents.departments || [];
-    const deptName = id => (DEPARTMENTS.find(x => x.id === id) || {}).name || '';
-    OFFICES = [
-      ...TEAM.map(m => ({...m, when: m.schedule, whenLabel: 'Runs'})),
-      ...CREWS.map(m => ({...m, when: m.heartbeat, whenLabel: 'Heartbeat'}))
-    ];
-    OFFICES.forEach((m, i) => m._i = i);
-    $('meeting-attendees').innerHTML = OFFICES.map(m => `
-      <button class="card office tap" data-office="${m._i}">
-        <span class="office-photo"><img src="${avatarFor(m.name)}" alt="${esc(m.name)}" loading="lazy"></span>
-        <span class="office-plate">${esc(m.name)}</span>
-        ${deptName(m.dept) ? `<div><span class="dept-tag">${esc(deptName(m.dept))}</span></div>` : ''}
-        <p>${esc(m.role)}</p>
-        <span class="open-hint">tap to visit →</span>
-      </button>`).join('');
-    $('attendee-count').textContent = OFFICES.length + ' summoned';
+    MEETING = meeting;
+    TEAM = agents.team || [];
+    CREWS = agents.crews || [];
+    renderWall();
+    renderBoardroom();
   }catch{
-    $('agenda').innerHTML = '<div class="empty">Agenda not loaded.</div>';
+    $('wall-agenda').innerHTML = '<li class="dim">Agenda not loaded.</li>';
   }
   tickCountdown();
+  setInterval(tickCountdown, 1000);
 })();
-
-$('meeting-attendees').addEventListener('click', e => {
-  const c = e.target.closest('[data-office]'); if(!c) return;
-  const m = OFFICES[+c.dataset.office]; if(!m) return;
-  openDrawer(`
-    <img src="${avatarFor(m.name)}" alt="${esc(m.name)}" style="width:120px;height:120px;object-fit:cover;border-radius:50%;border:2px solid rgba(240,185,66,.5);margin-bottom:6px">
-    <span class="tag gold">${esc(m.name)}'s office</span>
-    <h2 style="margin:14px 0 8px;font-family:'Space Grotesk'">${esc(m.name)}</h2>
-    <p style="color:var(--dim);font-size:14.5px">${esc(m.role)}</p>
-    <div class="crew-hb" style="margin-top:14px">${esc(m.whenLabel)} · <b>${esc(m.when)}</b></div>`);
-});
 </script>
 </body>
 </html>
