@@ -1,4 +1,4 @@
-// Documents portal backend — Vercel Edge Function.
+// Documents portal backend — Vercel Node Serverless Function.
 // Session-gated via the desk_session cookie (same HMAC scheme as middleware.js).
 // Files live in Vercel Blob under desk-docs/<uuid>/<name> with unguessable
 // pathnames; the listing is private to the Suite and downloads are proxied
@@ -6,35 +6,20 @@
 //
 // Env required:
 //   DESK_SESSION_SECRET - HMAC key for the session cookie
-//   BLOB_READ_WRITE_TOKEN - Vercel Blob store token
+//   BLOB_READ_WRITE_TOKEN - Vercel Blob store token (auto-provisioned)
 //
 // Routes (all require a valid session):
 //   GET  /api/desk-docs            -> { docs: [{url, name, size, uploadedAt}] }
 //   GET  /api/desk-docs?dl=<url>   -> streams the file back (download proxy)
-//   POST /api/desk-docs            -> multipart form {file} -> { doc }
+//   POST /api/desk-docs            -> JSON {name, data(base64)} -> { doc }
 //   DELETE /api/desk-docs?url=<url>
 
-export const config = { runtime: 'edge' };
-
 import { put, list, del } from '@vercel/blob';
+import crypto from 'node:crypto';
 
-const enc = new TextEncoder();
 const PREFIX = 'desk-docs/';
-const MAX_BYTES = 4 * 1024 * 1024; // stay under the Edge body limit
+const MAX_BYTES = 4 * 1024 * 1024;
 
-async function hmacHex(secret, data) {
-  const key = await crypto.subtle.importKey(
-    'raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
-  );
-  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(data));
-  return [...new Uint8Array(sig)].map(b => b.toString(16).padStart(2, '0')).join('');
-}
-function timingSafeEqual(a, b) {
-  if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length) return false;
-  let d = 0;
-  for (let i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return d === 0;
-}
 function getCookie(header, name) {
   if (!header) return null;
   for (const part of header.split(';')) {
@@ -44,76 +29,77 @@ function getCookie(header, name) {
   }
   return null;
 }
-async function validSession(value) {
+function validSession(value) {
   const secret = process.env.DESK_SESSION_SECRET;
-  if (!secret) return false;
-  const parts = String(value).split('.');
+  if (!secret || typeof value !== 'string') return false;
+  const parts = value.split('.');
   if (parts.length !== 3) return false;
   const [user, exp, sig] = parts;
   if (!/^[A-Za-z0-9_-]{1,64}$/.test(user)) return false;
   if (!/^\d+$/.test(exp)) return false;
   if (Number(exp) * 1000 < Date.now()) return false;
-  const expected = await hmacHex(secret, user + '.' + exp);
-  return timingSafeEqual(sig, expected);
+  const expected = crypto.createHmac('sha256', secret).update(user + '.' + exp).digest('hex');
+  if (sig.length !== expected.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected));
 }
-
-const json = (obj, status = 200) =>
-  new Response(JSON.stringify(obj), { status, headers: { 'content-type': 'application/json' } });
-
 const safeName = n =>
   String(n || 'file').split('/').pop().replace(/[^A-Za-z0-9._-]+/g, '_').slice(0, 120) || 'file';
+const json = (res, obj, status = 200) => {
+  res.status(status).setHeader('content-type', 'application/json');
+  res.end(JSON.stringify(obj));
+};
 
-export default async function handler(req) {
-  const session = getCookie(req.headers.get('cookie'), 'desk_session');
-  if (!session || !(await validSession(session))) return json({ ok: false, error: 'auth' }, 401);
-  if (!process.env.BLOB_READ_WRITE_TOKEN) return json({ ok: false, error: 'blob_not_configured' }, 500);
+export default async function handler(req, res) {
+  if (!validSession(getCookie(req.headers.cookie, 'desk_session')))
+    return json(res, { ok: false, error: 'auth' }, 401);
+  if (!process.env.BLOB_READ_WRITE_TOKEN)
+    return json(res, { ok: false, error: 'blob_not_configured' }, 500);
 
-  const url = new URL(req.url);
+  try {
+    if (req.method === 'GET' && req.query.dl) {
+      const { blobs } = await list({ prefix: PREFIX });
+      const hit = blobs.find(b => b.url === req.query.dl);
+      if (!hit) return json(res, { ok: false, error: 'not_found' }, 404);
+      const upstream = await fetch(hit.url);
+      const name = hit.pathname.split('/').pop();
+      res.status(200);
+      res.setHeader('content-type', upstream.headers.get('content-type') || 'application/octet-stream');
+      res.setHeader('content-disposition', `attachment; filename="${name}"`);
+      const buf = Buffer.from(await upstream.arrayBuffer());
+      return res.end(buf);
+    }
 
-  if (req.method === 'GET' && url.searchParams.has('dl')) {
-    const target = url.searchParams.get('dl');
-    const { blobs } = await list({ prefix: PREFIX });
-    const hit = blobs.find(b => b.url === target);
-    if (!hit) return json({ ok: false, error: 'not_found' }, 404);
-    const upstream = await fetch(hit.url);
-    const name = hit.pathname.split('/').pop();
-    return new Response(upstream.body, {
-      status: 200,
-      headers: {
-        'content-type': upstream.headers.get('content-type') || 'application/octet-stream',
-        'content-disposition': `attachment; filename="${name}"`,
-      },
-    });
+    if (req.method === 'GET') {
+      const { blobs } = await list({ prefix: PREFIX });
+      return json(res, {
+        ok: true,
+        docs: blobs
+          .sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt))
+          .map(b => ({ url: b.url, name: b.pathname.split('/').pop(), size: b.size, uploadedAt: b.uploadedAt })),
+      });
+    }
+
+    if (req.method === 'POST') {
+      const { name, data } = req.body || {};
+      if (!data || typeof data !== 'string') return json(res, { ok: false, error: 'no_file' }, 400);
+      const buf = Buffer.from(data, 'base64');
+      if (buf.length > MAX_BYTES) return json(res, { ok: false, error: 'too_large' }, 413);
+      const fname = safeName(name);
+      const blob = await put(`${PREFIX}${crypto.randomUUID()}/${fname}`, buf, { access: 'public' });
+      return json(res, { ok: true, doc: { url: blob.url, name: fname, size: blob.size, uploadedAt: blob.uploadedAt } });
+    }
+
+    if (req.method === 'DELETE') {
+      const target = req.query.url;
+      if (!target) return json(res, { ok: false, error: 'no_url' }, 400);
+      const { blobs } = await list({ prefix: PREFIX });
+      if (!blobs.some(b => b.url === target)) return json(res, { ok: false, error: 'not_found' }, 404);
+      await del(target);
+      return json(res, { ok: true });
+    }
+
+    return json(res, { ok: false, error: 'method' }, 405);
+  } catch (e) {
+    return json(res, { ok: false, error: 'failed' }, 500);
   }
-
-  if (req.method === 'GET') {
-    const { blobs } = await list({ prefix: PREFIX });
-    return json({
-      ok: true,
-      docs: blobs
-        .sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt))
-        .map(b => ({ url: b.url, name: b.pathname.split('/').pop(), size: b.size, uploadedAt: b.uploadedAt })),
-    });
-  }
-
-  if (req.method === 'POST') {
-    const form = await req.formData();
-    const file = form.get('file');
-    if (!file || typeof file === 'string') return json({ ok: false, error: 'no_file' }, 400);
-    if (file.size > MAX_BYTES) return json({ ok: false, error: 'too_large' }, 413);
-    const name = safeName(file.name);
-    const blob = await put(`${PREFIX}${crypto.randomUUID()}/${name}`, file, { access: 'public' });
-    return json({ ok: true, doc: { url: blob.url, name, size: blob.size, uploadedAt: blob.uploadedAt } });
-  }
-
-  if (req.method === 'DELETE') {
-    const target = url.searchParams.get('url');
-    if (!target) return json({ ok: false, error: 'no_url' }, 400);
-    const { blobs } = await list({ prefix: PREFIX });
-    if (!blobs.some(b => b.url === target)) return json({ ok: false, error: 'not_found' }, 404);
-    await del(target);
-    return json({ ok: true });
-  }
-
-  return json({ ok: false, error: 'method' }, 405);
 }

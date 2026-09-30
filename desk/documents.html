@@ -98,9 +98,18 @@ async function upload(files){
   for(const f of files){
     if(f.size > 4*1024*1024){ showErr(`"${f.name}" is over 4 MB — pick a smaller file.`); continue; }
     $('prog').style.display = ''; $('progbar').style.width = '30%';
-    const fd = new FormData(); fd.append('file', f);
     try{
-      const r = await fetch('/api/desk-docs', { method: 'POST', body: fd });
+      const data = await new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => res(String(r.result).split(',')[1]);
+        r.onerror = rej;
+        r.readAsDataURL(f);
+      });
+      const r = await fetch('/api/desk-docs', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ name: f.name, data })
+      });
       const d = await r.json();
       if(!d.ok) throw new Error(d.error);
       $('progbar').style.width = '100%';
