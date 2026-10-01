@@ -71,8 +71,8 @@
         </div>
       </div>
 
-      <div class="table-scene" id="table-scene" aria-label="Boardroom table"></div>
-      <p class="hint" style="margin-top:10px">Tap a chair to open that member's office.</p>
+      <div class="table-scene" id="table-scene" aria-label="IEC boardroom — live meeting"></div>
+      <p class="hint" style="margin-top:10px"><span class="live"><i></i></span> Live from the IEC boardroom.</p>
     </div>
 
     <footer>© 2026 International Empire Consultants, Inc. · IEC Suite</footer>
@@ -121,33 +121,9 @@ function seated(){
 function renderBoardroom(){
   const seats = seated();
   const n = seats.length;
-  const scene = $('table-scene');
-  const rx = 41, ry = 34;
-  scene.classList.toggle('many', n > 10);
-  const chairs = seats.map((s, i) => {
-    const a = -Math.PI / 2 + i * (2 * Math.PI / n);
-    const x = (50 + rx * Math.cos(a)).toFixed(2), y = (50 + ry * Math.sin(a)).toFixed(2);
-    return `<button class="seat${s.boss ? ' boss' : ''}" style="left:${x}%;top:${y}%" data-seat="${i}" aria-label="${esc(s.name)}'s chair">
-      <span class="seat-avatar" style="--c:${seatColor(s.name)}">${esc(initials(s.name))}</span>
-      <span class="seat-chair"></span>
-      <span class="seat-plate">${esc(s.name)}</span>
-    </button>`;
-  }).join('');
-  scene.innerHTML = `
-    <div class="round-table"><div class="table-emblem">IEC</div></div>
-    ${chairs}`;
-  $('attendee-count').textContent = n + ' seated';
+  $('attendee-count').textContent = n + ' in the room';
   $('wall-attendees').innerHTML = seats.map(s =>
     `<li><i style="background:${seatColor(s.name)}"></i><span>${esc(s.name)}</span></li>`).join('');
-}
-
-function openSeat(i){
-  const s = seated()[+i]; if(!s) return;
-  openDrawer(`
-    <div class="drawer-avatar" style="--c:${seatColor(s.name)}">${esc(initials(s.name))}</div>
-    <span class="tag gold">${s.boss ? 'Chair' : 'Around the table'}</span>
-    <h2 style="margin:14px 0 8px;font-family:'Space Grotesk'">${esc(s.name)}</h2>
-    <p style="color:var(--dim);font-size:14.5px">${esc(s.role || '')}</p>`);
 }
 
 document.querySelectorAll('.mode-toggle button').forEach(b =>
@@ -157,11 +133,6 @@ document.querySelectorAll('.mode-toggle button').forEach(b =>
     MODE = b.dataset.mode;
     renderBoardroom();
   }));
-
-$('table-scene').addEventListener('click', e => {
-  const c = e.target.closest('[data-seat]'); if(!c) return;
-  openSeat(c.dataset.seat);
-});
 
 (async function(){
   try{
