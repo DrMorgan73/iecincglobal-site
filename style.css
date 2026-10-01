@@ -51,6 +51,8 @@ a { color: var(--navy); }
 .chips { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
 .chip { border: 1px solid rgba(255,255,255,.35); color: #fff; border-radius: 999px; padding: 7px 16px; font-size: 14px; font-weight: 600; }
 .hero img { box-shadow: 0 24px 60px rgba(0,0,0,.35); }
+.hero-video video { width: 100%; border-radius: 12px; box-shadow: 0 24px 60px rgba(0,0,0,.35); display: block; }
+.hero-video-cap { margin-top: 10px; color: var(--gold-soft); font-size: 14px; letter-spacing: .02em; }
 .hero .location { margin-top: 14px; color: var(--gold-soft); font-size: 15px; }
 .hero .location strong { color: #fff; }
 
