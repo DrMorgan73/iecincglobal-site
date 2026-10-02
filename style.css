@@ -39,6 +39,10 @@ a { color: var(--navy); }
 .brand-logo { height: 42px; width: auto; display: block; }
 .brand-logo.foot-logo { height: 48px; }
 
+/* Big skyline banner (homepage) */
+.skyline-banner { padding: 0; }
+.skyline-banner img { display: block; width: 100%; height: clamp(280px, 42vw, 520px); object-fit: cover; }
+
 /* Footer asset logo buttons */
 .asset-buttons-label { color: #fff; font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; opacity: .75; margin-bottom: 12px; }
 .asset-buttons { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 30px; }
