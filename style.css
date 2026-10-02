@@ -35,7 +35,9 @@ a { color: var(--navy); }
   backdrop-filter: blur(6px);
 }
 .header-inner { display: flex; align-items: center; justify-content: space-between; padding: 14px 24px; gap: 16px; }
-.brand { font-weight: 800; font-size: 22px; letter-spacing: .04em; color: var(--navy); text-decoration: none; }
+.brand { font-weight: 800; font-size: 22px; letter-spacing: .04em; color: var(--navy); text-decoration: none; display: inline-flex; align-items: center; }
+.brand-logo { height: 42px; width: auto; display: block; }
+.brand-logo.foot-logo { height: 48px; }
 .brand span { color: var(--gold); font-weight: 600; }
 .site-nav { display: flex; flex-wrap: wrap; gap: 4px 18px; }
 .site-nav a { text-decoration: none; color: var(--ink); font-size: 15px; font-weight: 500; padding: 6px 2px; border-bottom: 2px solid transparent; }
