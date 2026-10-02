@@ -72,6 +72,9 @@ h3 { font-size: 20px; color: var(--navy); margin-bottom: 8px; }
 .card h3 { margin-bottom: 8px; }
 .card p { color: var(--muted); font-size: 17.5px; line-height: 1.6; }
 .card.first { border-top: 4px solid var(--gold); }
+.asset-cards .asset-card { text-align: center; }
+.asset-logo { height: 112px; display: grid; place-items: center; margin-bottom: 14px; }
+.asset-logo img { max-height: 104px; max-width: 100%; width: auto; object-fit: contain; }
 
 .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-top: 28px; }
 .step { border-left: 3px solid var(--gold); padding: 4px 0 4px 18px; }
