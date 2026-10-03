@@ -57,7 +57,16 @@ a { color: var(--navy); }
 .hero { background: linear-gradient(180deg, var(--navy) 0%, var(--navy-2) 100%); color: #fff; padding: 72px 0 64px; }
 /* Image hero — welcome.html only: animated skyline */
 .hero-image { position: relative; overflow: hidden; padding: 110px 0 120px; min-height: 82vh; display: flex; align-items: center; background: var(--navy); }
-.hero-bg { position: absolute; inset: -7%; background: url('assets/boston-skyline-charles-river.jpg') 50% 62%/cover no-repeat; animation: hero-pan 26s ease-in-out infinite alternate; }
+.hero-bg { position: absolute; inset: -7%; animation: hero-pan 26s ease-in-out infinite alternate; transition: opacity 2s ease; }
+.hero-bg-night { background: url('assets/boston-skyline-charles-river.jpg') 50% 62%/cover no-repeat; }
+.hero-bg-day { background: url('assets/boston-skyline-day.jpg') 50% 62%/cover no-repeat; opacity: 0; }
+/* Day/night hero: data-hero-time is set on <html> pre-paint; no-JS default = night */
+html[data-hero-time="day"] .hero-bg-day { opacity: 1; }
+html[data-hero-time="day"] .hero-bg-night { opacity: 0; }
+/* Photo credit follows the visible image */
+.hero-credit-day { display: none; }
+html[data-hero-time="day"] .hero-credit-day { display: block; }
+html[data-hero-time="day"] .hero-credit-night { display: none; }
 @keyframes hero-pan { from { transform: translate3d(-2.2%, 0, 0) scale(1.05); } to { transform: translate3d(2.2%, 0, 0) scale(1.05); } }
 .hero-veil { position: absolute; inset: 0; background: linear-gradient(95deg, rgba(14,42,71,.92) 0%, rgba(14,42,71,.60) 44%, rgba(14,42,71,.16) 78%), linear-gradient(0deg, rgba(14,42,71,.55) 0%, rgba(14,42,71,0) 46%); }
 .hero .wrap { position: relative; z-index: 1; width: 100%; }

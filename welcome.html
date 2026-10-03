@@ -6,6 +6,24 @@
 <title>IEC Inc. | International Business Development</title>
 <meta name="description" content="IEC Inc. leads with healthcare — growth, partnerships and non-clinical management support for medical and dental organizations — and helps organizations across technology, real estate and international commerce.">
 <link rel="stylesheet" href="style.css">
+<script>
+/* Day/night hero: pick skyline photo by visitor's local time BEFORE first paint.
+   Day 07:00-18:00, night otherwise. Re-checks every minute for open pages. */
+(function () {
+  function pick() {
+    try {
+      var h = new Date().getHours();
+      return (h >= 7 && h < 18) ? "day" : "night";
+    } catch (e) { return "night"; }
+  }
+  var el = document.documentElement;
+  el.setAttribute("data-hero-time", pick());
+  setInterval(function () {
+    var t = pick();
+    if (el.getAttribute("data-hero-time") !== t) el.setAttribute("data-hero-time", t);
+  }, 60000);
+})();
+</script>
 </head>
 <body>
 <header class="site-header">
@@ -28,7 +46,8 @@
 </header>
 
 <section class="hero hero-image">
-  <div class="hero-bg" aria-hidden="true"></div>
+  <div class="hero-bg hero-bg-night" aria-hidden="true"></div>
+  <div class="hero-bg hero-bg-day" aria-hidden="true"></div>
   <div class="hero-veil" aria-hidden="true"></div>
   <div class="wrap hero-grid">
     <div>
@@ -44,7 +63,8 @@
       <div class="location"><strong>Boston</strong> · United States · International reach</div>
     </div>
   </div>
-  <p class="hero-credit">Photo: <a href="https://commons.wikimedia.org/wiki/File:Boston_Skyline_Panorama_Dusk.jpg">Fcb981</a>, CC BY-SA 3.0, via Wikimedia Commons</p>
+  <p class="hero-credit hero-credit-night">Photo: <a href="https://commons.wikimedia.org/wiki/File:Boston_Skyline_Panorama_Dusk.jpg">Fcb981</a>, CC BY-SA 3.0, via Wikimedia Commons</p>
+  <p class="hero-credit hero-credit-day">Photo: <a href="https://commons.wikimedia.org/wiki/File:Boston_skyline_from_Longfellow_Bridge_September_2017_panorama_2.jpg">King of Hearts</a>, CC BY-SA 4.0, via Wikimedia Commons</p>
 </section>
 
 <section class="section">
