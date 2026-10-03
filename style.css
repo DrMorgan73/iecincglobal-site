@@ -88,6 +88,11 @@ h3 { font-size: 20px; color: var(--navy); margin-bottom: 8px; }
 .asset-cards .asset-card { text-align: center; }
 .asset-logo { height: 112px; display: grid; place-items: center; margin-bottom: 14px; }
 .asset-logo img { max-height: 104px; max-width: 100%; width: auto; object-fit: contain; }
+.subhead { font-size: 21px; font-weight: 700; color: var(--navy); margin: 36px 0 4px; }
+.asset-card .asset-link { display: inline-block; margin-top: 14px; font-weight: 700; color: var(--navy); text-decoration: none; border-bottom: 2px solid var(--gold); padding-bottom: 2px; font-size: 16.5px; }
+.asset-card .asset-link:hover { color: #a37c28; }
+.partner-tag { display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--navy); background: #eef3f6; border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; margin-left: 8px; vertical-align: middle; white-space: nowrap; }
+.partner-note { max-width: 74ch; color: var(--muted); }
 
 .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-top: 28px; }
 .step { border-left: 3px solid var(--gold); padding: 4px 0 4px 18px; }
