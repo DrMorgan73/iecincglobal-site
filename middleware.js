@@ -57,7 +57,15 @@ export default async function middleware(request) {
   // Public visitors get the public home page at the root.
   // The Suite sign-in stays one click away via "Team sign-in".
   if (pathname === '/' || pathname === '/index.html') {
-    return fetch(new URL('/welcome.html', request.url));
+    const res = await fetch(new URL('/welcome.html', request.url));
+    // The sub-fetch transparently decodes the body, but the original
+    // content-encoding/content-length headers survive on the Response.
+    // Strip them so browsers don't try to decode an already-decoded body
+    // (that mismatch caused "cannot decode raw data" in Safari).
+    const headers = new Headers(res.headers);
+    headers.delete('content-encoding');
+    headers.delete('content-length');
+    return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
   }
   return Response.redirect(new URL('/desk/login.html', request.url));
 }
