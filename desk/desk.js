@@ -21,6 +21,7 @@ const NAV = [
   { href: '/desk/strategy.html',      icon: '🎯', label: 'Strategy',     page: 'strategy' },
   { href: '/desk/trade.html',         icon: '📈', label: 'Trade Pilot',  page: 'trade' },
   { href: '/desk/documents.html',      icon: '📄', label: 'Documents',    page: 'docs' },
+  { href: '/desk/vault.html',         icon: '🔒', label: 'PDF Vault',    page: 'vault' },
 ];
 (function buildNav(){
   const nav = $('nav'); if(!nav) return;

@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PDF Vault — IEC Suite</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/desk/desk.css">
+<style>
+  /* PDF Vault — scoped under #vault-root so nothing leaks into the Suite shell */
+  #vault-root .vtabs{display:flex;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:12px;overflow:hidden;margin-bottom:16px;max-width:560px}
+  #vault-root .vtabs button{flex:1;border:0;background:transparent;padding:14px;font-size:16px;font-weight:600;color:#9fb0c3;cursor:pointer;min-height:48px;font-family:inherit}
+  #vault-root .vtabs button.active{background:#f0b942;color:#1a1405}
+  #vault-root .vcard{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:20px;max-width:560px;color:#e8eef4}
+  #vault-root .vdrop{border:2px dashed rgba(255,255,255,.22);border-radius:12px;padding:32px 16px;text-align:center;color:#9fb0c3;cursor:pointer;min-height:120px}
+  #vault-root .vdrop.over{border-color:#2dd4bf;background:rgba(45,212,191,.07)}
+  #vault-root .vdrop strong{display:block;font-size:16px;color:#fff;margin-bottom:6px}
+  #vault-root .vdrop input{display:none}
+  #vault-root .vfileline{margin-top:12px;font-size:14px;background:rgba(255,255,255,.06);border-radius:8px;padding:10px 12px;display:none;color:#e8eef4}
+  #vault-root label.vlbl{display:block;font-size:14px;font-weight:600;margin:16px 0 6px;color:#e8eef4}
+  #vault-root .vpwrow{position:relative}
+  #vault-root .vpwrow input{width:100%;padding:13px 52px 13px 12px;font-size:16px;border:1px solid rgba(255,255,255,.16);border-radius:8px;min-height:48px;background:rgba(0,0,0,.25);color:#fff;font-family:inherit}
+  #vault-root .vpwrow button{position:absolute;right:6px;top:6px;border:0;background:none;color:#2dd4bf;font-weight:600;font-size:14px;padding:10px;cursor:pointer;min-width:44px;min-height:36px;font-family:inherit}
+  #vault-root .vmeter{height:6px;border-radius:3px;background:rgba(255,255,255,.12);margin-top:8px;overflow:hidden}
+  #vault-root .vmeter i{display:block;height:100%;width:0;border-radius:3px;transition:width .3s}
+  #vault-root .vhint{font-size:12px;color:#9fb0c3;margin-top:4px}
+  #vault-root .vgo{width:100%;margin-top:20px;border:0;border-radius:10px;background:#f0b942;color:#1a1405;font-size:17px;font-weight:700;padding:15px;cursor:pointer;min-height:52px;font-family:inherit}
+  #vault-root .vgo:disabled{background:#5b6673;color:#cfd8e0;cursor:not-allowed}
+  #vault-root .vstatus{margin-top:16px;font-size:14px;border-radius:8px;padding:12px;display:none}
+  #vault-root .vstatus.ok{display:block;background:rgba(46,160,90,.15);color:#7ee2a0;border:1px solid rgba(46,160,90,.4)}
+  #vault-root .vstatus.bad{display:block;background:rgba(200,60,60,.15);color:#ff9d9d;border:1px solid rgba(200,60,60,.4)}
+  #vault-root .vstatus.work{display:block;background:rgba(255,255,255,.06);color:#9fb0c3;border:1px solid rgba(255,255,255,.12)}
+  #vault-root .vnotes{margin-top:24px;font-size:13px;color:#9fb0c3;line-height:1.6;max-width:560px}
+  #vault-root .vnotes b{color:#e8eef4}
+  #vault-root .vnotes li{margin-bottom:6px}
+</style>
+</head>
+<body data-page="vault">
+<div class="orbs" aria-hidden="true"><span class="orb gold"></span><span class="orb teal"></span><span class="orb violet"></span></div>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="side-brand">
+      <img class="logo-img" src="/assets/iec-logo.png" alt="IEC Inc.">
+      <div><h1>IEC <span>Suite</span></h1><p>International Empire Consultants, Inc.</p></div>
+    </div>
+    <nav id="nav"></nav>
+    <div class="side-foot">
+      <div class="themes" id="themes">
+        <button data-t="iec" style="--sw1:#f0b942;--sw2:#3b82f6" title="IEC Brand"></button>
+        <button data-t="midnight" style="--sw1:#f0b942;--sw2:#2dd4bf" title="Midnight Gold"></button>
+        <button data-t="amethyst" style="--sw1:#d8b4fe;--sw2:#f0abfc" title="Royal Amethyst"></button>
+        <button data-t="ocean" style="--sw1:#7dd3fc;--sw2:#5eead4" title="Deep Ocean"></button>
+        <button data-t="ember" style="--sw1:#fdba74;--sw2:#fbbf24" title="Sunset Ember"></button>
+        <button data-t="emerald" style="--sw1:#6ee7b7;--sw2:#f0b942" title="Emerald Noir"></button>
+        <button data-t="rose" style="--sw1:#fda4af;--sw2:#f0abfc" title="Rose Noir"></button>
+        <label class="cpick" title="Accent color"><input type="color" id="pick-gold" value="#f0b942"></label>
+        <label class="cpick" title="Highlight color"><input type="color" id="pick-teal" value="#2dd4bf"></label>
+        <button class="creset" id="pick-reset" title="Reset colors">⟲</button>
+      </div>
+      <button class="signout" id="signout"><i>🚪</i>Sign out</button>
+      <a class="public-link" href="/welcome.html">← Public site</a>
+      <div class="clockbox">
+        <div id="clock">--:--</div>
+        <div id="dateline">—</div>
+      </div>
+    </div>
+  </aside>
+
+  <main>
+    <div class="section-head"><h2>🔒 PDF Vault</h2><span class="hint">Encrypt medical records · nothing ever leaves this page</span></div>
+
+    <div id="vault-root">
+      <div class="vtabs" role="tablist">
+        <button id="vtabEnc" class="active" role="tab" aria-selected="true">Encrypt</button>
+        <button id="vtabDec" role="tab" aria-selected="false">Decrypt</button>
+      </div>
+
+      <section id="vpaneEnc" class="vcard" role="tabpanel">
+        <div class="vdrop" id="vdropEnc">
+          <strong>Drop your PDF here</strong>
+          or tap to choose a file
+          <input type="file" id="vfileEnc" accept=".pdf,application/pdf">
+        </div>
+        <div class="vfileline" id="vfileEncLine"></div>
+
+        <label class="vlbl" for="vpwEnc">Password</label>
+        <div class="vpwrow">
+          <input type="password" id="vpwEnc" autocomplete="new-password" placeholder="Choose a strong password">
+          <button type="button" data-toggle="vpwEnc">Show</button>
+        </div>
+        <div class="vmeter"><i id="vmeterEnc"></i></div>
+        <div class="vhint" id="vmeterEncTxt">Use 12+ characters. There is no password recovery.</div>
+
+        <label class="vlbl" for="vpwEnc2">Confirm password</label>
+        <div class="vpwrow">
+          <input type="password" id="vpwEnc2" autocomplete="new-password" placeholder="Type it again">
+          <button type="button" data-toggle="vpwEnc2">Show</button>
+        </div>
+
+        <button class="vgo" id="vbtnEnc" disabled>Encrypt PDF</button>
+        <div class="vstatus" id="vstEnc"></div>
+      </section>
+
+      <section id="vpaneDec" class="vcard" role="tabpanel" hidden>
+        <div class="vdrop" id="vdropDec">
+          <strong>Drop your encrypted file here</strong>
+          or tap to choose a <code>.vault</code> file
+          <input type="file" id="vfileDec" accept=".vault">
+        </div>
+        <div class="vfileline" id="vfileDecLine"></div>
+
+        <label class="vlbl" for="vpwDec">Password</label>
+        <div class="vpwrow">
+          <input type="password" id="vpwDec" autocomplete="current-password" placeholder="Password used to encrypt">
+          <button type="button" data-toggle="vpwDec">Show</button>
+        </div>
+
+        <button class="vgo" id="vbtnDec" disabled>Decrypt file</button>
+        <div class="vstatus" id="vstDec"></div>
+      </section>
+
+      <div class="vnotes">
+        <b>How it protects you:</b>
+        <ul>
+          <li><b>AES-256-GCM</b> encryption. Key derived from your password with <b>PBKDF2-SHA256, 600,000 iterations</b> and a fresh random salt every file.</li>
+          <li><b>100% in your browser.</b> Files are never uploaded anywhere.</li>
+          <li><b>No recovery.</b> If you lose the password, the file cannot be opened by anyone. Store passwords separately from the encrypted files.</li>
+          <li>Encrypted files end in <code>.vault</code>. Open them again here with the password.</li>
+        </ul>
+      </div>
+    </div>
+
+    <footer>© 2026 International Empire Consultants, Inc. · IEC Suite</footer>
+  </main>
+</div>
+
+<script src="/desk/desk.js"></script>
+<script>
+"use strict";
+/* ---- crypto core (verified: AES-256-GCM, PBKDF2-SHA256 x600k) ---- */
+const MAGIC = new TextEncoder().encode("PDFV1");
+const SALT_LEN = 16, IV_LEN = 12, ITER = 600000;
+const te = new TextEncoder(), td = new TextDecoder();
+
+async function deriveKey(password, salt){
+  const base = await crypto.subtle.importKey("raw", te.encode(password), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey(
+    {name:"PBKDF2", salt:salt, iterations:ITER, hash:"SHA-256"},
+    base, {name:"AES-GCM", length:256}, false, ["encrypt","decrypt"]);
+}
+
+async function encryptBytes(data, fileName, mime, password){
+  const salt = crypto.getRandomValues(new Uint8Array(SALT_LEN));
+  const iv   = crypto.getRandomValues(new Uint8Array(IV_LEN));
+  const key  = await deriveKey(password, salt);
+  const header = te.encode(JSON.stringify({name:fileName, type:mime || "application/pdf", v:1}));
+  const hlen = new Uint8Array(4);
+  new DataView(hlen.buffer).setUint32(0, header.length, false);
+  const plain = new Uint8Array(4 + header.length + data.length);
+  plain.set(hlen, 0); plain.set(header, 4); plain.set(data, 4 + header.length);
+  const ct = new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM", iv:iv}, key, plain));
+  plain.fill(0);
+  const out = new Uint8Array(MAGIC.length + SALT_LEN + IV_LEN + ct.length);
+  out.set(MAGIC, 0); out.set(salt, MAGIC.length);
+  out.set(iv, MAGIC.length + SALT_LEN); out.set(ct, MAGIC.length + SALT_LEN + IV_LEN);
+  return out;
+}
+
+async function decryptBytes(buf, password){
+  const b = new Uint8Array(buf);
+  if (b.length < MAGIC.length + SALT_LEN + IV_LEN + 16) throw new Error("badfile");
+  for (let i = 0; i < MAGIC.length; i++) if (b[i] !== MAGIC[i]) throw new Error("badfile");
+  const salt = b.slice(MAGIC.length, MAGIC.length + SALT_LEN);
+  const iv   = b.slice(MAGIC.length + SALT_LEN, MAGIC.length + SALT_LEN + IV_LEN);
+  const ct   = b.slice(MAGIC.length + SALT_LEN + IV_LEN);
+  const key  = await deriveKey(password, salt);
+  let plain;
+  try { plain = new Uint8Array(await crypto.subtle.decrypt({name:"AES-GCM", iv:iv}, key, ct)); }
+  catch(e){ throw new Error("wrongpw"); }
+  if (plain.length < 4) throw new Error("badfile");
+  const hlen = new DataView(plain.buffer, plain.byteOffset, 4).getUint32(0, false);
+  if (4 + hlen > plain.length) throw new Error("badfile");
+  const header = JSON.parse(td.decode(plain.slice(4, 4 + hlen)));
+  const data = plain.slice(4 + hlen);
+  plain.fill(0);
+  return {header:header, data:data};
+}
+
+/* ---- ui ---- */
+function $(id){ return document.getElementById(id); }
+function setStatus(el, kind, msg){
+  el.className = "vstatus" + (kind ? " " + kind : "");
+  el.textContent = msg || "";
+}
+function download(bytes, name, type){
+  const blob = new Blob([bytes], {type: type || "application/octet-stream"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 4000);
+}
+function strength(pw){
+  let s = 0;
+  if (pw.length >= 8) s++; if (pw.length >= 12) s++; if (pw.length >= 16) s++;
+  if (/[a-z]/.test(pw) && /[A-Z]/.test(pw)) s++;
+  if (/\d/.test(pw)) s++; if (/[^A-Za-z0-9]/.test(pw)) s++;
+  return Math.min(s, 6);
+}
+function paintMeter(pw){
+  const s = strength(pw), m = $("vmeterEnc"), t = $("vmeterEncTxt");
+  m.style.width = Math.round(s / 6 * 100) + "%";
+  m.style.background = s <= 2 ? "#c0392b" : s <= 4 ? "#d9930d" : "#2ea05a";
+  t.textContent = pw.length === 0 ? "Use 12+ characters. There is no password recovery."
+    : s <= 2 ? "Weak — longer with mixed characters is safer."
+    : s <= 4 ? "Okay — longer is still better for medical records."
+    : "Strong.";
+}
+
+$("vtabEnc").onclick = function(){ showPane(true); };
+$("vtabDec").onclick = function(){ showPane(false); };
+function showPane(enc){
+  $("vtabEnc").classList.toggle("active", enc);
+  $("vtabDec").classList.toggle("active", !enc);
+  $("vtabEnc").setAttribute("aria-selected", enc);
+  $("vtabDec").setAttribute("aria-selected", !enc);
+  $("vpaneEnc").hidden = !enc; $("vpaneDec").hidden = enc;
+}
+
+document.querySelectorAll("[data-toggle]").forEach(function(btn){
+  btn.onclick = function(){
+    const inp = $(btn.getAttribute("data-toggle"));
+    const show = inp.type === "password";
+    inp.type = show ? "text" : "password";
+    btn.textContent = show ? "Hide" : "Show";
+  };
+});
+
+function wireDrop(dropId, inputId, lineId, btnId, acceptPdf, stId){
+  const drop = $(dropId), input = $(inputId);
+  drop.addEventListener("click", function(){ input.click(); });
+  ["dragover","dragenter"].forEach(function(ev){
+    drop.addEventListener(ev, function(e){ e.preventDefault(); drop.classList.add("over"); });
+  });
+  ["dragleave","drop"].forEach(function(ev){
+    drop.addEventListener(ev, function(e){ e.preventDefault(); drop.classList.remove("over"); });
+  });
+  drop.addEventListener("drop", function(e){
+    if (e.dataTransfer.files.length) { input.files = e.dataTransfer.files; picked(); }
+  });
+  input.addEventListener("change", picked);
+  function picked(){
+    const f = input.files[0];
+    const line = $(lineId), btn = $(btnId);
+    if (!f){ line.style.display = "none"; btn.disabled = true; return; }
+    if (acceptPdf && !/\.pdf$/i.test(f.name)){
+      setStatus($(stId), "bad", "Please choose a PDF file.");
+      input.value = ""; line.style.display = "none"; btn.disabled = true; return;
+    }
+    if (f.size > 100 * 1024 * 1024){
+      setStatus($(stId), "bad", "File is over 100 MB — split it first, then encrypt.");
+      input.value = ""; line.style.display = "none"; btn.disabled = true; return;
+    }
+    line.style.display = "block";
+    line.textContent = "📄 " + f.name + " (" + (f.size / 1048576).toFixed(2) + " MB)";
+    setStatus($(stId), "", "");
+    validate();
+  }
+}
+wireDrop("vdropEnc", "vfileEnc", "vfileEncLine", "vbtnEnc", true, "vstEnc");
+wireDrop("vdropDec", "vfileDec", "vfileDecLine", "vbtnDec", false, "vstDec");
+
+$("vpwEnc").addEventListener("input", function(){ paintMeter(this.value); validate(); });
+$("vpwEnc2").addEventListener("input", validate);
+$("vpwDec").addEventListener("input", validate);
+
+function validate(){
+  const f1 = $("vfileEnc").files[0], p1 = $("vpwEnc").value, p2 = $("vpwEnc2").value;
+  $("vbtnEnc").disabled = !(f1 && p1.length >= 8 && p1 === p2);
+  const f2 = $("vfileDec").files[0], p3 = $("vpwDec").value;
+  $("vbtnDec").disabled = !(f2 && p3.length > 0);
+}
+
+$("vbtnEnc").onclick = async function(){
+  const f = $("vfileEnc").files[0], pw = $("vpwEnc").value;
+  const st = $("vstEnc"), btn = $("vbtnEnc");
+  btn.disabled = true; setStatus(st, "work", "Encrypting… keep this page open.");
+  try{
+    const data = new Uint8Array(await f.arrayBuffer());
+    const out = await encryptBytes(data, f.name, f.type, pw);
+    data.fill(0);
+    download(out, f.name.replace(/\.pdf$/i, "") + ".pdf.vault", "application/octet-stream");
+    setStatus(st, "ok", "Done — encrypted file downloaded. Store your password separately; it cannot be recovered.");
+    $("vfileEnc").value = ""; $("vfileEncLine").style.display = "none";
+    $("vpwEnc").value = ""; $("vpwEnc2").value = ""; paintMeter("");
+  }catch(e){ setStatus(st, "bad", "Encryption failed. Try again with a smaller file."); }
+  validate();
+};
+
+$("vbtnDec").onclick = async function(){
+  const f = $("vfileDec").files[0], pw = $("vpwDec").value;
+  const st = $("vstDec"), btn = $("vbtnDec");
+  btn.disabled = true; setStatus(st, "work", "Decrypting… keep this page open.");
+  try{
+    const buf = await f.arrayBuffer();
+    const r = await decryptBytes(buf, pw);
+    download(r.data, r.header.name || "decrypted.pdf", r.header.type || "application/pdf");
+    setStatus(st, "ok", "Done — original file downloaded.");
+    $("vfileDec").value = ""; $("vfileDecLine").style.display = "none"; $("vpwDec").value = "";
+  }catch(e){
+    setStatus(st, "bad", e && e.message === "wrongpw"
+      ? "Wrong password — or the file is damaged. Try again."
+      : "This file was not made by PDF Vault, or it is damaged.");
+  }
+  validate();
+};
+paintMeter("");
+</script>
+</body>
+</html>
