@@ -14,7 +14,7 @@
   #vault-root .vtabs button{flex:1;border:0;background:transparent;padding:14px;font-size:16px;font-weight:600;color:#9fb0c3;cursor:pointer;min-height:48px;font-family:inherit}
   #vault-root .vtabs button.active{background:#f0b942;color:#1a1405}
   #vault-root .vcard{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:20px;max-width:560px;color:#e8eef4}
-  #vault-root .vdrop{border:2px dashed rgba(255,255,255,.22);border-radius:12px;padding:32px 16px;text-align:center;color:#9fb0c3;cursor:pointer;min-height:120px;position:relative}
+  #vault-root label.vdrop{display:block;border:2px dashed rgba(255,255,255,.22);border-radius:12px;padding:32px 16px;text-align:center;color:#9fb0c3;cursor:pointer;min-height:120px;position:relative}
   #vault-root .vdrop.over{border-color:#2dd4bf;background:rgba(45,212,191,.07)}
   #vault-root .vdrop strong{display:block;font-size:16px;color:#fff;margin-bottom:6px}
   #vault-root .vdrop input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
@@ -79,11 +79,11 @@
       </div>
 
       <section id="vpaneEnc" class="vcard" role="tabpanel">
-        <div class="vdrop" id="vdropEnc">
+        <label class="vdrop" id="vdropEnc">
           <strong>Drop your PDF here</strong>
-          or tap to choose a file
+          or tap here to choose a file
           <input type="file" id="vfileEnc" accept=".pdf,application/pdf">
-        </div>
+        </label>
         <div class="vfileline" id="vfileEncLine"></div>
 
         <label class="vlbl" for="vpwEnc">Password</label>
@@ -105,11 +105,11 @@
       </section>
 
       <section id="vpaneDec" class="vcard" role="tabpanel" hidden>
-        <div class="vdrop" id="vdropDec">
+        <label class="vdrop" id="vdropDec">
           <strong>Drop your encrypted file here</strong>
-          or tap to choose a <code>.vault</code> file
+          or tap here to choose a <code>.vault</code> file
           <input type="file" id="vfileDec" accept=".vault">
-        </div>
+        </label>
         <div class="vfileline" id="vfileDecLine"></div>
 
         <label class="vlbl" for="vpwDec">Password</label>
