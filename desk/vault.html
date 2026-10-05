@@ -292,7 +292,7 @@ function validate(){
   $("vbtnDec").disabled = !(f2 && p3.length > 0);
 }
 
-$("vbtnEnc").onclick = async function(){
+$("vbtnEnc").addEventListener("click", async function(){
   const st = $("vstEnc");
   setStatus(st, "work", "Tap received — working…");
   await new Promise(function(r){ setTimeout(r, 50); });
@@ -312,9 +312,9 @@ $("vbtnEnc").onclick = async function(){
     $("vpwEnc").value = ""; $("vpwEnc2").value = ""; paintMeter("");
   }catch(e){ setStatus(st, "bad", "Encryption failed. Try again with a smaller file."); }
   validate();
-};
+});
 
-$("vbtnDec").onclick = async function(){
+$("vbtnDec").addEventListener("click", async function(){
   const f = $("vfileDec").files[0], pw = $("vpwDec").value;
   const st = $("vstDec"), btn = $("vbtnDec");
   if(!f){ setStatus(st, "bad", "Choose a .vault file first."); return; }
@@ -332,7 +332,7 @@ $("vbtnDec").onclick = async function(){
       : "This file was not made by PDF Vault, or it is damaged.");
   }
   validate();
-};
+});
 paintMeter("");
 </script>
 </body>
