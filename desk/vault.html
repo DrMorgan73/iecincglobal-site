@@ -293,8 +293,11 @@ function validate(){
 }
 
 $("vbtnEnc").onclick = async function(){
+  const st = $("vstEnc");
+  setStatus(st, "work", "Tap received — working…");
+  await new Promise(function(r){ setTimeout(r, 50); });
   const f = $("vfileEnc").files[0], pw = $("vpwEnc").value, pw2 = $("vpwEnc2").value;
-  const st = $("vstEnc"), btn = $("vbtnEnc");
+  const btn = $("vbtnEnc");
   if(!f){ setStatus(st, "bad", "Choose a PDF file first."); return; }
   if(pw.length < 8){ setStatus(st, "bad", "Password must be at least 8 characters."); return; }
   if(pw !== pw2){ setStatus(st, "bad", "The two passwords do not match."); return; }
