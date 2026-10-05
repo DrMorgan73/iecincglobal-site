@@ -310,8 +310,14 @@ $("vbtnEnc").addEventListener("click", async function(){
     const data = new Uint8Array(await f.arrayBuffer());
     const out = await encryptBytes(data, f.name, f.type, pw);
     data.fill(0);
-    download(out, f.name.replace(/\.pdf$/i, "") + ".pdf.vault", "application/octet-stream");
-    setStatus(st, "ok", "Done — encrypted file downloaded. Store your password separately; it cannot be recovered.");
+    var dlName = f.name.replace(/\.pdf$/i, "") + ".pdf.vault";
+    download(out, dlName, "application/octet-stream");
+    // Manual fallback link in case auto-download is blocked
+    var blob = new Blob([out], {type: "application/octet-stream"});
+    var url = URL.createObjectURL(blob);
+    setStatus(st, "ok", "Done — encrypted file ready. Store your password separately; it cannot be recovered.");
+    var linkHtml = '<br><br><a href="' + url + '" download="' + dlName + '" style="display:inline-block;background:#f0b942;color:#1a1405;font-weight:700;padding:14px 24px;border-radius:10px;text-decoration:none;font-size:16px;">⬇ Download ' + dlName + '</a>';
+    st.innerHTML += linkHtml;
     $("vfileEnc").value = ""; $("vfileEncLine").style.display = "none";
     $("vpwEnc").value = ""; $("vpwEnc2").value = ""; paintMeter("");
   }catch(e){ setStatus(st, "bad", "Encryption failed. Try again with a smaller file."); }
