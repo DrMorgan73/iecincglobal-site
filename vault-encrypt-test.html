@@ -1,0 +1,266 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Vault encrypt test</title><style>
+body{background:#111;color:#eee;font-family:sans-serif;padding:24px}
+#vault-root .vgo{width:100%;margin-top:20px;border:0;border-radius:10px;background:#f0b942;color:#1a1405;font-size:17px;font-weight:700;padding:15px;cursor:pointer;min-height:52px;font-family:inherit;max-width:560px}
+#vault-root .vgo:disabled{background:#5b6673;color:#cfd8e0;cursor:not-allowed}
+#vault-root .vstatus{margin-top:16px;font-size:14px;border-radius:8px;padding:12px;display:none;max-width:560px}
+#vault-root .vstatus.ok{display:block;background:rgba(46,160,90,.15);color:#7ee2a0;border:1px solid rgba(46,160,90,.4)}
+#vault-root .vstatus.bad{display:block;background:rgba(200,60,60,.15);color:#ff9d9d;border:1px solid rgba(200,60,60,.4)}
+#vault-root .vstatus.work{display:block;background:rgba(255,255,255,.06);color:#9fb0c3;border:1px solid rgba(255,255,255,.12)}
+#vault-root .vdrop{border:2px dashed rgba(255,255,255,.22);border-radius:12px;padding:32px 16px;text-align:center;color:#9fb0c3;min-height:120px;max-width:560px}
+#vault-root .vpickwrap{display:block;margin-top:14px}
+#vault-root .vrealfile{font-size:15px;color:#e8eef4;max-width:100%}
+#vault-root .vrealfile::file-selector-button{background:#f0b942;color:#1a1405;border:0;border-radius:8px;padding:12px 18px;font-size:15px;font-weight:700;cursor:pointer;margin-right:12px;font-family:inherit}
+#vault-root .vpwrow{position:relative;max-width:560px}
+#vault-root .vpwrow input{width:100%;padding:13px 12px;font-size:16px;border:1px solid rgba(255,255,255,.16);border-radius:8px;min-height:48px;background:rgba(0,0,0,.25);color:#fff;font-family:inherit;box-sizing:border-box}
+#vault-root label.vlbl{display:block;font-size:14px;font-weight:600;margin:16px 0 6px;color:#e8eef4}
+</style></head><body><div id="vault-root">
+      <div class="vtabs" role="tablist">
+        <button id="vtabEnc" class="active" role="tab" aria-selected="true">Encrypt</button>
+        <button id="vtabDec" role="tab" aria-selected="false">Decrypt</button>
+      </div>
+
+      <section id="vpaneEnc" class="vcard" role="tabpanel">
+        <div class="vdrop" id="vdropEnc">
+          <strong>Drop your PDF here</strong>
+          <span class="vpickwrap">or <input type="file" id="vfileEnc" accept=".pdf,application/pdf" class="vrealfile"></span>
+        </div>
+        <div class="vfileline" id="vfileEncLine"></div>
+
+        <label class="vlbl" for="vpwEnc">Password</label>
+        <div class="vpwrow">
+          <input type="password" id="vpwEnc" autocomplete="new-password" placeholder="Choose a strong password">
+          <button type="button" data-toggle="vpwEnc">Show</button>
+        </div>
+        <div class="vmeter"><i id="vmeterEnc"></i></div>
+        <div class="vhint" id="vmeterEncTxt">Use 12+ characters. There is no password recovery.</div>
+
+        <label class="vlbl" for="vpwEnc2">Confirm password</label>
+        <div class="vpwrow">
+          <input type="password" id="vpwEnc2" autocomplete="new-password" placeholder="Type it again">
+          <button type="button" data-toggle="vpwEnc2">Show</button>
+        </div>
+
+        <button class="vgo" id="vbtnEnc">Encrypt PDF</button>
+        <div class="vstatus" id="vstEnc"></div>
+      </section>
+
+      <section id="vpaneDec" class="vcard" role="tabpanel" hidden>
+        <div class="vdrop" id="vdropDec">
+          <strong>Drop your encrypted file here</strong>
+          <span class="vpickwrap">or <input type="file" id="vfileDec" accept=".vault" class="vrealfile"></span>
+        </div>
+        <div class="vfileline" id="vfileDecLine"></div>
+
+        <label class="vlbl" for="vpwDec">Password</label>
+        <div class="vpwrow">
+          <input type="password" id="vpwDec" autocomplete="current-password" placeholder="Password used to encrypt">
+          <button type="button" data-toggle="vpwDec">Show</button>
+        </div>
+
+        <button class="vgo" id="vbtnDec">Decrypt file</button>
+        <div class="vstatus" id="vstDec"></div>
+      </section>
+
+      <div class="vnotes"><div id="testlog" style="margin-top:20px;background:#000;padding:12px;max-width:560px;font-size:13px"></div>
+<script>
+function tlog(m){ document.getElementById("testlog").textContent += m + "\n"; }
+// hook the encrypt button to log
+var _orig = null;
+</script>
+<script>
+"use strict";
+/* ---- crypto core (verified: AES-256-GCM, PBKDF2-SHA256 x600k) ---- */
+const MAGIC = new TextEncoder().encode("PDFV1");
+const SALT_LEN = 16, IV_LEN = 12, ITER = 600000;
+const te = new TextEncoder(), td = new TextDecoder();
+
+async function deriveKey(password, salt){
+  const base = await crypto.subtle.importKey("raw", te.encode(password), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey(
+    {name:"PBKDF2", salt:salt, iterations:ITER, hash:"SHA-256"},
+    base, {name:"AES-GCM", length:256}, false, ["encrypt","decrypt"]);
+}
+
+async function encryptBytes(data, fileName, mime, password){
+  const salt = crypto.getRandomValues(new Uint8Array(SALT_LEN));
+  const iv   = crypto.getRandomValues(new Uint8Array(IV_LEN));
+  const key  = await deriveKey(password, salt);
+  const header = te.encode(JSON.stringify({name:fileName, type:mime || "application/pdf", v:1}));
+  const hlen = new Uint8Array(4);
+  new DataView(hlen.buffer).setUint32(0, header.length, false);
+  const plain = new Uint8Array(4 + header.length + data.length);
+  plain.set(hlen, 0); plain.set(header, 4); plain.set(data, 4 + header.length);
+  const ct = new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM", iv:iv}, key, plain));
+  plain.fill(0);
+  const out = new Uint8Array(MAGIC.length + SALT_LEN + IV_LEN + ct.length);
+  out.set(MAGIC, 0); out.set(salt, MAGIC.length);
+  out.set(iv, MAGIC.length + SALT_LEN); out.set(ct, MAGIC.length + SALT_LEN + IV_LEN);
+  return out;
+}
+
+async function decryptBytes(buf, password){
+  const b = new Uint8Array(buf);
+  if (b.length < MAGIC.length + SALT_LEN + IV_LEN + 16) throw new Error("badfile");
+  for (let i = 0; i < MAGIC.length; i++) if (b[i] !== MAGIC[i]) throw new Error("badfile");
+  const salt = b.slice(MAGIC.length, MAGIC.length + SALT_LEN);
+  const iv   = b.slice(MAGIC.length + SALT_LEN, MAGIC.length + SALT_LEN + IV_LEN);
+  const ct   = b.slice(MAGIC.length + SALT_LEN + IV_LEN);
+  const key  = await deriveKey(password, salt);
+  let plain;
+  try { plain = new Uint8Array(await crypto.subtle.decrypt({name:"AES-GCM", iv:iv}, key, ct)); }
+  catch(e){ throw new Error("wrongpw"); }
+  if (plain.length < 4) throw new Error("badfile");
+  const hlen = new DataView(plain.buffer, plain.byteOffset, 4).getUint32(0, false);
+  if (4 + hlen > plain.length) throw new Error("badfile");
+  const header = JSON.parse(td.decode(plain.slice(4, 4 + hlen)));
+  const data = plain.slice(4 + hlen);
+  plain.fill(0);
+  return {header:header, data:data};
+}
+
+/* ---- ui ---- */
+function $(id){ return document.getElementById(id); }
+function setStatus(el, kind, msg){
+  el.className = "vstatus" + (kind ? " " + kind : "");
+  el.textContent = msg || "";
+}
+function download(bytes, name, type){
+  const blob = new Blob([bytes], {type: type || "application/octet-stream"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 4000);
+}
+function strength(pw){
+  let s = 0;
+  if (pw.length >= 8) s++; if (pw.length >= 12) s++; if (pw.length >= 16) s++;
+  if (/[a-z]/.test(pw) && /[A-Z]/.test(pw)) s++;
+  if (/\d/.test(pw)) s++; if (/[^A-Za-z0-9]/.test(pw)) s++;
+  return Math.min(s, 6);
+}
+function paintMeter(pw){
+  const s = strength(pw), m = $("vmeterEnc"), t = $("vmeterEncTxt");
+  m.style.width = Math.round(s / 6 * 100) + "%";
+  m.style.background = s <= 2 ? "#c0392b" : s <= 4 ? "#d9930d" : "#2ea05a";
+  t.textContent = pw.length === 0 ? "Use 12+ characters. There is no password recovery."
+    : s <= 2 ? "Weak — longer with mixed characters is safer."
+    : s <= 4 ? "Okay — longer is still better for medical records."
+    : "Strong.";
+}
+
+$("vtabEnc").onclick = function(){ showPane(true); };
+$("vtabDec").onclick = function(){ showPane(false); };
+function showPane(enc){
+  $("vtabEnc").classList.toggle("active", enc);
+  $("vtabDec").classList.toggle("active", !enc);
+  $("vtabEnc").setAttribute("aria-selected", enc);
+  $("vtabDec").setAttribute("aria-selected", !enc);
+  $("vpaneEnc").hidden = !enc; $("vpaneDec").hidden = enc;
+}
+
+document.querySelectorAll("[data-toggle]").forEach(function(btn){
+  btn.onclick = function(){
+    const inp = $(btn.getAttribute("data-toggle"));
+    const show = inp.type === "password";
+    inp.type = show ? "text" : "password";
+    btn.textContent = show ? "Hide" : "Show";
+  };
+});
+
+function wireDrop(dropId, inputId, lineId, btnId, acceptPdf, stId){
+  const drop = $(dropId), input = $(inputId);
+  /* the file input covers the whole drop zone (invisible overlay), so taps
+     hit it directly — no JS click forwarding needed (Safari-safe) */
+  ["dragover","dragenter"].forEach(function(ev){
+    drop.addEventListener(ev, function(e){ e.preventDefault(); drop.classList.add("over"); });
+  });
+  ["dragleave","drop"].forEach(function(ev){
+    drop.addEventListener(ev, function(e){ e.preventDefault(); drop.classList.remove("over"); });
+  });
+  drop.addEventListener("drop", function(e){
+    if (e.dataTransfer.files.length) { input.files = e.dataTransfer.files; picked(); }
+  });
+  input.addEventListener("change", picked);
+  function picked(){
+    const f = input.files[0];
+    const line = $(lineId), btn = $(btnId);
+    if (!f){ line.style.display = "none"; btn.disabled = true; return; }
+    if (acceptPdf && !/\.pdf$/i.test(f.name)){
+      setStatus($(stId), "bad", "Please choose a PDF file.");
+      input.value = ""; line.style.display = "none"; btn.disabled = true; return;
+    }
+    if (f.size > 100 * 1024 * 1024){
+      setStatus($(stId), "bad", "File is over 100 MB — split it first, then encrypt.");
+      input.value = ""; line.style.display = "none"; btn.disabled = true; return;
+    }
+    line.style.display = "block";
+    line.textContent = "📄 " + f.name + " (" + (f.size / 1048576).toFixed(2) + " MB)";
+    setStatus($(stId), "", "");
+    validate();
+  }
+}
+wireDrop("vdropEnc", "vfileEnc", "vfileEncLine", "vbtnEnc", true, "vstEnc");
+wireDrop("vdropDec", "vfileDec", "vfileDecLine", "vbtnDec", false, "vstDec");
+
+$("vpwEnc").addEventListener("input", function(){ paintMeter(this.value); validate(); });
+$("vpwEnc2").addEventListener("input", validate);
+$("vpwDec").addEventListener("input", validate);
+/* autofill does not always fire input events — catch every signal plus a timer */
+["change","keyup"].forEach(function(ev){
+  $("vpwEnc").addEventListener(ev, function(){ paintMeter($("vpwEnc").value); validate(); });
+  $("vpwEnc2").addEventListener(ev, validate);
+  $("vpwDec").addEventListener(ev, validate);
+});
+setInterval(validate, 800);
+
+function validate(){
+  const f1 = $("vfileEnc").files[0], p1 = $("vpwEnc").value, p2 = $("vpwEnc2").value;
+  $("vbtnEnc").disabled = !(f1 && p1.length >= 8 && p1 === p2);
+  const f2 = $("vfileDec").files[0], p3 = $("vpwDec").value;
+  $("vbtnDec").disabled = !(f2 && p3.length > 0);
+}
+
+$("vbtnEnc").onclick = async function(){
+  const f = $("vfileEnc").files[0], pw = $("vpwEnc").value, pw2 = $("vpwEnc2").value;
+  const st = $("vstEnc"), btn = $("vbtnEnc");
+  if(!f){ setStatus(st, "bad", "Choose a PDF file first."); return; }
+  if(pw.length < 8){ setStatus(st, "bad", "Password must be at least 8 characters."); return; }
+  if(pw !== pw2){ setStatus(st, "bad", "The two passwords do not match."); return; }
+  btn.disabled = true; setStatus(st, "work", "Encrypting… keep this page open.");
+  try{
+    const data = new Uint8Array(await f.arrayBuffer());
+    const out = await encryptBytes(data, f.name, f.type, pw);
+    data.fill(0);
+    download(out, f.name.replace(/\.pdf$/i, "") + ".pdf.vault", "application/octet-stream");
+    setStatus(st, "ok", "Done — encrypted file downloaded. Store your password separately; it cannot be recovered.");
+    $("vfileEnc").value = ""; $("vfileEncLine").style.display = "none";
+    $("vpwEnc").value = ""; $("vpwEnc2").value = ""; paintMeter("");
+  }catch(e){ setStatus(st, "bad", "Encryption failed. Try again with a smaller file."); }
+  validate();
+};
+
+$("vbtnDec").onclick = async function(){
+  const f = $("vfileDec").files[0], pw = $("vpwDec").value;
+  const st = $("vstDec"), btn = $("vbtnDec");
+  if(!f){ setStatus(st, "bad", "Choose a .vault file first."); return; }
+  if(!pw){ setStatus(st, "bad", "Enter the password."); return; }
+  btn.disabled = true; setStatus(st, "work", "Decrypting… keep this page open.");
+  try{
+    const buf = await f.arrayBuffer();
+    const r = await decryptBytes(buf, pw);
+    download(r.data, r.header.name || "decrypted.pdf", r.header.type || "application/pdf");
+    setStatus(st, "ok", "Done — original file downloaded.");
+    $("vfileDec").value = ""; $("vfileDecLine").style.display = "none"; $("vpwDec").value = "";
+  }catch(e){
+    setStatus(st, "bad", e && e.message === "wrongpw"
+      ? "Wrong password — or the file is damaged. Try again."
+      : "This file was not made by PDF Vault, or it is damaged.");
+  }
+  validate();
+};
+paintMeter("");
+
+tlog("script loaded, vbtnEnc.onclick=" + (typeof document.getElementById("vbtnEnc").onclick));
+</script></body></html>
