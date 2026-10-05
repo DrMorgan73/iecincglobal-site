@@ -277,6 +277,13 @@ wireDrop("vdropDec", "vfileDec", "vfileDecLine", "vbtnDec", false, "vstDec");
 $("vpwEnc").addEventListener("input", function(){ paintMeter(this.value); validate(); });
 $("vpwEnc2").addEventListener("input", validate);
 $("vpwDec").addEventListener("input", validate);
+/* autofill does not always fire input events — catch every signal plus a timer */
+["change","keyup"].forEach(function(ev){
+  $("vpwEnc").addEventListener(ev, function(){ paintMeter($("vpwEnc").value); validate(); });
+  $("vpwEnc2").addEventListener(ev, validate);
+  $("vpwDec").addEventListener(ev, validate);
+});
+setInterval(validate, 800);
 
 function validate(){
   const f1 = $("vfileEnc").files[0], p1 = $("vpwEnc").value, p2 = $("vpwEnc2").value;
