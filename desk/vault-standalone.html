@@ -264,13 +264,25 @@ $("vbtnEnc").addEventListener("click", async function(){
     const out = await encryptBytes(data, f.name, f.type, pw);
     data.fill(0);
     var dlName = f.name.replace(/\.pdf$/i, "") + ".pdf.vault";
-    download(out, dlName, "application/octet-stream");
-    // Manual fallback link in case auto-download is blocked
+    // Create ONE persistent blob URL for both auto and manual download
     var blob = new Blob([out], {type: "application/octet-stream"});
     var url = URL.createObjectURL(blob);
-    setStatus(st, "ok", "Done — encrypted file ready. Store your password separately; it cannot be recovered.");
-    var linkHtml = '<br><br><a href="' + url + '" download="' + dlName + '" style="display:inline-block;background:#f0b942;color:#1a1405;font-weight:700;padding:14px 24px;border-radius:10px;text-decoration:none;font-size:16px;">⬇ Download ' + dlName + '</a>';
-    st.innerHTML += linkHtml;
+    // Try auto-download
+    try {
+      const a = document.createElement("a");
+      a.href = url; a.download = dlName;
+      document.body.appendChild(a); a.click(); a.remove();
+    } catch(e) {}
+    // Persistent manual download link (DOM-built, no innerHTML injection risk)
+    setStatus(st, "ok", "Done — encrypted file ready (" + Math.round(out.length/1024) + " KB). If the download did not start, use the button below. Store your password separately; it cannot be recovered.");
+    st.appendChild(document.createElement("br"));
+    st.appendChild(document.createElement("br"));
+    var link = document.createElement("a");
+    link.href = url; link.download = dlName;
+    link.textContent = "⬇ Download " + dlName;
+    link.style.cssText = "display:inline-block;background:#f0b942;color:#1a1405;font-weight:700;padding:14px 24px;border-radius:10px;text-decoration:none;font-size:16px;";
+    st.appendChild(link);
+    // Do NOT revoke this URL — it stays valid until page reload
     $("vfileEnc").value = ""; $("vfileEncLine").style.display = "none";
     $("vpwEnc").value = ""; $("vpwEnc2").value = ""; paintMeter("");
   }catch(e){ setStatus(st, "bad", "Encryption failed. Try again with a smaller file."); }
