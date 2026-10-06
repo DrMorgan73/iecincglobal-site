@@ -1,78 +1,42 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PDF Vault — IEC Suite</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/desk/desk.css">
 <style>
-  /* PDF Vault — scoped under #vault-root so nothing leaks into the Suite shell */
-  #vault-root .vtabs{display:flex;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:12px;overflow:hidden;margin-bottom:16px;max-width:560px}
-  #vault-root .vtabs button{flex:1;border:0;background:transparent;padding:14px;font-size:16px;font-weight:600;color:#9fb0c3;cursor:pointer;min-height:48px;font-family:inherit}
-  #vault-root .vtabs button.active{background:#f0b942;color:#1a1405}
-  #vault-root .vcard{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:20px;max-width:560px;color:#e8eef4}
-  #vault-root .vdrop{border:2px dashed rgba(255,255,255,.22);border-radius:12px;padding:32px 16px;text-align:center;color:#9fb0c3;cursor:pointer;min-height:120px;position:relative}
-  #vault-root .vdrop.over{border-color:#2dd4bf;background:rgba(45,212,191,.07)}
-  #vault-root .vdrop strong{display:block;font-size:16px;color:#fff;margin-bottom:6px}
-  #vault-root .vpickwrap{display:block;margin-top:14px}
-  #vault-root .vrealfile{font-size:15px;color:#e8eef4;max-width:100%}
-  #vault-root .vrealfile::file-selector-button{background:#f0b942;color:#1a1405;border:0;border-radius:8px;padding:12px 18px;font-size:15px;font-weight:700;cursor:pointer;margin-right:12px;font-family:inherit}
-  #vault-root .vfileline{margin-top:12px;font-size:14px;background:rgba(255,255,255,.06);border-radius:8px;padding:10px 12px;display:none;color:#e8eef4}
-  #vault-root label.vlbl{display:block;font-size:14px;font-weight:600;margin:16px 0 6px;color:#e8eef4}
-  #vault-root .vpwrow{position:relative}
-  #vault-root .vpwrow input{width:100%;padding:13px 52px 13px 12px;font-size:16px;border:1px solid rgba(255,255,255,.16);border-radius:8px;min-height:48px;background:rgba(0,0,0,.25);color:#fff;font-family:inherit}
-  #vault-root .vpwrow button{position:absolute;right:6px;top:6px;border:0;background:none;color:#2dd4bf;font-weight:600;font-size:14px;padding:10px;cursor:pointer;min-width:44px;min-height:36px;font-family:inherit}
-  #vault-root .vmeter{height:6px;border-radius:3px;background:rgba(255,255,255,.12);margin-top:8px;overflow:hidden}
-  #vault-root .vmeter i{display:block;height:100%;width:0;border-radius:3px;transition:width .3s}
-  #vault-root .vhint{font-size:12px;color:#9fb0c3;margin-top:4px}
-  #vault-root .vgo{width:100%;margin-top:20px;border:0;border-radius:10px;background:#f0b942;color:#1a1405;font-size:17px;font-weight:700;padding:15px;cursor:pointer;min-height:52px;font-family:inherit}
-  #vault-root .vgo:disabled{background:#5b6673;color:#cfd8e0;cursor:not-allowed}
-  #vault-root .vstatus{margin-top:16px;font-size:14px;border-radius:8px;padding:12px;display:none}
-  #vault-root .vstatus.ok{display:block;background:rgba(46,160,90,.15);color:#7ee2a0;border:1px solid rgba(46,160,90,.4)}
-  #vault-root .vstatus.bad{display:block;background:rgba(200,60,60,.15);color:#ff9d9d;border:1px solid rgba(200,60,60,.4)}
-  #vault-root .vstatus.work{display:block;background:rgba(255,255,255,.06);color:#9fb0c3;border:1px solid rgba(255,255,255,.12)}
-  #vault-root .vnotes{margin-top:24px;font-size:13px;color:#9fb0c3;line-height:1.6;max-width:560px}
-  #vault-root .vnotes b{color:#e8eef4}
-  #vault-root .vnotes li{margin-bottom:6px}
+body{font-family:-apple-system,system-ui,sans-serif;background:#0a0a0f;color:#e8e8e8;margin:0;padding:0}
+.topbar{background:#111;border-bottom:1px solid #f0b942;padding:12px 20px;display:flex;align-items:center;gap:12px}
+.topbar a{color:#f0b942;text-decoration:none;font-weight:600}
+.vwrap{max-width:600px;margin:20px auto;padding:0 20px}
+.vwrap h2{color:#f0b942}
+.vtabs{display:flex;gap:8px;margin:16px 0}
+.vtabs button{flex:1;padding:12px;border:1px solid #333;background:#1a1a1a;color:#888;border-radius:8px;cursor:pointer;font-size:16px}
+.vtabs button.on{background:#f0b942;color:#111;border-color:#f0b942;font-weight:700}
+.vdrop{border:2px dashed #444;border-radius:8px;padding:24px;text-align:center;margin:12px 0}
+.vdrop input{display:block;margin:12px auto;font-size:16px}
+.vpwrow{display:flex;gap:8px;margin:8px 0}
+.vpwrow input{flex:1;padding:12px;border-radius:8px;border:1px solid #333;background:#1a1a1a;color:#fff;font-size:16px}
+.vpwrow button{padding:12px 16px;border-radius:8px;border:1px solid #333;background:#1a1a1a;color:#888;cursor:pointer}
+.vmeter{height:6px;background:#1a1a1a;border-radius:3px;margin:8px 0;overflow:hidden}
+.vmeter div{height:100%;width:0;background:#c0392b;transition:width .3s}
+.vbtn{width:100%;padding:16px;border:none;border-radius:8px;background:#f0b942;color:#111;font-weight:700;font-size:18px;cursor:pointer;margin-top:12px}
+.vbtn:disabled{background:#333;color:#666;cursor:not-allowed}
+.vstatus{margin-top:12px;min-height:20px;font-size:15px;line-height:1.5}
+.vstatus.ok{color:#4caf50}
+.vstatus.bad{color:#f44336}
+.vstatus.work{color:#f0b942}
 </style>
 </head>
-<body data-page="vault">
-<div class="orbs" aria-hidden="true"><span class="orb gold"></span><span class="orb teal"></span><span class="orb violet"></span></div>
-
-<div class="shell">
-  <aside class="sidebar">
-    <div class="side-brand">
-      <img class="logo-img" src="/assets/iec-logo.png" alt="IEC Inc.">
-      <div><h1>IEC <span>Suite</span></h1><p>International Empire Consultants, Inc.</p></div>
-    </div>
-    <nav id="nav"></nav>
-    <div class="side-foot">
-      <div class="themes" id="themes">
-        <button data-t="iec" style="--sw1:#f0b942;--sw2:#3b82f6" title="IEC Brand"></button>
-        <button data-t="midnight" style="--sw1:#f0b942;--sw2:#2dd4bf" title="Midnight Gold"></button>
-        <button data-t="amethyst" style="--sw1:#d8b4fe;--sw2:#f0abfc" title="Royal Amethyst"></button>
-        <button data-t="ocean" style="--sw1:#7dd3fc;--sw2:#5eead4" title="Deep Ocean"></button>
-        <button data-t="ember" style="--sw1:#fdba74;--sw2:#fbbf24" title="Sunset Ember"></button>
-        <button data-t="emerald" style="--sw1:#6ee7b7;--sw2:#f0b942" title="Emerald Noir"></button>
-        <button data-t="rose" style="--sw1:#fda4af;--sw2:#f0abfc" title="Rose Noir"></button>
-        <label class="cpick" title="Accent color"><input type="color" id="pick-gold" value="#f0b942"></label>
-        <label class="cpick" title="Highlight color"><input type="color" id="pick-teal" value="#2dd4bf"></label>
-        <button class="creset" id="pick-reset" title="Reset colors">⟲</button>
-      </div>
-      <button class="signout" id="signout"><i>🚪</i>Sign out</button>
-      <a class="public-link" href="/welcome.html">← Public site</a>
-      <div class="clockbox">
-        <div id="clock">--:--</div>
-        <div id="dateline">—</div>
-      </div>
-    </div>
-  </aside>
-
-  <main>
-    <div class="section-head"><h2>🔒 PDF Vault <span style="font-size:11px;color:#666" id="vver">v9</span></h2><span class="hint">Encrypt medical records · nothing ever leaves this page</span></div>
+<body>
+<div class="topbar">
+<a href="/desk/">&larr; IEC Suite Desk</a>
+<span style="color:#666">|</span>
+<span>🔒 PDF Vault</span>
+</div>
+<div class="vwrap">
+<main>
+    <div class="section-head"><h2>🔒 PDF Vault </h2><span class="hint">Encrypt medical records · nothing ever leaves this page</span></div>
 
     <div id="vault-root">
       <div class="vtabs" role="tablist">
@@ -136,8 +100,6 @@
     <footer>© 2026 International Empire Consultants, Inc. · IEC Suite</footer>
   </main>
 </div>
-
-<script src="/desk/desk.js"></script>
 <script>
 "use strict";
 window.addEventListener("error", function(e){
