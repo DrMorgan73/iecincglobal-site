@@ -234,5 +234,36 @@ renderContacts();
 })();
 </script>
 
+
+<script>
+// iPhone contacts — 3,222 contacts synced from iPhone 2026-10-05
+// Fetches JSON and merges into localStorage, dedupes by email+phone
+(function loadIPhone(){
+  fetch('data/iphone-contacts.json')
+    .then(r => r.json())
+    .then(data => {
+      const KEY = 'morgan-desk-contacts';
+      try {
+        const existing = JSON.parse(localStorage.getItem(KEY)) || [];
+        const seen = new Set(existing.map(c => ((c.email||'').toLowerCase() + '|' + (c.phone||'').replace(/\D/g,''))));
+        let added = 0;
+        for (const c of data) {
+          const key = ((c.email||'').toLowerCase() + '|' + (c.phone||'').replace(/\D/g,''));
+          if (!seen.has(key) && (c.email || c.phone)) {
+            existing.push(c);
+            seen.add(key);
+            added++;
+          }
+        }
+        if (added > 0) {
+          localStorage.setItem(KEY, JSON.stringify(existing));
+          console.log('[Rosa] Merged ' + added + ' iPhone contacts. Total: ' + existing.length);
+        }
+      } catch(e) { console.error('[Rosa] iPhone merge failed', e); }
+    })
+    .catch(e => console.error('[Rosa] iPhone contacts fetch failed', e));
+})();
+</script>
+
 </body>
 </html>
