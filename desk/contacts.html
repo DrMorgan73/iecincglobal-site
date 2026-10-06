@@ -236,10 +236,10 @@ renderContacts();
 
 
 <script>
-// iPhone contacts — 3,222 contacts synced from iPhone 2026-10-05
-// Fetches JSON and merges into localStorage, dedupes by email+phone
-(function loadIPhone(){
-  fetch('data/iphone-contacts.json')
+// Unified contacts — 3,435 categorized contacts (ERC + iPhone), deduped 2026-10-05
+// Categories: Personal, Business, Healthcare, Legal, Real Estate, Restaurant/Food, etc.
+(function loadUnified(){
+  fetch('data/contacts-unified.json')
     .then(r => r.json())
     .then(data => {
       const KEY = 'morgan-desk-contacts';
@@ -257,11 +257,11 @@ renderContacts();
         }
         if (added > 0) {
           localStorage.setItem(KEY, JSON.stringify(existing));
-          console.log('[Rosa] Merged ' + added + ' iPhone contacts. Total: ' + existing.length);
+          console.log('[Rosa] Merged ' + added + ' categorized contacts. Total: ' + existing.length);
         }
-      } catch(e) { console.error('[Rosa] iPhone merge failed', e); }
+      } catch(e) { console.error('[Rosa] Unified merge failed', e); }
     })
-    .catch(e => console.error('[Rosa] iPhone contacts fetch failed', e));
+    .catch(e => console.error('[Rosa] Unified contacts fetch failed', e));
 })();
 </script>
 
