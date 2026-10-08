@@ -154,7 +154,7 @@
     <div class="sc-card">
       <div class="sc-main">
         <div class="sc-head">
-          <div><h3 id="sc-greet">Hello, DrMorgan.</h3><p>I walked over with this morning's update:</p></div>
+          <div><h3 id="sc-greet">Hello, DrMorgan.</h3><p id="sc-sub">I walked over with this morning's update:</p></div>
           <button class="sc-voice" id="sc-voice" title="Read the briefing aloud">🔊 Listen</button>
         </div>
         <div id="sc-report"><p style="color:#a7b0c8;font-size:14px">Pulling today's briefing…</p></div>
@@ -180,6 +180,9 @@
   const hr = new Date().getHours();
   const tod = hr < 12 ? 'Good morning' : hr < 18 ? 'Good afternoon' : 'Good evening';
   document.getElementById('sc-greet').textContent = tod + ', DrMorgan.';
+  const daypart = hr < 12 ? "morning" : hr < 18 ? "afternoon" : "evening";
+  const scSub = document.getElementById('sc-sub');
+  if (scSub) scSub.textContent = "I walked over with this " + daypart + "'s update:";
 
   const escS = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const suzyFig = () => document.getElementById('sc-suzy');
