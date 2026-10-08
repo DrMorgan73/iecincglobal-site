@@ -11,8 +11,8 @@
 <header class="site-header">
   <div class="wrap header-inner">
     <a class="brand" href="welcome.html"><img class="brand-logo" src="assets/iec-logo.png" alt="IEC Inc."></a>
-    <button class="menu-btn" aria-label="Open menu" aria-expanded="false">☰</button>
-    <nav class="site-nav">
+    <button class="menu-btn" aria-label="Open menu" aria-expanded="false"><span></span><span></span><span></span></button>
+    <nav class="site-nav" aria-label="Primary">
       <a href="welcome.html">Home</a>
       <a href="about.html">About</a>
       <a href="services.html">Capabilities</a>
@@ -22,7 +22,6 @@
       <a href="international.html">International</a>
       <a href="assets.html">Assets</a>
       <a href="strategic-partner.html" class="active">Strategic Partner</a>
-      </div>
       <a href="project-advisory.html">Advisory</a>
       <a class="nav-suite" href="https://iecincglobal-site.vercel.app/desk/login.html">IEC Suite</a>
       <a class="nav-cta" href="https://wa.me/18578671767?text=Hello%20DrMorgan%2C%20I%27d%20like%20to%20connect%20with%20IEC%20Inc.">Contact IEC</a>
@@ -65,49 +64,61 @@
 <footer class="site-footer">
   <div class="wrap">
     <div class="foot-grid">
-      <div>
+      <div class="foot-brand">
         <div class="brand"><img class="brand-logo foot-logo" src="assets/iec-logo-light.png" alt="IEC Inc."></div>
-        <p style="font-size:14.5px;max-width:38ch;margin-top:8px">International Empire Consultants, Inc. — Boston-based business development and strategic consulting across healthcare, technology, real estate and international markets for more than a decade.</p>
+        <p>International Empire Consultants, Inc. — Boston-based business development and strategic consulting across healthcare, technology, real estate and international markets for more than a decade.</p>
       </div>
-      <nav>
+      <nav class="foot-col" aria-label="Explore">
+        <h4>Explore</h4>
         <a href="welcome.html">Home</a>
-        <a href="about.html">About</a>
         <a href="services.html">Capabilities</a>
-      <a href="os.html">IEC OS</a>
         <a href="healthcare.html">Healthcare</a>
         <a href="real-estate.html">Real Estate</a>
         <a href="international.html">International</a>
         <a href="assets.html">Assets</a>
+      </nav>
+      <nav class="foot-col" aria-label="IEC OS">
+        <h4>IEC OS</h4>
+        <a href="os.html">Overview</a>
+        <a href="os-medical.html">For Medical</a>
+        <a href="os-dental.html">For Dental</a>
+      </nav>
+      <nav class="foot-col" aria-label="Company">
+        <h4>Company</h4>
+        <a href="about.html">About</a>
         <a href="strategic-partner.html">Strategic Partner</a>
         <a href="project-advisory.html">Advisory</a>
         <a href="contact.html">Contact</a>
       </nav>
     </div>
-    <div class="copyright">&copy; 2026 International Empire Consultants, Inc. All rights reserved. &middot; <a href="/desk/login.html">Team sign-in</a></div>
+    <div class="foot-bottom">
+      <div class="copyright">&copy; 2026 International Empire Consultants, Inc. All rights reserved. &middot; <a href="/desk/login.html">Team sign-in</a></div>
+      <button class="to-top" id="toTop" aria-label="Back to top">&#8593;</button>
+    </div>
     <details class="credits">
-      <summary>Photo credits</summary>
-      <ul>
-      <li>hospital-exterior.jpg — <a href="https://www.flickr.com/photos/38881927@N00/5936305758" target="_blank" rel="noopener">DoNotLick (CC BY 2.0)</a></li>
-      <li>medical-team.jpg — <a href="https://www.flickr.com/photos/130928109@N04/29720272855" target="_blank" rel="noopener">agilemktg1 (Public Domain)</a></li>
-      <li>dental-clinic.jpg — <a href="https://www.flickr.com/photos/107816323@N06/11042914615" target="_blank" rel="noopener">sunnyviewdental (CC BY 2.0)</a></li>
-      <li>business-team.jpg — <a href="https://www.flickr.com/photos/154254674@N05/45064629294" target="_blank" rel="noopener">Rawpixel Ltd (CC BY 2.0)</a></li>
-      <li>boston-skyline-2.jpg — <a href="https://www.flickr.com/photos/ekilby/10567300896" target="_blank" rel="noopener">Eric Kilby (CC BY-SA 2.0)</a></li>
-      <li>handshake.jpg — <a href="https://www.flickr.com/photos/121935927@N06/13903385550" target="_blank" rel="noopener">flazingo_photos (CC BY-SA 2.0)</a></li>
-      <li>strategy-whiteboard.jpg — <a href="https://stocksnap.io" target="_blank" rel="noopener">Kristin Hardwick / StockSnap (CC0)</a></li>
-      <li>conference.jpg — <a href="https://www.flickr.com/photos/ctbto/5815579678" target="_blank" rel="noopener">CTBTO (CC BY 2.0)</a></li>
-      <li>clinic-interior.jpg — <a href="https://www.flickr.com/photos/38143481@N00/5064296031" target="_blank" rel="noopener">Gareth.D.Jones (CC BY 2.0)</a></li>
-      <li>datacenter.jpg — <a href="https://www.flickr.com/photos/scobleizer/2340202215" target="_blank" rel="noopener">Robert Scoble (CC BY 2.0)</a></li>
-      <li>developers.jpg — <a href="https://www.flickr.com/photos/infusionsoft/4443187649" target="_blank" rel="noopener">Infusionsoft (CC BY-SA 2.0)</a></li>
-      <li>office-building.jpg — <a href="https://commons.wikimedia.org/wiki/File:GECU_corporate_headquarters_building.jpg" target="_blank" rel="noopener">Dimples915 / Wikimedia Commons (CC BY-SA 3.0)</a></li>
-      <li>hotel-lobby.jpg — <a href="https://commons.wikimedia.org/wiki/File:MGM_Grand_Macau_Hotel_Lobby_Interior.jpg" target="_blank" rel="noopener">WiNG / Wikimedia Commons (CC BY 3.0)</a></li>
-      <li>residential.jpg — <a href="https://www.flickr.com/photos/87913776@N00/4006681320" target="_blank" rel="noopener">futureatlas.com (CC BY 2.0)</a></li>
-      <li>cargo-port.jpg — <a href="https://www.flickr.com/photos/jdnx/3464243881" target="_blank" rel="noopener">jdnx (CC BY 2.0)</a></li>
-      <li>airplane-wing.jpg — <a href="https://commons.wikimedia.org/wiki/File:Airplane_wing_sky_and_clouds.jpg" target="_blank" rel="noopener">Tobias1984 / Wikimedia Commons (CC BY-SA 3.0)</a></li>
-      <li>boardroom.jpg — <a href="https://www.flickr.com/photos/8662416@N02/388854313" target="_blank" rel="noopener">Bludgeoner86 (CC BY 2.0)</a></li>
-      <li>private-jet.jpg — <a href="https://www.flickr.com/photos/string_bass_dave/2858142573" target="_blank" rel="noopener">string_bass_dave (CC BY-SA 2.0)</a></li>
-        <li>Additional site photography: IEC Inc. and public sources.</li>
-      </ul>
-    </details>
+          <summary>Photo credits</summary>
+          <ul>
+          <li>hospital-exterior.jpg — <a href="https://www.flickr.com/photos/38881927@N00/5936305758" target="_blank" rel="noopener">DoNotLick (CC BY 2.0)</a></li>
+          <li>medical-team.jpg — <a href="https://www.flickr.com/photos/130928109@N04/29720272855" target="_blank" rel="noopener">agilemktg1 (Public Domain)</a></li>
+          <li>dental-clinic.jpg — <a href="https://www.flickr.com/photos/107816323@N06/11042914615" target="_blank" rel="noopener">sunnyviewdental (CC BY 2.0)</a></li>
+          <li>business-team.jpg — <a href="https://www.flickr.com/photos/154254674@N05/45064629294" target="_blank" rel="noopener">Rawpixel Ltd (CC BY 2.0)</a></li>
+          <li>boston-skyline-2.jpg — <a href="https://www.flickr.com/photos/ekilby/10567300896" target="_blank" rel="noopener">Eric Kilby (CC BY-SA 2.0)</a></li>
+          <li>handshake.jpg — <a href="https://www.flickr.com/photos/121935927@N06/13903385550" target="_blank" rel="noopener">flazingo_photos (CC BY-SA 2.0)</a></li>
+          <li>strategy-whiteboard.jpg — <a href="https://stocksnap.io" target="_blank" rel="noopener">Kristin Hardwick / StockSnap (CC0)</a></li>
+          <li>conference.jpg — <a href="https://www.flickr.com/photos/ctbto/5815579678" target="_blank" rel="noopener">CTBTO (CC BY 2.0)</a></li>
+          <li>clinic-interior.jpg — <a href="https://www.flickr.com/photos/38143481@N00/5064296031" target="_blank" rel="noopener">Gareth.D.Jones (CC BY 2.0)</a></li>
+          <li>datacenter.jpg — <a href="https://www.flickr.com/photos/scobleizer/2340202215" target="_blank" rel="noopener">Robert Scoble (CC BY 2.0)</a></li>
+          <li>developers.jpg — <a href="https://www.flickr.com/photos/infusionsoft/4443187649" target="_blank" rel="noopener">Infusionsoft (CC BY-SA 2.0)</a></li>
+          <li>office-building.jpg — <a href="https://commons.wikimedia.org/wiki/File:GECU_corporate_headquarters_building.jpg" target="_blank" rel="noopener">Dimples915 / Wikimedia Commons (CC BY-SA 3.0)</a></li>
+          <li>hotel-lobby.jpg — <a href="https://commons.wikimedia.org/wiki/File:MGM_Grand_Macau_Hotel_Lobby_Interior.jpg" target="_blank" rel="noopener">WiNG / Wikimedia Commons (CC BY 3.0)</a></li>
+          <li>residential.jpg — <a href="https://www.flickr.com/photos/87913776@N00/4006681320" target="_blank" rel="noopener">futureatlas.com (CC BY 2.0)</a></li>
+          <li>cargo-port.jpg — <a href="https://www.flickr.com/photos/jdnx/3464243881" target="_blank" rel="noopener">jdnx (CC BY 2.0)</a></li>
+          <li>airplane-wing.jpg — <a href="https://commons.wikimedia.org/wiki/File:Airplane_wing_sky_and_clouds.jpg" target="_blank" rel="noopener">Tobias1984 / Wikimedia Commons (CC BY-SA 3.0)</a></li>
+          <li>boardroom.jpg — <a href="https://www.flickr.com/photos/8662416@N02/388854313" target="_blank" rel="noopener">Bludgeoner86 (CC BY 2.0)</a></li>
+          <li>private-jet.jpg — <a href="https://www.flickr.com/photos/string_bass_dave/2858142573" target="_blank" rel="noopener">string_bass_dave (CC BY-SA 2.0)</a></li>
+            <li>Additional site photography: IEC Inc. and public sources.</li>
+          </ul>
+        </details>
   </div>
 </footer>
 <script src="nav.js" defer></script>

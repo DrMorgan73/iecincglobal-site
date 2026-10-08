@@ -11,8 +11,8 @@
 <header class="site-header">
   <div class="wrap header-inner">
     <a class="brand" href="welcome.html"><img class="brand-logo" src="assets/iec-logo.png" alt="IEC Inc."></a>
-    <button class="menu-btn" aria-label="Open menu" aria-expanded="false">☰</button>
-    <nav class="site-nav">
+    <button class="menu-btn" aria-label="Open menu" aria-expanded="false"><span></span><span></span><span></span></button>
+    <nav class="site-nav" aria-label="Primary">
       <a href="welcome.html">Home</a>
       <a href="about.html">About</a>
       <a href="services.html">Capabilities</a>
@@ -126,25 +126,37 @@
 <footer class="site-footer">
   <div class="wrap">
     <div class="foot-grid">
-      <div>
+      <div class="foot-brand">
         <div class="brand"><img class="brand-logo foot-logo" src="assets/iec-logo-light.png" alt="IEC Inc."></div>
-        <p style="font-size:14.5px;max-width:38ch;margin-top:8px">International Empire Consultants, Inc. — Boston-based business development and strategic consulting across healthcare, technology, real estate and international markets for more than a decade.</p>
+        <p>International Empire Consultants, Inc. — Boston-based business development and strategic consulting across healthcare, technology, real estate and international markets for more than a decade.</p>
       </div>
-      <nav>
+      <nav class="foot-col" aria-label="Explore">
+        <h4>Explore</h4>
         <a href="welcome.html">Home</a>
-        <a href="about.html">About</a>
         <a href="services.html">Capabilities</a>
-        <a href="os.html">IEC OS</a>
         <a href="healthcare.html">Healthcare</a>
         <a href="real-estate.html">Real Estate</a>
         <a href="international.html">International</a>
         <a href="assets.html">Assets</a>
+      </nav>
+      <nav class="foot-col" aria-label="IEC OS">
+        <h4>IEC OS</h4>
+        <a href="os.html">Overview</a>
+        <a href="os-medical.html">For Medical</a>
+        <a href="os-dental.html">For Dental</a>
+      </nav>
+      <nav class="foot-col" aria-label="Company">
+        <h4>Company</h4>
+        <a href="about.html">About</a>
         <a href="strategic-partner.html">Strategic Partner</a>
         <a href="project-advisory.html">Advisory</a>
         <a href="contact.html">Contact</a>
       </nav>
     </div>
-    <div class="copyright">&copy; 2026 International Empire Consultants, Inc. All rights reserved. &middot; <a href="/desk/login.html">Team sign-in</a></div>
+    <div class="foot-bottom">
+      <div class="copyright">&copy; 2026 International Empire Consultants, Inc. All rights reserved. &middot; <a href="/desk/login.html">Team sign-in</a></div>
+      <button class="to-top" id="toTop" aria-label="Back to top">&#8593;</button>
+    </div>
   </div>
 </footer>
 <script src="nav.js" defer></script>
