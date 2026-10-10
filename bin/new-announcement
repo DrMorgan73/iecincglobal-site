@@ -1,0 +1,121 @@
+#!/usr/bin/env bash
+#
+# bin/new-announcement — one-command publishing for the IEC newsroom.
+#
+# Usage: bin/new-announcement "Title" "one-line summary"
+#
+# Generates news/YYYY-MM-DD-<slug>.html from the site template (header/footer
+# are extracted from news.html so nav stays in sync) and prepends a card to
+# the news.html listing. Then: edit the article body, commit, push, deploy.
+#
+# Example:
+#   bin/new-announcement "IEC partners with Boston Pain Clinic" "IEC will provide ..."
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$REPO_ROOT"
+
+if [ $# -lt 2 ]; then
+  echo "Usage: bin/new-announcement \"Title\" \"one-line summary\"" >&2
+  exit 1
+fi
+TITLE="$1"
+SUMMARY="$2"
+
+DATE_ISO="$(date +%F)"
+DATE_LONG="$(date +"%B %-d, %Y")"
+SLUG="$(printf '%s' "$TITLE" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]\+/ /g' | tr -s ' ' | sed 's/^ //;s/ $//;s/ /-/g' | cut -c1-60 | sed 's/-$//')"
+[ -z "$SLUG" ] && SLUG="announcement"
+FILE="news/${DATE_ISO}-${SLUG}.html"
+
+if [ -e "$FILE" ]; then
+  echo "ERROR: $FILE already exists — pick a different title." >&2
+  exit 1
+fi
+
+# Escape for HTML body text.
+esc() { printf '%s' "$1" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g'; }
+TITLE_E="$(esc "$TITLE")"
+SUMMARY_E="$(esc "$SUMMARY")"
+
+# Pull header/footer from news.html (single source of truth), then rewrite
+# root-relative asset/page paths for the news/ subdirectory.
+HEADER="$(awk '/<!-- SITE-HEADER-START -->/{f=1;next}/<!-- SITE-HEADER-END -->/{f=0}f' news.html)"
+FOOTER="$(awk '/<!-- SITE-FOOTER-START -->/{f=1;next}/<!-- SITE-FOOTER-END -->/{f=0}f' news.html)"
+fixpaths() {
+  printf '%s' "$1" | sed \
+    -e 's|href="style.css"|href="../style.css"|g' \
+    -e 's|src="nav.js"|src="../nav.js"|g' \
+    -e 's|src="assets/|src="../assets/|g' \
+    -e 's|href="welcome.html"|href="../welcome.html"|g' \
+    -e 's|href="about.html"|href="../about.html"|g' \
+    -e 's|href="services.html"|href="../services.html"|g' \
+    -e 's|href="os.html"|href="../os.html"|g' \
+    -e 's|href="os-medical.html"|href="../os-medical.html"|g' \
+    -e 's|href="os-dental.html"|href="../os-dental.html"|g' \
+    -e 's|href="healthcare.html"|href="../healthcare.html"|g' \
+    -e 's|href="real-estate.html"|href="../real-estate.html"|g' \
+    -e 's|href="international.html"|href="../international.html"|g' \
+    -e 's|href="assets.html"|href="../assets.html"|g' \
+    -e 's|href="strategic-partner.html"|href="../strategic-partner.html"|g' \
+    -e 's|href="project-advisory.html"|href="../project-advisory.html"|g' \
+    -e 's|href="contact.html"|href="../contact.html"|g' \
+    -e 's|href="news.html"|href="../news.html"|g'
+}
+HEADER_FIXED="$(fixpaths "$HEADER")"
+FOOTER_FIXED="$(fixpaths "$FOOTER")"
+
+mkdir -p news
+cat > "$FILE" <<EOF
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${TITLE_E} | IEC, Inc.</title>
+<meta name="description" content="${SUMMARY_E}">
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+${HEADER_FIXED}
+
+<section class="section">
+  <div class="wrap">
+    <div class="eyebrow">Newsroom</div>
+    <div class="news-date">${DATE_LONG}</div>
+    <h1>${TITLE_E}</h1>
+    <p class="lede">${SUMMARY_E}</p>
+    <div class="article-body">
+      <!-- Replace this comment with the article body paragraphs. -->
+      <p>${SUMMARY_E}</p>
+    </div>
+    <p style="margin-top:28px"><a class="read-link" href="../news.html">&larr; All news</a></p>
+  </div>
+</section>
+
+${FOOTER_FIXED}
+<script src="../nav.js" defer></script>
+</body>
+</html>
+EOF
+
+# Prepend a listing card to news.html (newest first).
+CARD="      <article class=\"card\">
+        <div class=\"eyebrow\">${DATE_LONG}</div>
+        <h3>${TITLE_E}</h3>
+        <p>${SUMMARY_E}</p>
+        <a class=\"read-link\" href=\"${FILE}\">Read the announcement</a>
+      </article>"
+# (listing update done with awk for reliability)
+awk -v card="$CARD" '
+  /<!-- NEWS-ITEMS-START -->/ { print; print card; next }
+  { print }
+' news.html > news.html.tmp && mv news.html.tmp news.html
+
+echo "Created: $FILE"
+echo "Listing updated: news.html"
+echo ""
+echo "Next steps:"
+echo "  1. Edit $FILE — replace the placeholder comment with the article body."
+echo "  2. Review news.html in a browser."
+echo "  3. Commit, push, and redeploy the site."

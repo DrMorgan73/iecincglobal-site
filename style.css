@@ -265,3 +265,9 @@ details.credits a { color: #aeb9c8; }
   .foot-grid { grid-template-columns: 1fr 1fr; gap: 26px; }
   .foot-brand { grid-column: 1 / -1; }
 }
+
+/* Newsroom */
+.read-link { display: inline-block; margin-top: 14px; font-weight: 700; color: var(--navy); text-decoration: none; border-bottom: 2px solid var(--gold); padding-bottom: 2px; font-size: 16.5px; }
+.read-link:hover { color: #a37c28; }
+.news-date { color: var(--muted); font-size: 15px; margin-bottom: 6px; }
+.article-body p { font-size: 18px; line-height: 1.7; color: var(--ink, #1c2430); margin-bottom: 1.1em; max-width: 72ch; }
