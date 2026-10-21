@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RemoVia Setup &amp; TV Pairing Guide | IEC Inc.</title>
+<meta name="description" content="Step-by-step guide to set up RemoVia, the universal TV remote from IEC, Inc. — install the bridge, connect securely with Tailscale, add and pair Roku, Samsung, Google TV, Android TV and Fire TV sets.">
+<link rel="stylesheet" href="style.css">
+<style>
+  ol.guide-steps { margin: 14px 0 14px 22px; color: var(--ink); }
+  ol.guide-steps li { margin-bottom: 10px; max-width: 72ch; }
+  ol.guide-steps li p { color: var(--muted); margin-top: 4px; }
+  .guide-page p { color: var(--muted); max-width: 72ch; margin-bottom: 14px; }
+  .guide-page p strong, .guide-page li strong { color: var(--ink); }
+  code.cmd { background: var(--bg-soft); border: 1px solid var(--line); border-radius: 6px; padding: 1px 7px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 15px; color: var(--navy); white-space: nowrap; }
+  .cmd-block { background: var(--navy); color: #fff; border-radius: 10px; padding: 14px 18px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 15.5px; margin: 12px 0 18px; overflow-x: auto; max-width: 72ch; }
+  .note { border-left: 4px solid var(--gold); background: var(--bg-soft); border-radius: 0 10px 10px 0; padding: 16px 20px; margin: 20px 0; max-width: 74ch; }
+  .note strong { color: var(--navy); }
+  .note p { margin-bottom: 8px; }
+  .note p:last-child { margin-bottom: 0; }
+  table.guide-table { border-collapse: collapse; width: 100%; margin: 18px 0; font-size: 15.5px; }
+  table.guide-table th, table.guide-table td { border: 1px solid var(--line); padding: 11px 14px; text-align: left; vertical-align: top; }
+  table.guide-table th { background: var(--navy); color: #fff; font-weight: 700; }
+  table.guide-table tr:nth-child(even) td { background: var(--bg-soft); }
+  table.guide-table td:first-child { font-weight: 600; color: var(--navy); white-space: nowrap; }
+  .brand-block { margin-top: 30px; }
+  .brand-block h3 { border-bottom: 2px solid var(--gold-soft); padding-bottom: 6px; }
+  @media (max-width: 640px) { table.guide-table td:first-child { white-space: normal; } }
+</style>
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a class="brand" href="welcome.html"><img class="brand-logo" src="assets/iec-logo.png" alt="IEC Inc."></a>
+    <button class="menu-btn" aria-label="Open menu" aria-expanded="false"><span></span><span></span><span></span></button>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="welcome.html">Home</a>
+      <a href="about.html">About</a>
+      <a href="services.html">Capabilities</a>
+      <a href="os.html">IEC OS</a>
+      <a href="healthcare.html">Healthcare</a>
+      <a href="real-estate.html">Real Estate</a>
+      <a href="international.html">International</a>
+      <a href="assets.html" class="active">Assets</a>
+      <a href="strategic-partner.html">Strategic Partner</a>
+      <a href="project-advisory.html">Advisory</a>
+      <a href="news.html">News</a>
+      <a class="nav-suite" href="https://iecincglobal-site.vercel.app/desk/login.html">IEC Suite</a>
+      <a class="nav-cta" href="https://wa.me/18578671767?text=Hello%20DrMorgan%2C%20I%27d%20like%20to%20connect%20with%20IEC%20Inc.">Contact IEC</a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="eyebrow">RemoVia &middot; An IEC, Inc. product</div>
+    <h1>Set up RemoVia. Pair any TV.</h1>
+    <p class="lede">RemoVia is one remote on your phone for every smart TV in the house &mdash; Roku, Samsung, Google TV, Android TV and Fire TV. This guide takes you from download to a working remote, one step at a time. Anyone can follow it.</p>
+    <a class="btn" href="https://removia.iecincglobal.com" target="_blank" rel="noopener">Open RemoVia &#8599;</a>
+    <a class="btn ghost" href="assets/removia-pairing-guide.pdf" download>Download the guide (PDF)</a>
+  </div>
+</section>
+
+<div class="guide-page">
+
+<section class="section">
+  <div class="wrap">
+    <span class="secnum">Step 1</span>
+    <h2>What you need</h2>
+    <ul class="check">
+      <li><strong>A Mac on the same Wi-Fi as your TVs.</strong> A small program called the <strong>bridge</strong> runs on the Mac. It finds your TVs and talks to each one in its own language. The Mac needs Python 3.11 or newer &mdash; the bridge sets up the rest by itself on first run.</li>
+      <li><strong>Your phone.</strong> The remote itself is one web page &mdash; nothing to install from an app store.</li>
+      <li><strong>The RemoVia bridge folder.</strong> Download the ZIP and keep the folder it makes (it is called <code class="cmd">removia-main</code>).</li>
+      <li><strong>A free Tailscale account.</strong> Tailscale is the private, secure path between your phone and the Mac, so the remote works from anywhere. Step 3 sets it up.</li>
+      <li><strong>Each TV&rsquo;s own remote, once.</strong> Pairing is approved on the TV screen, one time per TV.</li>
+    </ul>
+    <p><strong>TVs RemoVia works with:</strong> Roku &middot; Samsung &middot; Google TV and Android TV sets (Sony, TCL, Hisense, Philips, Xiaomi, NVIDIA Shield) &middot; Amazon Fire TV. <strong>LG (webOS)</strong> sets are found and saved, but cannot be controlled yet.</p>
+  </div>
+</section>
+
+<section class="section soft">
+  <div class="wrap">
+    <span class="secnum">Step 2</span>
+    <h2>Install and start the bridge</h2>
+    <ol class="guide-steps">
+      <li>Download the RemoVia bridge ZIP and unzip it. You get a folder named <code class="cmd">removia-main</code> in your Downloads.</li>
+      <li>Open <strong>Terminal</strong> on the Mac.</li>
+      <li>Go to the folder:
+        <div class="cmd-block">cd ~/Downloads/removia-main</div>
+      </li>
+      <li>Start the bridge:
+        <div class="cmd-block">./start.sh</div>
+        <p>The first run builds its own Python environment &mdash; it takes a few minutes. Later runs start at once.</p>
+      </li>
+      <li><strong>Keep that Terminal window open.</strong> The bridge runs while the window stays open.</li>
+      <li>On the first start only, the bridge prints your <strong>bridge access token</strong>. Save it somewhere safe. You type it into the remote page once per device. If you lose it, it is stored on the Mac in <code class="cmd">~/.tv-remote/config.json</code>.</li>
+      <li>macOS may ask whether to allow Python to accept incoming connections. Click <strong>Allow</strong>.</li>
+    </ol>
+    <div class="note">
+      <p><strong>Protect the token.</strong> The access token is a key to your TVs. Never share the token, and never share the <code class="cmd">~/.tv-remote/config.json</code> file &mdash; it holds the token. Anyone who has the token and a path to your bridge can control your TVs.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <span class="secnum">Step 3</span>
+    <h2>Connect the page securely (Tailscale)</h2>
+    <p>The hosted page at <strong>removia.iecincglobal.com</strong> is a secure (https) page. Browsers block a secure page from calling a plain <code class="cmd">http://</code> address, so the page cannot reach the bridge on your home network directly. Tailscale fixes this: it gives the bridge a secure https address that only your own devices can reach.</p>
+    <ol class="guide-steps">
+      <li>Install <strong>Tailscale</strong> on the Mac and on your phone. Sign in with the <strong>same account</strong> on both &mdash; that is what links them.</li>
+      <li>Open the Tailscale admin console and enable HTTPS: go to <code class="cmd">console.tailscale.com/admin/dns</code>, find <strong>HTTPS Certificates</strong>, and click <strong>Enable HTTPS</strong>.</li>
+      <li>On the Mac, in Terminal, run:
+        <div class="cmd-block">tailscale serve --bg 8765</div>
+      </li>
+      <li>The command prints your bridge&rsquo;s secure address. It looks like <code class="cmd">https://your-mac.tail1234.ts.net</code>. Copy it.</li>
+      <li>On your phone, open <a href="https://removia.iecincglobal.com" target="_blank" rel="noopener"><strong>removia.iecincglobal.com</strong></a> and tap the <strong>gear</strong> (Settings).</li>
+      <li>Set <strong>Bridge address</strong> to the ts.net address from step 4. Set <strong>Token</strong> to your bridge access token. Tap <strong>Save</strong>, then <strong>Test</strong>.</li>
+      <li>Success is a <strong>green &ldquo;Connected&rdquo; dot</strong> at the top of the page. Your remote now works from anywhere &mdash; home or away.</li>
+    </ol>
+    <div class="note">
+      <p><strong>Nothing is exposed to the public internet.</strong> Tailscale is a private network made only of your signed-in devices. No router changes and no port-forwarding are needed &mdash; and you should never set up port-forwarding for the bridge.</p>
+      <p><strong>At-home shortcut:</strong> on your home Wi-Fi, the bridge also serves the same remote page itself at <code class="cmd">http://&lt;your-mac-ip&gt;:8765</code> &mdash; a handy fallback. The Mac&rsquo;s home IP is in System Settings &rarr; Wi-Fi &rarr; Details.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section soft">
+  <div class="wrap">
+    <span class="secnum">Step 4</span>
+    <h2>Add your TV &mdash; and find its IP address</h2>
+    <ol class="guide-steps">
+      <li>In RemoVia, tap <strong>+ TV</strong>.</li>
+      <li>Tap <strong>Scan the network</strong>. When your TV appears, tap <strong>Add</strong> and give it a room name (for example, &ldquo;BedRoom&rdquo;).</li>
+      <li>If the scan misses a TV, add it by hand: pick the <strong>brand</strong>, type the TV&rsquo;s <strong>IP address</strong>, name it, and tap <strong>Add this TV</strong>.</li>
+    </ol>
+    <p><strong>How to find a TV&rsquo;s IP address</strong> (use the TV&rsquo;s own remote):</p>
+    <ul class="check">
+      <li><strong>Samsung:</strong> Settings &rarr; General &rarr; Network &rarr; Network Status &rarr; IP Settings. Read the <strong>IP Address</strong> line.</li>
+      <li><strong>Roku:</strong> Settings &rarr; Network &rarr; About. Read the <strong>IP address</strong>.</li>
+    </ul>
+    <div class="note">
+      <p><strong>Enter the TV&rsquo;s own IP &mdash; never the Gateway.</strong> The Samsung IP Settings screen shows both lines side by side: <strong>IP Address</strong> is the TV; <strong>Gateway</strong> is your router. On most home networks the gateway is <code class="cmd">10.0.0.1</code>. If you enter the gateway address, the bridge knocks on the router&rsquo;s door and pairing fails with <strong>ConnectionRefusedError</strong>. Always use the IP Address line.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <span class="secnum">Step 5</span>
+    <h2>Pair by brand</h2>
+    <p>Pairing is a one-time approval on the TV itself. After that, the TV remembers RemoVia.</p>
+
+    <div class="brand-block">
+      <h3>Roku &mdash; no pairing, one setting</h3>
+      <p>Roku needs no pairing. It works right away &mdash; as long as control by apps is allowed. With the TV&rsquo;s own remote:</p>
+      <ol class="guide-steps">
+        <li>Open <strong>Settings &rarr; System &rarr; Advanced system settings</strong>.</li>
+        <li>Open <strong>Control by mobile apps &rarr; Network access</strong>.</li>
+        <li>Set it to <strong>Permissive</strong>.</li>
+      </ol>
+      <p>If this is left on <strong>Limited</strong>, every button you press answers with <strong>error (403)</strong>.</p>
+    </div>
+
+    <div class="brand-block">
+      <h3>Samsung &mdash; accept once on the TV</h3>
+      <ol class="guide-steps">
+        <li>Turn the TV fully on and put it on a normal screen. <strong>Close all menus</strong> &mdash; the pairing prompt cannot appear while Settings is open.</li>
+        <li>In RemoVia, select the TV and tap <strong>Start pairing</strong>.</li>
+        <li>A prompt appears on the TV: <strong>&ldquo;RemoVia &mdash; Your permission is required to connect your device to TV.&rdquo;</strong> Press <strong>Allow</strong> with the TV&rsquo;s own remote.</li>
+        <li>Tap <strong>Done</strong> on the phone. That is it &mdash; one time only.</li>
+      </ol>
+      <p>If no prompt appears: on the TV, open <strong>Settings &rarr; General &rarr; External Device Manager &rarr; Device Connect Manager</strong> and set <strong>Access Notification</strong> to <strong>Always On</strong>. Also make sure network remote is on: <strong>Settings &rarr; General &rarr; Network &rarr; Expert Settings &rarr; Power with Mobile</strong>. Menu names vary by model.</p>
+    </div>
+
+    <div class="brand-block">
+      <h3>Google TV / Android TV &mdash; type the PIN</h3>
+      <p>For Sony, TCL, Hisense, Philips, Xiaomi and NVIDIA Shield sets:</p>
+      <ol class="guide-steps">
+        <li>In RemoVia, select the TV and tap <strong>Start pairing</strong>.</li>
+        <li>The TV shows a <strong>6-digit PIN</strong>.</li>
+        <li>Type the PIN in RemoVia and tap <strong>Pair with this PIN</strong>.</li>
+      </ol>
+    </div>
+
+    <div class="brand-block">
+      <h3>Fire TV &mdash; allow the ADB prompt</h3>
+      <ol class="guide-steps">
+        <li>First, on the TV: <strong>Settings &rarr; My Fire TV &rarr; Developer Options &rarr; ADB Debugging &rarr; On</strong>.</li>
+        <li>In RemoVia, select the TV and tap <strong>Start pairing</strong>.</li>
+        <li>Allow the prompt on the TV. Tick <strong>&ldquo;Always allow&rdquo;</strong> if it is shown.</li>
+        <li>Tap <strong>Done</strong> on the phone.</li>
+      </ol>
+    </div>
+
+    <div class="brand-block">
+      <h3>LG (webOS)</h3>
+      <p>RemoVia finds and saves LG sets, but cannot control them yet &mdash; there is no pairing step. Control for webOS is planned, not promised.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section soft">
+  <div class="wrap">
+    <span class="secnum">Step 6</span>
+    <h2>Troubleshooting</h2>
+    <table class="guide-table">
+      <tr><th>What you see</th><th>What it means</th><th>Fix</th></tr>
+      <tr>
+        <td>Error (403) &mdash; Roku</td>
+        <td>The Roku is set to Limited, so it refuses app commands.</td>
+        <td>On the TV: Settings &rarr; System &rarr; Advanced system settings &rarr; Control by mobile apps &rarr; Network access = <strong>Permissive</strong>.</td>
+      </tr>
+      <tr>
+        <td>ConnectionRefusedError</td>
+        <td>The bridge knocked at an address where nothing answers &mdash; the wrong IP (often the gateway, 10.0.0.1) or the TV is off.</td>
+        <td>Read the TV&rsquo;s real IP Address in its Network settings (Step 4) and re-add the TV with that address. Make sure the TV is on.</td>
+      </tr>
+      <tr>
+        <td>&ldquo;The TV did not accept in time, or it is off&rdquo;</td>
+        <td>The pairing prompt was not approved in time.</td>
+        <td>TV fully on, all menus closed. Tap Start pairing again and press <strong>Allow</strong> on the TV promptly.</td>
+      </tr>
+      <tr>
+        <td>&ldquo;Stopped answering&rdquo;</td>
+        <td>The connection to the TV dropped.</td>
+        <td>Restart the bridge: in its Terminal window press <strong>Ctrl+C</strong>, then run <code class="cmd">./start.sh</code> again.</td>
+      </tr>
+      <tr>
+        <td>&ldquo;Address already in use&rdquo;</td>
+        <td>The old bridge is still running, so the new one cannot start.</td>
+        <td>Stop the old one first: Ctrl+C in its Terminal window, or run <code class="cmd">kill $(lsof -ti :8765)</code>. Then <code class="cmd">./start.sh</code>.</td>
+      </tr>
+      <tr>
+        <td>Red dot &mdash; page cannot reach the bridge</td>
+        <td>Tailscale or the bridge is not up.</td>
+        <td>Check Tailscale is on and signed in with the same account on phone and Mac. Check the bridge Terminal window is open. Check the bridge address in Settings matches the address <code class="cmd">tailscale serve</code> printed.</td>
+      </tr>
+      <tr>
+        <td>Phone cannot connect at home</td>
+        <td>The macOS firewall may be blocking the bridge.</td>
+        <td>System Settings &rarr; Network &rarr; Firewall &rarr; Options &rarr; allow incoming connections for Python.</td>
+      </tr>
+    </table>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <span class="secnum">Step 7</span>
+    <h2>Safety notes</h2>
+    <ul class="check">
+      <li><strong>The bridge access token is a key to your TVs.</strong> Never post it, share it, or share the <code class="cmd">~/.tv-remote/config.json</code> file that holds it.</li>
+      <li><strong>Tailscale keeps everything private.</strong> Only devices signed in to your account can reach your bridge. Nothing in your house is exposed to the public internet, and no router port-forwarding is needed &mdash; never set up port-forwarding for the bridge.</li>
+      <li><strong>Pairing prompts appear on the TV itself.</strong> Press Allow only for a device you recognise. The prompt names the app &mdash; RemoVia.</li>
+      <li><strong>The bridge Mac is the door.</strong> Keep it on your home Wi-Fi and keep its Terminal window open while you use the remote.</li>
+      <li><strong>One approval per TV.</strong> Pairing happens once per TV. If you ever want to revoke a device, remove it in the TV&rsquo;s own device settings.</li>
+    </ul>
+    <div class="band">
+      <h2>Prefer paper? Take the guide with you.</h2>
+      <p>The full guide is also a one-file PDF &mdash; the same steps, ready to print or share.</p>
+      <a class="btn" href="assets/removia-pairing-guide.pdf" download>Download the guide (PDF)</a>
+      <a class="btn ghost" href="https://removia.iecincglobal.com" target="_blank" rel="noopener">Open RemoVia &#8599;</a>
+    </div>
+  </div>
+</section>
+
+</div>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="asset-buttons-label">Our technology</div>
+        <div class="asset-buttons">
+          <a href="https://getmedexec.com" target="_blank" rel="noopener" title="MEDEXEC"><img src="assets/logo-medexec.png" alt="MEDEXEC"></a>
+          <a href="https://www.getcuravia.com" target="_blank" rel="noopener" title="CURAVIA"><img src="assets/logo-curavia.webp" alt="CURAVIA"></a>
+          <a href="https://removia.iecincglobal.com" target="_blank" rel="noopener" title="RemoVia"><img src="assets/logo-removia.png" alt="RemoVia"></a>
+          <a href="https://inssnapp.com" target="_blank" rel="noopener" title="INSSNAPP"><img src="assets/logo-inssnapp.png" alt="INSSNAPP"></a>
+          <a href="assets.html" title="NEXUS"><img src="assets/logo-nexus.png" alt="NEXUS"></a>
+          <a href="https://booklens-delta.vercel.app" target="_blank" rel="noopener" title="BookLens"><img src="assets/logo-booklens.png" alt="BookLens"></a>
+        </div>
+    <div class="foot-grid">
+      <div class="foot-brand">
+        <div class="brand"><img class="brand-logo foot-logo" src="assets/iec-logo-light.png" alt="IEC Inc."></div>
+        <p>International Empire Consultants, Inc. — Boston-based business development and strategic consulting across healthcare, technology, real estate and international markets for more than a decade.</p>
+      </div>
+      <nav class="foot-col" aria-label="Explore">
+        <h4>Explore</h4>
+        <a href="welcome.html">Home</a>
+        <a href="services.html">Capabilities</a>
+        <a href="healthcare.html">Healthcare</a>
+        <a href="real-estate.html">Real Estate</a>
+        <a href="international.html">International</a>
+        <a href="assets.html">Assets</a>
+        <a href="news.html">News</a>
+      </nav>
+      <nav class="foot-col" aria-label="IEC OS">
+        <h4>IEC OS</h4>
+        <a href="os.html">Overview</a>
+        <a href="os-medical.html">For Medical</a>
+        <a href="os-dental.html">For Dental</a>
+      </nav>
+      <nav class="foot-col" aria-label="Company">
+        <h4>Company</h4>
+        <a href="about.html">About</a>
+        <a href="strategic-partner.html">Strategic Partner</a>
+        <a href="project-advisory.html">Advisory</a>
+        <a href="contact.html">Contact</a>
+      </nav>
+    </div>
+    <div class="foot-bottom">
+      <div class="copyright">&copy; 2026 International Empire Consultants, Inc. All rights reserved. &middot; <a href="/desk/login.html">Team sign-in</a></div>
+      <button class="to-top" id="toTop" aria-label="Back to top">&#8593;</button>
+    </div>
+  </div>
+</footer>
+<script src="nav.js" defer></script>
+</body>
+</html>
