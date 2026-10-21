@@ -4,20 +4,25 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>RemoVia Setup &amp; TV Pairing Guide | IEC Inc.</title>
-<meta name="description" content="Step-by-step guide to set up RemoVia, the universal TV remote from IEC, Inc. — install the bridge, connect securely with Tailscale, add and pair Roku, Samsung, Google TV, Android TV and Fire TV sets.">
+<meta name="description" content="A plain-language, step-by-step guide to set up RemoVia, the universal TV remote from IEC, Inc. Written for beginners: exactly what to press, what you will see, and what to do if it doesn't work.">
 <link rel="stylesheet" href="style.css">
 <style>
-  ol.guide-steps { margin: 14px 0 14px 22px; color: var(--ink); }
-  ol.guide-steps li { margin-bottom: 10px; max-width: 72ch; }
-  ol.guide-steps li p { color: var(--muted); margin-top: 4px; }
-  .guide-page p { color: var(--muted); max-width: 72ch; margin-bottom: 14px; }
+  .guide-page p { color: var(--muted); max-width: 74ch; margin-bottom: 12px; }
   .guide-page p strong, .guide-page li strong { color: var(--ink); }
+  ol.guide-steps { margin: 14px 0 14px 22px; color: var(--ink); }
+  ol.guide-steps li { margin-bottom: 16px; max-width: 74ch; }
+  ol.guide-steps li p { margin: 4px 0 0; }
+  .lbl { font-weight: 800; color: var(--navy); }
+  .lbl-see { font-weight: 800; color: #0a7a71; }
+  .lbl-not { font-weight: 800; color: #a33b2e; }
   code.cmd { background: var(--bg-soft); border: 1px solid var(--line); border-radius: 6px; padding: 1px 7px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 15px; color: var(--navy); white-space: nowrap; }
-  .cmd-block { background: var(--navy); color: #fff; border-radius: 10px; padding: 14px 18px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 15.5px; margin: 12px 0 18px; overflow-x: auto; max-width: 72ch; }
-  .note { border-left: 4px solid var(--gold); background: var(--bg-soft); border-radius: 0 10px 10px 0; padding: 16px 20px; margin: 20px 0; max-width: 74ch; }
+  .cmd-block { background: var(--navy); color: #fff; border-radius: 10px; padding: 14px 18px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 15.5px; margin: 10px 0 6px; overflow-x: auto; max-width: 74ch; }
+  .note { border-left: 4px solid var(--gold); background: var(--bg-soft); border-radius: 0 10px 10px 0; padding: 16px 20px; margin: 20px 0; max-width: 76ch; }
   .note strong { color: var(--navy); }
   .note p { margin-bottom: 8px; }
   .note p:last-child { margin-bottom: 0; }
+  .checkpoint { border: 1.5px solid #0a7a71; background: #eefaf8; border-radius: 10px; padding: 14px 18px; margin: 22px 0 4px; max-width: 76ch; color: var(--ink); }
+  .checkpoint strong { color: #0a7a71; }
   table.guide-table { border-collapse: collapse; width: 100%; margin: 18px 0; font-size: 15.5px; }
   table.guide-table th, table.guide-table td { border: 1px solid var(--line); padding: 11px 14px; text-align: left; vertical-align: top; }
   table.guide-table th { background: var(--navy); color: #fff; font-weight: 700; }
@@ -25,6 +30,10 @@
   table.guide-table td:first-child { font-weight: 600; color: var(--navy); white-space: nowrap; }
   .brand-block { margin-top: 30px; }
   .brand-block h3 { border-bottom: 2px solid var(--gold-soft); padding-bottom: 6px; }
+  .words { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-top: 20px; }
+  .words div { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; }
+  .words strong { display: block; color: var(--navy); font-size: 17px; margin-bottom: 4px; }
+  .words span { color: var(--muted); font-size: 15.5px; line-height: 1.55; display: block; }
   @media (max-width: 640px) { table.guide-table td:first-child { white-space: normal; } }
 </style>
 </head>
@@ -55,7 +64,7 @@
   <div class="wrap">
     <div class="eyebrow">RemoVia &middot; An IEC, Inc. product</div>
     <h1>Set up RemoVia. Pair any TV.</h1>
-    <p class="lede">RemoVia is one remote on your phone for every smart TV in the house &mdash; Roku, Samsung, Google TV, Android TV and Fire TV. This guide takes you from download to a working remote, one step at a time. Anyone can follow it.</p>
+    <p class="lede">RemoVia is one remote on your phone for every smart TV in the house &mdash; Roku, Samsung, Google TV, Android TV and Fire TV. This guide is written for beginners: it tells you <strong>exactly what to press</strong>, <strong>what you will see when it works</strong>, and <strong>what to do if it doesn&rsquo;t</strong>. Nothing here can break your TV or your computer.</p>
     <a class="btn" href="https://removia.iecincglobal.com" target="_blank" rel="noopener">Open RemoVia &#8599;</a>
     <a class="btn ghost" href="assets/removia-pairing-guide.pdf" download>Download the guide (PDF)</a>
   </div>
@@ -65,200 +74,318 @@
 
 <section class="section">
   <div class="wrap">
-    <span class="secnum">Step 1</span>
+    <span class="secnum">Before you start</span>
+    <h2>Five words we will use</h2>
+    <p>Every technical word in this guide is explained here, the first time it appears. Keep this part in mind and the rest is easy.</p>
+    <div class="words">
+      <div><strong>Bridge</strong><span>A small program that runs on your Mac and talks to your TVs for you. Your phone tells the bridge; the bridge tells the TV.</span></div>
+      <div><strong>Terminal</strong><span>A window on the Mac where you type commands. Don&rsquo;t worry &mdash; we tell you exactly what to type, word for word.</span></div>
+      <div><strong>Token</strong><span>A long secret password that your bridge makes for you. It proves the phone asking is yours.</span></div>
+      <div><strong>IP address</strong><span>Your TV&rsquo;s number on your home Wi-Fi &mdash; like a house number on a street. We show you where the TV displays its own number.</span></div>
+      <div><strong>Tailscale</strong><span>A free app that builds a private, safe connection between your phone and your Mac, so the remote works from anywhere.</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="section soft">
+  <div class="wrap">
+    <span class="secnum">Part 1</span>
     <h2>What you need</h2>
     <ul class="check">
-      <li><strong>A Mac on the same Wi-Fi as your TVs.</strong> A small program called the <strong>bridge</strong> runs on the Mac. It finds your TVs and talks to each one in its own language. The Mac needs Python 3.11 or newer &mdash; the bridge sets up the rest by itself on first run.</li>
-      <li><strong>Your phone.</strong> The remote itself is one web page &mdash; nothing to install from an app store.</li>
-      <li><strong>The RemoVia bridge folder.</strong> Download the ZIP and keep the folder it makes (it is called <code class="cmd">removia-main</code>).</li>
-      <li><strong>A free Tailscale account.</strong> Tailscale is the private, secure path between your phone and the Mac, so the remote works from anywhere. Step 3 sets it up.</li>
-      <li><strong>Each TV&rsquo;s own remote, once.</strong> Pairing is approved on the TV screen, one time per TV.</li>
+      <li><strong>A Mac</strong> on the same Wi-Fi as your TVs. The bridge runs on it. (The Mac needs Python 3.11 or newer &mdash; the bridge sets up everything else by itself the first time it runs.)</li>
+      <li><strong>Your phone.</strong> The remote is one web page &mdash; nothing to install from an app store for the remote itself.</li>
+      <li><strong>The RemoVia bridge ZIP file</strong> (the download). Unzipping it makes a folder called <code class="cmd">removia-main</code>.</li>
+      <li><strong>A free Tailscale account.</strong> You create it by signing in during Part 4 &mdash; no separate sign-up trip.</li>
+      <li><strong>Each TV&rsquo;s own remote control.</strong> Pairing is approved on the TV screen, once per TV.</li>
     </ul>
     <p><strong>TVs RemoVia works with:</strong> Roku &middot; Samsung &middot; Google TV and Android TV sets (Sony, TCL, Hisense, Philips, Xiaomi, NVIDIA Shield) &middot; Amazon Fire TV. <strong>LG (webOS)</strong> sets are found and saved, but cannot be controlled yet.</p>
+    <div class="checkpoint"><strong>&#10003; You should now have:</strong> the unzipped <code class="cmd">removia-main</code> folder in your Downloads, your phone in hand, and each TV&rsquo;s own remote nearby.</div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <span class="secnum">Part 2</span>
+    <h2>Open Terminal (the only &ldquo;computer part&rdquo;)</h2>
+    <p>Terminal sounds technical. It is just a window where you type. You will type a handful of short lines in this whole guide, and we give you every one of them exactly.</p>
+    <ol class="guide-steps">
+      <li>
+        <span class="lbl">Press:</span> On the Mac, click the <strong>magnifying glass</strong> at the top-right of the screen (that&rsquo;s called Spotlight). Type the word <strong>Terminal</strong>. Press <strong>Enter</strong>.
+        <p><span class="lbl-see">You should see:</span> a plain window opens with a few lines of text and a blinking cursor. That window is Terminal. You did it.</p>
+      </li>
+      <li>
+        <span class="lbl">Know this:</span> you can <strong>copy and paste</strong> every command in this guide instead of typing &mdash; copy with <strong>&#8984;C</strong>, paste into Terminal with <strong>&#8984;V</strong>, then press <strong>Enter</strong> to run it.
+      </li>
+      <li>
+        <span class="lbl">Know this too:</span> <strong>nothing you type here can break your TV or your computer.</strong> The worst that can happen is an error message &mdash; nothing changes, and you just try again.
+      </li>
+    </ol>
+    <div class="checkpoint"><strong>&#10003; You should now see:</strong> a Terminal window open on your Mac, waiting for you to type.</div>
   </div>
 </section>
 
 <section class="section soft">
   <div class="wrap">
-    <span class="secnum">Step 2</span>
-    <h2>Install and start the bridge</h2>
+    <span class="secnum">Part 3</span>
+    <h2>Start the bridge &mdash; and meet your token</h2>
     <ol class="guide-steps">
-      <li>Download the RemoVia bridge ZIP and unzip it. You get a folder named <code class="cmd">removia-main</code> in your Downloads.</li>
-      <li>Open <strong>Terminal</strong> on the Mac.</li>
-      <li>Go to the folder:
+      <li>
+        <span class="lbl">Type this exactly, then press Enter:</span>
         <div class="cmd-block">cd ~/Downloads/removia-main</div>
+        <p><span class="lbl-see">You should see:</span> the text at the left of the window now ends with <code class="cmd">removia-main</code>. That means you are inside the folder.</p>
+        <p><span class="lbl-not">If not:</span> if it says &ldquo;no such file or folder&rdquo;, the ZIP was not unzipped yet. Go to Downloads, double-click the ZIP, then try the line again.</p>
       </li>
-      <li>Start the bridge:
+      <li>
+        <span class="lbl">Type this exactly, then press Enter:</span>
         <div class="cmd-block">./start.sh</div>
-        <p>The first run builds its own Python environment &mdash; it takes a few minutes. Later runs start at once.</p>
+        <p><span class="lbl-see">You should see:</span> the <strong>first time</strong>, several minutes of text scroll by while the bridge builds itself &mdash; that is normal. It is finished when a line says <strong>&ldquo;Uvicorn running on http://0.0.0.0:8765&rdquo;</strong>. That line means: the bridge is ON.</p>
+        <p><span class="lbl-not">If not:</span> the Mac may pop up a question &mdash; &ldquo;allow Python to accept incoming connections?&rdquo; Click <strong>Allow</strong>. If the text ends with &ldquo;address already in use&rdquo;, an old copy of the bridge is already running &mdash; see the Troubleshooting table in Part 7.</p>
       </li>
-      <li><strong>Keep that Terminal window open.</strong> The bridge runs while the window stays open.</li>
-      <li>On the first start only, the bridge prints your <strong>bridge access token</strong>. Save it somewhere safe. You type it into the remote page once per device. If you lose it, it is stored on the Mac in <code class="cmd">~/.tv-remote/config.json</code>.</li>
-      <li>macOS may ask whether to allow Python to accept incoming connections. Click <strong>Allow</strong>.</li>
+      <li>
+        <span class="lbl">Your token appears once.</span> In that first run of text, look for the words:
+        <div class="cmd-block">First run: your RemoVia bridge access token is:</div>
+        <p>Under those words is a long line of letters and numbers. <strong>That is your token.</strong> Your bridge made it, on your computer, for you &mdash; nobody else has it, and IEC cannot see it.</p>
+        <p><span class="lbl">Do this:</span> select that long line, copy it (&#8984;C), and paste it somewhere safe, like your Notes app. You will paste it into the remote page in Part 4.</p>
+        <p><span class="lbl-not">If you lose it:</span> the token also lives in a settings file on your Mac called <code class="cmd">config.json</code>, inside a folder named <code class="cmd">.tv-remote</code> in your home folder. Open that file only to read your token. <strong>Never send that file, or the token, to anyone &mdash; not even to us.</strong> Whoever has the token and a path to your bridge can control your TVs.</p>
+      </li>
+      <li>
+        <span class="lbl">Leave this Terminal window open.</span> The bridge runs while the window stays open. <strong>Closing the window turns the remote off</strong> &mdash; that is normal, not broken. To turn it back on, open Terminal and run the same two lines from steps 1 and 2 again.
+      </li>
     </ol>
-    <div class="note">
-      <p><strong>Protect the token.</strong> The access token is a key to your TVs. Never share the token, and never share the <code class="cmd">~/.tv-remote/config.json</code> file &mdash; it holds the token. Anyone who has the token and a path to your bridge can control your TVs.</p>
-    </div>
+    <div class="checkpoint"><strong>&#10003; You should now see:</strong> &ldquo;Uvicorn running&rdquo; in Terminal, the window still open, and your token saved somewhere safe.</div>
   </div>
 </section>
 
 <section class="section">
   <div class="wrap">
-    <span class="secnum">Step 3</span>
-    <h2>Connect the page securely (Tailscale)</h2>
-    <p>The hosted page at <strong>removia.iecincglobal.com</strong> is a secure (https) page. Browsers block a secure page from calling a plain <code class="cmd">http://</code> address, so the page cannot reach the bridge on your home network directly. Tailscale fixes this: it gives the bridge a secure https address that only your own devices can reach.</p>
-    <ol class="guide-steps">
-      <li>Install <strong>Tailscale</strong> on the Mac and on your phone. Sign in with the <strong>same account</strong> on both &mdash; that is what links them.</li>
-      <li>Open the Tailscale admin console and enable HTTPS: go to <code class="cmd">console.tailscale.com/admin/dns</code>, find <strong>HTTPS Certificates</strong>, and click <strong>Enable HTTPS</strong>.</li>
-      <li>On the Mac, in Terminal, run:
-        <div class="cmd-block">tailscale serve --bg 8765</div>
-      </li>
-      <li>The command prints your bridge&rsquo;s secure address. It looks like <code class="cmd">https://your-mac.tail1234.ts.net</code>. Copy it.</li>
-      <li>On your phone, open <a href="https://removia.iecincglobal.com" target="_blank" rel="noopener"><strong>removia.iecincglobal.com</strong></a> and tap the <strong>gear</strong> (Settings).</li>
-      <li>Set <strong>Bridge address</strong> to the ts.net address from step 4. Set <strong>Token</strong> to your bridge access token. Tap <strong>Save</strong>, then <strong>Test</strong>.</li>
-      <li>Success is a <strong>green &ldquo;Connected&rdquo; dot</strong> at the top of the page. Your remote now works from anywhere &mdash; home or away.</li>
-    </ol>
-    <div class="note">
-      <p><strong>Nothing is exposed to the public internet.</strong> Tailscale is a private network made only of your signed-in devices. No router changes and no port-forwarding are needed &mdash; and you should never set up port-forwarding for the bridge.</p>
-      <p><strong>At-home shortcut:</strong> on your home Wi-Fi, the bridge also serves the same remote page itself at <code class="cmd">http://&lt;your-mac-ip&gt;:8765</code> &mdash; a handy fallback. The Mac&rsquo;s home IP is in System Settings &rarr; Wi-Fi &rarr; Details.</p>
+    <span class="secnum">Part 4</span>
+    <h2>Connect your phone securely (Tailscale)</h2>
+    <p>Why this part exists, in one sentence: the remote page (<strong>removia.iecincglobal.com</strong>) is a secure web page, and browsers will not let a secure page talk directly to the bridge in your house. Tailscale is the private path between them &mdash; think of it as a locked corridor that only your devices can enter. It is free.</p>
+
+    <div class="brand-block">
+      <h3>4A &mdash; On your phone</h3>
+      <ol class="guide-steps">
+        <li><span class="lbl">Press:</span> Open the <strong>App Store</strong>. Search for <strong>Tailscale</strong>. Tap <strong>Get</strong>, then <strong>Open</strong>.</li>
+        <li><span class="lbl">Press:</span> Sign in. Use the <strong>same account</strong> you will use on the Mac (for example, the same Google account). The account is created the first time you sign in.</li>
+        <li>
+          <span class="lbl-see">You should see:</span> your phone warns you that Tailscale wants to add a <strong>VPN configuration</strong>. <strong>This is expected</strong> &mdash; the private corridor is what the warning is about. Tap <strong>Allow</strong>, and type your phone passcode if it asks.
+        </li>
+        <li><span class="lbl-see">You should see:</span> the Tailscale app says <strong>Connected</strong> and lists your phone.</li>
+      </ol>
     </div>
+
+    <div class="brand-block">
+      <h3>4B &mdash; On the Mac</h3>
+      <ol class="guide-steps">
+        <li><span class="lbl">Press:</span> Install Tailscale on the Mac as well (from <code class="cmd">tailscale.com/download</code> or the Mac App Store), open it, and sign in with the <strong>same account</strong> as the phone.</li>
+        <li>
+          <span class="lbl-see">You should see:</span> a short welcome survey may appear (&ldquo;Help us better understand your product needs&rdquo;). For &ldquo;What is your primary reason for using Tailscale?&rdquo; pick <strong>Personal or At-Home Use</strong>, pick any answer for your role, and press <strong>Submit</strong>. It changes nothing about your setup.
+        </li>
+        <li><span class="lbl-see">You should see:</span> the Mac app says <strong>Connected</strong>. Your Mac and your phone now both appear in the device list.</li>
+      </ol>
+    </div>
+
+    <div class="brand-block">
+      <h3>4C &mdash; Turn on HTTPS (one time only)</h3>
+      <ol class="guide-steps">
+        <li><span class="lbl">Press:</span> In your web browser on the Mac, go to <code class="cmd">console.tailscale.com/admin/dns</code>. Sign in with the same account if it asks.</li>
+        <li><span class="lbl">Press:</span> Scroll to <strong>HTTPS Certificates</strong> and click <strong>Enable HTTPS</strong>.</li>
+        <li><span class="lbl-see">You should see:</span> the section now shows HTTPS as enabled. You never need this page again.</li>
+      </ol>
+    </div>
+
+    <div class="brand-block">
+      <h3>4D &mdash; Give the bridge its secure address</h3>
+      <ol class="guide-steps">
+        <li>
+          <span class="lbl">Press:</span> Open a <strong>new</strong> Terminal window (in Terminal&rsquo;s Window menu, or <strong>&#8984;N</strong>) &mdash; leave the bridge window from Part 3 untouched. Type this exactly, then press Enter:
+          <div class="cmd-block">tailscale serve --bg 8765</div>
+        </li>
+        <li>
+          <span class="lbl-see">You should see:</span> the words <strong>&ldquo;Serve started and running in the background&rdquo;</strong>, and an address that looks like <code class="cmd">https://your-mac.tail1234.ts.net</code>. <strong>Write this address down</strong> &mdash; it is your bridge&rsquo;s private web address.
+        </li>
+        <li>
+          <span class="lbl-not">If not &mdash; hiccup 1:</span> the command may stop and say <strong>&ldquo;Serve is not enabled on your tailnet. To enable, visit:&rdquo;</strong> followed by a link. That is the one-time switch from Part 4C asking to be turned on. Hold <strong>&#8984;</strong> and click the link in Terminal, sign in, click <strong>Enable</strong> &mdash; then type the same command again and press Enter.
+        </li>
+        <li>
+          <span class="lbl-not">If not &mdash; hiccup 2:</span> a message saying <strong>&ldquo;Another client is changing the serve config&rdquo;</strong> or <strong>&ldquo;etag mismatch &mdash; please try again&rdquo;</strong> simply means two changes bumped into each other. Run the same command once more. It works.
+        </li>
+      </ol>
+    </div>
+
+    <div class="brand-block">
+      <h3>4E &mdash; Tell the remote page where your bridge lives</h3>
+      <ol class="guide-steps">
+        <li><span class="lbl">Press:</span> On your phone, open <a href="https://removia.iecincglobal.com" target="_blank" rel="noopener"><strong>removia.iecincglobal.com</strong></a>. Tap the <strong>gear</strong> (Settings) at the top-right.</li>
+        <li><span class="lbl">Press:</span> In <strong>Bridge address</strong>, paste the ts.net address from 4D. In <strong>Token</strong>, paste your bridge token from Part 3. Tap <strong>Save</strong>. Then tap <strong>Test</strong>.</li>
+        <li><span class="lbl-see">You should see:</span> the dot at the top of the page turns <strong>green</strong> and the word <strong>Connected</strong> appears. Your remote now works from anywhere &mdash; home or away &mdash; and nothing in your house is exposed to the public internet.</li>
+      </ol>
+    </div>
+    <div class="checkpoint"><strong>&#10003; You should now see:</strong> a green dot and &ldquo;Connected&rdquo; on the RemoVia page on your phone, and both your phone and your Mac listed as Connected in Tailscale.</div>
   </div>
 </section>
 
 <section class="section soft">
   <div class="wrap">
-    <span class="secnum">Step 4</span>
-    <h2>Add your TV &mdash; and find its IP address</h2>
+    <span class="secnum">Part 5</span>
+    <h2>Add your TV &mdash; and find its number (IP address)</h2>
     <ol class="guide-steps">
-      <li>In RemoVia, tap <strong>+ TV</strong>.</li>
-      <li>Tap <strong>Scan the network</strong>. When your TV appears, tap <strong>Add</strong> and give it a room name (for example, &ldquo;BedRoom&rdquo;).</li>
-      <li>If the scan misses a TV, add it by hand: pick the <strong>brand</strong>, type the TV&rsquo;s <strong>IP address</strong>, name it, and tap <strong>Add this TV</strong>.</li>
+      <li>
+        <span class="lbl">Press:</span> In RemoVia on your phone, tap <strong>+ TV</strong>, then tap <strong>Scan the network</strong>.
+        <p><span class="lbl-see">You should see:</span> after a few seconds, your TV appears in a list. Tap <strong>Add</strong> next to it, type a room name (for example <strong>BedRoom</strong>), and save.</p>
+        <p><span class="lbl-not">If not:</span> if the scan finds nothing, the TV may be asleep or on a different Wi-Fi. Wake it, check it is on the same Wi-Fi as the Mac, and scan again. Still nothing? Add it by hand &mdash; the next steps show how.</p>
+      </li>
+      <li>
+        <span class="lbl">To add by hand, you need the TV&rsquo;s IP address</span> &mdash; its house number on your Wi-Fi. The TV displays it in its own settings:
+        <p><strong>Samsung:</strong> with the TV&rsquo;s own remote, press <strong>Settings &rarr; General &rarr; Network &rarr; Network Status &rarr; IP Settings</strong>. You will see a screen listing <strong>IP Address</strong>, <strong>Subnet Mask</strong> and <strong>Gateway</strong>. Write down the <strong>IP Address</strong> line. Then press <strong>Cancel</strong> to leave without changing anything.</p>
+        <p><strong>Roku:</strong> with the TV&rsquo;s own remote, press <strong>Settings &rarr; Network &rarr; About</strong>. Write down the <strong>IP address</strong> shown there.</p>
+      </li>
+      <li>
+        <span class="lbl">Press:</span> Back in RemoVia&rsquo;s + TV screen, pick the TV&rsquo;s <strong>brand</strong>, type the IP address you wrote down, type a room name, and tap <strong>Add this TV</strong>.
+      </li>
     </ol>
-    <p><strong>How to find a TV&rsquo;s IP address</strong> (use the TV&rsquo;s own remote):</p>
-    <ul class="check">
-      <li><strong>Samsung:</strong> Settings &rarr; General &rarr; Network &rarr; Network Status &rarr; IP Settings. Read the <strong>IP Address</strong> line.</li>
-      <li><strong>Roku:</strong> Settings &rarr; Network &rarr; About. Read the <strong>IP address</strong>.</li>
-    </ul>
     <div class="note">
-      <p><strong>Enter the TV&rsquo;s own IP &mdash; never the Gateway.</strong> The Samsung IP Settings screen shows both lines side by side: <strong>IP Address</strong> is the TV; <strong>Gateway</strong> is your router. On most home networks the gateway is <code class="cmd">10.0.0.1</code>. If you enter the gateway address, the bridge knocks on the router&rsquo;s door and pairing fails with <strong>ConnectionRefusedError</strong>. Always use the IP Address line.</p>
+      <p><strong>The one mistake almost everyone makes:</strong> entering the <strong>Gateway</strong> number instead of the <strong>IP Address</strong>. The Gateway is your <em>router&rsquo;s</em> number &mdash; on most home networks it is <code class="cmd">10.0.0.1</code>. The two lines sit next to each other on the TV screen. If you enter the gateway, the bridge knocks on the router&rsquo;s door and pairing fails with <strong>ConnectionRefusedError</strong>. Always use the line labelled <strong>IP Address</strong>.</p>
     </div>
+    <div class="checkpoint"><strong>&#10003; You should now see:</strong> your TV as a named button (for example &ldquo;BedRoom&rdquo;) at the top of the RemoVia page.</div>
   </div>
 </section>
 
 <section class="section">
   <div class="wrap">
-    <span class="secnum">Step 5</span>
+    <span class="secnum">Part 6</span>
     <h2>Pair by brand</h2>
-    <p>Pairing is a one-time approval on the TV itself. After that, the TV remembers RemoVia.</p>
+    <p>Pairing means the TV agrees to listen to RemoVia. It happens <strong>once per TV</strong> &mdash; after that, the TV remembers and you never do this again.</p>
 
     <div class="brand-block">
-      <h3>Roku &mdash; no pairing, one setting</h3>
-      <p>Roku needs no pairing. It works right away &mdash; as long as control by apps is allowed. With the TV&rsquo;s own remote:</p>
+      <h3>Roku &mdash; no pairing, one setting on the TV</h3>
+      <p>There is nothing to pair in the app. But the Roku must be <em>allowed</em> to listen. This is done <strong>on the TV, with the TV&rsquo;s own remote</strong> &mdash; not in RemoVia:</p>
       <ol class="guide-steps">
-        <li>Open <strong>Settings &rarr; System &rarr; Advanced system settings</strong>.</li>
-        <li>Open <strong>Control by mobile apps &rarr; Network access</strong>.</li>
-        <li>Set it to <strong>Permissive</strong>.</li>
+        <li><span class="lbl">Press (TV remote):</span> <strong>Settings &rarr; System &rarr; Advanced system settings &rarr; Control by mobile apps &rarr; Network access</strong>.</li>
+        <li><span class="lbl">Press:</span> choose <strong>Permissive</strong>.</li>
+        <li>
+          <span class="lbl-see">You should see:</span> text under it saying control by mobile apps <strong>&ldquo;is enabled always, but accepts commands only from private network addresses or the same subnet&rdquo;</strong>. That sentence is the good one &mdash; it means apps on your home network may control the TV, and nothing outside can.
+        </li>
+        <li><span class="lbl-not">If not:</span> if Network access is left on <strong>Limited</strong>, every button in RemoVia answers with <strong>error (403)</strong>.</li>
       </ol>
-      <p>If this is left on <strong>Limited</strong>, every button you press answers with <strong>error (403)</strong>.</p>
+      <div class="checkpoint"><strong>&#10003; Test it:</strong> in RemoVia, select the Roku and press <strong>Home</strong>. The TV should jump to its home screen.</div>
     </div>
 
     <div class="brand-block">
-      <h3>Samsung &mdash; accept once on the TV</h3>
+      <h3>Samsung &mdash; press Allow on the TV</h3>
+      <div class="note">
+        <p><strong>Read this first:</strong> the pairing prompt appears <strong>on the TV, not on your phone</strong> &mdash; and it only stays on screen a short time. Have the <strong>TV&rsquo;s own remote in your hand before</strong> you tap Start pairing. The TV must be fully on, showing a normal channel or app, with <strong>all menus closed</strong>.</p>
+      </div>
       <ol class="guide-steps">
-        <li>Turn the TV fully on and put it on a normal screen. <strong>Close all menus</strong> &mdash; the pairing prompt cannot appear while Settings is open.</li>
-        <li>In RemoVia, select the TV and tap <strong>Start pairing</strong>.</li>
-        <li>A prompt appears on the TV: <strong>&ldquo;RemoVia &mdash; Your permission is required to connect your device to TV.&rdquo;</strong> Press <strong>Allow</strong> with the TV&rsquo;s own remote.</li>
-        <li>Tap <strong>Done</strong> on the phone. That is it &mdash; one time only.</li>
+        <li><span class="lbl">Press (phone):</span> in RemoVia, select your Samsung TV, then tap <strong>Start pairing</strong>.</li>
+        <li>
+          <span class="lbl-see">You should see (on the TV):</span> a box pops up saying <strong>&ldquo;RemoVia &mdash; Your permission is required to connect your device to TV.&rdquo;</strong> The top choice is <strong>Allow</strong>.
+        </li>
+        <li><span class="lbl">Press (TV remote):</span> press the <strong>middle / OK button</strong> to choose <strong>Allow</strong>.</li>
+        <li><span class="lbl">Press (phone):</span> tap <strong>Done</strong>.</li>
+        <li>
+          <span class="lbl">Test it:</span> in RemoVia, press <strong>VOL +</strong>.
+          <p><span class="lbl-see">You should see:</span> the volume bar moves on the TV. Pairing is done &mdash; forever.</p>
+          <p><span class="lbl-not">If not:</span> if the phone says the TV &ldquo;did not accept in time&rdquo;, the prompt timed out or a menu was open. Close all menus on the TV and repeat from step 1, remote in hand. If <em>no prompt ever appears</em>: on the TV, open <strong>Settings &rarr; General &rarr; External Device Manager &rarr; Device Connect Manager</strong> and set <strong>Access Notification</strong> to <strong>Always On</strong>, then try again. (Also under Settings &rarr; General &rarr; Network &rarr; Expert Settings, &ldquo;Power with Mobile&rdquo; should be on. Menu names vary a little by model.)</p>
+        </li>
       </ol>
-      <p>If no prompt appears: on the TV, open <strong>Settings &rarr; General &rarr; External Device Manager &rarr; Device Connect Manager</strong> and set <strong>Access Notification</strong> to <strong>Always On</strong>. Also make sure network remote is on: <strong>Settings &rarr; General &rarr; Network &rarr; Expert Settings &rarr; Power with Mobile</strong>. Menu names vary by model.</p>
+      <div class="checkpoint"><strong>&#10003; You should now see:</strong> the Samsung&rsquo;s volume move when you press VOL + in RemoVia.</div>
     </div>
 
     <div class="brand-block">
-      <h3>Google TV / Android TV &mdash; type the PIN</h3>
+      <h3>Google TV / Android TV &mdash; type the PIN the TV shows you</h3>
       <p>For Sony, TCL, Hisense, Philips, Xiaomi and NVIDIA Shield sets:</p>
       <ol class="guide-steps">
-        <li>In RemoVia, select the TV and tap <strong>Start pairing</strong>.</li>
-        <li>The TV shows a <strong>6-digit PIN</strong>.</li>
-        <li>Type the PIN in RemoVia and tap <strong>Pair with this PIN</strong>.</li>
+        <li><span class="lbl">Press (phone):</span> select the TV and tap <strong>Start pairing</strong>.</li>
+        <li><span class="lbl-see">You should see (on the TV):</span> a <strong>6-digit PIN</strong> &mdash; six numbers on the TV screen.</li>
+        <li><span class="lbl">Press (phone):</span> type those six numbers into RemoVia and tap <strong>Pair with this PIN</strong>.</li>
       </ol>
+      <div class="checkpoint"><strong>&#10003; Test it:</strong> press any button in RemoVia &mdash; the TV responds.</div>
     </div>
 
     <div class="brand-block">
-      <h3>Fire TV &mdash; allow the ADB prompt</h3>
+      <h3>Fire TV &mdash; one TV setting, then Allow</h3>
       <ol class="guide-steps">
-        <li>First, on the TV: <strong>Settings &rarr; My Fire TV &rarr; Developer Options &rarr; ADB Debugging &rarr; On</strong>.</li>
-        <li>In RemoVia, select the TV and tap <strong>Start pairing</strong>.</li>
-        <li>Allow the prompt on the TV. Tick <strong>&ldquo;Always allow&rdquo;</strong> if it is shown.</li>
-        <li>Tap <strong>Done</strong> on the phone.</li>
+        <li><span class="lbl">Press (TV remote):</span> <strong>Settings &rarr; My Fire TV &rarr; Developer Options &rarr; ADB Debugging &rarr; On</strong>. (This simply lets the TV accept a remote connection.)</li>
+        <li><span class="lbl">Press (phone):</span> select the TV and tap <strong>Start pairing</strong>.</li>
+        <li><span class="lbl-see">You should see (on the TV):</span> a prompt asking to allow the connection. Tick <strong>&ldquo;Always allow&rdquo;</strong> if it is shown, then choose <strong>Allow</strong>.</li>
+        <li><span class="lbl">Press (phone):</span> tap <strong>Done</strong>.</li>
       </ol>
+      <div class="checkpoint"><strong>&#10003; Test it:</strong> press any button in RemoVia &mdash; the TV responds.</div>
     </div>
 
     <div class="brand-block">
       <h3>LG (webOS)</h3>
-      <p>RemoVia finds and saves LG sets, but cannot control them yet &mdash; there is no pairing step. Control for webOS is planned, not promised.</p>
+      <p>RemoVia can find an LG TV and save it, but it <strong>cannot control it yet</strong> &mdash; there is no pairing step. If you have an LG, skip it for now; the other brands above are fully supported.</p>
     </div>
   </div>
 </section>
 
 <section class="section soft">
   <div class="wrap">
-    <span class="secnum">Step 6</span>
+    <span class="secnum">Part 7</span>
     <h2>Troubleshooting</h2>
+    <p>Find the words you see in the first column. Every fix is short, and none of them can harm anything.</p>
     <table class="guide-table">
       <tr><th>What you see</th><th>What it means</th><th>Fix</th></tr>
       <tr>
         <td>Error (403) &mdash; Roku</td>
-        <td>The Roku is set to Limited, so it refuses app commands.</td>
-        <td>On the TV: Settings &rarr; System &rarr; Advanced system settings &rarr; Control by mobile apps &rarr; Network access = <strong>Permissive</strong>.</td>
+        <td>The Roku&rsquo;s Network access is set to Limited, so it refuses app commands.</td>
+        <td>On the TV: Settings &rarr; System &rarr; Advanced system settings &rarr; Control by mobile apps &rarr; Network access = <strong>Permissive</strong>. (Part 6, Roku.)</td>
       </tr>
       <tr>
         <td>ConnectionRefusedError</td>
         <td>The bridge knocked at an address where nothing answers &mdash; the wrong IP (often the gateway, 10.0.0.1) or the TV is off.</td>
-        <td>Read the TV&rsquo;s real IP Address in its Network settings (Step 4) and re-add the TV with that address. Make sure the TV is on.</td>
+        <td>Read the TV&rsquo;s real <strong>IP Address</strong> in its Network settings (Part 5), re-add the TV with that address, and make sure the TV is on.</td>
       </tr>
       <tr>
         <td>&ldquo;The TV did not accept in time, or it is off&rdquo;</td>
-        <td>The pairing prompt was not approved in time.</td>
-        <td>TV fully on, all menus closed. Tap Start pairing again and press <strong>Allow</strong> on the TV promptly.</td>
+        <td>The pairing prompt on the TV timed out before anyone pressed Allow.</td>
+        <td>TV fully on, all menus closed, TV remote in hand. Tap Start pairing and press <strong>Allow</strong> on the TV promptly.</td>
       </tr>
       <tr>
         <td>&ldquo;Stopped answering&rdquo;</td>
-        <td>The connection to the TV dropped.</td>
-        <td>Restart the bridge: in its Terminal window press <strong>Ctrl+C</strong>, then run <code class="cmd">./start.sh</code> again.</td>
+        <td>The connection between the bridge and the TV dropped.</td>
+        <td>Restart the bridge: click its Terminal window, press <strong>Ctrl+C</strong>, then type <code class="cmd">./start.sh</code> and press Enter.</td>
       </tr>
       <tr>
         <td>&ldquo;Address already in use&rdquo;</td>
         <td>The old bridge is still running, so the new one cannot start.</td>
-        <td>Stop the old one first: Ctrl+C in its Terminal window, or run <code class="cmd">kill $(lsof -ti :8765)</code>. Then <code class="cmd">./start.sh</code>.</td>
+        <td>Stop the old one first: press <strong>Ctrl+C</strong> in its Terminal window. Or, in a new Terminal window, type <code class="cmd">kill $(lsof -ti :8765)</code> and press Enter. Then run <code class="cmd">./start.sh</code> again.</td>
+      </tr>
+      <tr>
+        <td>&ldquo;No such file or folder&rdquo; after the cd line</td>
+        <td>The bridge folder is not where Terminal is looking &mdash; usually the ZIP was never unzipped.</td>
+        <td>In Downloads, double-click the ZIP so the <code class="cmd">removia-main</code> folder appears. Then run the cd line again.</td>
       </tr>
       <tr>
         <td>Red dot &mdash; page cannot reach the bridge</td>
-        <td>Tailscale or the bridge is not up.</td>
-        <td>Check Tailscale is on and signed in with the same account on phone and Mac. Check the bridge Terminal window is open. Check the bridge address in Settings matches the address <code class="cmd">tailscale serve</code> printed.</td>
+        <td>Tailscale or the bridge is not running, or the address/token in Settings is wrong.</td>
+        <td>Check Tailscale says Connected on both phone and Mac, with the same account. Check the bridge Terminal window is open and says &ldquo;Uvicorn running&rdquo;. Check the Bridge address and Token in the page&rsquo;s Settings match Part 4 exactly.</td>
       </tr>
       <tr>
         <td>Phone cannot connect at home</td>
-        <td>The macOS firewall may be blocking the bridge.</td>
-        <td>System Settings &rarr; Network &rarr; Firewall &rarr; Options &rarr; allow incoming connections for Python.</td>
+        <td>The Mac&rsquo;s firewall may be blocking the bridge.</td>
+        <td>On the Mac: System Settings &rarr; Network &rarr; Firewall &rarr; Options &rarr; allow incoming connections for Python.</td>
       </tr>
     </table>
+    <p><strong>Still stuck?</strong> Go back to the last checkpoint you passed and re-read that part&rsquo;s &ldquo;You should see&rdquo; line. Almost every problem is one of the rows above.</p>
   </div>
 </section>
 
 <section class="section">
   <div class="wrap">
-    <span class="secnum">Step 7</span>
+    <span class="secnum">Part 8</span>
     <h2>Safety notes</h2>
     <ul class="check">
-      <li><strong>The bridge access token is a key to your TVs.</strong> Never post it, share it, or share the <code class="cmd">~/.tv-remote/config.json</code> file that holds it.</li>
+      <li><strong>Your token is a key to your TVs.</strong> Your bridge made it, on your computer. Never post it, share it, or share the <code class="cmd">~/.tv-remote/config.json</code> file that holds it &mdash; with anyone, including us.</li>
       <li><strong>Tailscale keeps everything private.</strong> Only devices signed in to your account can reach your bridge. Nothing in your house is exposed to the public internet, and no router port-forwarding is needed &mdash; never set up port-forwarding for the bridge.</li>
-      <li><strong>Pairing prompts appear on the TV itself.</strong> Press Allow only for a device you recognise. The prompt names the app &mdash; RemoVia.</li>
-      <li><strong>The bridge Mac is the door.</strong> Keep it on your home Wi-Fi and keep its Terminal window open while you use the remote.</li>
-      <li><strong>One approval per TV.</strong> Pairing happens once per TV. If you ever want to revoke a device, remove it in the TV&rsquo;s own device settings.</li>
+      <li><strong>Pairing prompts appear on the TV itself.</strong> Press Allow only for a prompt you just started. The prompt names the app &mdash; RemoVia.</li>
+      <li><strong>The bridge window is the on/off switch.</strong> Bridge window open = remote on. Window closed = remote off. That is normal, and reopening it (Part 3, steps 1&ndash;2) turns everything back on &mdash; your TVs stay paired.</li>
     </ul>
     <div class="band">
       <h2>Prefer paper? Take the guide with you.</h2>
-      <p>The full guide is also a one-file PDF &mdash; the same steps, ready to print or share.</p>
+      <p>The full guide is also a one-file PDF &mdash; the same steps, ready to print or share with anyone in the house.</p>
       <a class="btn" href="assets/removia-pairing-guide.pdf" download>Download the guide (PDF)</a>
       <a class="btn ghost" href="https://removia.iecincglobal.com" target="_blank" rel="noopener">Open RemoVia &#8599;</a>
     </div>
