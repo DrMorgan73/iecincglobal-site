@@ -271,3 +271,79 @@ details.credits a { color: #aeb9c8; }
 .read-link:hover { color: #a37c28; }
 .news-date { color: var(--muted); font-size: 15px; margin-bottom: 6px; }
 .article-body p { font-size: 18px; line-height: 1.7; color: var(--ink, #1c2430); margin-bottom: 1.1em; max-width: 72ch; }
+
+/* ---- Embedded mutual NDA (guided review + signing, added 2026-11-03) ---- */
+.nda-section { border-top: 1px solid var(--line); }
+.legal-intro { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start; margin-bottom: 28px; }
+.legal-intro p { color: var(--muted); }
+.nda-lang-toggle { display: inline-flex; gap: 6px; margin-top: 14px; }
+.nda-lang-toggle button { font: inherit; font-size: 13px; font-weight: 600; padding: 5px 14px; border: 1px solid var(--line); border-radius: 999px; background: #fff; color: var(--muted); cursor: pointer; }
+.nda-lang-toggle button.active { background: var(--navy); border-color: var(--navy); color: #fff; }
+.legal-workspace { display: grid; grid-template-columns: 230px minmax(0, 1fr) 300px; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: #fff; }
+.doc-nav { padding: 22px 16px; background: var(--bg-soft); border-right: 1px solid var(--line); }
+.doc-nav-title { font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin: 0 6px 12px; }
+.doc-nav-list { display: flex; flex-direction: column; gap: 2px; }
+.nda-nav-btn { display: flex; align-items: center; gap: 9px; width: 100%; text-align: left; font: inherit; font-size: 13.5px; padding: 7px 8px; border: 0; border-radius: 8px; background: transparent; color: var(--ink); cursor: pointer; }
+.nda-nav-btn:hover { background: #fff; }
+.nda-nav-btn.current { background: #fff; box-shadow: inset 0 0 0 1px var(--line); font-weight: 600; }
+.nda-nav-btn .dot { flex: 0 0 auto; width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; background: #fff; border: 1px solid var(--line); color: var(--muted); }
+.nda-nav-btn.reviewed .dot { background: var(--gold); border-color: var(--gold); color: #fff; }
+.doc-progress-track { height: 5px; border-radius: 999px; background: #e9e4d8; margin: 16px 6px 6px; overflow: hidden; }
+.doc-progress-track #progress-bar { display: block; height: 100%; width: 0; background: var(--gold); transition: width .25s ease; }
+.step-button { font: inherit; font-size: 13.5px; font-weight: 600; padding: 8px 14px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--navy); cursor: pointer; }
+.step-button:hover:not(:disabled) { border-color: var(--navy); }
+.step-button:disabled { opacity: .45; cursor: default; }
+.step-button.primary { background: var(--navy); border-color: var(--navy); color: #fff; }
+.step-button.primary:hover:not(:disabled) { background: var(--navy-2); }
+.reset-matter { margin-top: 12px; width: 100%; }
+.reset-status { font-size: 12.5px; color: var(--muted); margin-top: 8px; min-height: 1em; }
+.public-scope { font-size: 12.5px; color: var(--muted); margin-top: 18px; line-height: 1.55; }
+.doc-reader { padding: 26px 28px; min-width: 0; }
+.doc-meta { margin-bottom: 6px; }
+.doc-progress { font-size: 12px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--gold); }
+.doc-reader h3 { font-size: 26px; line-height: 1.15; color: var(--navy); margin-bottom: 8px; }
+.doc-purpose { color: var(--muted); font-size: 14.5px; margin-bottom: 22px; }
+.doc-section { white-space: pre-wrap; font-size: 15px; line-height: 1.7; color: var(--ink); border-top: 1px solid var(--line); padding-top: 20px; }
+.doc-controls { display: flex; justify-content: space-between; gap: 12px; margin-top: 24px; }
+.sign-form { display: none; border-top: 1px solid var(--line); margin-top: 26px; padding-top: 24px; }
+.sign-form.visible { display: block; }
+.sign-form h4 { font-size: 17px; color: var(--navy); margin-bottom: 6px; }
+.sign-form > p { font-size: 13.5px; color: var(--muted); margin-bottom: 16px; }
+.sign-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.sign-field { display: flex; flex-direction: column; gap: 5px; }
+.sign-field.full { grid-column: 1 / -1; }
+.sign-field label { font-size: 12.5px; font-weight: 600; color: var(--navy); }
+.sign-field input { font: inherit; font-size: 14.5px; padding: 9px 11px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); }
+.sign-field input:focus { outline: 2px solid var(--gold-soft); border-color: var(--gold); }
+.sign-field input.signature-input { font-family: "Segoe Script", "Bradley Hand", cursive; font-size: 19px; }
+.download-signed { margin-top: 18px; font: inherit; font-size: 15px; font-weight: 700; padding: 11px 22px; border: 0; border-radius: 8px; background: var(--gold); color: #fff; cursor: pointer; }
+.download-signed:hover:not(:disabled) { filter: brightness(1.07); }
+.download-signed:disabled { opacity: .55; cursor: default; }
+.download-copy { margin-top: 18px; margin-left: 10px; }
+.form-note { font-size: 13.5px; color: var(--navy); margin-top: 14px; min-height: 1em; }
+.fine-print { font-size: 12.5px; color: var(--muted); margin-top: 10px; line-height: 1.55; }
+.assistant-panel { border-left: 1px solid var(--line); background: var(--bg-soft); padding: 20px 16px; display: flex; flex-direction: column; min-width: 0; }
+.assistant-head { display: flex; flex-direction: column; gap: 2px; margin-bottom: 12px; }
+.assistant-head strong { color: var(--navy); font-size: 14.5px; }
+.assistant-head span { font-size: 12px; color: var(--muted); }
+.chat-log { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; max-height: 380px; padding-right: 2px; }
+.chat-bubble { font-size: 13.5px; line-height: 1.55; padding: 9px 12px; border-radius: 12px; max-width: 92%; }
+.chat-bubble.agent { background: #fff; border: 1px solid var(--line); align-self: flex-start; }
+.chat-bubble.user { background: var(--navy); color: #fff; align-self: flex-end; }
+.quick-asks { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
+.quick-asks button { font: inherit; font-size: 12px; padding: 5px 10px; border: 1px solid var(--line); border-radius: 999px; background: #fff; color: var(--navy); cursor: pointer; }
+.quick-asks button:hover { border-color: var(--gold); }
+.chat-composer { display: flex; gap: 8px; }
+.chat-composer input { flex: 1; font: inherit; font-size: 13.5px; padding: 8px 11px; border: 1px solid var(--line); border-radius: 8px; background: #fff; min-width: 0; }
+.chat-send { font: inherit; font-size: 13.5px; font-weight: 600; padding: 8px 14px; border: 0; border-radius: 8px; background: var(--navy); color: #fff; cursor: pointer; }
+@media (max-width: 1020px) {
+  .legal-workspace { grid-template-columns: 200px minmax(0, 1fr); }
+  .assistant-panel { grid-column: 1 / -1; border-left: 0; border-top: 1px solid var(--line); }
+}
+@media (max-width: 720px) {
+  .legal-intro { grid-template-columns: 1fr; }
+  .legal-workspace { grid-template-columns: 1fr; }
+  .doc-nav { border-right: 0; border-bottom: 1px solid var(--line); }
+  .sign-fields { grid-template-columns: 1fr; }
+  .doc-reader { padding: 20px 16px; }
+}
