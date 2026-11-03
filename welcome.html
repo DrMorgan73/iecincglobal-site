@@ -42,6 +42,7 @@
       <a href="strategic-partner.html">Strategic Partner</a>
       <a href="project-advisory.html">Advisory</a>
       <a href="news.html">News</a>
+      <a href="welcome.html#nda">NDA</a>
       <a class="nav-suite" href="https://iecincglobal-site.vercel.app/desk/login.html">IEC Suite</a>
       <a class="nav-cta" href="https://wa.me/18578671767?text=Hello%20DrMorgan%2C%20I%27d%20like%20to%20connect%20with%20IEC%20Inc.">Contact IEC</a>
     </nav>
@@ -207,6 +208,79 @@
   </div>
 </section>
 
+<section class="section nda-section" id="nda">
+  <div class="wrap">
+    <div class="legal-intro">
+      <div>
+        <div class="eyebrow">Guided NDA review</div>
+        <h2>Understand each section before you sign.</h2>
+      </div>
+      <div>
+        <p>Review IEC&rsquo;s mutual NDA one section at a time and ask the assistant questions. When every section is marked reviewed, complete the agreement details and sign &mdash; the executed copy is recorded by IEC and emailed to you and to IEC. The public pages are an overview; specifics about any IEC asset are shared under NDA, and this is the door.</p>
+        <div class="nda-lang-toggle" role="group" aria-label="NDA language">
+          <button type="button" id="nda-lang-en" class="active">EN</button>
+          <button type="button" id="nda-lang-es">ES</button>
+        </div>
+      </div>
+    </div>
+    <div class="legal-workspace">
+      <aside class="doc-nav" aria-label="Mutual NDA">
+        <p class="doc-nav-title" id="sections-label">Document sections</p>
+        <div class="doc-nav-list" id="doc-nav-list"></div>
+        <div class="doc-progress-track" aria-hidden="true"><span id="progress-bar"></span></div>
+        <button class="step-button reset-matter" type="button" id="reset-matter">Reset (start fresh)</button>
+        <p class="reset-status" id="reset-status" role="status"></p>
+        <p class="public-scope">This public flow covers IEC&rsquo;s mutual NDA only. Other business agreements &mdash; including BAA, MSO, SaaS, DPA and contractor terms &mdash; are handled directly with IEC.</p>
+      </aside>
+
+      <article class="doc-reader" aria-live="polite">
+        <div class="doc-meta"><span class="doc-progress" id="doc-label">Mutual NDA &middot; Section 1 of 12</span></div>
+        <h3 id="doc-title"></h3>
+        <p class="doc-purpose" id="doc-summary"></p>
+        <div class="doc-section" id="doc-copy"></div>
+        <div class="doc-controls">
+          <button class="step-button" id="prev-section" type="button">&larr; Previous</button>
+          <button class="step-button primary" id="review-section" type="button">Mark reviewed &amp; continue</button>
+        </div>
+        <section class="sign-form" id="signature-panel" aria-labelledby="signature-title">
+          <p class="doc-progress" id="signature-label">Final step &middot; Signer copy</p>
+          <h4 id="signature-title">Complete the agreement and sign</h4>
+          <p id="signature-intro">All sections have been reviewed. Complete every agreement detail and add the counterparty signer&rsquo;s typed signature.</p>
+          <form id="signature-form">
+            <div class="sign-fields">
+              <div class="sign-field"><label for="effective-date" id="effective-date-label">Effective date</label><input id="effective-date" type="date" required /></div>
+              <div class="sign-field"><label for="iec-state" id="iec-state-label">IEC state of incorporation</label><input id="iec-state" required autocomplete="address-level1" placeholder="Massachusetts" /></div>
+              <div class="sign-field"><label for="party-name" id="party-label">Counterparty legal name</label><input id="party-name" required autocomplete="organization" /></div>
+              <div class="sign-field"><label for="entity-type-state" id="entity-type-state-label">Counterparty entity type and state</label><input id="entity-type-state" required placeholder="Massachusetts limited liability company" /></div>
+              <div class="sign-field full"><label for="counterparty-address" id="address-label">Counterparty principal address</label><input id="counterparty-address" required autocomplete="street-address" /></div>
+              <div class="sign-field full"><label for="agreement-purpose" id="purpose-label">Purpose</label><input id="agreement-purpose" required placeholder="a potential business engagement with IEC, Inc." /></div>
+              <div class="sign-field"><label for="printed-name" id="printed-label">Counterparty signer&rsquo;s printed name</label><input id="printed-name" required autocomplete="name" /></div>
+              <div class="sign-field"><label for="signer-email" id="signer-email-label">Signer email for the executed copy</label><input id="signer-email" type="email" required autocomplete="email" /></div>
+              <div class="sign-field"><label for="signature-date" id="date-label">Signature date</label><input id="signature-date" type="date" required /></div>
+              <div class="sign-field"><label for="signer-title" id="title-label">Signer title (optional)</label><input id="signer-title" autocomplete="organization-title" /></div>
+              <div class="sign-field full"><label for="typed-signature" id="typed-label">Typed signature</label><input class="signature-input" id="typed-signature" required placeholder="Type your full legal name" /></div>
+            </div>
+            <button class="download-signed" type="submit" id="download-signed">Sign agreement</button>
+            <button class="step-button download-copy" type="button" id="download-copy" hidden>Download signed copy (PDF)</button>
+            <p class="form-note" id="form-status" role="status"></p>
+            <p class="fine-print" id="signature-fine">When you sign and submit, the executed NDA is recorded by IEC, Inc., and an executed PDF copy is emailed to IEC at info@iecincglobal.com and to you at the email address above. You can also download the signed PDF for your own records.</p>
+          </form>
+        </section>
+      </article>
+
+      <aside class="assistant-panel" aria-label="Document assistant">
+        <div class="assistant-head"><strong id="assistant-name">IEC document guide</strong><span id="assistant-limit">Section-by-section explanations grounded in this agreement</span></div>
+        <div class="chat-log" id="chat-log" aria-live="polite"></div>
+        <div class="quick-asks" id="quick-asks"></div>
+        <form class="chat-composer" id="chat-form">
+          <input id="chat-question" aria-label="Ask about this agreement" placeholder="Ask about confidentiality, term&hellip;" autocomplete="off" />
+          <button class="chat-send" type="submit" id="chat-send">Ask</button>
+        </form>
+      </aside>
+    </div>
+  </div>
+</section>
+
 <footer class="site-footer">
   <div class="wrap">
     <div class="foot-grid">
@@ -235,11 +309,12 @@
         <a href="about.html">About</a>
         <a href="strategic-partner.html">Strategic Partner</a>
         <a href="project-advisory.html">Advisory</a>
+        <a href="welcome.html#nda">Mutual NDA</a>
         <a href="contact.html">Contact</a>
       </nav>
     </div>
     <div class="foot-bottom">
-      <div class="copyright">&copy; 2026 International Empire Consultants, Inc. All rights reserved. &middot; <a href="/desk/login.html">Team sign-in</a></div>
+      <div class="copyright">&copy; 2026 International Empire Consultants, Inc. All rights reserved. &middot; <a href="privacy.html">Privacy</a> &middot; <a href="/desk/login.html">Team sign-in</a></div>
       <button class="to-top" id="toTop" aria-label="Back to top">&#8593;</button>
     </div>
     <details class="credits">
@@ -269,5 +344,6 @@
   </div>
 </footer>
 <script src="nav.js" defer></script>
+<script src="nda.js" defer></script>
 </body>
 </html>
