@@ -1,0 +1,765 @@
+/* =====================================================================
+   IEC Office — Demo Control Portal API (IEC Desk, DrMorgan's order
+   2026-11-05: one portal in the IEC Office controls demo users AND
+   permissions for ALL assets — the ones with demos today and every
+   future asset).
+
+   POST /api/demo-admin   (JSON body, desk_session cookie required)
+     { action: "list" }
+     { action: "invite", asset, email, name }
+     { action: "resend", asset, email }
+     { action: "status", asset, email, status }   status: paused|active|revoked
+
+   AUTH: the Desk session cookie, verified with exactly the scheme
+   middleware.js / api/desk-login.js use (HMAC-SHA256 over
+   "<user>.<exp>", DESK_SESSION_SECRET). No session → 401.
+
+   HOW CONTROL WORKS: each live asset's demo keeps its provisioning.js
+   store as the single source of truth (the same file its portal gate
+   reads). This function reads and edits those files through the
+   GitHub Contents API — byte-preserving inserts and single-field
+   status flips, one retry on a sha conflict — exactly the pattern
+   the assets' own /api/demo-provision endpoints shipped with. A
+   commit triggers the asset's redeploy, which is what enforces the
+   new status. Activation emails go through Resend from the
+   onboarding sender with the asset's ORG signature (no personal
+   name), mirroring the assets' own activation emails: one-time link,
+   signer sets their own password, links do not expire — control is
+   administrative, through the status field:
+     invited / active / paused (login blocked, account preserved) /
+     revoked (link AND login dead).
+   "invited" is never a settable target: access moves forward only,
+   and revoked → invited is expressly forbidden.
+
+   PERMISSION MATRIX: "list" also returns the union of people by
+   email across every live asset, each cell that asset's status or
+   null — the cross-asset permission view the Desk page renders.
+
+   ASSET REGISTRY: live entries carry repo/path/token-env. Planned
+   entries (live:false) render as "Demo not built yet" and accept no
+   actions. Adding a future demo = one registry entry + its env
+   token. Boston Pain Clinic is a strategic partner, NOT an IEC
+   asset — it is never listed here.
+
+   FAIL-CLOSED: a missing per-asset GitHub token → 503
+   { error: "not_configured" } and nothing is read or written. A
+   missing Resend key never blocks a commit: the account is created
+   and the outcome reports emailed:false / error "email_failed"
+   (never a silent rollback), mirroring the demo-provision endpoints.
+
+   Env (this Vercel project — iecincglobal-site):
+     DESK_SESSION_SECRET            (already set for the Desk)
+     DEMO_ADMIN_GITHUB_TOKEN_MEDEXEC  fine-grained GitHub token
+                                    (DrMorgan73, medexec-site only,
+                                    Contents read/write)
+     DEMO_ADMIN_GITHUB_TOKEN_INSNAP   fine-grained GitHub token
+                                    (drmohdmorgan-del, insnap-job-
+                                    engine only, Contents read/write)
+     DEMO_ADMIN_RESEND_API_KEY      Resend sending key
+
+   SECURITY: activation tokens from the stores are used only to
+   build the emailed activation link. They are never logged and
+   never returned — "list" exposes email, name, status, issuedAt.
+   ===================================================================== */
+
+import crypto from "node:crypto";
+import vm from "node:vm";
+
+/* ------------------------------------------------------------------ */
+/* Org signatures for system mail (copied from the assets' own single */
+/* sources: medexec-site api/_signature.js and insnap-job-engine      */
+/* src/lib/demo-signature.js — org variant, logo, no personal name).  */
+/* ------------------------------------------------------------------ */
+
+const MEDEXEC_SIGNATURE_TEXT = [
+  "MEDEXEC · IEC, Inc.",
+  "857-867-1767",
+  "info@getmedexec.com"
+].join("\n");
+
+const MEDEXEC_SIGNATURE_HTML = [
+  '<table cellpadding="0" cellspacing="0" border="0" style="margin-top:24px">',
+  '<tr><td><img src="https://getmedexec.com/logo.png" width="140" alt="MEDEXEC" style="display:block;border:0"></td></tr>',
+  '<tr><td style="padding-top:10px;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.45;color:#1A1A1A">',
+  "<strong>MEDEXEC · IEC, Inc.</strong><br>",
+  '<a href="tel:+18578671767" style="color:#1A1A1A;text-decoration:none">857-867-1767</a><br>',
+  '<a href="mailto:info@getmedexec.com" style="color:#1A1A1A;text-decoration:none">info@getmedexec.com</a>',
+  "</td></tr>",
+  "</table>"
+].join("");
+
+const INSNAP_SIGNATURE_TEXT = [
+  "InSnap · IEC, Inc.",
+  "857-867-1767",
+  "info@iecincglobal.com"
+].join("\n");
+
+const INSNAP_SIGNATURE_HTML = [
+  '<table cellpadding="0" cellspacing="0" border="0" style="margin-top:24px">',
+  '<tr><td><img src="https://iecincglobal.com/assets/iec-logo-email.png" width="140" alt="IEC, Inc." style="display:block;border:0"></td></tr>',
+  '<tr><td style="padding-top:10px;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.45;color:#1A1A1A">',
+  "<strong>InSnap · IEC, Inc.</strong><br>",
+  '<a href="tel:+18578671767" style="color:#1A1A1A;text-decoration:none">857-867-1767</a><br>',
+  '<a href="mailto:info@iecincglobal.com" style="color:#1A1A1A;text-decoration:none">info@iecincglobal.com</a>',
+  "</td></tr>",
+  "</table>"
+].join("");
+
+/* ------------------------------------------------------------------ */
+/* Asset registry                                                      */
+/* ------------------------------------------------------------------ */
+
+const ASSETS = [
+  {
+    id: "medexec",
+    name: "MEDEXEC",
+    live: true,
+    repo: "DrMorgan73/medexec-site",
+    path: "demo/provisioning.js",
+    tokenEnv: "DEMO_ADMIN_GITHUB_TOKEN_MEDEXEC",
+    activationBase: "https://getmedexec.com/demo/activate/?token=",
+    portalUrl: "https://getmedexec.com/demo/",
+    liveUrl: "https://getmedexec.com/demo/provisioning.js",
+    from: "MEDEXEC Demo Portal <onboarding@resend.dev>",
+    committer: { name: "DrMorgan73", email: "DrMorgan73@users.noreply.github.com" },
+    signatureText: MEDEXEC_SIGNATURE_TEXT,
+    signatureHtml: MEDEXEC_SIGNATURE_HTML,
+    emailSubject: "Your MEDEXEC demo account is ready — activate your access",
+    emailIntroText:
+      "Your MEDEXEC demo account has been created. The demo is the exact MEDEXEC dashboard as live HTML, showing the full workflow — from intake to the expert report — on synthetic cases only. No real patient data is used.",
+    emailIntroHtml:
+      "Your MEDEXEC demo account has been created. The demo is the exact MEDEXEC dashboard as live HTML, showing the full workflow — from intake to the expert report — on synthetic cases only. No real patient data is used.",
+    emailClosingText:
+      "The activation link is one-time: it stops working once you have set your password. If you need it reissued, or your access changed at any time, contact us at info@getmedexec.com.",
+    emailClosingHtml:
+      "The activation link is one-time: it stops working once you have set your password. If you need it reissued, or your access changed at any time, contact us at info@getmedexec.com."
+  },
+  {
+    id: "insnap",
+    name: "InSnap",
+    live: true,
+    repo: "drmohdmorgan-del/insnap-job-engine",
+    path: "public/demo/provisioning.js",
+    tokenEnv: "DEMO_ADMIN_GITHUB_TOKEN_INSNAP",
+    activationBase: "https://insnap-job-engine.vercel.app/demo/activate/?token=",
+    portalUrl: "https://insnap-job-engine.vercel.app/demo",
+    liveUrl: "https://insnap-job-engine.vercel.app/demo/provisioning.js",
+    from: "InSnap Demo Portal <onboarding@resend.dev>",
+    committer: { name: "drmohdmorgan-del", email: "drmohdmorgan-del@users.noreply.github.com" },
+    signatureText: INSNAP_SIGNATURE_TEXT,
+    signatureHtml: INSNAP_SIGNATURE_HTML,
+    emailSubject: "Your InSnap demo account is ready — activate your access",
+    emailIntroText:
+      "Thank you for signing the confidentiality agreement. Your InSnap Demo Portal account has been created. The demo is the exact InSnap workflow — the dispatch board, the client app, and the Pro app moving through one job together — on a synthetic case only. No real firms, workers, or jobs are used.",
+    emailIntroHtml:
+      "Thank you for signing the confidentiality agreement. Your InSnap Demo Portal account has been created. The demo is the exact InSnap workflow — the dispatch board, the client app, and the Pro app moving through one job together — on a synthetic case only. No real firms, workers, or jobs are used.",
+    emailClosingText:
+      "The activation link is one-time: it stops working once you have set your password. If you need it reissued, or your access changed at any time, contact us at info@iecincglobal.com.",
+    emailClosingHtml:
+      "The activation link is one-time: it stops working once you have set your password. If you need it reissued, or your access changed at any time, contact us at info@iecincglobal.com."
+  },
+  /* Planned — no demo portal yet. Scope (DrMorgan, 2026-11-05):
+     demos are built only for assets that have a website AND an
+     application. Each such demo plugs in with one registry entry
+     (repo, store path, activation base, signature) + its env token,
+     and follows the same model: provisioning store, one-time
+     activation link, invited/active/paused/revoked, login
+     notifications to DrMorgan. */
+  { id: "curavia", name: "CURAVIA", live: false },
+  { id: "insnapp", name: "INSNAPP", live: false },
+  { id: "iec-docs", name: "IEC Docs", live: false }
+];
+
+const SETTABLE_STATUSES = ["paused", "active", "revoked"];
+
+/* ------------------------------------------------------------------ */
+/* Desk session verification — mirrors middleware.js exactly           */
+/* ------------------------------------------------------------------ */
+
+const enc = new TextEncoder();
+const hex = buf => [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, "0")).join("");
+
+async function hmacHex(secret, data) {
+  const key = await crypto.webcrypto.subtle.importKey(
+    "raw", enc.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
+  );
+  return hex(await crypto.webcrypto.subtle.sign("HMAC", key, enc.encode(data)));
+}
+
+function timingSafeEqual(a, b) {
+  if (typeof a !== "string" || typeof b !== "string" || a.length !== b.length) return false;
+  let d = 0;
+  for (let i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return d === 0;
+}
+
+function getCookie(header, name) {
+  if (!header) return null;
+  for (const part of header.split(";")) {
+    const i = part.indexOf("=");
+    if (i < 0) continue;
+    if (part.slice(0, i).trim() === name) return part.slice(i + 1).trim();
+  }
+  return null;
+}
+
+async function validSession(value) {
+  const secret = process.env.DESK_SESSION_SECRET;
+  if (!secret) return false;
+  const parts = String(value).split(".");
+  if (parts.length !== 3) return false;
+  const [user, exp, sig] = parts;
+  if (!/^[A-Za-z0-9_-]{1,64}$/.test(user)) return false;
+  if (!/^\d+$/.test(exp)) return false;
+  if (Number(exp) * 1000 < Date.now()) return false;
+  const expected = await hmacHex(secret, user + "." + exp);
+  return timingSafeEqual(sig, expected);
+}
+
+/* ------------------------------------------------------------------ */
+/* Small helpers (mirroring the demo-provision endpoints)              */
+/* ------------------------------------------------------------------ */
+
+function normalizeEmail(email) {
+  return String(email || "").trim().toLowerCase();
+}
+
+function plausibleEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && email.length <= 254;
+}
+
+function escapeHtml(s) {
+  return String(s || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+async function readBody(req) {
+  if (req.body && typeof req.body === "object") return req.body;
+  if (typeof req.body === "string" && req.body) {
+    try { return JSON.parse(req.body); } catch (e) { return {}; }
+  }
+  return new Promise(resolve => {
+    let data = "";
+    if (typeof req.on !== "function") return resolve({});
+    req.on("data", c => { data += c; });
+    req.on("end", () => {
+      try { resolve(JSON.parse(data || "{}")); } catch (e) { resolve({}); }
+    });
+    req.on("error", () => resolve({}));
+  });
+}
+
+function reply(res, code, obj) {
+  if (typeof res.status === "function" && typeof res.json === "function") {
+    return res.status(code).json(obj);
+  }
+  res.statusCode = code;
+  res.setHeader("Content-Type", "application/json");
+  res.end(JSON.stringify(obj));
+}
+
+/* "2026-11-05T06:05:00-05:00" — America/New_York wall time with its
+   UTC offset, matching the format of the existing entries. */
+function easternIso(date) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+    hourCycle: "h23"
+  }).formatToParts(date).reduce((acc, p) => { acc[p.type] = p.value; return acc; }, {});
+  const asUTC = Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour, +parts.minute, +parts.second);
+  let offMin = Math.round((asUTC - date.getTime()) / 60000);
+  const sign = offMin < 0 ? "-" : "+";
+  offMin = Math.abs(offMin);
+  const oh = String(Math.floor(offMin / 60)).padStart(2, "0");
+  const om = String(offMin % 60).padStart(2, "0");
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:${parts.second}${sign}${oh}:${om}`;
+}
+
+/* ------------------------------------------------------------------ */
+/* Provisioning store: parse + byte-preserving edits                   */
+/* ------------------------------------------------------------------ */
+
+/* The stores are our own controlled artifacts, so evaluating one in
+   an empty vm sandbox to read the constant is safe and robust to
+   comments/formatting inside the array (same as demo-provision). */
+function parseProvisioning(source) {
+  const sandbox = {};
+  vm.createContext(sandbox);
+  const list = vm.runInContext(
+    String(source || "") + "\n;DEMO_PROVISIONED_ACCOUNTS;",
+    sandbox,
+    { timeout: 1000 }
+  );
+  if (!Array.isArray(list)) throw new Error("provisioning_parse_failed");
+  return list;
+}
+
+/* Insert a new entry just before the array's closing bracket,
+   leaving every existing byte in place. */
+function insertEntry(source, entry) {
+  const text = String(source);
+  const close = text.lastIndexOf("\n];");
+  if (close < 0) throw new Error("provisioning_shape_unexpected");
+  const entryText =
+    ",\n  {\n" +
+    `    email: ${JSON.stringify(entry.email)},\n` +
+    `    name: ${JSON.stringify(entry.name)},\n` +
+    `    token: ${JSON.stringify(entry.token)},\n` +
+    `    status: ${JSON.stringify(entry.status)},\n` +
+    `    issuedAt: ${JSON.stringify(entry.issuedAt)}\n` +
+    "  }";
+  return text.slice(0, close) + entryText + text.slice(close);
+}
+
+/* Flip ONE entry's status value in place: locate the entry by its
+   email line, then replace the first status value that follows it
+   (bounded by the next entry / the array close). Every other byte
+   of the file survives untouched. */
+function setStatusInSource(source, email, newStatus) {
+  const text = String(source);
+  const needle = `email: ${JSON.stringify(email)}`;
+  const emailPos = text.indexOf(needle);
+  if (emailPos < 0) throw new Error("entry_not_found");
+  const nextEntry = text.indexOf("\n    email:", emailPos + needle.length);
+  const arrayClose = text.lastIndexOf("\n];");
+  const bound = nextEntry >= 0 ? nextEntry : arrayClose;
+  const segment = text.slice(emailPos, bound);
+  const m = segment.match(/status: "[a-z]+"/);
+  if (!m) throw new Error("entry_status_not_found");
+  const at = emailPos + m.index;
+  return text.slice(0, at) + `status: ${JSON.stringify(newStatus)}` + text.slice(at + m[0].length);
+}
+
+/* ------------------------------------------------------------------ */
+/* GitHub Contents API (each asset's repo is its demo user store)      */
+/* ------------------------------------------------------------------ */
+
+function ghHeaders(token) {
+  return {
+    Authorization: `Bearer ${token}`,
+    Accept: "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28",
+    "Content-Type": "application/json",
+    "User-Agent": "iec-office-demo-admin"
+  };
+}
+
+async function ghGetFile(asset, token) {
+  const r = await fetch(
+    `https://api.github.com/repos/${asset.repo}/contents/${asset.path}`,
+    { headers: ghHeaders(token) }
+  );
+  if (!r.ok) throw new Error(`github_get_${r.status}`);
+  const data = await r.json();
+  const source = Buffer.from(String(data.content || ""), "base64").toString("utf8");
+  return { source, sha: data.sha };
+}
+
+async function ghPutFile(asset, token, sha, source, message) {
+  const r = await fetch(
+    `https://api.github.com/repos/${asset.repo}/contents/${asset.path}`,
+    {
+      method: "PUT",
+      headers: ghHeaders(token),
+      body: JSON.stringify({
+        message,
+        sha,
+        content: Buffer.from(source, "utf8").toString("base64"),
+        committer: asset.committer,
+        author: asset.committer
+      })
+    }
+  );
+  if (!r.ok) {
+    const err = new Error(`github_put_${r.status}`);
+    err.status = r.status;
+    throw err;
+  }
+  return r.json().catch(() => ({}));
+}
+
+/* Read → plan → commit, with one retry on a sha conflict (a
+   concurrent commit), re-planning from the fresh file. The plan
+   callback returns { result } for a no-write outcome or
+   { write, message, result } to commit. */
+async function mutateStore(asset, plan) {
+  const token = process.env[asset.tokenEnv] || "";
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const { source, sha } = await ghGetFile(asset, token);
+    const list = parseProvisioning(source);
+    const step = plan(list, source);
+    if (!step.write) return step.result;
+    try {
+      await ghPutFile(asset, token, sha, step.write, step.message);
+      return step.result;
+    } catch (e) {
+      if ((e.status === 409 || e.status === 422) && attempt === 0) continue;
+      throw e;
+    }
+  }
+  throw new Error("github_conflict");
+}
+
+async function readStore(asset) {
+  const token = process.env[asset.tokenEnv] || "";
+  const { source } = await ghGetFile(asset, token);
+  return parseProvisioning(source);
+}
+
+/* ------------------------------------------------------------------ */
+/* Activation email — mirrors each asset's own activation email        */
+/* ------------------------------------------------------------------ */
+
+function buildActivationEmail(asset, name, token) {
+  const first = String(name || "").trim().split(/\s+/)[0] || "there";
+  const link = asset.activationBase + token;
+  const text = [
+    `Dear ${first},`,
+    "",
+    asset.emailIntroText,
+    "",
+    "Activate your account here:",
+    link,
+    "",
+    "Three steps:",
+    "1. Open the link.",
+    "2. Set your own password — we never send passwords by email.",
+    `3. Sign in at ${asset.portalUrl} with this email address and your new password.`,
+    "",
+    asset.emailClosingText,
+    "",
+    asset.signatureText
+  ].join("\n");
+  const html = [
+    `<p>Dear ${escapeHtml(first)},</p>`,
+    `<p>${asset.emailIntroHtml}</p>`,
+    `<p>Activate your account here:<br><a href="${link}">${link}</a></p>`,
+    "<p>Three steps:</p>",
+    "<ol>",
+    "<li>Open the link.</li>",
+    "<li>Set your own password — we never send passwords by email.</li>",
+    `<li>Sign in at ${asset.portalUrl} with this email address and your new password.</li>`,
+    "</ol>",
+    `<p>${asset.emailClosingHtml}</p>`,
+    asset.signatureHtml
+  ].join("\n");
+  return { subject: asset.emailSubject, text, html, link };
+}
+
+/* { sent:true, id } | { sent:false, reason } — never throws. */
+async function sendActivationEmail(asset, name, email, token) {
+  const key = process.env.DEMO_ADMIN_RESEND_API_KEY || "";
+  if (!key) return { sent: false, reason: "not_configured" };
+  const mail = buildActivationEmail(asset, name, token);
+  try {
+    const r = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ from: asset.from, to: [email], subject: mail.subject, text: mail.text, html: mail.html })
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) return { sent: false, reason: `resend_${r.status}` };
+    return { sent: true, id: data.id || null };
+  } catch (e) {
+    return { sent: false, reason: "send_failed" };
+  }
+}
+
+/* Bounded wait for a committed token to be live, so the activation
+   link works when the email lands. Best-effort, like demo-provision:
+   the email is sent regardless (links do not expire). */
+async function waitForLiveToken(asset, token, attempts = 10, delayMs = 2500) {
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const r = await fetch(`${asset.liveUrl}?da=${Date.now()}`, { headers: { "Cache-Control": "no-cache" } });
+      if (r.ok) {
+        const body = await r.text();
+        if (body.includes(token)) return true;
+      }
+    } catch (e) { /* keep polling */ }
+    if (i < attempts - 1) await new Promise(res => setTimeout(res, delayMs));
+  }
+  return false;
+}
+
+/* ------------------------------------------------------------------ */
+/* Views                                                               */
+/* ------------------------------------------------------------------ */
+
+/* What "list" may expose per account — never the activation token. */
+function publicAccount(a) {
+  return {
+    email: normalizeEmail(a.email),
+    name: String(a.name || ""),
+    status: String(a.status || "").toLowerCase(),
+    issuedAt: a.issuedAt || null,
+    seed: !a.token
+  };
+}
+
+/* The permission matrix: one row per person (union by email across
+   live assets), each cell that asset's status or null. */
+function buildMatrix(accounts) {
+  const liveAssets = ASSETS.filter(a => a.live);
+  const people = new Map();
+  for (const asset of liveAssets) {
+    for (const acct of accounts[asset.id] || []) {
+      if (!people.has(acct.email)) {
+        people.set(acct.email, { email: acct.email, name: acct.name || "", cells: {}, seeds: {} });
+      }
+      const p = people.get(acct.email);
+      if (!p.name && acct.name) p.name = acct.name;
+      p.cells[asset.id] = acct.status;
+      p.seeds[asset.id] = !!acct.seed;
+    }
+  }
+  const rows = [...people.values()];
+  for (const p of rows) {
+    for (const a of ASSETS) {
+      if (!(a.id in p.cells)) p.cells[a.id] = null;
+      if (!(a.id in p.seeds)) p.seeds[a.id] = false;
+    }
+  }
+  rows.sort((x, y) => (x.name || x.email).localeCompare(y.name || y.email));
+  return rows;
+}
+
+/* ------------------------------------------------------------------ */
+/* Actions                                                             */
+/* ------------------------------------------------------------------ */
+
+function findAsset(id) {
+  return ASSETS.find(a => a.id === String(id || "")) || null;
+}
+
+/* Gate for any action on one asset: resolves the asset or answers
+   the request itself (null = already answered). */
+function gateAsset(res, body) {
+  const asset = findAsset(body.asset);
+  if (!asset) { reply(res, 400, { ok: false, error: "unknown_asset" }); return null; }
+  if (!asset.live) { reply(res, 400, { ok: false, error: "asset_not_live" }); return null; }
+  if (!process.env[asset.tokenEnv]) {
+    console.log(`[demo-admin] NO-OP — ${asset.tokenEnv} is not configured for this project; nothing read or written for ${asset.name}.`);
+    reply(res, 503, { ok: false, error: "not_configured" });
+    return null;
+  }
+  return asset;
+}
+
+async function actionList(res) {
+  const liveAssets = ASSETS.filter(a => a.live);
+  for (const asset of liveAssets) {
+    if (!process.env[asset.tokenEnv]) {
+      console.log(`[demo-admin] NO-OP — ${asset.tokenEnv} is not configured for this project; list unavailable.`);
+      return reply(res, 503, { ok: false, error: "not_configured" });
+    }
+  }
+  const accounts = {};
+  try {
+    for (const asset of liveAssets) {
+      accounts[asset.id] = (await readStore(asset)).map(publicAccount);
+    }
+  } catch (e) {
+    console.error(`[demo-admin] list FAILED: ${e && e.message}`);
+    return reply(res, 502, { ok: false, error: "store_failed" });
+  }
+  return reply(res, 200, {
+    ok: true,
+    assets: ASSETS.map(a => ({ id: a.id, name: a.name, live: a.live })),
+    accounts,
+    matrix: buildMatrix(accounts)
+  });
+}
+
+async function actionInvite(res, body) {
+  const asset = gateAsset(res, body);
+  if (!asset) return;
+  const email = normalizeEmail(body.email);
+  const name = String(body.name || "").trim().slice(0, 200);
+  if (!plausibleEmail(email)) return reply(res, 400, { ok: false, error: "invalid_email" });
+
+  let outcome;
+  try {
+    outcome = await mutateStore(asset, (list, source) => {
+      const existing = list.find(a => normalizeEmail(a.email) === email) || null;
+      if (existing) return { result: { entry: existing, created: false } };
+      if (!name) {
+        const err = new Error("name_required");
+        err.code = "name_required";
+        throw err;
+      }
+      const entry = {
+        email,
+        name,
+        token: crypto.randomBytes(24).toString("hex"),
+        status: "invited",
+        issuedAt: easternIso(new Date())
+      };
+      return {
+        write: insertEntry(source, entry),
+        message: `IEC Office: invite ${email} to ${asset.name} demo`,
+        result: { entry, created: true }
+      };
+    });
+  } catch (e) {
+    if (e && e.code === "name_required") return reply(res, 400, { ok: false, error: "name_required" });
+    console.error(`[demo-admin] invite FAILED for ${asset.name}: ${e && e.message}`);
+    return reply(res, 502, { ok: false, error: "store_failed" });
+  }
+
+  const entry = outcome.entry;
+  const status = String(entry.status || "invited").toLowerCase();
+
+  if (!outcome.created && status !== "invited") {
+    /* Administrative control wins: already has access, or paused /
+       revoked — no email, no change. */
+    return reply(res, 200, {
+      ok: true, created: false, emailed: false,
+      state: status, reason: `status_${status}`
+    });
+  }
+  if (!entry.token) {
+    /* A tokenless invited entry cannot be (re)sent — seed shape. */
+    return reply(res, 200, {
+      ok: true, created: outcome.created, emailed: false,
+      state: "invited", reason: "no_token"
+    });
+  }
+
+  const deployConfirmed = outcome.created ? await waitForLiveToken(asset, entry.token) : true;
+  const sent = await sendActivationEmail(asset, entry.name || name, email, entry.token);
+  if (!sent.sent) {
+    console.error(`[demo-admin] activation email FAILED for ${asset.name} (${sent.reason}); the account stands as committed.`);
+    return reply(res, 200, {
+      ok: true, created: outcome.created, emailed: false,
+      error: "email_failed", reason: sent.reason, deployConfirmed
+    });
+  }
+  console.log(`[demo-admin] ${asset.name} activation email sent (created=${outcome.created}, Resend id ${sent.id || "?"}).`);
+  return reply(res, 200, {
+    ok: true,
+    created: outcome.created,
+    resent: !outcome.created,
+    emailed: true,
+    deployConfirmed,
+    id: sent.id
+  });
+}
+
+async function actionResend(res, body) {
+  const asset = gateAsset(res, body);
+  if (!asset) return;
+  const email = normalizeEmail(body.email);
+  if (!plausibleEmail(email)) return reply(res, 400, { ok: false, error: "invalid_email" });
+
+  let list;
+  try {
+    list = await readStore(asset);
+  } catch (e) {
+    console.error(`[demo-admin] resend FAILED for ${asset.name}: ${e && e.message}`);
+    return reply(res, 502, { ok: false, error: "store_failed" });
+  }
+  const entry = list.find(a => normalizeEmail(a.email) === email) || null;
+  if (!entry) return reply(res, 404, { ok: false, error: "not_found" });
+  const status = String(entry.status || "").toLowerCase();
+  if (status !== "invited") {
+    return reply(res, 200, { ok: true, emailed: false, state: status, reason: `status_${status}` });
+  }
+  if (!entry.token) {
+    return reply(res, 200, { ok: true, emailed: false, state: "invited", reason: "no_token" });
+  }
+  const sent = await sendActivationEmail(asset, entry.name, email, entry.token);
+  if (!sent.sent) {
+    console.error(`[demo-admin] resend FAILED for ${asset.name} (${sent.reason}).`);
+    return reply(res, 200, { ok: true, emailed: false, error: "email_failed", reason: sent.reason });
+  }
+  return reply(res, 200, { ok: true, emailed: true, resent: true, id: sent.id });
+}
+
+async function actionStatus(res, body) {
+  const asset = gateAsset(res, body);
+  if (!asset) return;
+  const email = normalizeEmail(body.email);
+  if (!plausibleEmail(email)) return reply(res, 400, { ok: false, error: "invalid_email" });
+  const target = String(body.status || "").toLowerCase();
+  if (target === "invited") {
+    /* Access never moves backwards to invited — in particular a
+       revoked account is never un-revoked into a live link. */
+    return reply(res, 400, { ok: false, error: "status_transition_forbidden" });
+  }
+  if (!SETTABLE_STATUSES.includes(target)) {
+    return reply(res, 400, { ok: false, error: "invalid_status" });
+  }
+
+  let outcome;
+  try {
+    outcome = await mutateStore(asset, (list, source) => {
+      const entry = list.find(a => normalizeEmail(a.email) === email) || null;
+      if (!entry) {
+        const err = new Error("not_found");
+        err.code = "not_found";
+        throw err;
+      }
+      const previous = String(entry.status || "").toLowerCase();
+      if (previous === target) return { result: { previous, changed: false } };
+      return {
+        write: setStatusInSource(source, email, target),
+        message: `IEC Office: set ${email} on ${asset.name} to ${target}`,
+        result: { previous, changed: true }
+      };
+    });
+  } catch (e) {
+    if (e && e.code === "not_found") return reply(res, 404, { ok: false, error: "not_found" });
+    console.error(`[demo-admin] status FAILED for ${asset.name}: ${e && e.message}`);
+    return reply(res, 502, { ok: false, error: "store_failed" });
+  }
+  console.log(`[demo-admin] ${asset.name}: ${email} ${outcome.previous} -> ${target} (changed=${outcome.changed}).`);
+  return reply(res, 200, {
+    ok: true,
+    asset: asset.id,
+    email,
+    status: target,
+    previousStatus: outcome.previous,
+    changed: outcome.changed
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/* Handler                                                             */
+/* ------------------------------------------------------------------ */
+
+export default async function handler(req, res) {
+  if (req.method !== "POST") return reply(res, 405, { ok: false, error: "method_not_allowed" });
+
+  const session = getCookie(req.headers && req.headers.cookie, "desk_session");
+  if (!session || !(await validSession(session))) {
+    return reply(res, 401, { ok: false, error: "unauthorized" });
+  }
+
+  const body = await readBody(req);
+  const action = String(body.action || "");
+  if (action === "list") return actionList(res);
+  if (action === "invite") return actionInvite(res, body);
+  if (action === "resend") return actionResend(res, body);
+  if (action === "status") return actionStatus(res, body);
+  return reply(res, 400, { ok: false, error: "unknown_action" });
+}
+
+/* Exported for the local test suite (scripts/demo-admin.test.mjs);
+   harmless in production. */
+export const _internals = {
+  ASSETS,
+  parseProvisioning,
+  insertEntry,
+  setStatusInSource,
+  buildMatrix,
+  buildActivationEmail,
+  publicAccount,
+  easternIso,
+  normalizeEmail,
+  validSession
+};

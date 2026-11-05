@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Demo Users — IEC Suite</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/desk/desk.css">
+<style>
+  table.matrix{width:100%;border-collapse:collapse;font-size:13.5px}
+  table.matrix th,table.matrix td{padding:11px 12px;border-bottom:1px solid var(--line-soft);text-align:left;vertical-align:top}
+  table.matrix th{font-family:'Space Grotesk';font-size:13px;letter-spacing:.03em;white-space:nowrap}
+  table.matrix th .soon{display:block;font-family:'Inter';font-size:11px;font-weight:500;color:var(--dim);letter-spacing:.02em}
+  .who b{font-family:'Space Grotesk';font-size:14.5px;display:block}
+  .who span{font-size:12.5px;color:var(--dim)}
+  .chip{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+    padding:4px 11px;border-radius:999px;border:1px solid var(--line);color:var(--dim);white-space:nowrap}
+  .chip.invited{color:#3a2703;background:linear-gradient(135deg,#fde68a,#fbbf24);border-color:transparent}
+  .chip.active{color:#06281c;background:linear-gradient(135deg,#6ee7b7,#34d399);border-color:transparent}
+  .chip.paused{color:#0b2447;background:linear-gradient(135deg,#93c5fd,#60a5fa);border-color:transparent}
+  .chip.revoked{color:#3d0a0a;background:linear-gradient(135deg,#fca5a5,#f87171);border-color:transparent}
+  .cell-none{color:var(--dim);font-size:14px}
+  .mini{font:600 11.5px 'Inter';padding:5px 10px;border-radius:8px;border:1px solid var(--line);
+    background:transparent;color:var(--gold);cursor:pointer;margin:5px 4px 0 0;white-space:nowrap}
+  .mini:hover{border-color:var(--gold);background:rgba(240,185,66,.08)}
+  .mini.danger{color:var(--red)}
+  .mini.danger:hover{border-color:var(--red);background:rgba(248,113,113,.08)}
+  .mini:disabled{opacity:.45;cursor:wait}
+  .checks{display:flex;gap:16px;flex-wrap:wrap;margin:2px 0 12px}
+  .form-card .checks label{display:flex;gap:7px;align-items:center;font-size:13.5px;color:var(--text);margin:0;font-weight:500}
+  .form-card .checks input{width:auto;margin:0;accent-color:var(--gold)}
+  .result-line{font-size:13px;margin-top:9px;color:var(--dim)}
+  .result-line b{color:var(--text)}
+  .banner{border:1px solid rgba(240,185,66,.45);background:rgba(240,185,66,.07);border-radius:14px;
+    padding:16px 18px;font-size:14px;margin-bottom:16px}
+  .banner.err{border-color:rgba(248,113,113,.5);background:rgba(248,113,113,.07)}
+  .banner a{color:var(--gold)}
+  .table-wrap{overflow-x:auto}
+  .seed-note{font-size:11px;color:var(--dim);display:block;margin-top:4px}
+</style>
+</head>
+<body data-page="demo-users">
+<div class="orbs" aria-hidden="true"><span class="orb gold"></span><span class="orb teal"></span><span class="orb violet"></span></div>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="side-brand">
+      <img class="logo-img" src="/assets/iec-logo.png" alt="IEC Inc.">
+      <div><h1>IEC <span>Suite</span></h1><p>International Empire Consultants, Inc.</p></div>
+    </div>
+    <nav id="nav"></nav>
+    <div class="side-foot">
+      <div class="themes" id="themes">
+        <button data-t="iec" style="--sw1:#f0b942;--sw2:#3b82f6" title="IEC Brand"></button>
+        <button data-t="midnight" style="--sw1:#f0b942;--sw2:#2dd4bf" title="Midnight Gold"></button>
+        <button data-t="amethyst" style="--sw1:#d8b4fe;--sw2:#f0abfc" title="Royal Amethyst"></button>
+        <button data-t="ocean" style="--sw1:#7dd3fc;--sw2:#5eead4" title="Deep Ocean"></button>
+        <button data-t="ember" style="--sw1:#fdba74;--sw2:#fbbf24" title="Sunset Ember"></button>
+        <button data-t="emerald" style="--sw1:#6ee7b7;--sw2:#f0b942" title="Emerald Noir"></button>
+        <button data-t="rose" style="--sw1:#fda4af;--sw2:#f0abfc" title="Rose Noir"></button>
+        <label class="cpick" title="Accent color"><input type="color" id="pick-gold" value="#f0b942"></label>
+        <label class="cpick" title="Highlight color"><input type="color" id="pick-teal" value="#2dd4bf"></label>
+        <button class="creset" id="pick-reset" title="Reset colors">⟲</button>
+      </div>
+      <button class="signout" id="signout"><i>🚪</i>Sign out</button>
+      <a class="public-link" href="/welcome.html">← Public site</a>
+      <div class="clockbox">
+        <div id="clock">--:--</div>
+        <div id="dateline">—</div>
+      </div>
+    </div>
+  </aside>
+
+  <main>
+    <div class="section-head">
+      <h2>Demo Users — All Assets</h2>
+      <button class="btn small ghost" id="refresh" type="button">↻ Refresh</button>
+    </div>
+    <p class="hint" style="margin-bottom:16px">One control point for every asset demo: who has access, and what state it is in. Changes commit to each asset's provisioning store and take effect on its redeploy.</p>
+
+    <div id="banner"></div>
+
+    <form class="card form-card" id="add-form" style="margin-bottom:16px">
+      <h3>Add person</h3>
+      <div class="row2">
+        <label>Full name<input id="add-name" maxlength="120" placeholder="e.g. Jane Haddad" required></label>
+        <label>Email<input id="add-email" type="email" maxlength="120" placeholder="jane@…" required></label>
+      </div>
+      <label style="margin-bottom:6px">Invite to</label>
+      <div class="checks" id="add-assets"></div>
+      <button type="submit" class="btn">Send invites →</button>
+      <div id="add-results"></div>
+    </form>
+
+    <div class="card" style="margin-bottom:16px">
+      <h3>Permission matrix</h3>
+      <div class="table-wrap"><div id="matrix"><div class="empty">Loading demo users…</div></div></div>
+    </div>
+
+    <div class="section-head"><h2>Coming next</h2></div>
+    <p class="hint" style="margin-bottom:16px">Demos are built only for assets that have a website and an application. Every such demo plugs into this portal via one registry entry — no new control panel, no separate user list.</p>
+    <div class="grid" id="planned"></div>
+    <div class="card note" style="margin-top:16px">
+      <h3>The demo blueprint</h3>
+      <p>Every future demo follows the same model as MEDEXEC and InSnap: a provisioning store as the single source of truth, a one-time activation link (the signer sets their own password — passwords are never emailed), the <b>invited / active / paused / revoked</b> status ladder, and a login notification to DrMorgan on every activation and sign-in. When a new asset's demo is built, it plugs into this portal with one registry entry — no new control panel.</p>
+    </div>
+
+    <footer>© 2026 International Empire Consultants, Inc. · IEC Suite · Developed by IEC, Inc.</footer>
+  </main>
+</div>
+
+<script src="/desk/desk.js"></script>
+<script>
+let STATE = null;
+
+async function api(body){
+  const r = await fetch('/api/demo-admin', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  const data = await r.json().catch(() => ({}));
+  return { status: r.status, data };
+}
+
+function banner(html, isErr){
+  $('banner').innerHTML = html ? `<div class="banner${isErr ? ' err' : ''}">${html}</div>` : '';
+}
+
+const STATUS_LABEL = { invited: 'Invited', active: 'Active', paused: 'Paused', revoked: 'Revoked' };
+
+function cellHtml(row, asset){
+  const st = row.cells[asset.id];
+  const name = row.name || row.email;
+  const btn = (act, label, danger) =>
+    `<button class="mini${danger ? ' danger' : ''}" data-act="${act}" data-asset="${asset.id}" data-email="${esc(row.email)}" data-name="${esc(name)}">${label}</button>`;
+  if (!asset.live) return '<span class="cell-none">—</span>';
+  if (!st) return '<span class="cell-none">—</span><br>' + btn('invite', 'Invite');
+  let out = `<span class="chip ${st}">${STATUS_LABEL[st] || esc(st)}</span>`;
+  if (row.seeds && row.seeds[asset.id]) out += '<span class="seed-note">seed account</span>';
+  out += '<br>';
+  if (st === 'invited' && !(row.seeds && row.seeds[asset.id])) out += btn('resend', 'Resend');
+  if (st === 'invited' || st === 'active') out += btn('pause', 'Pause');
+  if (st === 'paused') out += btn('resume', 'Resume');
+  if (st === 'revoked') out += btn('resume', 'Reactivate');
+  if (st !== 'revoked') out += btn('revoke', 'Revoke', true);
+  return out;
+}
+
+function render(){
+  const assets = STATE.assets;
+  const rows = STATE.matrix;
+  $('add-assets').innerHTML = assets.filter(a => a.live).map(a =>
+    `<label><input type="checkbox" value="${a.id}" checked> ${esc(a.name)}</label>`).join('');
+  $('matrix').innerHTML = rows.length ? `
+    <table class="matrix">
+      <thead><tr><th>Person</th>${assets.map(a =>
+        `<th>${esc(a.name)}${a.live ? '' : '<span class="soon">demo not built yet</span>'}</th>`).join('')}</tr></thead>
+      <tbody>${rows.map(row => `
+        <tr>
+          <td class="who"><b>${esc(row.name || row.email)}</b><span>${esc(row.email)}</span></td>
+          ${assets.map(a => `<td>${cellHtml(row, a)}</td>`).join('')}
+        </tr>`).join('')}
+      </tbody>
+    </table>` : '<div class="empty">No demo users yet — add the first person above.</div>';
+  $('planned').innerHTML = assets.filter(a => !a.live).map(a => `
+    <div class="card">
+      <h3>${esc(a.name)}</h3>
+      <p>Demo not built yet — plugs into this portal when built.</p>
+      <span class="tag">Planned</span>
+    </div>`).join('');
+}
+
+async function load(){
+  banner('');
+  const { status, data } = await api({ action: 'list' });
+  if (status === 401) {
+    banner('Your Desk session has expired. <a href="/desk/login.html">Sign in again</a> to manage demo users.', true);
+    $('matrix').innerHTML = '<div class="empty">Session expired.</div>';
+    return;
+  }
+  if (status === 503 || data.error === 'not_configured') {
+    banner('Demo control is <b>not configured yet</b> — the per-asset GitHub tokens and the Resend key still need to be set on this project. Nothing can be read or changed until then.');
+    $('matrix').innerHTML = '<div class="empty">Not configured yet.</div>';
+    return;
+  }
+  if (!data.ok) {
+    banner('Demo users could not be loaded (' + esc(data.error || 'unknown error') + '). Try Refresh.', true);
+    return;
+  }
+  STATE = data;
+  render();
+}
+
+function describe(assetName, data){
+  if (data.created && data.emailed) return `<b>${esc(assetName)}:</b> account created — activation email sent.`;
+  if (data.created && !data.emailed) return `<b>${esc(assetName)}:</b> account created, but the activation email failed — use Resend on the matrix.`;
+  if (data.resent && data.emailed) return `<b>${esc(assetName)}:</b> activation link re-sent.`;
+  if (data.emailed) return `<b>${esc(assetName)}:</b> activation email sent.`;
+  if (data.reason === 'status_active') return `<b>${esc(assetName)}:</b> already active — no email sent.`;
+  if (data.reason === 'status_paused') return `<b>${esc(assetName)}:</b> account is paused — resume it from the matrix first.`;
+  if (data.reason === 'status_revoked') return `<b>${esc(assetName)}:</b> account is revoked — reactivate it from the matrix first.`;
+  if (data.reason === 'no_token') return `<b>${esc(assetName)}:</b> seed account — no activation link exists.`;
+  return `<b>${esc(assetName)}:</b> ${esc(data.error || 'no change')}.`;
+}
+
+$('add-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const name = $('add-name').value.trim();
+  const email = $('add-email').value.trim();
+  const picks = [...$('add-assets').querySelectorAll('input:checked')].map(i => i.value);
+  const box = $('add-results');
+  if (!name || !email || !picks.length) {
+    box.innerHTML = '<div class="result-line">Name, email, and at least one asset are required.</div>';
+    return;
+  }
+  box.innerHTML = '<div class="result-line">Sending…</div>';
+  const lines = [];
+  for (const id of picks) {
+    const asset = (STATE ? STATE.assets.find(a => a.id === id) : null) || { name: id };
+    const { data } = await api({ action: 'invite', asset: id, email, name });
+    lines.push(`<div class="result-line">${describe(asset.name, data)}</div>`);
+  }
+  box.innerHTML = lines.join('');
+  e.target.reset();
+  [...$('add-assets').querySelectorAll('input')].forEach(i => { i.checked = true; });
+  load();
+});
+
+$('matrix').addEventListener('click', async e => {
+  const b = e.target.closest('button[data-act]');
+  if (!b || b.disabled) return;
+  const { act, asset, email, name } = b.dataset;
+  const assetName = (STATE.assets.find(a => a.id === asset) || {}).name || asset;
+  if (act === 'revoke' && !confirm(`Revoke ${name}'s ${assetName} demo access? Their activation link and login both stop working.`)) return;
+  b.disabled = true;
+  let data;
+  if (act === 'invite') ({ data } = await api({ action: 'invite', asset, email, name }));
+  else if (act === 'resend') ({ data } = await api({ action: 'resend', asset, email }));
+  else {
+    const target = act === 'pause' ? 'paused' : act === 'resume' ? 'active' : 'revoked';
+    ({ data } = await api({ action: 'status', asset, email, status: target }));
+  }
+  if (window.suzyToast) {
+    const msg = act === 'invite' || act === 'resend'
+      ? describe(assetName, data).replace(/<[^>]+>/g, '')
+      : data.ok
+        ? `${assetName}: ${email} is now ${data.status}.`
+        : `${assetName}: ${data.error || 'action failed'}.`;
+    window.suzyToast('Demo Users', msg);
+  }
+  load();
+});
+
+$('refresh').addEventListener('click', load);
+load();
+</script>
+</body>
+</html>
