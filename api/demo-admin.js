@@ -44,16 +44,16 @@
    to sign — the call to action is the asset's existing public
    signing route (registry ndaRoute). The flip to "invited" is
    automatic and happens on the ASSET side: the website signing
-   trigger (MEDEXEC, InSnap — registry ndaTrigger:true) or the
+   trigger (ALL FIVE assets — registry ndaTrigger:true since the
+   2026-11-05 circuit completion: CURAVIA wired through the
+   recorded-signing flow, INSNAPP and IEC Docs gained their own
+   /legal/cnda pages with record-first submit + trigger) or the
    verified-countersignature flow writes the entry into the asset's
    provisioning store, which "list" already reads, so the matrix
-   cell takes over from "nda_sent" on its own. Where an asset has
-   a signing route but no trigger wired yet (CURAVIA), the cell
-   stays "nda_sent" until the verified signing is provisioned by
-   the standing flow. Where an asset has NO public NDA signing
-   route and no CNDA document on file (INSNAPP, IEC Docs), invite
-   holds that asset — no email, no record, no provisioning — and
-   reports reason "no_nda_route". "resend" on an nda_sent cell
+   cell takes over from "nda_sent" on its own. Only a FUTURE asset
+   with no public NDA signing route (registry ndaRoute:null) is
+   held by invite — no email, no record, no provisioning — with
+   reason "no_nda_route". "resend" on an nda_sent cell
    re-sends the NDA email; on a provisioned cell it keeps its
    original meaning (re-send the activation link).
 
@@ -261,13 +261,14 @@ const ASSETS = [
     portalUrl: "https://getcuravia.com/demo/",
     liveUrl: "https://getcuravia.com/demo/provisioning.js",
     from: "CURAVIA Demo Portal <onboarding@resend.dev>",
-    /* Signing route exists (the Mutual NDA section of
-       getcuravia.com) but no asset-side trigger calls CURAVIA's
-       demo-provision endpoint yet — an executed NDA is provisioned
-       by the verified-signing flow, so the cell stays "nda_sent"
-       until then. */
+    /* Signing route: the Mutual NDA section of getcuravia.com.
+       Trigger ARMED 2026-11-05: the recorded-signing flow (the
+       shared /api/nda/submit the CURAVIA page posts to) calls
+       CURAVIA's /api/demo-provision for curavia signings right
+       after the signing record lands, so an executed NDA flips
+       this cell to "invited" on its own. */
     ndaRoute: "https://getcuravia.com/#signing",
-    ndaTrigger: false,
+    ndaTrigger: true,
     committer: { name: "DrMorgan73", email: "DrMorgan73@users.noreply.github.com" },
     signatureText: CURAVIA_SIGNATURE.text,
     signatureHtml: CURAVIA_SIGNATURE.html,
@@ -292,10 +293,12 @@ const ASSETS = [
     portalUrl: "https://www.inssnapp.com/demo",
     liveUrl: "https://www.inssnapp.com/demo/provisioning.js",
     from: "INSNAPP Demo Portal <onboarding@resend.dev>",
-    /* No public CNDA signing surface and no CNDA document on file
-       (verified 2026-11-05) — NDA-first invites HOLD this asset. */
-    ndaRoute: null,
-    ndaTrigger: false,
+    /* CNDA signing page built 2026-11-05 at /legal/cnda (full IEC
+       CNDA, record-first submit, in-process demo-provision
+       trigger — the InSnap pattern), so NDA-first invites run the
+       full circuit for INSNAPP too. */
+    ndaRoute: "https://www.inssnapp.com/legal/cnda",
+    ndaTrigger: true,
     committer: { name: "drmohdmorgan-del", email: "drmohdmorgan-del@users.noreply.github.com" },
     signatureText: INSNAPP_SIGNATURE.text,
     signatureHtml: INSNAPP_SIGNATURE.html,
@@ -320,10 +323,12 @@ const ASSETS = [
     portalUrl: "https://iec-docs.vercel.app/demo",
     liveUrl: "https://iec-docs.vercel.app/demo/provisioning.js",
     from: "IEC Docs Demo Portal <onboarding@resend.dev>",
-    /* No public NDA signing route and no CNDA document on file
-       (verified 2026-11-05) — NDA-first invites HOLD this asset. */
-    ndaRoute: null,
-    ndaTrigger: false,
+    /* CNDA signing page built 2026-11-05 at /legal/cnda (full IEC
+       CNDA, record-first submit into Blob, in-process
+       demo-provision trigger — the InSnap pattern), so NDA-first
+       invites run the full circuit for IEC Docs too. */
+    ndaRoute: "https://iec-docs.vercel.app/legal/cnda",
+    ndaTrigger: true,
     committer: { name: "DrMorgan73", email: "DrMorgan73@users.noreply.github.com" },
     signatureText: IECDOCS_SIGNATURE.text,
     signatureHtml: IECDOCS_SIGNATURE.html,

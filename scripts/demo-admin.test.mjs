@@ -402,16 +402,16 @@ ok(stores.insnapp.lastMessage === "IEC Office: set drmohdmorgan@gmail.com on INS
 r = await call({ action: "status", asset: "insnapp", email: "drmohdmorgan@gmail.com", status: "active" });
 ok(r.body.changed === true && r.body.previousStatus === "paused", "insnapp resumed to active");
 
-const napPutsBeforeHold = stores.insnapp.puts;
-const napEmailsBeforeHold = sentEmails.length;
+const napPutsBeforeNda = stores.insnapp.puts;
 r = await call({ action: "invite", asset: "insnapp", email: "new.insnapp@example.com", name: "Insnapp Tester" });
-ok(r.status === 200 && r.body.held === true && r.body.reason === "no_nda_route" &&
-   r.body.ndaSent === false && r.body.emailed === false,
-  "insnapp invite is HELD: no NDA signing route exists for the asset");
-ok(stores.insnapp.puts === napPutsBeforeHold && sentEmails.length === napEmailsBeforeHold,
-  "the hold sends nothing and commits nothing");
+ok(r.status === 200 && r.body.ndaSent === true && r.body.emailed === true && r.body.state === "nda_sent",
+  "insnapp invite is NDA-first too (2026-11-05 circuit): record + NDA email, no provisioning");
+ok(stores.insnapp.puts === napPutsBeforeNda, "insnapp invite makes NO commit");
 ok(!X.parseProvisioning(stores.insnapp.source).some(a => a.email === "new.insnapp@example.com"),
-  "the hold creates no provisioning entry");
+  "no insnapp provisioning entry was created");
+mail = sentEmails[sentEmails.length - 1];
+ok(mail.html.includes("https://www.inssnapp.com/legal/cnda"), "insnapp NDA email points at the INSNAPP CNDA route");
+ok(!mail.html.includes("/demo/activate/"), "insnapp NDA email carries NO activation link");
 
 r = await call({ action: "resend", asset: "iec-docs", email: "drmohdmorgan@gmail.com" });
 ok(r.body.emailed === true && r.body.resent === true, "iec-docs resend on invited sends");
@@ -487,17 +487,18 @@ ok(sentEmails[sentEmails.length - 1].from === "InSnap Demo Portal <onboarding@re
    sentEmails[sentEmails.length - 1].html.includes("https://iecincglobal.com/assets/iec-logo-email.png"),
   "InSnap NDA email: onboarding sender, CNDA route, IEC-logo org signature");
 
-/* ---------------- 13. NDA-first: routes, holds, gates, merge ---------------- */
+/* ---------------- 13. NDA-first: routes, gates, merge ---------------- */
 console.log("nda routes + merge (pure and handler)");
 const assetById = Object.fromEntries(X.ASSETS.map(a => [a.id, a]));
 ok(assetById.medexec.ndaRoute === "https://getmedexec.com/#nda" && assetById.medexec.ndaTrigger === true,
   "registry: MEDEXEC signing route, trigger armed");
 ok(assetById.insnap.ndaRoute === "https://insnap-job-engine.vercel.app/legal/cnda" && assetById.insnap.ndaTrigger === true,
   "registry: InSnap CNDA route, trigger armed");
-ok(assetById.curavia.ndaRoute === "https://getcuravia.com/#signing" && assetById.curavia.ndaTrigger === false,
-  "registry: CURAVIA signing route, trigger NOT wired yet");
-ok(assetById.insnapp.ndaRoute === null && assetById["iec-docs"].ndaRoute === null,
-  "registry: INSNAPP + IEC Docs have no NDA route (held)");
+ok(assetById.curavia.ndaRoute === "https://getcuravia.com/#signing" && assetById.curavia.ndaTrigger === true,
+  "registry: CURAVIA signing route, trigger armed (2026-11-05 circuit)");
+ok(assetById.insnapp.ndaRoute === "https://www.inssnapp.com/legal/cnda" && assetById.insnapp.ndaTrigger === true &&
+   assetById["iec-docs"].ndaRoute === "https://iec-docs.vercel.app/legal/cnda" && assetById["iec-docs"].ndaTrigger === true,
+  "registry: INSNAPP + IEC Docs CNDA routes, triggers armed (2026-11-05 circuit)");
 
 const ndaMail = X.buildNdaEmail(assetById.insnap, "Merge Tester");
 ok(ndaMail.subject.includes("InSnap") && ndaMail.text.includes("https://insnap-job-engine.vercel.app/legal/cnda") &&
@@ -514,11 +515,14 @@ ok(pureRow && pureRow.cells.insnap === "nda_sent" && pureRow.cells.medexec === n
 ok(pureNda.find(row => row.email === "drmohdmorgan@gmail.com").cells.medexec === "invited",
   "buildMatrix (pure): a provisioned status always wins over an nda_sent record");
 
-r = await call({ action: "invite", asset: "iec-docs", email: "docs.held@example.com", name: "Docs Held" });
-ok(r.status === 200 && r.body.held === true && r.body.reason === "no_nda_route" && r.body.emailed === false,
-  "iec-docs invite is HELD the same way (no NDA route)");
-r = await call({ action: "resend", asset: "iec-docs", email: "docs.held@example.com" });
-ok(r.status === 404 && r.body.error === "not_found", "a held invite leaves no record to resend (404)");
+r = await call({ action: "invite", asset: "iec-docs", email: "docs.nda@example.com", name: "Docs Nda" });
+ok(r.status === 200 && r.body.ndaSent === true && r.body.emailed === true && r.body.state === "nda_sent",
+  "iec-docs invite is NDA-first the same way (2026-11-05 circuit)");
+ok(sentEmails[sentEmails.length - 1].html.includes("https://iec-docs.vercel.app/legal/cnda"),
+  "iec-docs NDA email points at the IEC Docs CNDA route");
+r = await call({ action: "resend", asset: "iec-docs", email: "docs.nda@example.com" });
+ok(r.body.emailed === true && r.body.kind === "nda" && r.body.state === "nda_sent",
+  "resend on the iec-docs nda_sent cell re-sends the NDA email");
 
 r = await call({ action: "invite", asset: "medexec", email: "merge@test.example", name: "Merge Tester" });
 ok(r.body.ndaSent === true, "merge fixture: NDA sent on medexec");
@@ -532,9 +536,10 @@ const mergeRow = r.body.matrix.find(row => row.email === "merge@test.example");
 ok(mergeRow && mergeRow.cells.medexec === "nda_sent" && mergeRow.cells.curavia === "invited" &&
    mergeRow.cells.insnap === null,
   "list merge: one person, nda_sent where only the NDA went out, invited where provisioned");
-ok(r.body.assets.find(a => a.id === "insnapp").ndaRoute === false &&
+ok(r.body.assets.find(a => a.id === "insnapp").ndaRoute === true &&
+   r.body.assets.find(a => a.id === "iec-docs").ndaRoute === true &&
    r.body.assets.find(a => a.id === "medexec").ndaRoute === true,
-  "list reports each asset's NDA-route availability");
+  "list reports each asset's NDA-route availability (all five have routes)");
 
 delete process.env.BLOB_READ_WRITE_TOKEN;
 const blobEmailsBefore = sentEmails.length;
