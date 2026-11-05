@@ -60,10 +60,19 @@
    SECURITY: activation tokens from the stores are used only to
    build the emailed activation link. They are never logged and
    never returned — "list" exposes email, name, status, issuedAt.
+
+   MONITORING (2026-11-05): successful invite / resend / status
+   actions also record an activity event (invite_sent /
+   status_changed) in the Office activity store through
+   api/_demo-activity-store.js — the same store the asset demos
+   forward to via POST /api/demo-activity. Emission is best-effort:
+   the writer never throws and a missing Blob token is a logged
+   NO-OP, so a control action is never failed by its audit trail.
    ===================================================================== */
 
 import crypto from "node:crypto";
 import vm from "node:vm";
+import { appendActivityEvent } from "./_demo-activity-store.js";
 
 /* ------------------------------------------------------------------ */
 /* Org signatures for system mail (copied from the assets' own single */
@@ -487,6 +496,31 @@ async function waitForLiveToken(asset, token, attempts = 10, delayMs = 2500) {
 }
 
 /* ------------------------------------------------------------------ */
+/* Activity monitoring — Office-side events                            */
+/* ------------------------------------------------------------------ */
+
+/* Record one of this portal's own actions in the central activity
+   store. Best-effort: appendActivityEvent never throws, and its
+   false return (store not configured / write failed) is only a
+   log line here — the control action's outcome stands. */
+async function emitOfficeEvent(asset, email, name, event, detail) {
+  try {
+    const stored = await appendActivityEvent({
+      asset: asset.id,
+      email,
+      name: name || "",
+      event,
+      detail,
+      ts: new Date().toISOString(),
+      seed: false
+    });
+    if (!stored) console.log(`[demo-admin] activity event ${event} for ${asset.name} not recorded (activity store unavailable).`);
+  } catch (e) {
+    console.error(`[demo-admin] activity emission FAILED: ${e && e.message}`);
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /* Views                                                               */
 /* ------------------------------------------------------------------ */
 
@@ -640,6 +674,10 @@ async function actionInvite(res, body) {
     });
   }
   console.log(`[demo-admin] ${asset.name} activation email sent (created=${outcome.created}, Resend id ${sent.id || "?"}).`);
+  await emitOfficeEvent(asset, email, entry.name || name, "invite_sent",
+    outcome.created
+      ? "Activation email sent from IEC Office (account created)"
+      : "Activation email re-sent from IEC Office");
   return reply(res, 200, {
     ok: true,
     created: outcome.created,
@@ -677,6 +715,8 @@ async function actionResend(res, body) {
     console.error(`[demo-admin] resend FAILED for ${asset.name} (${sent.reason}).`);
     return reply(res, 200, { ok: true, emailed: false, error: "email_failed", reason: sent.reason });
   }
+  await emitOfficeEvent(asset, email, entry.name, "invite_sent",
+    "Activation email re-sent from IEC Office");
   return reply(res, 200, { ok: true, emailed: true, resent: true, id: sent.id });
 }
 
@@ -705,11 +745,11 @@ async function actionStatus(res, body) {
         throw err;
       }
       const previous = String(entry.status || "").toLowerCase();
-      if (previous === target) return { result: { previous, changed: false } };
+      if (previous === target) return { result: { previous, changed: false, name: entry.name || "" } };
       return {
         write: setStatusInSource(source, email, target),
         message: `IEC Office: set ${email} on ${asset.name} to ${target}`,
-        result: { previous, changed: true }
+        result: { previous, changed: true, name: entry.name || "" }
       };
     });
   } catch (e) {
@@ -718,6 +758,10 @@ async function actionStatus(res, body) {
     return reply(res, 502, { ok: false, error: "store_failed" });
   }
   console.log(`[demo-admin] ${asset.name}: ${email} ${outcome.previous} -> ${target} (changed=${outcome.changed}).`);
+  if (outcome.changed) {
+    await emitOfficeEvent(asset, email, outcome.name || "", "status_changed",
+      `${outcome.previous} → ${target} (via IEC Office)`);
+  }
   return reply(res, 200, {
     ok: true,
     asset: asset.id,

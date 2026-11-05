@@ -10,6 +10,13 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { register } from "node:module";
+
+/* api/demo-admin.js now also imports the activity store, which
+   imports @vercel/blob — redirect that import to the in-memory
+   mock so this suite runs locally (BLOB_READ_WRITE_TOKEN is unset
+   here, so activity emission is a NO-OP in these tests). */
+register("./testing/blob-hooks.mjs", import.meta.url);
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURES = {
