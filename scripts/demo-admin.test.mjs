@@ -13,11 +13,14 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { register } from "node:module";
 
-/* api/demo-admin.js now also imports the activity store, which
-   imports @vercel/blob — redirect that import to the in-memory
-   mock so this suite runs locally (BLOB_READ_WRITE_TOKEN is unset
-   here, so activity emission is a NO-OP in these tests). */
+/* api/demo-admin.js also imports the activity + invites stores,
+   which import @vercel/blob — redirect that import to the
+   in-memory mock so this suite runs locally. BLOB_READ_WRITE_TOKEN
+   starts unset (activity emission is a NO-OP); the NDA-first
+   section sets it, as production has it, to exercise the invites
+   store against the same mock. */
 register("./testing/blob-hooks.mjs", import.meta.url);
+const blobMock = await import("./testing/blob-mock.mjs");
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURES = {
@@ -102,6 +105,12 @@ globalThis.fetch = async (url, opts = {}) => {
     sentEmails.push(body);
     return jsonRes(200, { id: `email-${sentEmails.length}` });
   }
+  if (u.startsWith("https://blob.mock/")) {
+    for (const rec of blobMock.__blobs.values()) {
+      if (rec.url === u) return textRes(200, rec.content);
+    }
+    return textRes(404, "");
+  }
   throw new Error(`unmocked fetch: ${u}`);
 };
 
@@ -148,10 +157,24 @@ const insList = X.parseProvisioning(FIXTURES.insnap);
 const curList = X.parseProvisioning(FIXTURES.curavia);
 const napList = X.parseProvisioning(FIXTURES.insnapp);
 const docList = X.parseProvisioning(FIXTURES["iec-docs"]);
-ok(medList.length === 3, "medexec fixture parses to 3 accounts");
-ok(insList.length === 2, "insnap fixture parses to 2 accounts");
-ok(curList.length === 2 && napList.length === 2 && docList.length === 2,
-  "curavia + insnapp + iec-docs fixtures parse to 2 accounts each");
+/* The fixtures are the LIVE stores, and the Office legitimately
+   adds people to them (Mohamed Ismael + esteadysteps landed
+   2026-11-05, after this suite was written — its hardcoded counts
+   went stale and the suite failed on drift alone). Counts are
+   therefore captured as the baseline and asserted as minimums /
+   relative deltas; the load-bearing contract is the per-person
+   checks below (seed, DrMorgan, Colby), which must always hold. */
+const base = {
+  medexec: medList.length, insnap: insList.length, curavia: curList.length,
+  insnapp: napList.length, "iec-docs": docList.length
+};
+const peopleCount = new Set(
+  [...medList, ...insList, ...curList, ...napList, ...docList].map(a => a.email.toLowerCase())
+).size;
+ok(base.medexec >= 3, "medexec live store parses (seed + DrMorgan + Colby at minimum)");
+ok(base.insnap >= 2, "insnap live store parses (seed + DrMorgan at minimum)");
+ok(base.curavia >= 2 && base.insnapp >= 2 && base["iec-docs"] >= 2,
+  "curavia + insnapp + iec-docs live stores parse (seed + DrMorgan at minimum)");
 const medSeed = medList.find(a => a.email === "demo@medexec.example");
 const insSeed = insList.find(a => a.email === "demo@insnap.example");
 ok(medSeed && medSeed.status === "active" && !medSeed.token, "medexec seed: active, no token");
@@ -167,7 +190,10 @@ for (const [list, seedEmail, label] of [
   ok(m && m.status === "invited" && /^[0-9a-f]{48}$/.test(m.token), `${label}: DrMorgan invited with a 48-hex token`);
 }
 const medTokens = medList.filter(a => a.token).map(a => a.token);
-ok(medTokens.length === 2 && medTokens.every(t => /^[0-9a-f]+$/.test(t)), "medexec real accounts carry hex tokens (one hand-issued at 47 chars)");
+const morganMed = medList.find(a => a.email === "drmohdmorgan@gmail.com");
+ok(medTokens.length === medList.length - 1 && medTokens.every(t => /^[0-9a-f]+$/.test(t)) &&
+   morganMed && morganMed.token.length === 47,
+  "medexec: every non-seed account carries a hex token (DrMorgan's hand-issued one is 47 chars)");
 const allTokens = ASSET_IDS.flatMap(id => X.parseProvisioning(FIXTURES[id]).filter(a => a.token).map(a => a.token));
 
 const accountsView = {
@@ -179,7 +205,7 @@ const accountsView = {
 };
 ok(ASSET_IDS.every(id => accountsView[id].every(a => !("token" in a))), "publicAccount never exposes a token field");
 const matrix = X.buildMatrix(accountsView);
-ok(matrix.length === 7, "matrix unions to 7 people (DrMorgan, Colby, 5 asset seeds)");
+ok(matrix.length === peopleCount, "matrix unions to exactly the people across the five live stores");
 const morgan = matrix.find(r => r.email === "drmohdmorgan@gmail.com");
 ok(ASSET_IDS.every(id => morgan.cells[id] === "invited"), "matrix: DrMorgan invited on all five live assets");
 const colby = matrix.find(r => r.email === "colby@impactinsuranceut.com");
@@ -201,11 +227,11 @@ const entryText = ",\n  {\n" +
   `    email: "pure@test.example",\n    name: "Pure Test",\n    token: "${"a".repeat(48)}",\n` +
   `    status: "invited",\n    issuedAt: "2026-11-05T06:00:00-05:00"\n  }`;
 ok(inserted.replace(entryText, "") === FIXTURES.medexec, "insert adds exactly the new entry, nothing else moves");
-ok(X.parseProvisioning(inserted).length === 4, "inserted file still parses (4 accounts)");
+ok(X.parseProvisioning(inserted).length === base.medexec + 1, "inserted file still parses (baseline + 1)");
 const insertedDocs = X.insertEntry(FIXTURES["iec-docs"], newEntry);
 ok(insertedDocs.replace(entryText, "") === FIXTURES["iec-docs"],
   "insert is byte-preserving on a store with a trailing module-exports block (iec-docs)");
-ok(X.parseProvisioning(insertedDocs).length === 3, "iec-docs store still parses after insert (3 accounts)");
+ok(X.parseProvisioning(insertedDocs).length === base["iec-docs"] + 1, "iec-docs store still parses after insert (baseline + 1)");
 const flippedNap = X.setStatusInSource(FIXTURES.insnapp, "drmohdmorgan@gmail.com", "paused");
 ok(flippedNap.replace('status: "paused"', 'status: "invited"') === FIXTURES.insnapp,
   "status flip is byte-preserving on the insnapp store too");
@@ -229,46 +255,82 @@ ok(eq(r.body.assets.map(a => a.id), ["medexec", "insnap", "curavia", "insnapp", 
   "registry order: medexec, insnap, curavia, insnapp, iec-docs");
 ok(r.body.assets.every(a => a.live), "all five assets are live — no planned entries remain");
 ok(r.body.assets.every(a => a.configured === true), "all five report configured:true when every token is set");
-ok(r.body.accounts.medexec.length === 3 && r.body.accounts.insnap.length === 2 &&
-   r.body.accounts.curavia.length === 2 && r.body.accounts.insnapp.length === 2 &&
-   r.body.accounts["iec-docs"].length === 2, "list returns all five stores' accounts");
-ok(r.body.matrix.length === 7, "list returns the 7-person matrix");
+ok(r.body.accounts.medexec.length === base.medexec && r.body.accounts.insnap.length === base.insnap &&
+   r.body.accounts.curavia.length === base.curavia && r.body.accounts.insnapp.length === base.insnapp &&
+   r.body.accounts["iec-docs"].length === base["iec-docs"], "list returns all five stores' accounts");
+ok(r.body.matrix.length === peopleCount, "list returns the full people matrix");
 const listJson = JSON.stringify(r.body);
 ok(allTokens.every(t => !listJson.includes(t)), "list output contains NO activation tokens from any store");
 
-/* ---------------- 5. invite (new) + byte preservation + email ---------------- */
-console.log("invite");
-const beforeInvite = stores.medexec.source;
+/* ---------------- 5. invite is NDA-FIRST (2026-11-05 rule) ---------------- */
+console.log("invite (NDA-first)");
+/* The nda_sent records live in the Office Blob store; production
+   has BLOB_READ_WRITE_TOKEN set (the activity store uses it), so
+   the suite sets it from here on. Activity emission now writes to
+   the in-memory mock too — no assertion depends on it either way. */
+process.env.BLOB_READ_WRITE_TOKEN = "blob-test-token";
+const medPutsBeforeNda = stores.medexec.puts;
 r = await call({ action: "invite", asset: "medexec", email: "Test.Person@Example.com", name: "Test Person" });
-ok(r.status === 200 && r.body.created === true && r.body.emailed === true, "invite creates + emails");
-ok(stores.medexec.puts === 1, "invite made exactly one commit");
-ok(stores.medexec.lastMessage === "IEC Office: invite test.person@example.com to MEDEXEC demo", "commit message follows the pattern");
-const afterInvite = X.parseProvisioning(stores.medexec.source);
-ok(afterInvite.length === 4, "store now has 4 accounts");
-const testEntry = afterInvite.find(a => a.email === "test.person@example.com");
-ok(testEntry && testEntry.status === "invited" && /^[0-9a-f]{48}$/.test(testEntry.token), "new entry: invited with a fresh token");
-ok(/^-0[45]:00$/.test(testEntry.issuedAt.slice(-6)), "issuedAt carries the Eastern offset");
-const insertedText = ",\n  {\n" +
-  `    email: "test.person@example.com",\n    name: "Test Person",\n    token: "${testEntry.token}",\n` +
-  `    status: "invited",\n    issuedAt: "${testEntry.issuedAt}"\n  }`;
-ok(stores.medexec.source.replace(insertedText, "") === beforeInvite, "committed insert is byte-preserving");
-ok(sentEmails.length === 1 && sentEmails[0].to[0] === "test.person@example.com", "one activation email, to the invitee");
+ok(r.status === 200 && r.body.ndaSent === true && r.body.emailed === true && r.body.state === "nda_sent",
+  "invite records nda_sent + emails the NDA");
+ok(stores.medexec.puts === medPutsBeforeNda, "invite makes NO GitHub commit (provisioning is the asset side's job now)");
+ok(X.parseProvisioning(stores.medexec.source).length === base.medexec, "no provisioning entry was created by the invite");
+ok(sentEmails.length === 1 && sentEmails[0].to[0] === "test.person@example.com", "one email, to the invitee");
 ok(sentEmails[0].from === "MEDEXEC Demo Portal <onboarding@resend.dev>", "From is the Resend onboarding sender");
-ok(sentEmails[0].html.includes(`https://getmedexec.com/demo/activate/?token=${testEntry.token}`), "email carries the activation link");
+ok(sentEmails[0].subject.includes("confidentiality agreement"), "subject names the NDA step");
+ok(sentEmails[0].html.includes("https://getmedexec.com/#nda"), "email's call to action is the MEDEXEC signing route");
+ok(sentEmails[0].text.includes("Sign the NDA first"), "copy states the rule: NDA first, link follows");
+ok(!sentEmails[0].html.includes("/demo/activate/") && !sentEmails[0].text.includes("/demo/activate/"),
+  "the NDA email carries NO activation link");
 ok(sentEmails[0].html.includes("MEDEXEC · IEC, Inc.") && sentEmails[0].html.includes("https://getmedexec.com/logo.png"), "email carries the MEDEXEC org signature");
+r = await call({ action: "list" });
+const ndaRow = r.body.matrix.find(row => row.email === "test.person@example.com");
+ok(!!ndaRow && ndaRow.cells.medexec === "nda_sent" && ndaRow.cells.insnap === null,
+  "list merges the record: the matrix shows NDA SENT under the same person");
+ok(Array.isArray(r.body.invites) && r.body.invites.length === 1 &&
+   r.body.invites[0].email === "test.person@example.com" && r.body.invites[0].asset === "medexec" &&
+   r.body.invites[0].status === "nda_sent", "list exposes the nda_sent record");
 
-/* ---------------- 6. idempotent invite ---------------- */
-console.log("idempotency");
-const putsBefore = stores.medexec.puts;
+/* ---------------- 6. re-invite, NDA resend, and the flip ---------------- */
+console.log("nda idempotency + flip");
 r = await call({ action: "invite", asset: "medexec", email: "test.person@example.com", name: "Test Person" });
-ok(r.body.created === false && r.body.resent === true && r.body.emailed === true, "re-invite resends the same link");
-ok(stores.medexec.puts === putsBefore, "re-invite makes NO new commit");
-ok(X.parseProvisioning(stores.medexec.source).length === 4, "no duplicate entry");
-ok(sentEmails.length === 2 && sentEmails[1].html.includes(testEntry.token), "resent email uses the SAME token");
+ok(r.body.ndaSent === true && r.body.resent === true && r.body.emailed === true, "re-invite re-sends the NDA (record refreshed)");
+ok(stores.medexec.puts === medPutsBeforeNda, "re-invite still makes NO commit");
+ok(sentEmails.length === 2 && sentEmails[1].html.includes("https://getmedexec.com/#nda"), "the re-sent email is the NDA email again");
 
 r = await call({ action: "invite", asset: "medexec", email: "demo@medexec.example", name: "Demo Reviewer" });
-ok(r.body.created === false && r.body.emailed === false && r.body.reason === "status_active",
-  "invite on an active (seed) account: no change, no email");
+ok(r.body.ndaSent === false && r.body.emailed === false && r.body.reason === "status_active",
+  "invite on an active (seed) account: no NDA, no change");
+
+r = await call({ action: "resend", asset: "medexec", email: "test.person@example.com" });
+ok(r.body.emailed === true && r.body.kind === "nda" && r.body.state === "nda_sent",
+  "resend on an nda_sent cell re-sends the NDA email");
+ok(sentEmails[sentEmails.length - 1].html.includes("https://getmedexec.com/#nda") &&
+   !sentEmails[sentEmails.length - 1].html.includes("/demo/activate/"),
+  "the resend is the NDA email, not an activation link");
+ok(stores.medexec.puts === medPutsBeforeNda, "NDA resend makes NO commit either");
+
+/* The flip: the asset side provisions after the executed NDA (the
+   website signing trigger). Simulate its byte-preserving insert
+   directly into the mock store, exactly as demo-provision does. */
+const flipEntry = {
+  email: "test.person@example.com", name: "Test Person",
+  token: "b".repeat(48), status: "invited", issuedAt: "2026-11-05T07:00:00-05:00"
+};
+stores.medexec.source = X.insertEntry(stores.medexec.source, flipEntry);
+stores.medexec.puts++;
+r = await call({ action: "list" });
+const flippedRow = r.body.matrix.find(row => row.email === "test.person@example.com");
+ok(flippedRow && flippedRow.cells.medexec === "invited",
+  "once the asset store has the entry, the cell flips from nda_sent to invited on its own");
+r = await call({ action: "invite", asset: "medexec", email: "test.person@example.com", name: "Test Person" });
+ok(r.body.ndaSent === false && r.body.emailed === false && r.body.reason === "status_invited",
+  "invite on a now-provisioned person: state reported, no NDA sent");
+r = await call({ action: "resend", asset: "medexec", email: "test.person@example.com" });
+ok(r.body.emailed === true && r.body.resent === true && r.body.kind !== "nda",
+  "resend after the flip sends the ACTIVATION link again");
+ok(sentEmails[sentEmails.length - 1].html.includes(`https://getmedexec.com/demo/activate/?token=${flipEntry.token}`),
+  "the activation resend uses the provisioned token");
 
 /* ---------------- 7. status flips through the handler ---------------- */
 console.log("status");
@@ -317,13 +379,17 @@ ok(sentEmails[sentEmails.length - 1].html.includes(`token=${morganToken}`), "res
 
 /* ---------------- 9b. the three new live assets act uniformly ---------------- */
 console.log("new live assets");
+const curPutsBeforeNda = stores.curavia.puts;
 r = await call({ action: "invite", asset: "curavia", email: "new.curavia@example.com", name: "Curavia Tester" });
-ok(r.status === 200 && r.body.created === true && r.body.emailed === true, "curavia invite creates + emails");
-ok(stores.curavia.lastMessage === "IEC Office: invite new.curavia@example.com to CURAVIA demo", "curavia commit message follows the pattern");
+ok(r.status === 200 && r.body.ndaSent === true && r.body.emailed === true && r.body.state === "nda_sent",
+  "curavia invite is NDA-first too: record + NDA email, no provisioning");
+ok(stores.curavia.puts === curPutsBeforeNda, "curavia invite makes NO commit");
+ok(!X.parseProvisioning(stores.curavia.source).some(a => a.email === "new.curavia@example.com"),
+  "no curavia provisioning entry was created");
 let mail = sentEmails[sentEmails.length - 1];
-const curEntry = X.parseProvisioning(stores.curavia.source).find(a => a.email === "new.curavia@example.com");
 ok(mail.from === "CURAVIA Demo Portal <onboarding@resend.dev>", "curavia email: onboarding sender");
-ok(mail.html.includes(`https://getcuravia.com/demo/activate/?token=${curEntry.token}`), "curavia email carries its activation link");
+ok(mail.html.includes("https://getcuravia.com/#signing"), "curavia NDA email points at the getcuravia.com signing route");
+ok(!mail.html.includes("/demo/activate/"), "curavia NDA email carries NO activation link");
 ok(mail.html.includes("CURAVIA · IEC, Inc.") && mail.html.includes("https://iecincglobal.com/assets/iec-logo-email.png") &&
    mail.html.includes("info@getcuravia.com"), "curavia email carries the IEC-logo org signature");
 
@@ -336,14 +402,16 @@ ok(stores.insnapp.lastMessage === "IEC Office: set drmohdmorgan@gmail.com on INS
 r = await call({ action: "status", asset: "insnapp", email: "drmohdmorgan@gmail.com", status: "active" });
 ok(r.body.changed === true && r.body.previousStatus === "paused", "insnapp resumed to active");
 
+const napPutsBeforeHold = stores.insnapp.puts;
+const napEmailsBeforeHold = sentEmails.length;
 r = await call({ action: "invite", asset: "insnapp", email: "new.insnapp@example.com", name: "Insnapp Tester" });
-ok(r.status === 200 && r.body.created === true && r.body.emailed === true, "insnapp invite creates + emails");
-mail = sentEmails[sentEmails.length - 1];
-const napEntry = X.parseProvisioning(stores.insnapp.source).find(a => a.email === "new.insnapp@example.com");
-ok(mail.from === "INSNAPP Demo Portal <onboarding@resend.dev>", "insnapp email: onboarding sender");
-ok(mail.html.includes(`https://www.inssnapp.com/demo/activate/?token=${napEntry.token}`), "insnapp email carries its activation link");
-ok(mail.html.includes("INSNAPP · IEC, Inc.") && mail.html.includes("https://iecincglobal.com/assets/iec-logo-email.png"),
-  "insnapp email carries the IEC-logo org signature");
+ok(r.status === 200 && r.body.held === true && r.body.reason === "no_nda_route" &&
+   r.body.ndaSent === false && r.body.emailed === false,
+  "insnapp invite is HELD: no NDA signing route exists for the asset");
+ok(stores.insnapp.puts === napPutsBeforeHold && sentEmails.length === napEmailsBeforeHold,
+  "the hold sends nothing and commits nothing");
+ok(!X.parseProvisioning(stores.insnapp.source).some(a => a.email === "new.insnapp@example.com"),
+  "the hold creates no provisioning entry");
 
 r = await call({ action: "resend", asset: "iec-docs", email: "drmohdmorgan@gmail.com" });
 ok(r.body.emailed === true && r.body.resent === true, "iec-docs resend on invited sends");
@@ -406,16 +474,77 @@ console.log("email failure");
 delete process.env.DEMO_ADMIN_RESEND_API_KEY;
 const insPutsBefore = stores.insnap.puts;
 r = await call({ action: "invite", asset: "insnap", email: "second@example.com", name: "Second Person" });
-ok(r.body.created === true && r.body.emailed === false && r.body.error === "email_failed",
-  "missing Resend key: account created, email_failed reported (no rollback)");
-ok(stores.insnap.puts === insPutsBefore + 1, "the commit stands");
+ok(r.body.ndaSent === true && r.body.emailed === false && r.body.error === "email_failed",
+  "missing Resend key: nda_sent record stands, email_failed reported (no rollback)");
+ok(stores.insnap.puts === insPutsBefore, "no commit was made (NDA-first never commits)");
 process.env.DEMO_ADMIN_RESEND_API_KEY = "resend-test-key";
 r = await call({ action: "resend", asset: "insnap", email: "second@example.com" });
-ok(r.body.emailed === true, "resend succeeds once the key is back");
+ok(r.body.emailed === true && r.body.kind === "nda" && r.body.state === "nda_sent",
+  "resend re-sends the NDA once the key is back");
 ok(sentEmails[sentEmails.length - 1].from === "InSnap Demo Portal <onboarding@resend.dev>" &&
+   sentEmails[sentEmails.length - 1].html.includes("https://insnap-job-engine.vercel.app/legal/cnda") &&
    sentEmails[sentEmails.length - 1].html.includes("InSnap · IEC, Inc.") &&
    sentEmails[sentEmails.length - 1].html.includes("https://iecincglobal.com/assets/iec-logo-email.png"),
-  "InSnap email: onboarding sender + IEC-logo org signature");
+  "InSnap NDA email: onboarding sender, CNDA route, IEC-logo org signature");
+
+/* ---------------- 13. NDA-first: routes, holds, gates, merge ---------------- */
+console.log("nda routes + merge (pure and handler)");
+const assetById = Object.fromEntries(X.ASSETS.map(a => [a.id, a]));
+ok(assetById.medexec.ndaRoute === "https://getmedexec.com/#nda" && assetById.medexec.ndaTrigger === true,
+  "registry: MEDEXEC signing route, trigger armed");
+ok(assetById.insnap.ndaRoute === "https://insnap-job-engine.vercel.app/legal/cnda" && assetById.insnap.ndaTrigger === true,
+  "registry: InSnap CNDA route, trigger armed");
+ok(assetById.curavia.ndaRoute === "https://getcuravia.com/#signing" && assetById.curavia.ndaTrigger === false,
+  "registry: CURAVIA signing route, trigger NOT wired yet");
+ok(assetById.insnapp.ndaRoute === null && assetById["iec-docs"].ndaRoute === null,
+  "registry: INSNAPP + IEC Docs have no NDA route (held)");
+
+const ndaMail = X.buildNdaEmail(assetById.insnap, "Merge Tester");
+ok(ndaMail.subject.includes("InSnap") && ndaMail.text.includes("https://insnap-job-engine.vercel.app/legal/cnda") &&
+   ndaMail.text.includes("Sign the NDA first") && !ndaMail.text.includes("token="),
+  "buildNdaEmail: route + rule copy, no token anywhere");
+
+const pureNda = X.buildMatrix(accountsView, [
+  { email: "pure@nda.example", name: "Pure Nda", asset: "insnap", status: "nda_sent" },
+  { email: "drmohdmorgan@gmail.com", name: "", asset: "medexec", status: "nda_sent" }
+]);
+const pureRow = pureNda.find(row => row.email === "pure@nda.example");
+ok(pureRow && pureRow.cells.insnap === "nda_sent" && pureRow.cells.medexec === null,
+  "buildMatrix (pure): an nda-only person appears with an nda_sent cell");
+ok(pureNda.find(row => row.email === "drmohdmorgan@gmail.com").cells.medexec === "invited",
+  "buildMatrix (pure): a provisioned status always wins over an nda_sent record");
+
+r = await call({ action: "invite", asset: "iec-docs", email: "docs.held@example.com", name: "Docs Held" });
+ok(r.status === 200 && r.body.held === true && r.body.reason === "no_nda_route" && r.body.emailed === false,
+  "iec-docs invite is HELD the same way (no NDA route)");
+r = await call({ action: "resend", asset: "iec-docs", email: "docs.held@example.com" });
+ok(r.status === 404 && r.body.error === "not_found", "a held invite leaves no record to resend (404)");
+
+r = await call({ action: "invite", asset: "medexec", email: "merge@test.example", name: "Merge Tester" });
+ok(r.body.ndaSent === true, "merge fixture: NDA sent on medexec");
+stores.curavia.source = X.insertEntry(stores.curavia.source, {
+  email: "merge@test.example", name: "Merge Tester",
+  token: "c".repeat(48), status: "invited", issuedAt: "2026-11-05T07:30:00-05:00"
+});
+stores.curavia.puts++;
+r = await call({ action: "list" });
+const mergeRow = r.body.matrix.find(row => row.email === "merge@test.example");
+ok(mergeRow && mergeRow.cells.medexec === "nda_sent" && mergeRow.cells.curavia === "invited" &&
+   mergeRow.cells.insnap === null,
+  "list merge: one person, nda_sent where only the NDA went out, invited where provisioned");
+ok(r.body.assets.find(a => a.id === "insnapp").ndaRoute === false &&
+   r.body.assets.find(a => a.id === "medexec").ndaRoute === true,
+  "list reports each asset's NDA-route availability");
+
+delete process.env.BLOB_READ_WRITE_TOKEN;
+const blobEmailsBefore = sentEmails.length;
+r = await call({ action: "invite", asset: "medexec", email: "nobleb@example.com", name: "No Blob" });
+ok(r.status === 503 && r.body.error === "not_configured",
+  "invite refuses (503) when the invites store is not configured — no untracked NDA");
+ok(sentEmails.length === blobEmailsBefore, "and no email went out");
+process.env.BLOB_READ_WRITE_TOKEN = "blob-test-token";
+r = await call({ action: "invite", asset: "medexec", email: "nobleb@example.com", name: "No Blob" });
+ok(r.body.ndaSent === true && r.body.emailed === true, "invite recovers once the store is configured");
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

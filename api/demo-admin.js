@@ -35,6 +35,28 @@
    email across every live asset, each cell that asset's status or
    null — the cross-asset permission view the Desk page renders.
 
+   NDA-FIRST INVITES (DrMorgan's standing rule, 2026-11-05: "if
+   I'm sending invitation, NDA send first; once executed, the link
+   follows"): "invite" NO LONGER provisions an account. It records
+   the person per asset in the pre-state "nda_sent" (Office Blob
+   doc demo-invites.json, api/_demo-invites-store.js) and sends ONE
+   email per asset carrying that asset's confidentiality agreement
+   to sign — the call to action is the asset's existing public
+   signing route (registry ndaRoute). The flip to "invited" is
+   automatic and happens on the ASSET side: the website signing
+   trigger (MEDEXEC, InSnap — registry ndaTrigger:true) or the
+   verified-countersignature flow writes the entry into the asset's
+   provisioning store, which "list" already reads, so the matrix
+   cell takes over from "nda_sent" on its own. Where an asset has
+   a signing route but no trigger wired yet (CURAVIA), the cell
+   stays "nda_sent" until the verified signing is provisioned by
+   the standing flow. Where an asset has NO public NDA signing
+   route and no CNDA document on file (INSNAPP, IEC Docs), invite
+   holds that asset — no email, no record, no provisioning — and
+   reports reason "no_nda_route". "resend" on an nda_sent cell
+   re-sends the NDA email; on a provisioned cell it keeps its
+   original meaning (re-send the activation link).
+
    ASSET REGISTRY: live entries carry repo/path/token-env. A future
    qualifying demo (website + application — the scope rule) joins
    with one live registry entry + its env token; nothing about the
@@ -69,14 +91,18 @@
                                     (DrMorgan73, iec-docs only,
                                     Contents read/write)
      DEMO_ADMIN_RESEND_API_KEY      Resend sending key
+     BLOB_READ_WRITE_TOKEN          (already set for the Office —
+                                    the nda_sent invite records live
+                                    in the same Blob store)
 
    SECURITY: activation tokens from the stores are used only to
    build the emailed activation link. They are never logged and
    never returned — "list" exposes email, name, status, issuedAt.
 
    MONITORING (2026-11-05): successful invite / resend / status
-   actions also record an activity event (invite_sent /
-   status_changed) in the Office activity store through
+   actions also record an activity event (nda_sent for an NDA
+   invite, invite_sent for an activation send, status_changed) in
+   the Office activity store through
    api/_demo-activity-store.js — the same store the asset demos
    forward to via POST /api/demo-activity. Emission is best-effort:
    the writer never throws and a missing Blob token is a logged
@@ -86,6 +112,13 @@
 import crypto from "node:crypto";
 import vm from "node:vm";
 import { appendActivityEvent } from "./_demo-activity-store.js";
+import {
+  invitesConfigured,
+  readInvites,
+  findInvite,
+  upsertNdaInvite,
+  touchNdaInvite
+} from "./_demo-invites-store.js";
 
 /* ------------------------------------------------------------------ */
 /* Org signatures for system mail (copied from the assets' own single */
@@ -166,6 +199,11 @@ const ASSETS = [
     portalUrl: "https://getmedexec.com/demo/",
     liveUrl: "https://getmedexec.com/demo/provisioning.js",
     from: "MEDEXEC Demo Portal <onboarding@resend.dev>",
+    /* NDA-first invite: the public signing route the invite email
+       sends people to, and whether a signing there provisions the
+       demo automatically (asset-side trigger armed). */
+    ndaRoute: "https://getmedexec.com/#nda",
+    ndaTrigger: true,
     committer: { name: "DrMorgan73", email: "DrMorgan73@users.noreply.github.com" },
     signatureText: MEDEXEC_SIGNATURE_TEXT,
     signatureHtml: MEDEXEC_SIGNATURE_HTML,
@@ -190,6 +228,8 @@ const ASSETS = [
     portalUrl: "https://insnap-job-engine.vercel.app/demo",
     liveUrl: "https://insnap-job-engine.vercel.app/demo/provisioning.js",
     from: "InSnap Demo Portal <onboarding@resend.dev>",
+    ndaRoute: "https://insnap-job-engine.vercel.app/legal/cnda",
+    ndaTrigger: true,
     committer: { name: "drmohdmorgan-del", email: "drmohdmorgan-del@users.noreply.github.com" },
     signatureText: INSNAP_SIGNATURE_TEXT,
     signatureHtml: INSNAP_SIGNATURE_HTML,
@@ -221,6 +261,13 @@ const ASSETS = [
     portalUrl: "https://getcuravia.com/demo/",
     liveUrl: "https://getcuravia.com/demo/provisioning.js",
     from: "CURAVIA Demo Portal <onboarding@resend.dev>",
+    /* Signing route exists (the Mutual NDA section of
+       getcuravia.com) but no asset-side trigger calls CURAVIA's
+       demo-provision endpoint yet — an executed NDA is provisioned
+       by the verified-signing flow, so the cell stays "nda_sent"
+       until then. */
+    ndaRoute: "https://getcuravia.com/#signing",
+    ndaTrigger: false,
     committer: { name: "DrMorgan73", email: "DrMorgan73@users.noreply.github.com" },
     signatureText: CURAVIA_SIGNATURE.text,
     signatureHtml: CURAVIA_SIGNATURE.html,
@@ -245,6 +292,10 @@ const ASSETS = [
     portalUrl: "https://www.inssnapp.com/demo",
     liveUrl: "https://www.inssnapp.com/demo/provisioning.js",
     from: "INSNAPP Demo Portal <onboarding@resend.dev>",
+    /* No public CNDA signing surface and no CNDA document on file
+       (verified 2026-11-05) — NDA-first invites HOLD this asset. */
+    ndaRoute: null,
+    ndaTrigger: false,
     committer: { name: "drmohdmorgan-del", email: "drmohdmorgan-del@users.noreply.github.com" },
     signatureText: INSNAPP_SIGNATURE.text,
     signatureHtml: INSNAPP_SIGNATURE.html,
@@ -269,6 +320,10 @@ const ASSETS = [
     portalUrl: "https://iec-docs.vercel.app/demo",
     liveUrl: "https://iec-docs.vercel.app/demo/provisioning.js",
     from: "IEC Docs Demo Portal <onboarding@resend.dev>",
+    /* No public NDA signing route and no CNDA document on file
+       (verified 2026-11-05) — NDA-first invites HOLD this asset. */
+    ndaRoute: null,
+    ndaTrigger: false,
     committer: { name: "DrMorgan73", email: "DrMorgan73@users.noreply.github.com" },
     signatureText: IECDOCS_SIGNATURE.text,
     signatureHtml: IECDOCS_SIGNATURE.html,
@@ -583,21 +638,60 @@ async function sendActivationEmail(asset, name, email, token) {
   }
 }
 
-/* Bounded wait for a committed token to be live, so the activation
-   link works when the email lands. Best-effort, like demo-provision:
-   the email is sent regardless (links do not expire). */
-async function waitForLiveToken(asset, token, attempts = 10, delayMs = 2500) {
-  for (let i = 0; i < attempts; i++) {
-    try {
-      const r = await fetch(`${asset.liveUrl}?da=${Date.now()}`, { headers: { "Cache-Control": "no-cache" } });
-      if (r.ok) {
-        const body = await r.text();
-        if (body.includes(token)) return true;
-      }
-    } catch (e) { /* keep polling */ }
-    if (i < attempts - 1) await new Promise(res => setTimeout(res, delayMs));
+/* ------------------------------------------------------------------ */
+/* NDA invite email — the NDA-FIRST invitation (2026-11-05 rule).      */
+/* One per asset: the call to action is the asset's own public         */
+/* signing route; the copy states plainly that the demo access link    */
+/* follows automatically once the agreement is executed. Same org      */
+/* signature standard as the activation emails — never a personal      */
+/* name, and NO activation link or token is ever in this email.        */
+/* ------------------------------------------------------------------ */
+
+function buildNdaEmail(asset, name) {
+  const first = String(name || "").trim().split(/\s+/)[0] || "there";
+  const subject = `First step for your ${asset.name} demo: sign the confidentiality agreement`;
+  const text = [
+    `Dear ${first},`,
+    "",
+    `You are invited to review the ${asset.name} demo. Access is protected by a mutual confidentiality agreement, so the first step is the NDA — no demo account is created before it is signed.`,
+    "",
+    `Please review and sign the ${asset.name} confidentiality agreement here:`,
+    asset.ndaRoute,
+    "",
+    "Sign the NDA first; your demo access link follows automatically once it's executed. The link is one-time and lets you set your own password — we never send passwords by email.",
+    "",
+    `Questions? Contact us any time — and if you were not expecting this invitation, you can simply ignore this email.`,
+    "",
+    asset.signatureText
+  ].join("\n");
+  const html = [
+    `<p>Dear ${escapeHtml(first)},</p>`,
+    `<p>You are invited to review the ${asset.name} demo. Access is protected by a mutual confidentiality agreement, so the first step is the NDA — no demo account is created before it is signed.</p>`,
+    `<p>Please review and sign the ${asset.name} confidentiality agreement here:<br><a href="${asset.ndaRoute}">${asset.ndaRoute}</a></p>`,
+    "<p>Sign the NDA first; your demo access link follows automatically once it's executed. The link is one-time and lets you set your own password — we never send passwords by email.</p>",
+    "<p>Questions? Contact us any time — and if you were not expecting this invitation, you can simply ignore this email.</p>",
+    asset.signatureHtml
+  ].join("\n");
+  return { subject, text, html };
+}
+
+/* { sent:true, id } | { sent:false, reason } — never throws. */
+async function sendNdaEmail(asset, name, email) {
+  const key = process.env.DEMO_ADMIN_RESEND_API_KEY || "";
+  if (!key) return { sent: false, reason: "not_configured" };
+  const mail = buildNdaEmail(asset, name);
+  try {
+    const r = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ from: asset.from, to: [email], subject: mail.subject, text: mail.text, html: mail.html })
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) return { sent: false, reason: `resend_${r.status}` };
+    return { sent: true, id: data.id || null };
+  } catch (e) {
+    return { sent: false, reason: "send_failed" };
   }
-  return false;
 }
 
 /* ------------------------------------------------------------------ */
@@ -641,20 +735,37 @@ function publicAccount(a) {
 }
 
 /* The permission matrix: one row per person (union by email across
-   live assets), each cell that asset's status or null. */
-function buildMatrix(accounts) {
+   live assets), each cell that asset's status or null. NDA-first
+   invite records merge UNDER the same person: a cell with no
+   provisioning entry shows "nda_sent"; a provisioned entry always
+   wins over the nda_sent record (the flip is the asset store
+   gaining the entry — the record simply stops being the latest
+   word on that cell). */
+function buildMatrix(accounts, ndaRecords = []) {
   const liveAssets = ASSETS.filter(a => a.live);
   const people = new Map();
+  const personFor = (email, name) => {
+    if (!people.has(email)) {
+      people.set(email, { email, name: name || "", cells: {}, seeds: {} });
+    }
+    const p = people.get(email);
+    if (!p.name && name) p.name = name;
+    return p;
+  };
   for (const asset of liveAssets) {
     for (const acct of accounts[asset.id] || []) {
-      if (!people.has(acct.email)) {
-        people.set(acct.email, { email: acct.email, name: acct.name || "", cells: {}, seeds: {} });
-      }
-      const p = people.get(acct.email);
-      if (!p.name && acct.name) p.name = acct.name;
+      const p = personFor(acct.email, acct.name);
       p.cells[asset.id] = acct.status;
       p.seeds[asset.id] = !!acct.seed;
     }
+  }
+  for (const rec of ndaRecords || []) {
+    const asset = findAsset(rec.asset);
+    if (!asset || !asset.live) continue;
+    const email = normalizeEmail(rec.email);
+    if (!email) continue;
+    const p = personFor(email, rec.name);
+    if (!(asset.id in p.cells)) p.cells[asset.id] = "nda_sent";
   }
   const rows = [...people.values()];
   for (const p of rows) {
@@ -712,93 +823,115 @@ async function actionList(res) {
     console.error(`[demo-admin] list FAILED: ${e && e.message}`);
     return reply(res, 502, { ok: false, error: "store_failed" });
   }
+  /* NDA-first invite records merge into the matrix under the same
+     people. A missing/unreadable invites store degrades to "no
+     outstanding NDAs shown" — it never fails the list. */
+  let ndaRecords = [];
+  if (invitesConfigured()) {
+    try {
+      ndaRecords = await readInvites();
+    } catch (e) {
+      console.error(`[demo-admin] list: invites store read FAILED: ${e && e.message} — matrix served without nda_sent cells.`);
+    }
+  }
   return reply(res, 200, {
     ok: true,
     assets: ASSETS.map(a => ({
       id: a.id, name: a.name, live: a.live,
-      configured: a.live ? configured[a.id] : false
+      configured: a.live ? configured[a.id] : false,
+      ndaRoute: !!a.ndaRoute
     })),
     accounts,
-    matrix: buildMatrix(accounts)
+    invites: ndaRecords.map(r => ({
+      email: normalizeEmail(r.email),
+      name: String(r.name || ""),
+      asset: r.asset,
+      status: "nda_sent",
+      sentAt: r.sentAt || null,
+      lastSentAt: r.lastSentAt || null,
+      sends: r.sends || 1
+    })),
+    matrix: buildMatrix(accounts, ndaRecords)
   });
 }
 
+/* NDA-FIRST (2026-11-05 rule): invite records the person in the
+   "nda_sent" pre-state and emails the asset's NDA to sign. It
+   NEVER writes to the asset's provisioning store — the account is
+   created by the asset side once the NDA is executed. */
 async function actionInvite(res, body) {
   const asset = gateAsset(res, body);
   if (!asset) return;
   const email = normalizeEmail(body.email);
   const name = String(body.name || "").trim().slice(0, 200);
   if (!plausibleEmail(email)) return reply(res, 400, { ok: false, error: "invalid_email" });
+  if (!name) return reply(res, 400, { ok: false, error: "name_required" });
 
-  let outcome;
+  /* Already provisioned on this asset? The NDA gate is behind
+     them — report the standing state and send nothing. This also
+     makes an invite that races the asset-side signing trigger
+     safe: whoever's write lands first, the invite just reports
+     the provisioned state. */
+  let list;
   try {
-    outcome = await mutateStore(asset, (list, source) => {
-      const existing = list.find(a => normalizeEmail(a.email) === email) || null;
-      if (existing) return { result: { entry: existing, created: false } };
-      if (!name) {
-        const err = new Error("name_required");
-        err.code = "name_required";
-        throw err;
-      }
-      const entry = {
-        email,
-        name,
-        token: crypto.randomBytes(24).toString("hex"),
-        status: "invited",
-        issuedAt: easternIso(new Date())
-      };
-      return {
-        write: insertEntry(source, entry),
-        message: `IEC Office: invite ${email} to ${asset.name} demo`,
-        result: { entry, created: true }
-      };
-    });
+    list = await readStore(asset);
   } catch (e) {
-    if (e && e.code === "name_required") return reply(res, 400, { ok: false, error: "name_required" });
     console.error(`[demo-admin] invite FAILED for ${asset.name}: ${e && e.message}`);
     return reply(res, 502, { ok: false, error: "store_failed" });
   }
-
-  const entry = outcome.entry;
-  const status = String(entry.status || "invited").toLowerCase();
-
-  if (!outcome.created && status !== "invited") {
-    /* Administrative control wins: already has access, or paused /
-       revoked — no email, no change. */
+  const existing = list.find(a => normalizeEmail(a.email) === email) || null;
+  if (existing) {
+    const status = String(existing.status || "invited").toLowerCase();
     return reply(res, 200, {
-      ok: true, created: false, emailed: false,
+      ok: true, ndaSent: false, emailed: false,
       state: status, reason: `status_${status}`
     });
   }
-  if (!entry.token) {
-    /* A tokenless invited entry cannot be (re)sent — seed shape. */
+
+  /* No public NDA signing route and no CNDA document on file:
+     the NDA-first rule HOLDS this asset — nothing is recorded,
+     nothing is emailed, nothing is provisioned. */
+  if (!asset.ndaRoute) {
+    console.log(`[demo-admin] ${asset.name} invite HELD for ${email}: no NDA signing route (NDA-first rule).`);
     return reply(res, 200, {
-      ok: true, created: outcome.created, emailed: false,
-      state: "invited", reason: "no_token"
+      ok: true, ndaSent: false, emailed: false, held: true,
+      state: null, reason: "no_nda_route"
     });
   }
 
-  const deployConfirmed = outcome.created ? await waitForLiveToken(asset, entry.token) : true;
-  const sent = await sendActivationEmail(asset, entry.name || name, email, entry.token);
+  /* Record first — the nda_sent record IS the invite's state —
+     then send the NDA email. If the record cannot be written, no
+     email goes out (an untracked NDA invite would be a promise
+     the matrix cannot show). */
+  if (!invitesConfigured()) {
+    console.log("[demo-admin] NO-OP — BLOB_READ_WRITE_TOKEN is not configured; the nda_sent invite cannot be recorded, so no NDA email was sent.");
+    return reply(res, 503, { ok: false, error: "not_configured" });
+  }
+  let record;
+  try {
+    record = await upsertNdaInvite({ email, name, asset: asset.id });
+  } catch (e) {
+    console.error(`[demo-admin] invite record FAILED for ${asset.name}: ${e && e.message}`);
+    return reply(res, 502, { ok: false, error: "store_failed" });
+  }
+  const resent = (record.sends || 1) > 1;
+
+  const sent = await sendNdaEmail(asset, name, email);
   if (!sent.sent) {
-    console.error(`[demo-admin] activation email FAILED for ${asset.name} (${sent.reason}); the account stands as committed.`);
+    console.error(`[demo-admin] NDA email FAILED for ${asset.name} (${sent.reason}); the nda_sent record stands — Resend re-sends the NDA.`);
     return reply(res, 200, {
-      ok: true, created: outcome.created, emailed: false,
-      error: "email_failed", reason: sent.reason, deployConfirmed
+      ok: true, ndaSent: true, emailed: false, resent,
+      state: "nda_sent", error: "email_failed", reason: sent.reason
     });
   }
-  console.log(`[demo-admin] ${asset.name} activation email sent (created=${outcome.created}, Resend id ${sent.id || "?"}).`);
-  await emitOfficeEvent(asset, email, entry.name || name, "invite_sent",
-    outcome.created
-      ? "Activation email sent from IEC Office (account created)"
-      : "Activation email re-sent from IEC Office");
+  console.log(`[demo-admin] ${asset.name} NDA invite email sent to ${email} (Resend id ${sent.id || "?"}).`);
+  await emitOfficeEvent(asset, email, name, "nda_sent",
+    resent
+      ? "NDA invite re-sent from IEC Office (NDA first — demo link follows on execution)"
+      : "NDA invite sent from IEC Office (NDA first — demo link follows on execution)");
   return reply(res, 200, {
-    ok: true,
-    created: outcome.created,
-    resent: !outcome.created,
-    emailed: true,
-    deployConfirmed,
-    id: sent.id
+    ok: true, ndaSent: true, emailed: true, resent,
+    state: "nda_sent", id: sent.id
   });
 }
 
@@ -816,7 +949,42 @@ async function actionResend(res, body) {
     return reply(res, 502, { ok: false, error: "store_failed" });
   }
   const entry = list.find(a => normalizeEmail(a.email) === email) || null;
-  if (!entry) return reply(res, 404, { ok: false, error: "not_found" });
+  if (!entry) {
+    /* NDA-first: a person with only an nda_sent record gets the
+       NDA email re-sent — there is no activation link to send
+       until the NDA is executed and the asset provisions them. */
+    if (invitesConfigured()) {
+      let record = null;
+      try {
+        record = findInvite(await readInvites(), email, asset.id);
+      } catch (e) {
+        console.error(`[demo-admin] resend FAILED for ${asset.name}: ${e && e.message}`);
+        return reply(res, 502, { ok: false, error: "store_failed" });
+      }
+      if (record) {
+        const sent = await sendNdaEmail(asset, record.name, email);
+        if (!sent.sent) {
+          console.error(`[demo-admin] NDA resend FAILED for ${asset.name} (${sent.reason}).`);
+          return reply(res, 200, {
+            ok: true, emailed: false, state: "nda_sent",
+            error: "email_failed", reason: sent.reason
+          });
+        }
+        try {
+          await touchNdaInvite(email, asset.id);
+        } catch (e) {
+          console.error(`[demo-admin] NDA resend stamp FAILED for ${asset.name}: ${e && e.message} (the email did go out).`);
+        }
+        await emitOfficeEvent(asset, email, record.name, "nda_sent",
+          "NDA invite re-sent from IEC Office");
+        return reply(res, 200, {
+          ok: true, emailed: true, resent: true,
+          state: "nda_sent", kind: "nda", id: sent.id
+        });
+      }
+    }
+    return reply(res, 404, { ok: false, error: "not_found" });
+  }
   const status = String(entry.status || "").toLowerCase();
   if (status !== "invited") {
     return reply(res, 200, { ok: true, emailed: false, state: status, reason: `status_${status}` });
@@ -916,6 +1084,7 @@ export const _internals = {
   setStatusInSource,
   buildMatrix,
   buildActivationEmail,
+  buildNdaEmail,
   publicAccount,
   easternIso,
   normalizeEmail,

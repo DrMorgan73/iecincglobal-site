@@ -97,7 +97,9 @@ globalThis.fetch = async (url, opts = {}) => {
 
 /* ---------------- handlers + mocks ---------------- */
 const activity = (await import("../api/demo-activity.js")).default;
-const admin = (await import("../api/demo-admin.js")).default;
+const adminMod = await import("../api/demo-admin.js");
+const admin = adminMod.default;
+const AX = adminMod._internals;
 const store = await import("../api/_demo-activity-store.js");
 
 function sessionCookie(user = "drmorgan", exp = Math.floor(Date.now() / 1000) + 3600) {
@@ -262,15 +264,29 @@ ok(r.body.summary.length === 1 && r.body.summary[0].email === "drmohdmorgan@gmai
 
 /* ---------------- 6. demo-admin emits Office events ---------------- */
 console.log("demo-admin emission");
+/* NDA-first (2026-11-05): an Office invite records nda_sent and
+   emails the NDA — it no longer provisions, so it emits nda_sent,
+   not invite_sent. Provisioning (and invite_sent) arrives only
+   when the asset side provisions after the executed NDA; the flip
+   is simulated below with the same byte-preserving insert the
+   asset endpoints use. */
 r = await adminCall({ action: "invite", asset: "insnap", email: "watcher@example.com", name: "Watcher Person" });
-ok(r.status === 200 && r.body.created === true && r.body.emailed === true, "office invite still works end to end");
+ok(r.status === 200 && r.body.ndaSent === true && r.body.emailed === true, "office invite is NDA-first end to end");
 r = await getFeed({ email: "watcher@example.com" });
-ok(r.body.events.length === 1 && r.body.events[0].event === "invite_sent" &&
+ok(r.body.events.length === 1 && r.body.events[0].event === "nda_sent" &&
    r.body.events[0].asset === "insnap" && /IEC Office/.test(r.body.events[0].detail),
-  "invite emits invite_sent (visible in the feed)");
+  "invite emits nda_sent (visible in the feed)");
 
 r = await adminCall({ action: "status", asset: "insnap", email: "watcher@example.com", status: "paused" });
-ok(r.body.changed === true, "office status change works");
+ok(r.status === 404 && r.body.error === "not_found",
+  "status on an nda_sent-only person: 404 — nothing is provisioned yet");
+stores.insnap.source = AX.insertEntry(stores.insnap.source, {
+  email: "watcher@example.com", name: "Watcher Person",
+  token: "d".repeat(48), status: "invited", issuedAt: "2026-11-05T07:00:00-05:00"
+});
+
+r = await adminCall({ action: "status", asset: "insnap", email: "watcher@example.com", status: "paused" });
+ok(r.body.changed === true, "office status change works (once provisioned)");
 r = await getFeed({ email: "watcher@example.com" });
 const statusEvt = r.body.events.find(e => e.event === "status_changed");
 ok(!!statusEvt && statusEvt.detail.includes("invited") && statusEvt.detail.includes("paused"),
@@ -278,9 +294,9 @@ ok(!!statusEvt && statusEvt.detail.includes("invited") && statusEvt.detail.inclu
 
 r = await adminCall({ action: "status", asset: "insnap", email: "watcher@example.com", status: "invited" });
 ok(r.status === 400, "invited is still never settable (guard intact)");
-const watcherInvites = (await getFeed({ email: "watcher@example.com" })).body.events
-  .filter(e => e.event === "invite_sent").length;
-ok(watcherInvites === 1, "exactly one invite_sent recorded for the watcher invite");
+const watcherNdas = (await getFeed({ email: "watcher@example.com" })).body.events
+  .filter(e => e.event === "nda_sent").length;
+ok(watcherNdas === 1, "exactly one nda_sent recorded for the watcher invite");
 r = await getFeed({ email: "drmohdmorgan@gmail.com" });
 ok(r.body.events.filter(e => e.event === "status_changed").length === 0,
   "no status_changed events leak onto other users");

@@ -18,6 +18,7 @@
   .chip{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
     padding:4px 11px;border-radius:999px;border:1px solid var(--line);color:var(--dim);white-space:nowrap}
   .chip.invited{color:#3a2703;background:linear-gradient(135deg,#fde68a,#fbbf24);border-color:transparent}
+  .chip.nda_sent{color:#fbbf24;background:rgba(251,191,36,.12);border-color:rgba(251,191,36,.6)}
   .chip.active{color:#06281c;background:linear-gradient(135deg,#6ee7b7,#34d399);border-color:transparent}
   .chip.paused{color:#0b2447;background:linear-gradient(135deg,#93c5fd,#60a5fa);border-color:transparent}
   .chip.revoked{color:#3d0a0a;background:linear-gradient(135deg,#fca5a5,#f87171);border-color:transparent}
@@ -100,7 +101,7 @@
       <h2>Demo Users — All Assets</h2>
       <button class="btn small ghost" id="refresh" type="button">↻ Refresh</button>
     </div>
-    <p class="hint" style="margin-bottom:16px">One control point for every asset demo: who has access, and what state it is in. Changes commit to each asset's provisioning store and take effect on its redeploy.</p>
+    <p class="hint" style="margin-bottom:16px">One control point for every asset demo: who has access, and what state it is in. Changes commit to each asset's provisioning store and take effect on its redeploy. Invitations are <b>NDA-first</b>: sending an invite emails the asset's confidentiality agreement to sign, and the demo access link follows automatically once it is executed.</p>
 
     <div id="banner"></div>
 
@@ -112,7 +113,7 @@
       </div>
       <label style="margin-bottom:6px">Invite to</label>
       <div class="checks" id="add-assets"></div>
-      <button type="submit" class="btn">Send invites →</button>
+      <button type="submit" class="btn">Send NDA invites →</button>
       <div id="add-results"></div>
     </form>
 
@@ -155,6 +156,7 @@
               <option value="action">Action</option>
               <option value="logout">Logout</option>
               <option value="invite_sent">Invite sent</option>
+              <option value="nda_sent">NDA sent</option>
               <option value="status_changed">Status changed</option>
             </select>
           </label>
@@ -172,7 +174,7 @@
 
     <div class="card note" style="margin-top:16px">
       <h3>The demo blueprint</h3>
-      <p>Demos exist for every asset that has a website and an application — MEDEXEC, InSnap, CURAVIA, INSNAPP and IEC Docs — and every one follows the same model: a provisioning store as the single source of truth, a one-time activation link (the signer sets their own password — passwords are never emailed), the <b>invited / active / paused / revoked</b> status ladder, and a login notification to DrMorgan on every activation and sign-in. When a future asset qualifies (website + application) and its demo is built, it plugs into this portal with one registry entry — no new control panel, no separate user list.</p>
+      <p>Demos exist for every asset that has a website and an application — MEDEXEC, InSnap, CURAVIA, INSNAPP and IEC Docs — and every one follows the same model: a provisioning store as the single source of truth, a one-time activation link (the signer sets their own password — passwords are never emailed), the <b>invited / active / paused / revoked</b> status ladder — preceded by an <b>nda_sent</b> pre-state: invitations from this portal are NDA-first, so a person starts as NDA sent and becomes invited only when the executed NDA triggers provisioning on the asset side — and a login notification to DrMorgan on every activation and sign-in. When a future asset qualifies (website + application) and its demo is built, it plugs into this portal with one registry entry — no new control panel, no separate user list.</p>
     </div>
 
     <footer>© 2026 International Empire Consultants, Inc. · IEC Suite · Developed by IEC, Inc.</footer>
@@ -198,7 +200,7 @@ function banner(html, isErr){
   $('banner').innerHTML = html ? `<div class="banner${isErr ? ' err' : ''}">${html}</div>` : '';
 }
 
-const STATUS_LABEL = { invited: 'Invited', active: 'Active', paused: 'Paused', revoked: 'Revoked' };
+const STATUS_LABEL = { invited: 'Invited', active: 'Active', paused: 'Paused', revoked: 'Revoked', nda_sent: 'NDA sent' };
 
 function cellHtml(row, asset){
   const st = row.cells[asset.id];
@@ -207,7 +209,12 @@ function cellHtml(row, asset){
     `<button class="mini${danger ? ' danger' : ''}" data-act="${act}" data-asset="${asset.id}" data-email="${esc(row.email)}" data-name="${esc(name)}">${label}</button>`;
   if (!asset.live) return '<span class="cell-none">—</span>';
   if (asset.configured === false) return '<span class="cell-none">Not configured</span>';
-  if (!st) return '<span class="cell-none">—</span><br>' + btn('invite', 'Invite');
+  if (!st) return '<span class="cell-none">—</span><br>' + btn('invite', 'Send NDA');
+  if (st === 'nda_sent') {
+    return `<span class="chip nda_sent">${STATUS_LABEL.nda_sent}</span>` +
+      '<span class="seed-note">awaiting signature — link follows</span><br>' +
+      btn('resend', 'Resend NDA');
+  }
   let out = `<span class="chip ${st}">${STATUS_LABEL[st] || esc(st)}</span>`;
   if (row.seeds && row.seeds[asset.id]) out += '<span class="seed-note">seed account</span>';
   out += '<br>';
@@ -224,7 +231,7 @@ function render(){
   const rows = STATE.matrix;
   $('add-assets').innerHTML = assets.filter(a => a.live).map(a => {
     const off = a.configured === false;
-    return `<label><input type="checkbox" value="${a.id}" ${off ? 'disabled' : 'checked'}> ${esc(a.name)}${off ? ' (keys pending)' : ''}</label>`;
+    return `<label><input type="checkbox" value="${a.id}" ${off ? 'disabled' : 'checked'}> ${esc(a.name)}${off ? ' (keys pending)' : (a.ndaRoute === false ? ' (no NDA route — will hold)' : '')}</label>`;
   }).join('');
   $('matrix').innerHTML = rows.length ? `
     <table class="matrix">
@@ -267,8 +274,11 @@ async function load(){
 }
 
 function describe(assetName, data){
-  if (data.created && data.emailed) return `<b>${esc(assetName)}:</b> account created — activation email sent.`;
-  if (data.created && !data.emailed) return `<b>${esc(assetName)}:</b> account created, but the activation email failed — use Resend on the matrix.`;
+  if (data.ndaSent && data.emailed) return `<b>${esc(assetName)}:</b> NDA sent — they sign first; the demo access link follows automatically once it's executed.`;
+  if (data.ndaSent && !data.emailed) return `<b>${esc(assetName)}:</b> recorded as NDA sent, but the NDA email failed — use Resend NDA on the matrix.`;
+  if (data.held || data.reason === 'no_nda_route') return `<b>${esc(assetName)}:</b> held — this asset has no NDA signing route yet, so nothing was sent and no account was created.`;
+  if (data.kind === 'nda' && data.emailed) return `<b>${esc(assetName)}:</b> NDA re-sent.`;
+  if (data.state === 'nda_sent' && !data.emailed) return `<b>${esc(assetName)}:</b> the NDA email failed — try Resend NDA on the matrix.`;
   if (data.resent && data.emailed) return `<b>${esc(assetName)}:</b> activation link re-sent.`;
   if (data.emailed) return `<b>${esc(assetName)}:</b> activation email sent.`;
   if (data.reason === 'status_active') return `<b>${esc(assetName)}:</b> already active — no email sent.`;
