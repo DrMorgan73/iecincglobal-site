@@ -35,17 +35,21 @@
    email across every live asset, each cell that asset's status or
    null — the cross-asset permission view the Desk page renders.
 
-   ASSET REGISTRY: live entries carry repo/path/token-env. Planned
-   entries (live:false) render as "Demo not built yet" and accept no
-   actions. Adding a future demo = one registry entry + its env
-   token. Boston Pain Clinic is a strategic partner, NOT an IEC
-   asset — it is never listed here.
+   ASSET REGISTRY: live entries carry repo/path/token-env. A future
+   qualifying demo (website + application — the scope rule) joins
+   with one live registry entry + its env token; nothing about the
+   portal changes. Boston Pain Clinic is a strategic partner, NOT
+   an IEC asset — it is never listed here.
 
-   FAIL-CLOSED: a missing per-asset GitHub token → 503
-   { error: "not_configured" } and nothing is read or written. A
-   missing Resend key never blocks a commit: the account is created
-   and the outcome reports emailed:false / error "email_failed"
-   (never a silent rollback), mirroring the demo-provision endpoints.
+   FAIL-CLOSED, PER ASSET: a missing per-asset GitHub token blocks
+   THAT asset only — its actions answer 503
+   { error: "not_configured" } and nothing is read or written for
+   it, while "list" still serves every configured asset and reports
+   the unconfigured one as configured:false (its store unread, its
+   matrix cells empty). A missing Resend key never blocks a commit:
+   the account is created and the outcome reports emailed:false /
+   error "email_failed" (never a silent rollback), mirroring the
+   demo-provision endpoints.
 
    Env (this Vercel project — iecincglobal-site):
      DESK_SESSION_SECRET            (already set for the Desk)
@@ -55,6 +59,15 @@
      DEMO_ADMIN_GITHUB_TOKEN_INSNAP   fine-grained GitHub token
                                     (drmohdmorgan-del, insnap-job-
                                     engine only, Contents read/write)
+     DEMO_ADMIN_GITHUB_TOKEN_CURAVIA  fine-grained GitHub token
+                                    (DrMorgan73, getcuravia-site
+                                    only, Contents read/write)
+     DEMO_ADMIN_GITHUB_TOKEN_INSNAPP  fine-grained GitHub token
+                                    (drmohdmorgan-del, inssnap-del
+                                    only, Contents read/write)
+     DEMO_ADMIN_GITHUB_TOKEN_IECDOCS  fine-grained GitHub token
+                                    (DrMorgan73, iec-docs only,
+                                    Contents read/write)
      DEMO_ADMIN_RESEND_API_KEY      Resend sending key
 
    SECURITY: activation tokens from the stores are used only to
@@ -114,6 +127,29 @@ const INSNAP_SIGNATURE_HTML = [
   "</table>"
 ].join("");
 
+/* CURAVIA, INSNAPP and IEC Docs all carry the IEC logo (the platform
+   operator's) in their org signatures — copied from getcuravia-site
+   api/_signature.js, inssnap-del apps/web/lib/demo-signature.js and
+   iec-docs api/_signature.js; same shape as the InSnap one above. */
+function iecLogoSignature(orgLine, email) {
+  const text = [orgLine, "857-867-1767", email].join("\n");
+  const html = [
+    '<table cellpadding="0" cellspacing="0" border="0" style="margin-top:24px">',
+    '<tr><td><img src="https://iecincglobal.com/assets/iec-logo-email.png" width="140" alt="IEC, Inc." style="display:block;border:0"></td></tr>',
+    '<tr><td style="padding-top:10px;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.45;color:#1A1A1A">',
+    `<strong>${orgLine}</strong><br>`,
+    '<a href="tel:+18578671767" style="color:#1A1A1A;text-decoration:none">857-867-1767</a><br>',
+    `<a href="mailto:${email}" style="color:#1A1A1A;text-decoration:none">${email}</a>`,
+    "</td></tr>",
+    "</table>"
+  ].join("");
+  return { text, html };
+}
+
+const CURAVIA_SIGNATURE = iecLogoSignature("CURAVIA · IEC, Inc.", "info@getcuravia.com");
+const INSNAPP_SIGNATURE = iecLogoSignature("INSNAPP · IEC, Inc.", "info@iecincglobal.com");
+const IECDOCS_SIGNATURE = iecLogoSignature("IEC Docs · IEC, Inc.", "info@iecincglobal.com");
+
 /* ------------------------------------------------------------------ */
 /* Asset registry                                                      */
 /* ------------------------------------------------------------------ */
@@ -167,16 +203,85 @@ const ASSETS = [
     emailClosingHtml:
       "The activation link is one-time: it stops working once you have set your password. If you need it reissued, or your access changed at any time, contact us at info@iecincglobal.com."
   },
-  /* Planned — no demo portal yet. Scope (DrMorgan, 2026-11-05):
-     demos are built only for assets that have a website AND an
-     application. Each such demo plugs in with one registry entry
-     (repo, store path, activation base, signature) + its env token,
-     and follows the same model: provisioning store, one-time
-     activation link, invited/active/paused/revoked, login
-     notifications to DrMorgan. */
-  { id: "curavia", name: "CURAVIA", live: false },
-  { id: "insnapp", name: "INSNAPP", live: false },
-  { id: "iec-docs", name: "IEC Docs", live: false }
+  /* CURAVIA, INSNAPP and IEC Docs went live in the registry
+     2026-11-05, once their demo portals were built to the same
+     blueprint (provisioning store, one-time activation link,
+     invited/active/paused/revoked, login notifications). Registry
+     id note: IEC Docs is "iec-docs" here; the activity store
+     canonicalizes it to its monitoring id "iecdocs" (see
+     api/_demo-activity-store.js). */
+  {
+    id: "curavia",
+    name: "CURAVIA",
+    live: true,
+    repo: "DrMorgan73/getcuravia-site",
+    path: "demo/provisioning.js",
+    tokenEnv: "DEMO_ADMIN_GITHUB_TOKEN_CURAVIA",
+    activationBase: "https://getcuravia.com/demo/activate/?token=",
+    portalUrl: "https://getcuravia.com/demo/",
+    liveUrl: "https://getcuravia.com/demo/provisioning.js",
+    from: "CURAVIA Demo Portal <onboarding@resend.dev>",
+    committer: { name: "DrMorgan73", email: "DrMorgan73@users.noreply.github.com" },
+    signatureText: CURAVIA_SIGNATURE.text,
+    signatureHtml: CURAVIA_SIGNATURE.html,
+    emailSubject: "Your CURAVIA demo account is ready — activate your access",
+    emailIntroText:
+      "Your CURAVIA demo account has been created. The demo is the CURAVIA Suite and the patient app as live HTML, showing one clinic day end to end — booking, intake, the visit, the scribe's summary, billing review — on a synthetic case only. No real patient data is used.",
+    emailIntroHtml:
+      "Your CURAVIA demo account has been created. The demo is the CURAVIA Suite and the patient app as live HTML, showing one clinic day end to end — booking, intake, the visit, the scribe's summary, billing review — on a synthetic case only. No real patient data is used.",
+    emailClosingText:
+      "The activation link is one-time: it stops working once you have set your password. If you need it reissued, or your access changed at any time, contact us at info@getcuravia.com.",
+    emailClosingHtml:
+      "The activation link is one-time: it stops working once you have set your password. If you need it reissued, or your access changed at any time, contact us at info@getcuravia.com."
+  },
+  {
+    id: "insnapp",
+    name: "INSNAPP",
+    live: true,
+    repo: "drmohdmorgan-del/inssnap-del",
+    path: "apps/web/public/demo/provisioning.js",
+    tokenEnv: "DEMO_ADMIN_GITHUB_TOKEN_INSNAPP",
+    activationBase: "https://www.inssnapp.com/demo/activate/?token=",
+    portalUrl: "https://www.inssnapp.com/demo",
+    liveUrl: "https://www.inssnapp.com/demo/provisioning.js",
+    from: "INSNAPP Demo Portal <onboarding@resend.dev>",
+    committer: { name: "drmohdmorgan-del", email: "drmohdmorgan-del@users.noreply.github.com" },
+    signatureText: INSNAPP_SIGNATURE.text,
+    signatureHtml: INSNAPP_SIGNATURE.html,
+    emailSubject: "Your INSNAPP demo account is ready — activate your access",
+    emailIntroText:
+      "Thank you for signing the confidentiality agreement. Your INSNAPP Demo Portal account has been created. The demo is the exact INSNAPP workflow — the resident, prospect, and broker mobile apps and the Management and Control Center web views following one showing from request to live lead — on a synthetic case only. No real tenants, prospects, brokers, or properties are used.",
+    emailIntroHtml:
+      "Thank you for signing the confidentiality agreement. Your INSNAPP Demo Portal account has been created. The demo is the exact INSNAPP workflow — the resident, prospect, and broker mobile apps and the Management and Control Center web views following one showing from request to live lead — on a synthetic case only. No real tenants, prospects, brokers, or properties are used.",
+    emailClosingText:
+      "The activation link is one-time: it stops working once you have set your password. If you need it reissued, or your access changed at any time, contact us at info@iecincglobal.com.",
+    emailClosingHtml:
+      "The activation link is one-time: it stops working once you have set your password. If you need it reissued, or your access changed at any time, contact us at info@iecincglobal.com."
+  },
+  {
+    id: "iec-docs",
+    name: "IEC Docs",
+    live: true,
+    repo: "DrMorgan73/iec-docs",
+    path: "public/demo/provisioning.js",
+    tokenEnv: "DEMO_ADMIN_GITHUB_TOKEN_IECDOCS",
+    activationBase: "https://iec-docs.vercel.app/demo/activate/?token=",
+    portalUrl: "https://iec-docs.vercel.app/demo",
+    liveUrl: "https://iec-docs.vercel.app/demo/provisioning.js",
+    from: "IEC Docs Demo Portal <onboarding@resend.dev>",
+    committer: { name: "DrMorgan73", email: "DrMorgan73@users.noreply.github.com" },
+    signatureText: IECDOCS_SIGNATURE.text,
+    signatureHtml: IECDOCS_SIGNATURE.html,
+    emailSubject: "Your IEC Docs demo account is ready — activate your access",
+    emailIntroText:
+      "Your IEC Docs demo account has been created. The demo shows the real IEC Docs screens — library, viewer, PDF tools, conversion, de-identification, e-sign and the vault — on synthetic documents only. No real documents are used.",
+    emailIntroHtml:
+      "Your IEC Docs demo account has been created. The demo shows the real IEC Docs screens — library, viewer, PDF tools, conversion, de-identification, e-sign and the vault — on synthetic documents only. No real documents are used.",
+    emailClosingText:
+      "The activation link is one-time: it stops working once you have set your password. If you need it reissued, or your access changed at any time, contact us at info@iecincglobal.com.",
+    emailClosingHtml:
+      "The activation link is one-time: it stops working once you have set your password. If you need it reissued, or your access changed at any time, contact us at info@iecincglobal.com."
+  }
 ];
 
 const SETTABLE_STATUSES = ["paused", "active", "revoked"];
@@ -586,15 +691,21 @@ function gateAsset(res, body) {
 
 async function actionList(res) {
   const liveAssets = ASSETS.filter(a => a.live);
+  /* Fail-closed is PER ASSET: an asset whose GitHub token is not
+     set is reported configured:false with an unread store, and the
+     list still serves every configured asset. */
+  const configured = {};
+  const accounts = {};
   for (const asset of liveAssets) {
-    if (!process.env[asset.tokenEnv]) {
-      console.log(`[demo-admin] NO-OP — ${asset.tokenEnv} is not configured for this project; list unavailable.`);
-      return reply(res, 503, { ok: false, error: "not_configured" });
+    configured[asset.id] = !!process.env[asset.tokenEnv];
+    if (!configured[asset.id]) {
+      console.log(`[demo-admin] ${asset.name} not configured (${asset.tokenEnv} unset) — reported per-asset; other assets unaffected.`);
+      accounts[asset.id] = [];
     }
   }
-  const accounts = {};
   try {
     for (const asset of liveAssets) {
+      if (!configured[asset.id]) continue;
       accounts[asset.id] = (await readStore(asset)).map(publicAccount);
     }
   } catch (e) {
@@ -603,7 +714,10 @@ async function actionList(res) {
   }
   return reply(res, 200, {
     ok: true,
-    assets: ASSETS.map(a => ({ id: a.id, name: a.name, live: a.live })),
+    assets: ASSETS.map(a => ({
+      id: a.id, name: a.name, live: a.live,
+      configured: a.live ? configured[a.id] : false
+    })),
     accounts,
     matrix: buildMatrix(accounts)
   });

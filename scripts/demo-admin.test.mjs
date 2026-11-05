@@ -1,8 +1,9 @@
 /* Local test suite for api/demo-admin.js (IEC Office Demo Control).
-   Runs the real handler against fixture copies of BOTH live
-   provisioning stores (medexec-site + insnap-job-engine), with fetch
-   mocked for GitHub, Resend, and the live-file poll. No real GitHub
-   writes, no real emails.
+   Runs the real handler against fixture copies of ALL FIVE live
+   provisioning stores (medexec-site, insnap-job-engine,
+   getcuravia-site, inssnap-del, iec-docs), with fetch mocked for
+   GitHub, Resend, and the live-file poll. No real GitHub writes,
+   no real emails.
 
    Run: node scripts/demo-admin.test.mjs   (exit 1 on any failure) */
 
@@ -21,20 +22,30 @@ register("./testing/blob-hooks.mjs", import.meta.url);
 const here = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURES = {
   medexec: fs.readFileSync(path.join(here, "../../medexec-site/demo/provisioning.js"), "utf8"),
-  insnap: fs.readFileSync(path.join(here, "../../insnap-job-engine/public/demo/provisioning.js"), "utf8")
+  insnap: fs.readFileSync(path.join(here, "../../insnap-job-engine/public/demo/provisioning.js"), "utf8"),
+  curavia: fs.readFileSync(path.join(here, "../../getcuravia-site/demo/provisioning.js"), "utf8"),
+  insnapp: fs.readFileSync(path.join(here, "../../inssnap-del/apps/web/public/demo/provisioning.js"), "utf8"),
+  "iec-docs": fs.readFileSync(path.join(here, "../../iec-docs/public/demo/provisioning.js"), "utf8")
 };
+const ASSET_IDS = ["medexec", "insnap", "curavia", "insnapp", "iec-docs"];
 
 /* ---------------- env ---------------- */
 const SECRET = "test-desk-secret";
 process.env.DESK_SESSION_SECRET = SECRET;
 process.env.DEMO_ADMIN_GITHUB_TOKEN_MEDEXEC = "gh-test-medexec";
 process.env.DEMO_ADMIN_GITHUB_TOKEN_INSNAP = "gh-test-insnap";
+process.env.DEMO_ADMIN_GITHUB_TOKEN_CURAVIA = "gh-test-curavia";
+process.env.DEMO_ADMIN_GITHUB_TOKEN_INSNAPP = "gh-test-insnapp";
+process.env.DEMO_ADMIN_GITHUB_TOKEN_IECDOCS = "gh-test-iecdocs";
 process.env.DEMO_ADMIN_RESEND_API_KEY = "resend-test-key";
 
 /* ---------------- mocked stores + fetch ---------------- */
 const stores = {
   medexec: { source: FIXTURES.medexec, sha: "sha-m0", puts: 0 },
-  insnap: { source: FIXTURES.insnap, sha: "sha-i0", puts: 0 }
+  insnap: { source: FIXTURES.insnap, sha: "sha-i0", puts: 0 },
+  curavia: { source: FIXTURES.curavia, sha: "sha-c0", puts: 0 },
+  insnapp: { source: FIXTURES.insnapp, sha: "sha-n0", puts: 0 },
+  "iec-docs": { source: FIXTURES["iec-docs"], sha: "sha-d0", puts: 0 }
 };
 const sentEmails = [];
 
@@ -53,16 +64,22 @@ const textRes = (status, text) => ({
 
 const GH = {
   medexec: "https://api.github.com/repos/DrMorgan73/medexec-site/contents/demo/provisioning.js",
-  insnap: "https://api.github.com/repos/drmohdmorgan-del/insnap-job-engine/contents/public/demo/provisioning.js"
+  insnap: "https://api.github.com/repos/drmohdmorgan-del/insnap-job-engine/contents/public/demo/provisioning.js",
+  curavia: "https://api.github.com/repos/DrMorgan73/getcuravia-site/contents/demo/provisioning.js",
+  insnapp: "https://api.github.com/repos/drmohdmorgan-del/inssnap-del/contents/apps/web/public/demo/provisioning.js",
+  "iec-docs": "https://api.github.com/repos/DrMorgan73/iec-docs/contents/public/demo/provisioning.js"
 };
 const LIVE = {
   medexec: "https://getmedexec.com/demo/provisioning.js",
-  insnap: "https://insnap-job-engine.vercel.app/demo/provisioning.js"
+  insnap: "https://insnap-job-engine.vercel.app/demo/provisioning.js",
+  curavia: "https://getcuravia.com/demo/provisioning.js",
+  insnapp: "https://www.inssnapp.com/demo/provisioning.js",
+  "iec-docs": "https://iec-docs.vercel.app/demo/provisioning.js"
 };
 
 globalThis.fetch = async (url, opts = {}) => {
   const u = String(url);
-  for (const id of ["medexec", "insnap"]) {
+  for (const id of ASSET_IDS) {
     if (u === GH[id]) {
       const store = stores[id];
       if ((opts.method || "GET") === "PUT") {
@@ -124,31 +141,51 @@ function ok(cond, label) {
 }
 const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
-/* ---------------- 1. parse both real stores ---------------- */
+/* ---------------- 1. parse all five real stores ---------------- */
 console.log("parse + matrix (pure)");
 const medList = X.parseProvisioning(FIXTURES.medexec);
 const insList = X.parseProvisioning(FIXTURES.insnap);
+const curList = X.parseProvisioning(FIXTURES.curavia);
+const napList = X.parseProvisioning(FIXTURES.insnapp);
+const docList = X.parseProvisioning(FIXTURES["iec-docs"]);
 ok(medList.length === 3, "medexec fixture parses to 3 accounts");
 ok(insList.length === 2, "insnap fixture parses to 2 accounts");
+ok(curList.length === 2 && napList.length === 2 && docList.length === 2,
+  "curavia + insnapp + iec-docs fixtures parse to 2 accounts each");
 const medSeed = medList.find(a => a.email === "demo@medexec.example");
 const insSeed = insList.find(a => a.email === "demo@insnap.example");
 ok(medSeed && medSeed.status === "active" && !medSeed.token, "medexec seed: active, no token");
 ok(insSeed && insSeed.status === "active" && !insSeed.token, "insnap seed: active, no token");
+for (const [list, seedEmail, label] of [
+  [curList, "demo@curavia.example", "curavia"],
+  [napList, "demo@insnapp.example", "insnapp"],
+  [docList, "demo@iecdocs.example", "iec-docs"]
+]) {
+  const seed = list.find(a => a.email === seedEmail);
+  ok(seed && seed.status === "active" && !seed.token, `${label} seed: active, no token`);
+  const m = list.find(a => a.email === "drmohdmorgan@gmail.com");
+  ok(m && m.status === "invited" && /^[0-9a-f]{48}$/.test(m.token), `${label}: DrMorgan invited with a 48-hex token`);
+}
 const medTokens = medList.filter(a => a.token).map(a => a.token);
 ok(medTokens.length === 2 && medTokens.every(t => /^[0-9a-f]+$/.test(t)), "medexec real accounts carry hex tokens (one hand-issued at 47 chars)");
+const allTokens = ASSET_IDS.flatMap(id => X.parseProvisioning(FIXTURES[id]).filter(a => a.token).map(a => a.token));
 
 const accountsView = {
   medexec: medList.map(X.publicAccount),
-  insnap: insList.map(X.publicAccount)
+  insnap: insList.map(X.publicAccount),
+  curavia: curList.map(X.publicAccount),
+  insnapp: napList.map(X.publicAccount),
+  "iec-docs": docList.map(X.publicAccount)
 };
-ok(accountsView.medexec.every(a => !("token" in a)), "publicAccount never exposes a token field");
+ok(ASSET_IDS.every(id => accountsView[id].every(a => !("token" in a))), "publicAccount never exposes a token field");
 const matrix = X.buildMatrix(accountsView);
-ok(matrix.length === 4, "matrix unions to 4 people");
+ok(matrix.length === 7, "matrix unions to 7 people (DrMorgan, Colby, 5 asset seeds)");
 const morgan = matrix.find(r => r.email === "drmohdmorgan@gmail.com");
-ok(morgan.cells.medexec === "invited" && morgan.cells.insnap === "invited", "matrix: DrMorgan invited on both live assets");
-ok(morgan.cells.curavia === null && morgan.cells["iec-docs"] === null, "matrix: planned assets are null cells");
+ok(ASSET_IDS.every(id => morgan.cells[id] === "invited"), "matrix: DrMorgan invited on all five live assets");
 const colby = matrix.find(r => r.email === "colby@impactinsuranceut.com");
-ok(colby && colby.cells.medexec === "invited" && colby.cells.insnap === null, "matrix: Colby medexec-only");
+ok(colby && colby.cells.medexec === "invited" && colby.cells.insnap === null &&
+   colby.cells.curavia === null && colby.cells.insnapp === null && colby.cells["iec-docs"] === null,
+  "matrix: Colby medexec-only");
 
 /* ---------------- 2. byte-preserving edits (pure) ---------------- */
 console.log("byte preservation (pure)");
@@ -165,6 +202,13 @@ const entryText = ",\n  {\n" +
   `    status: "invited",\n    issuedAt: "2026-11-05T06:00:00-05:00"\n  }`;
 ok(inserted.replace(entryText, "") === FIXTURES.medexec, "insert adds exactly the new entry, nothing else moves");
 ok(X.parseProvisioning(inserted).length === 4, "inserted file still parses (4 accounts)");
+const insertedDocs = X.insertEntry(FIXTURES["iec-docs"], newEntry);
+ok(insertedDocs.replace(entryText, "") === FIXTURES["iec-docs"],
+  "insert is byte-preserving on a store with a trailing module-exports block (iec-docs)");
+ok(X.parseProvisioning(insertedDocs).length === 3, "iec-docs store still parses after insert (3 accounts)");
+const flippedNap = X.setStatusInSource(FIXTURES.insnapp, "drmohdmorgan@gmail.com", "paused");
+ok(flippedNap.replace('status: "paused"', 'status: "invited"') === FIXTURES.insnapp,
+  "status flip is byte-preserving on the insnapp store too");
 
 /* ---------------- 3. auth ---------------- */
 console.log("auth");
@@ -181,15 +225,16 @@ console.log("list action");
 r = await call({ action: "list" });
 ok(r.status === 200 && r.body.ok === true, "list answers 200");
 ok(r.body.assets.length === 5, "registry lists 5 assets (website + application scope only)");
-ok(eq(r.body.assets.filter(a => a.live).map(a => a.id), ["medexec", "insnap"]), "live assets: medexec + insnap");
-ok(eq(r.body.assets.filter(a => !a.live).map(a => a.id),
-  ["curavia", "insnapp", "iec-docs"]), "planned assets: curavia, insnapp, iec-docs");
-ok(r.body.accounts.medexec.length === 3 && r.body.accounts.insnap.length === 2, "list returns both stores' accounts");
-ok(r.body.matrix.length === 4, "list returns the 4-person matrix");
+ok(eq(r.body.assets.map(a => a.id), ["medexec", "insnap", "curavia", "insnapp", "iec-docs"]),
+  "registry order: medexec, insnap, curavia, insnapp, iec-docs");
+ok(r.body.assets.every(a => a.live), "all five assets are live — no planned entries remain");
+ok(r.body.assets.every(a => a.configured === true), "all five report configured:true when every token is set");
+ok(r.body.accounts.medexec.length === 3 && r.body.accounts.insnap.length === 2 &&
+   r.body.accounts.curavia.length === 2 && r.body.accounts.insnapp.length === 2 &&
+   r.body.accounts["iec-docs"].length === 2, "list returns all five stores' accounts");
+ok(r.body.matrix.length === 7, "list returns the 7-person matrix");
 const listJson = JSON.stringify(r.body);
-ok(medTokens.every(t => !listJson.includes(t)) &&
-   insList.filter(a => a.token).every(a => !listJson.includes(a.token)),
-  "list output contains NO activation tokens");
+ok(allTokens.every(t => !listJson.includes(t)), "list output contains NO activation tokens from any store");
 
 /* ---------------- 5. invite (new) + byte preservation + email ---------------- */
 console.log("invite");
@@ -270,10 +315,51 @@ ok(r.body.emailed === true && r.body.resent === true, "resend on invited sends")
 const morganToken = medList.find(a => a.email === "drmohdmorgan@gmail.com").token;
 ok(sentEmails[sentEmails.length - 1].html.includes(`token=${morganToken}`), "resend uses the existing token");
 
-/* ---------------- 10. planned asset + bad input ---------------- */
+/* ---------------- 9b. the three new live assets act uniformly ---------------- */
+console.log("new live assets");
+r = await call({ action: "invite", asset: "curavia", email: "new.curavia@example.com", name: "Curavia Tester" });
+ok(r.status === 200 && r.body.created === true && r.body.emailed === true, "curavia invite creates + emails");
+ok(stores.curavia.lastMessage === "IEC Office: invite new.curavia@example.com to CURAVIA demo", "curavia commit message follows the pattern");
+let mail = sentEmails[sentEmails.length - 1];
+const curEntry = X.parseProvisioning(stores.curavia.source).find(a => a.email === "new.curavia@example.com");
+ok(mail.from === "CURAVIA Demo Portal <onboarding@resend.dev>", "curavia email: onboarding sender");
+ok(mail.html.includes(`https://getcuravia.com/demo/activate/?token=${curEntry.token}`), "curavia email carries its activation link");
+ok(mail.html.includes("CURAVIA · IEC, Inc.") && mail.html.includes("https://iecincglobal.com/assets/iec-logo-email.png") &&
+   mail.html.includes("info@getcuravia.com"), "curavia email carries the IEC-logo org signature");
+
+const napBefore = stores.insnapp.source;
+r = await call({ action: "status", asset: "insnapp", email: "drmohdmorgan@gmail.com", status: "paused" });
+ok(r.status === 200 && r.body.changed === true && r.body.previousStatus === "invited", "insnapp status flip invited -> paused");
+ok(stores.insnapp.source.replace('status: "paused"', 'status: "invited"') === napBefore,
+  "insnapp committed flip is byte-preserving");
+ok(stores.insnapp.lastMessage === "IEC Office: set drmohdmorgan@gmail.com on INSNAPP to paused", "insnapp commit message follows the pattern");
+r = await call({ action: "status", asset: "insnapp", email: "drmohdmorgan@gmail.com", status: "active" });
+ok(r.body.changed === true && r.body.previousStatus === "paused", "insnapp resumed to active");
+
+r = await call({ action: "invite", asset: "insnapp", email: "new.insnapp@example.com", name: "Insnapp Tester" });
+ok(r.status === 200 && r.body.created === true && r.body.emailed === true, "insnapp invite creates + emails");
+mail = sentEmails[sentEmails.length - 1];
+const napEntry = X.parseProvisioning(stores.insnapp.source).find(a => a.email === "new.insnapp@example.com");
+ok(mail.from === "INSNAPP Demo Portal <onboarding@resend.dev>", "insnapp email: onboarding sender");
+ok(mail.html.includes(`https://www.inssnapp.com/demo/activate/?token=${napEntry.token}`), "insnapp email carries its activation link");
+ok(mail.html.includes("INSNAPP · IEC, Inc.") && mail.html.includes("https://iecincglobal.com/assets/iec-logo-email.png"),
+  "insnapp email carries the IEC-logo org signature");
+
+r = await call({ action: "resend", asset: "iec-docs", email: "drmohdmorgan@gmail.com" });
+ok(r.body.emailed === true && r.body.resent === true, "iec-docs resend on invited sends");
+mail = sentEmails[sentEmails.length - 1];
+const docToken = docList.find(a => a.email === "drmohdmorgan@gmail.com").token;
+ok(mail.from === "IEC Docs Demo Portal <onboarding@resend.dev>", "iec-docs email: onboarding sender");
+ok(mail.html.includes(`https://iec-docs.vercel.app/demo/activate/?token=${docToken}`), "iec-docs resend uses the existing token + base");
+ok(mail.html.includes("IEC Docs · IEC, Inc.") && mail.html.includes("https://iecincglobal.com/assets/iec-logo-email.png"),
+  "iec-docs email carries the IEC-logo org signature");
+r = await call({ action: "status", asset: "curavia", email: "demo@curavia.example", status: "revoked" });
+ok(r.status === 200 && r.body.changed === true, "curavia seed account may be status-flipped");
+r = await call({ action: "status", asset: "curavia", email: "demo@curavia.example", status: "active" });
+ok(r.body.changed === true && r.body.previousStatus === "revoked", "curavia seed reactivated");
+
+/* ---------------- 10. bad input ---------------- */
 console.log("validation");
-r = await call({ action: "invite", asset: "curavia", email: "x@example.com", name: "X" });
-ok(r.status === 400 && r.body.error === "asset_not_live", "planned asset refuses actions");
 r = await call({ action: "status", asset: "nope", email: "x@example.com", status: "paused" });
 ok(r.status === 400 && r.body.error === "unknown_asset", "unknown asset refused");
 r = await call({ action: "invite", asset: "insnap", email: "not-an-email", name: "X" });
@@ -283,16 +369,37 @@ ok(r.status === 400 && r.body.error === "name_required", "new invite without a n
 r = await call({ action: "bogus" });
 ok(r.status === 400 && r.body.error === "unknown_action", "unknown action refused");
 
-/* ---------------- 11. fail-closed env ---------------- */
+/* ---------------- 11. fail-closed env (per asset) ---------------- */
 console.log("fail-closed");
 delete process.env.DEMO_ADMIN_GITHUB_TOKEN_INSNAP;
 r = await call({ action: "list" });
-ok(r.status === 503 && r.body.error === "not_configured", "list 503 when a store token is missing");
+ok(r.status === 200 && r.body.ok === true, "list still answers 200 when ONE asset token is missing");
+const insnapAsset = r.body.assets.find(a => a.id === "insnap");
+ok(insnapAsset.configured === false, "the tokenless asset reports configured:false");
+ok(r.body.assets.filter(a => a.id !== "insnap").every(a => a.configured === true),
+  "every other asset stays configured:true");
+ok(Array.isArray(r.body.accounts.insnap) && r.body.accounts.insnap.length === 0,
+  "the tokenless asset's store is not read (empty accounts)");
+ok(r.body.accounts.medexec.length >= 3 && r.body.accounts.curavia.length >= 2,
+  "configured assets still return their accounts");
+const fcMorgan = r.body.matrix.find(row => row.email === "drmohdmorgan@gmail.com");
+ok(fcMorgan && fcMorgan.cells.insnap === null && fcMorgan.cells.medexec === "invited",
+  "matrix: tokenless asset's cells are empty, others intact");
+ok(!r.body.matrix.some(row => row.email === "demo@insnap.example"),
+  "people who exist only on the tokenless asset are absent from the matrix");
 r = await call({ action: "status", asset: "insnap", email: "drmohdmorgan@gmail.com", status: "active" });
 ok(r.status === 503 && r.body.error === "not_configured", "asset action 503 when its token is missing");
+r = await call({ action: "status", asset: "medexec", email: "drmohdmorgan@gmail.com", status: "invited" });
+ok(r.status === 400, "other assets' actions are unaffected (400 here is the invited-transition rule, not 503)");
 process.env.DEMO_ADMIN_GITHUB_TOKEN_INSNAP = "gh-test-insnap";
 r = await call({ action: "list" });
-ok(r.status === 200, "list recovers once env is restored");
+ok(r.status === 200 && r.body.assets.every(a => a.configured === true), "list recovers fully once env is restored");
+delete process.env.DEMO_ADMIN_GITHUB_TOKEN_CURAVIA;
+r = await call({ action: "list" });
+ok(r.status === 200 && r.body.assets.find(a => a.id === "curavia").configured === false &&
+   r.body.assets.filter(a => a.id !== "curavia").every(a => a.configured === true),
+  "per-asset fail-closed holds for curavia too");
+process.env.DEMO_ADMIN_GITHUB_TOKEN_CURAVIA = "gh-test-curavia";
 
 /* ---------------- 12. email failure after commit ---------------- */
 console.log("email failure");

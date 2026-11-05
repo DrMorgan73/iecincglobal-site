@@ -170,12 +170,9 @@
       </div>
     </div>
 
-    <div class="section-head"><h2>Coming next</h2></div>
-    <p class="hint" style="margin-bottom:16px">Demos are built only for assets that have a website and an application. Every such demo plugs into this portal via one registry entry — no new control panel, no separate user list.</p>
-    <div class="grid" id="planned"></div>
     <div class="card note" style="margin-top:16px">
       <h3>The demo blueprint</h3>
-      <p>Every future demo follows the same model as MEDEXEC and InSnap: a provisioning store as the single source of truth, a one-time activation link (the signer sets their own password — passwords are never emailed), the <b>invited / active / paused / revoked</b> status ladder, and a login notification to DrMorgan on every activation and sign-in. When a new asset's demo is built, it plugs into this portal with one registry entry — no new control panel.</p>
+      <p>Demos exist for every asset that has a website and an application — MEDEXEC, InSnap, CURAVIA, INSNAPP and IEC Docs — and every one follows the same model: a provisioning store as the single source of truth, a one-time activation link (the signer sets their own password — passwords are never emailed), the <b>invited / active / paused / revoked</b> status ladder, and a login notification to DrMorgan on every activation and sign-in. When a future asset qualifies (website + application) and its demo is built, it plugs into this portal with one registry entry — no new control panel, no separate user list.</p>
     </div>
 
     <footer>© 2026 International Empire Consultants, Inc. · IEC Suite · Developed by IEC, Inc.</footer>
@@ -209,6 +206,7 @@ function cellHtml(row, asset){
   const btn = (act, label, danger) =>
     `<button class="mini${danger ? ' danger' : ''}" data-act="${act}" data-asset="${asset.id}" data-email="${esc(row.email)}" data-name="${esc(name)}">${label}</button>`;
   if (!asset.live) return '<span class="cell-none">—</span>';
+  if (asset.configured === false) return '<span class="cell-none">Not configured</span>';
   if (!st) return '<span class="cell-none">—</span><br>' + btn('invite', 'Invite');
   let out = `<span class="chip ${st}">${STATUS_LABEL[st] || esc(st)}</span>`;
   if (row.seeds && row.seeds[asset.id]) out += '<span class="seed-note">seed account</span>';
@@ -224,12 +222,14 @@ function cellHtml(row, asset){
 function render(){
   const assets = STATE.assets;
   const rows = STATE.matrix;
-  $('add-assets').innerHTML = assets.filter(a => a.live).map(a =>
-    `<label><input type="checkbox" value="${a.id}" checked> ${esc(a.name)}</label>`).join('');
+  $('add-assets').innerHTML = assets.filter(a => a.live).map(a => {
+    const off = a.configured === false;
+    return `<label><input type="checkbox" value="${a.id}" ${off ? 'disabled' : 'checked'}> ${esc(a.name)}${off ? ' (keys pending)' : ''}</label>`;
+  }).join('');
   $('matrix').innerHTML = rows.length ? `
     <table class="matrix">
       <thead><tr><th>Person</th>${assets.map(a =>
-        `<th>${esc(a.name)}${a.live ? '' : '<span class="soon">demo not built yet</span>'}</th>`).join('')}</tr></thead>
+        `<th>${esc(a.name)}${a.configured === false ? '<span class="soon">keys not set yet</span>' : ''}</th>`).join('')}</tr></thead>
       <tbody>${rows.map(row => `
         <tr>
           <td class="who who-click" data-email="${esc(row.email)}" data-name="${esc(row.name || row.email)}" title="Open activity timeline"><b>${esc(row.name || row.email)}</b><span>${esc(row.email)}</span></td>
@@ -237,12 +237,6 @@ function render(){
         </tr>`).join('')}
       </tbody>
     </table>` : '<div class="empty">No demo users yet — add the first person above.</div>';
-  $('planned').innerHTML = assets.filter(a => !a.live).map(a => `
-    <div class="card">
-      <h3>${esc(a.name)}</h3>
-      <p>Demo not built yet — plugs into this portal when built.</p>
-      <span class="tag">Planned</span>
-    </div>`).join('');
 }
 
 async function load(){
@@ -264,6 +258,12 @@ async function load(){
   }
   STATE = data;
   render();
+  const unconf = data.assets.filter(a => a.live && a.configured === false).map(a => a.name);
+  if (unconf.length) {
+    banner('<b>' + unconf.map(esc).join(', ') + '</b> ' + (unconf.length === 1 ? 'is' : 'are') +
+      ' live in the registry but ' + (unconf.length === 1 ? 'its' : 'their') +
+      ' Office key is not set yet — shown as <b>not configured</b> until the token is added. Everything else works normally.');
+  }
 }
 
 function describe(assetName, data){
