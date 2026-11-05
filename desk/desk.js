@@ -11,6 +11,7 @@ const NAV = [
   { href: '/desk/projects.html',     icon: '📁', label: 'Projects',     page: 'projects' },
   { href: '/desk/team.html',          icon: '👥', label: 'Team',         page: 'team' },
   { href: '/desk/demo-users.html',  icon: '🎟️', label: 'Demo Users', page: 'demo-users' },
+  { href: '/desk/yt-archive.html',  icon: '📺', label: 'YT Archive', page: 'yt-archive' },
   { href: '/desk/meeting-room.html',  icon: '🏛️', label: 'Meeting Room', page: 'meeting', badge: '8 AM' },
   { href: '/desk/virtual-office.html', icon: '🏙️', label: 'Virtual Office', page: 'virtual' },
   { href: '/desk/suzy-chat.html',     icon: '💬', label: 'Chat with Suzy', page: 'suzy-chat' },

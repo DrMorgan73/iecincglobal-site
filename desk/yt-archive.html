@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>YT Archive — IEC Suite</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/desk/desk.css">
+<style>
+  table.jobs{width:100%;border-collapse:collapse;font-size:13.5px}
+  table.jobs th,table.jobs td{padding:11px 12px;border-bottom:1px solid var(--line-soft);text-align:left;vertical-align:top}
+  table.jobs th{font-family:'Space Grotesk';font-size:13px;letter-spacing:.03em;white-space:nowrap}
+  .chip{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+    padding:4px 11px;border-radius:999px;border:1px solid var(--line);color:var(--dim);white-space:nowrap}
+  .chip.queued{color:#3a2703;background:linear-gradient(135deg,#fde68a,#fbbf24);border-color:transparent}
+  .chip.running{color:#0b2447;background:linear-gradient(135deg,#93c5fd,#60a5fa);border-color:transparent}
+  .chip.done{color:#06281c;background:linear-gradient(135deg,#6ee7b7,#34d399);border-color:transparent}
+  .chip.failed{color:#3d0a0a;background:linear-gradient(135deg,#fca5a5,#f87171);border-color:transparent}
+  .chip.cancelled{color:var(--dim)}
+  .job-url{font-family:'Space Grotesk';font-size:14px;display:block;word-break:break-all}
+  .job-url a{color:var(--text);text-decoration:none}
+  .job-url a:hover{color:var(--gold)}
+  .job-sub{font-size:12.5px;color:var(--dim);display:block;margin-top:3px}
+  .job-err{font-size:12.5px;color:var(--red);display:block;margin-top:3px;word-break:break-word}
+  .prog-now{font-size:12.5px;color:var(--dim);display:block;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:340px}
+  .mini{font:600 11.5px 'Inter';padding:5px 10px;border-radius:8px;border:1px solid var(--line);
+    background:transparent;color:var(--gold);cursor:pointer;margin:5px 4px 0 0;white-space:nowrap}
+  .mini:hover{border-color:var(--gold);background:rgba(240,185,66,.08)}
+  .mini.danger{color:var(--red)}
+  .mini.danger:hover{border-color:var(--red);background:rgba(248,113,113,.08)}
+  .mini:disabled{opacity:.45;cursor:wait}
+  .checks{display:flex;gap:16px;flex-wrap:wrap;margin:2px 0 12px}
+  .form-card .checks label{display:flex;gap:7px;align-items:center;font-size:13.5px;color:var(--text);margin:0;font-weight:500}
+  .form-card .checks input{width:auto;margin:0;accent-color:var(--gold)}
+  .form-card select{font:500 14px 'Inter';padding:10px 12px;border-radius:10px;border:1px solid var(--line);
+    background:transparent;color:var(--text);width:100%}
+  .result-line{font-size:13px;margin-top:9px;color:var(--dim)}
+  .result-line b{color:var(--text)}
+  .banner{border:1px solid rgba(240,185,66,.45);background:rgba(240,185,66,.07);border-radius:14px;
+    padding:16px 18px;font-size:14px;margin-bottom:16px}
+  .banner.err{border-color:rgba(248,113,113,.5);background:rgba(248,113,113,.07)}
+  .banner a{color:var(--gold)}
+  .table-wrap{overflow-x:auto}
+  .auto-refresh{display:flex;gap:7px;align-items:center;font-size:13px;color:var(--text);font-weight:500;cursor:pointer}
+  .auto-refresh input{width:auto;margin:0;accent-color:var(--gold)}
+  .catalog-tools{display:flex;gap:10px;align-items:center;margin:4px 0 10px}
+  .catalog-tools input{font:500 13.5px 'Inter';padding:8px 11px;border-radius:9px;flex:1;max-width:340px;
+    border:1px solid var(--line);background:transparent;color:var(--text)}
+  table.catalog{width:100%;border-collapse:collapse;font-size:13.5px}
+  table.catalog th,table.catalog td{padding:8px 12px;border-bottom:1px solid var(--line-soft);text-align:left;vertical-align:top}
+  table.catalog th{font-family:'Space Grotesk';font-size:13px;letter-spacing:.03em;white-space:nowrap}
+  table.catalog td.when,table.catalog td.dur{white-space:nowrap;color:var(--dim);font-size:12.5px}
+</style>
+</head>
+<body data-page="yt-archive">
+<div class="orbs" aria-hidden="true"><span class="orb gold"></span><span class="orb teal"></span><span class="orb violet"></span></div>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="side-brand">
+      <img class="logo-img" src="/assets/iec-logo.png" alt="IEC Inc.">
+      <div><h1>IEC <span>Suite</span></h1><p>International Empire Consultants, Inc.</p></div>
+    </div>
+    <nav id="nav"></nav>
+    <div class="side-foot">
+      <div class="themes" id="themes">
+        <button data-t="iec" style="--sw1:#f0b942;--sw2:#3b82f6" title="IEC Brand"></button>
+        <button data-t="midnight" style="--sw1:#f0b942;--sw2:#2dd4bf" title="Midnight Gold"></button>
+        <button data-t="amethyst" style="--sw1:#d8b4fe;--sw2:#f0abfc" title="Royal Amethyst"></button>
+        <button data-t="ocean" style="--sw1:#7dd3fc;--sw2:#5eead4" title="Deep Ocean"></button>
+        <button data-t="ember" style="--sw1:#fdba74;--sw2:#fbbf24" title="Sunset Ember"></button>
+        <button data-t="emerald" style="--sw1:#6ee7b7;--sw2:#f0b942" title="Emerald Noir"></button>
+        <button data-t="rose" style="--sw1:#fda4af;--sw2:#f0abfc" title="Rose Noir"></button>
+        <label class="cpick" title="Accent color"><input type="color" id="pick-gold" value="#f0b942"></label>
+        <label class="cpick" title="Highlight color"><input type="color" id="pick-teal" value="#2dd4bf"></label>
+        <button class="creset" id="pick-reset" title="Reset colors">⟲</button>
+      </div>
+      <button class="signout" id="signout"><i>🚪</i>Sign out</button>
+      <a class="public-link" href="/welcome.html">← Public site</a>
+      <div class="clockbox">
+        <div id="clock">--:--</div>
+        <div id="dateline">—</div>
+      </div>
+    </div>
+  </aside>
+
+  <main>
+    <div class="section-head">
+      <h2>YT Archive</h2>
+      <button class="btn small ghost" id="refresh" type="button">↻ Refresh</button>
+    </div>
+    <p class="hint" style="margin-bottom:16px">Queue a YouTube channel, playlist, or video link here. The archive runner on DrMorgan's Mac claims queued jobs, downloads them locally, and reports progress and the finished catalog back to this page. No login is needed for public videos — this is the recovery path for the locked-out @morgan36mah channel.</p>
+
+    <div id="banner"></div>
+
+    <form class="card form-card" id="queue-form" style="margin-bottom:16px">
+      <h3>Queue a download</h3>
+      <label>YouTube link<input id="q-url" type="url" maxlength="500" placeholder="https://www.youtube.com/@morgan36mah" required></label>
+      <div class="row2">
+        <label>Quality
+          <select id="q-quality">
+            <option value="best" selected>Best available</option>
+            <option value="1080">Up to 1080p</option>
+            <option value="720">Up to 720p</option>
+            <option value="480">Up to 480p</option>
+          </select>
+        </label>
+        <div>
+          <label style="margin-bottom:6px">Options</label>
+          <div class="checks" style="margin:8px 0 0">
+            <label><input type="checkbox" id="q-subs"> Subtitles (en / es / ar)</label>
+            <label><input type="checkbox" id="q-audio"> Audio only</label>
+          </div>
+        </div>
+      </div>
+      <button type="submit" class="btn">Add to queue →</button>
+      <div id="queue-results"></div>
+    </form>
+
+    <div class="section-head">
+      <h2>Jobs</h2>
+      <label class="auto-refresh"><input type="checkbox" id="jobs-auto" checked> Auto-refresh · 15s</label>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="table-wrap"><div id="jobs"><div class="empty">Loading jobs…</div></div></div>
+    </div>
+
+    <div class="card note" style="margin-top:16px">
+      <h3>How YT Archive works</h3>
+      <p>This page is the queue and the board — nothing is downloaded in the cloud. The runner on DrMorgan's Mac polls for queued jobs with its sync secret, claims one, and downloads it with yt-dlp into <b>~/Downloads/youtube-archive</b> — best quality merged to MP4, files named by date and title, resumable if it ever stops. While it works it reports how many videos are done, how many bytes are down, and the title it is on; when it finishes, the full catalog (date, title, duration) lands on the job above. The sync secret lives only in this project's settings and in the runner's local config — never in this page. Public videos need no account; unlisted videos work from their direct links; private videos cannot be fetched without account access.</p>
+    </div>
+
+    <footer>© 2026 International Empire Consultants, Inc. · IEC Suite · Developed by IEC, Inc.</footer>
+  </main>
+</div>
+
+<script src="/desk/desk.js"></script>
+<script>
+let JOBS = [];
+const OPEN = new Set();          // job ids whose catalog is expanded
+const SEARCHES = new Map();      // job id -> catalog search text
+let timer = null;
+
+async function api(action, body){
+  if (body === undefined) {
+    const r = await fetch('/api/yt-archive?action=' + action, { credentials: 'same-origin' });
+    const data = await r.json().catch(() => ({}));
+    return { status: r.status, data };
+  }
+  const r = await fetch('/api/yt-archive?action=' + action, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  const data = await r.json().catch(() => ({}));
+  return { status: r.status, data };
+}
+
+function banner(html, isErr){
+  $('banner').innerHTML = html ? `<div class="banner${isErr ? ' err' : ''}">${html}</div>` : '';
+}
+
+const STATUS_LABEL = { queued: 'Queued', running: 'Running', done: 'Done', failed: 'Failed', cancelled: 'Cancelled' };
+
+function fmtBytes(n){
+  n = Number(n);
+  if (!Number.isFinite(n) || n <= 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  let i = 0;
+  while (n >= 1024 && i < units.length - 1) { n /= 1024; i++; }
+  return n.toFixed(n >= 100 || i === 0 ? 0 : 1) + ' ' + units[i];
+}
+
+function fmtDuration(sec){
+  if (sec == null || !Number.isFinite(Number(sec))) return '—';
+  let s = Math.floor(Number(sec));
+  const h = Math.floor(s / 3600); s %= 3600;
+  const m = Math.floor(s / 60); const r = s % 60;
+  const mm = h ? String(m).padStart(2, '0') : String(m);
+  return (h ? h + ':' : '') + mm + ':' + String(r).padStart(2, '0');
+}
+
+function fmtWhen(ts){
+  const d = new Date(ts);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleString('en-US', { timeZone: 'America/New_York',
+    month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) + ' ET';
+}
+
+function optionSummary(job){
+  const o = job.options || {};
+  const bits = [o.quality === 'best' || !o.quality ? 'Best quality' : '≤ ' + o.quality + 'p'];
+  if (o.subtitles) bits.push('subtitles');
+  if (o.audioOnly) bits.push('audio only');
+  return bits.join(' · ');
+}
+
+function progressText(job){
+  const p = job.progress || {};
+  if (job.status === 'done') {
+    const t = job.totals || {};
+    const files = t.files != null ? t.files : (job.manifest || []).length;
+    const bytes = t.bytes != null ? t.bytes : p.bytes;
+    return `<b>${files}</b> video${files === 1 ? '' : 's'} · ${fmtBytes(bytes)}`;
+  }
+  const done = p.done || 0;
+  const total = p.total != null ? ' / ' + p.total : '';
+  let out = `<b>${done}${total}</b> done · ${fmtBytes(p.bytes || 0)}`;
+  if (p.current) out += `<span class="prog-now" title="${esc(p.current)}">Now: ${esc(p.current)}</span>`;
+  return out;
+}
+
+function catalogHtml(job){
+  const rows = job.manifest || [];
+  const q = (SEARCHES.get(job.id) || '').toLowerCase();
+  const shown = q ? rows.filter(r =>
+    String(r.title || '').toLowerCase().includes(q) || String(r.date || '').includes(q)) : rows;
+  const table = shown.length ? `
+    <table class="catalog">
+      <thead><tr><th>Date</th><th>Title</th><th>Duration</th></tr></thead>
+      <tbody>${shown.map(r => `
+        <tr>
+          <td class="when">${esc(r.date || '—')}</td>
+          <td>${r.url ? `<a href="${esc(r.url)}" target="_blank" rel="noopener" style="color:var(--text);text-decoration:none">${esc(r.title || r.id || '—')}</a>` : esc(r.title || r.id || '—')}</td>
+          <td class="dur">${fmtDuration(r.duration)}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>` : '<div class="empty">' + (q ? 'No catalog rows match the search.' : 'No catalog rows were reported for this job.') + '</div>';
+  return `
+    <div class="catalog-tools">
+      <input type="search" placeholder="Search the catalog…" autocomplete="off"
+        data-search="${esc(job.id)}" value="${esc(SEARCHES.get(job.id) || '')}">
+      <span class="job-sub" style="margin:0">${shown.length} of ${rows.length} videos</span>
+    </div>
+    ${table}`;
+}
+
+function render(){
+  if (!JOBS.length) {
+    $('jobs').innerHTML = '<div class="empty">No archive jobs yet — queue the first link above.</div>';
+    return;
+  }
+  $('jobs').innerHTML = `
+    <table class="jobs">
+      <thead><tr><th>Status</th><th>Link</th><th>Progress</th><th>Queued</th><th></th></tr></thead>
+      <tbody>${JOBS.map(job => `
+        <tr>
+          <td><span class="chip ${esc(job.status)}">${STATUS_LABEL[job.status] || esc(job.status)}</span></td>
+          <td>
+            <span class="job-url"><a href="${esc(job.url)}" target="_blank" rel="noopener">${esc(job.url)}</a></span>
+            <span class="job-sub">${esc(optionSummary(job))}</span>
+            ${job.status === 'failed' && job.error ? `<span class="job-err">${esc(job.error)}</span>` : ''}
+          </td>
+          <td>${progressText(job)}</td>
+          <td style="white-space:nowrap;color:var(--dim);font-size:12.5px">${esc(fmtWhen(job.createdAt))}</td>
+          <td style="white-space:nowrap">
+            ${job.status === 'queued' ? `<button class="mini danger" data-cancel="${esc(job.id)}">Cancel</button>` : ''}
+            ${job.status === 'done' ? `<button class="mini" data-catalog="${esc(job.id)}">${OPEN.has(job.id) ? 'Hide catalog' : 'Catalog'}</button>` : ''}
+          </td>
+        </tr>
+        ${job.status === 'done' && OPEN.has(job.id) ? `
+        <tr><td colspan="5" style="background:rgba(255,255,255,.02)">${catalogHtml(job)}</td></tr>` : ''}
+      `).join('')}
+      </tbody>
+    </table>`;
+}
+
+async function load(){
+  const { status, data } = await api('jobs');
+  if (status === 401) {
+    banner('Your Desk session has expired. <a href="/desk/login.html">Sign in again</a> to use YT Archive.', true);
+    $('jobs').innerHTML = '<div class="empty">Session expired.</div>';
+    return;
+  }
+  if (status === 503 || data.error === 'not_configured') {
+    banner('YT Archive is <b>not configured yet</b> — the sync secret and the Office Blob store still need to be connected on this project. Jobs cannot be queued or shown until then.');
+    $('jobs').innerHTML = '<div class="empty">Not configured yet.</div>';
+    return;
+  }
+  if (!data.ok) {
+    banner('Jobs could not be loaded (' + esc(data.error || 'unknown error') + '). Try Refresh.', true);
+    return;
+  }
+  banner('');
+  JOBS = data.jobs || [];
+  render();
+}
+
+$('queue-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const url = $('q-url').value.trim();
+  const box = $('queue-results');
+  if (!url) { box.innerHTML = '<div class="result-line">A YouTube link is required.</div>'; return; }
+  box.innerHTML = '<div class="result-line">Queueing…</div>';
+  const { status, data } = await api('queue', {
+    url,
+    quality: $('q-quality').value,
+    subtitles: $('q-subs').checked,
+    audioOnly: $('q-audio').checked
+  });
+  if (status === 401) {
+    box.innerHTML = '<div class="result-line">Session expired — <a href="/desk/login.html" style="color:var(--gold)">sign in again</a>.</div>';
+    return;
+  }
+  if (!data.ok) {
+    box.innerHTML = '<div class="result-line">' +
+      (data.error === 'invalid_url' ? 'That link was refused — it must be a youtube.com or youtu.be link.' :
+       data.error === 'not_configured' ? 'YT Archive is not configured yet on this project.' :
+       'Queueing failed (' + esc(data.error || 'unknown error') + ').') + '</div>';
+    return;
+  }
+  box.innerHTML = '<div class="result-line"><b>Queued.</b> The runner on the Mac claims it on its next poll.</div>';
+  e.target.reset();
+  $('q-quality').value = 'best';
+  load();
+});
+
+$('jobs').addEventListener('click', async e => {
+  const cancelBtn = e.target.closest('button[data-cancel]');
+  if (cancelBtn && !cancelBtn.disabled) {
+    const job = JOBS.find(j => j.id === cancelBtn.dataset.cancel);
+    if (!confirm('Cancel this queued job?' + (job ? '\n' + job.url : ''))) return;
+    cancelBtn.disabled = true;
+    const { data } = await api('cancel', { id: cancelBtn.dataset.cancel });
+    if (window.suzyToast) {
+      window.suzyToast('YT Archive', data.ok ? 'Job cancelled.' : 'Cancel refused: ' + (data.error || 'unknown error') + '.');
+    }
+    load();
+    return;
+  }
+  const catBtn = e.target.closest('button[data-catalog]');
+  if (catBtn) {
+    const id = catBtn.dataset.catalog;
+    if (OPEN.has(id)) OPEN.delete(id); else OPEN.add(id);
+    render();
+  }
+});
+
+$('jobs').addEventListener('input', e => {
+  const input = e.target.closest('input[data-search]');
+  if (!input) return;
+  SEARCHES.set(input.dataset.search, input.value);
+  const job = JOBS.find(j => j.id === input.dataset.search);
+  if (!job) return;
+  const cell = input.closest('td');
+  const pos = input.selectionStart;
+  cell.innerHTML = catalogHtml(job);
+  const fresh = cell.querySelector('input[data-search]');
+  if (fresh) { fresh.focus(); try { fresh.setSelectionRange(pos, pos); } catch {} }
+});
+
+$('refresh').addEventListener('click', load);
+$('jobs-auto').addEventListener('change', e => {
+  if (timer) { clearInterval(timer); timer = null; }
+  if (e.target.checked) timer = setInterval(load, 15000);
+});
+timer = setInterval(load, 15000);
+load();
+</script>
+</body>
+</html>
