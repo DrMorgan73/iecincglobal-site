@@ -107,11 +107,33 @@
    forward to via POST /api/demo-activity. Emission is best-effort:
    the writer never throws and a missing Blob token is a logged
    NO-OP, so a control action is never failed by its audit trail.
+
+   ACCEPTED MERGE (2026-11-05, DrMorgan: "Invited should change to
+   Accepted, loged in /off"): activation is recorded by the asset
+   demo gates (their effective status + an "activated" event in the
+   central activity store) — nothing rewrites the provisioning
+   store on activation, so a stored entry can sit at "invited"
+   forever while the person is in fact in. "list" therefore merges
+   the two records at read time: a stored "invited" entry with a
+   real (non-seed) "activated" or "login" activity event for the
+   same asset + email is reported as "active" — which the Desk
+   renders as ACCEPTED — and flagged acceptedFromActivity so the
+   payload shows why. Administrative states always win: paused /
+   revoked / nda_sent are reported exactly as stored, events or
+   not, and nothing here ever writes to a store. The merge reads a
+   90-day activity window; it is fail-soft — an unconfigured or
+   failing activity store leaves the stored statuses untouched
+   and never fails the list.
    ===================================================================== */
 
 import crypto from "node:crypto";
 import vm from "node:vm";
-import { appendActivityEvent } from "./_demo-activity-store.js";
+import {
+  appendActivityEvent,
+  readActivityEvents,
+  activityConfigured,
+  normalizeAssetId
+} from "./_demo-activity-store.js";
 import {
   invitesConfigured,
   readInvites,
@@ -725,6 +747,72 @@ async function emitOfficeEvent(asset, email, name, event, detail) {
 }
 
 /* ------------------------------------------------------------------ */
+/* Accepted merge — stored "invited" + real activation activity        */
+/* ------------------------------------------------------------------ */
+
+/* The event types that prove a person accepted their invitation:
+   they redeemed the activation link ("activated") or they signed
+   in ("login" — impossible before activation). Anything else
+   (step views, failed attempts, Office-side events) proves
+   nothing about acceptance. */
+const ACCEPTANCE_EVENTS = ["activated", "login"];
+const ACCEPTANCE_WINDOW_DAYS = 90;
+
+/* The set of "<monitoring asset id>|<email>" pairs with acceptance
+   evidence in an event list. Seed-flagged events are ignored: a
+   seed identity exercising a demo says nothing about an invitee. */
+function acceptanceKeys(events) {
+  const keys = new Set();
+  for (const evt of events || []) {
+    if (!evt || evt.seed === true) continue;
+    if (!ACCEPTANCE_EVENTS.includes(String(evt.event || "").toLowerCase())) continue;
+    const asset = normalizeAssetId(evt.asset);
+    const email = normalizeEmail(evt.email);
+    if (!asset || !email) continue;
+    keys.add(`${asset}|${email}`);
+  }
+  return keys;
+}
+
+/* Upgrade, in place, the payload view of every stored "invited"
+   account that carries acceptance evidence: status becomes
+   "active" (the Desk renders it ACCEPTED) and the entry is
+   flagged acceptedFromActivity. Every other stored status —
+   paused / revoked / nda_sent / active — is left exactly as
+   stored: administrative control always wins. Fail-soft by
+   design: an unconfigured activity store is a logged skip, and a
+   read failure is logged and swallowed — the list still serves
+   the stored statuses. Returns the number of upgraded entries. */
+async function applyActivityAcceptance(accounts) {
+  if (!activityConfigured()) {
+    console.log("[demo-admin] accepted merge skipped — activity store not configured; stored statuses served as-is.");
+    return 0;
+  }
+  let events;
+  try {
+    events = await readActivityEvents({ days: ACCEPTANCE_WINDOW_DAYS });
+  } catch (e) {
+    console.error(`[demo-admin] accepted merge FAILED to read activity (${e && e.message}); stored statuses served as-is.`);
+    return 0;
+  }
+  const keys = acceptanceKeys(events);
+  if (!keys.size) return 0;
+  let upgraded = 0;
+  for (const asset of ASSETS) {
+    const monitoringId = normalizeAssetId(asset.id);
+    for (const acct of accounts[asset.id] || []) {
+      if (acct.status !== "invited") continue;
+      if (!keys.has(`${monitoringId}|${acct.email}`)) continue;
+      acct.status = "active";
+      acct.acceptedFromActivity = true;
+      upgraded++;
+    }
+  }
+  if (upgraded) console.log(`[demo-admin] accepted merge: ${upgraded} invited entr${upgraded === 1 ? "y" : "ies"} reported as accepted from activity evidence.`);
+  return upgraded;
+}
+
+/* ------------------------------------------------------------------ */
 /* Views                                                               */
 /* ------------------------------------------------------------------ */
 
@@ -828,6 +916,10 @@ async function actionList(res) {
     console.error(`[demo-admin] list FAILED: ${e && e.message}`);
     return reply(res, 502, { ok: false, error: "store_failed" });
   }
+  /* Stored "invited" + real activation/login activity = accepted
+     (the Desk renders "active" as ACCEPTED). Fail-soft: never
+     blocks the list — see the Accepted merge section above. */
+  await applyActivityAcceptance(accounts);
   /* NDA-first invite records merge into the matrix under the same
      people. A missing/unreadable invites store degrades to "no
      outstanding NDAs shown" — it never fails the list. */
@@ -1093,5 +1185,7 @@ export const _internals = {
   publicAccount,
   easternIso,
   normalizeEmail,
-  validSession
+  validSession,
+  acceptanceKeys,
+  applyActivityAcceptance
 };
