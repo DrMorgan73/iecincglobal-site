@@ -200,7 +200,7 @@ function banner(html, isErr){
   $('banner').innerHTML = html ? `<div class="banner${isErr ? ' err' : ''}">${html}</div>` : '';
 }
 
-const STATUS_LABEL = { invited: 'Invited', active: 'Active', paused: 'Paused', revoked: 'Revoked', nda_sent: 'NDA sent' };
+const STATUS_LABEL = { invited: 'Invited', active: 'Accepted', paused: 'Paused', revoked: 'Revoked', nda_sent: 'NDA sent' };
 
 function cellHtml(row, asset){
   const st = row.cells[asset.id];
@@ -281,7 +281,7 @@ function describe(assetName, data){
   if (data.state === 'nda_sent' && !data.emailed) return `<b>${esc(assetName)}:</b> the NDA email failed — try Resend NDA on the matrix.`;
   if (data.resent && data.emailed) return `<b>${esc(assetName)}:</b> activation link re-sent.`;
   if (data.emailed) return `<b>${esc(assetName)}:</b> activation email sent.`;
-  if (data.reason === 'status_active') return `<b>${esc(assetName)}:</b> already active — no email sent.`;
+  if (data.reason === 'status_active') return `<b>${esc(assetName)}:</b> already accepted — no email sent.`;
   if (data.reason === 'status_paused') return `<b>${esc(assetName)}:</b> account is paused — resume it from the matrix first.`;
   if (data.reason === 'status_revoked') return `<b>${esc(assetName)}:</b> account is revoked — reactivate it from the matrix first.`;
   if (data.reason === 'no_token') return `<b>${esc(assetName)}:</b> seed account — no activation link exists.`;
@@ -329,7 +329,7 @@ $('matrix').addEventListener('click', async e => {
     const msg = act === 'invite' || act === 'resend'
       ? describe(assetName, data).replace(/<[^>]+>/g, '')
       : data.ok
-        ? `${assetName}: ${email} is now ${data.status}.`
+        ? `${assetName}: ${email} is now ${STATUS_LABEL[data.status] || data.status}.`
         : `${assetName}: ${data.error || 'action failed'}.`;
     window.suzyToast('Demo Users', msg);
   }
