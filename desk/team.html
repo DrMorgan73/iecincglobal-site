@@ -95,7 +95,8 @@ $('offices').addEventListener('click', e => {
     <span class="tag gold">${esc(m.name)}'s office</span>
     <h2 style="margin:14px 0 8px;font-family:'Space Grotesk'">${esc(m.name)}</h2>
     <p style="color:var(--dim);font-size:14.5px">${esc(m.role)}</p>
-    <div class="crew-hb" style="margin-top:14px">${esc(m.whenLabel)} · <b>${esc(m.when)}</b></div>`);
+    <div class="crew-hb" style="margin-top:14px">${esc(m.whenLabel)} · <b>${esc(m.when)}</b></div>
+    ${m.name === 'Dana' ? `<a class="btn" href="/desk/opportunities.html" style="display:inline-block;margin-top:16px;text-decoration:none">Enter Dana — Opportunities →</a>` : ''}`);
 });
 </script>
 </body>

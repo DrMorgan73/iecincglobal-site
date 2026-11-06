@@ -12,7 +12,7 @@ const NAV_GROUPS = [
     { href: '/desk/demo-users.html',  icon: '🎟️', label: 'Demo Users', page: 'demo-users' },
   ]},
   { sec: 'Deals & People', items: [
-    { href: '/desk/opportunities.html', icon: '💼', label: 'Opportunities',page: 'opps', badgeId: 'nav-opps' },
+    { href: '/desk/opportunities.html', icon: '💼', label: 'Dana — Opportunities',page: 'opps', badgeId: 'nav-opps' },
     { href: '/desk/deals.html',         icon: '⚖️', label: 'Deals',        page: 'deals' },
     { href: '/desk/contacts.html',      icon: '📇', label: 'Contacts',     page: 'contacts', badgeId: 'nav-contacts' },
   ]},
