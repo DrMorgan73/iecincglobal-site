@@ -347,3 +347,15 @@ details.credits a { color: #aeb9c8; }
   .sign-fields { grid-template-columns: 1fr; }
   .doc-reader { padding: 20px 16px; }
 }
+
+/* IEC MSO Data Network — homepage feature band + data-network page */
+.dn-band { background: linear-gradient(135deg, var(--navy) 0%, var(--navy-2) 100%); color: #fff; padding: 76px 0; }
+.dn-band .eyebrow { color: var(--gold-soft); }
+.dn-band h2 { color: #fff; font-size: clamp(30px, 4.2vw, 46px); max-width: 24ch; }
+.dn-band .dn-lede { color: #dbe4ee; font-size: 19px; line-height: 1.6; max-width: 68ch; }
+.dn-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 30px; }
+.dn-col { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.18); border-radius: var(--radius); padding: 26px 24px; }
+.dn-col .tag { display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--gold-soft); margin-bottom: 10px; }
+.dn-col h3 { color: #fff; margin-bottom: 8px; }
+.dn-col p { color: #dbe4ee; font-size: 16.5px; line-height: 1.6; }
+@media (max-width: 860px) { .dn-cols { grid-template-columns: 1fr; } .dn-band { padding: 48px 0; } }
