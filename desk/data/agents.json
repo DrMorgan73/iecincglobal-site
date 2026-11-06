@@ -98,6 +98,12 @@
       "dept": "growth"
     },
     {
+      "name": "Dana",
+      "role": "Employer & data-buyer scout — identifies the employers buying AI expert work and the buyers for IEC's data; keeps the target map current; drafts first contact for approval, never sends.",
+      "schedule": "weekly Wed ~09:00 ET (dana-weekly-scout)",
+      "dept": "growth"
+    },
+    {
       "name": "Tess",
       "role": "Inbox triage — sorts the spam-heavy inbox every morning and surfaces the top 5 needing his eyes. Never deletes, archives, or sends.",
       "schedule": "daily ~08:15 ET",
@@ -116,7 +122,7 @@
       "dept": "ops"
     }
   ],
-  "updated": "2026-09-29",
+  "updated": "2026-11-06",
   "departments": [
     {
       "id": "exec",
