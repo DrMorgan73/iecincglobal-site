@@ -5,34 +5,63 @@ const DESK = '/desk';
 const avatarFor = name => DESK + '/assets/team/' + String(name || '').toLowerCase().replace(/[^a-z]/g, '') + '.jpg';
 
 /* ---- nav ---- */
-const NAV = [
-  { href: '/',                 icon: '🏠', label: 'Home',         page: 'home' },
-  { href: '/desk/suzy-chat.html',     icon: '💬', label: 'Chat with Suzy', page: 'suzy-chat' },
-  { href: '/desk/demo-users.html',  icon: '🎟️', label: 'Demo Users', page: 'demo-users' },
-  { href: '/desk/opportunities.html', icon: '💼', label: 'Opportunities',page: 'opps', badgeId: 'nav-opps' },
-  { href: '/desk/deals.html',         icon: '⚖️', label: 'Deals',        page: 'deals' },
-  { href: '/desk/contacts.html',      icon: '📇', label: 'Contacts',     page: 'contacts', badgeId: 'nav-contacts' },
-  { href: '/desk/projects.html',     icon: '📁', label: 'Projects',     page: 'projects' },
-  { href: '/desk/team.html',          icon: '👥', label: 'Team',         page: 'team' },
-  { href: '/desk/meeting-room.html',  icon: '🏛️', label: 'Meeting Room', page: 'meeting', badge: '8 AM' },
-  { href: '/desk/office.html',   icon: '🏢', label: "Muse's Office", page: 'office' },
-  { href: '/desk/virtual-office.html', icon: '🏙️', label: 'Virtual Office', page: 'virtual' },
-  { href: '/desk/news.html',           icon: '📰', label: 'News',         page: 'news' },
-  { href: '/desk/growth.html',        icon: '🚀', label: 'Growth 24/7',  page: 'growth' },
-  { href: '/desk/strategy.html',      icon: '🎯', label: 'Strategy',     page: 'strategy' },
-  { href: '/desk/trade.html',         icon: '📈', label: 'Trade Pilot',  page: 'trade' },
-  { href: '/desk/yt-archive.html',  icon: '📺', label: 'YT Archive', page: 'yt-archive' },
-  { href: '/desk/documents.html',      icon: '📄', label: 'Documents',    page: 'docs' },
-  { href: '/desk/vault.html',         icon: '🔒', label: 'PDF Vault',    page: 'vault' },
+const NAV_GROUPS = [
+  { sec: null, items: [
+    { href: '/',                 icon: '🏠', label: 'Home',         page: 'home' },
+    { href: '/desk/suzy-chat.html',     icon: '💬', label: 'Chat with Suzy', page: 'suzy-chat' },
+    { href: '/desk/demo-users.html',  icon: '🎟️', label: 'Demo Users', page: 'demo-users' },
+  ]},
+  { sec: 'Deals & People', items: [
+    { href: '/desk/opportunities.html', icon: '💼', label: 'Opportunities',page: 'opps', badgeId: 'nav-opps' },
+    { href: '/desk/deals.html',         icon: '⚖️', label: 'Deals',        page: 'deals' },
+    { href: '/desk/contacts.html',      icon: '📇', label: 'Contacts',     page: 'contacts', badgeId: 'nav-contacts' },
+  ]},
+  { sec: 'Work', items: [
+    { href: '/desk/projects.html',     icon: '📁', label: 'Projects',     page: 'projects' },
+    { href: '/desk/team.html',          icon: '👥', label: 'Team',         page: 'team' },
+    { href: '/desk/meeting-room.html',  icon: '🏛️', label: 'Meeting Room', page: 'meeting', badge: '8 AM' },
+  ]},
+  { sec: 'Offices', items: [
+    { href: '/desk/office.html',   icon: '🏢', label: "Muse's Office", page: 'office' },
+    { href: '/desk/virtual-office.html', icon: '🏙️', label: 'Virtual Office', page: 'virtual' },
+  ]},
+  { sec: 'Intel', items: [
+    { href: '/desk/news.html',           icon: '📰', label: 'News',         page: 'news' },
+    { href: '/desk/growth.html',        icon: '🚀', label: 'Growth 24/7',  page: 'growth' },
+    { href: '/desk/strategy.html',      icon: '🎯', label: 'Strategy',     page: 'strategy' },
+    { href: '/desk/trade.html',         icon: '📈', label: 'Trade Pilot',  page: 'trade' },
+  ]},
+  { sec: 'Records', items: [
+    { href: '/desk/yt-archive.html',  icon: '📺', label: 'YT Archive', page: 'yt-archive' },
+    { href: '/desk/documents.html',      icon: '📄', label: 'Documents',    page: 'docs' },
+    { href: '/desk/vault.html',         icon: '🔒', label: 'PDF Vault',    page: 'vault' },
+  ]},
 ];
+const NAV = NAV_GROUPS.flatMap(g => g.items);
 (function buildNav(){
   const nav = $('nav'); if(!nav) return;
   const page = document.body.dataset.page || 'home';
-  nav.innerHTML = NAV.map(n =>
-    `<a href="${n.href}" class="${n.page === page ? 'on' : ''}"><i>${n.icon}</i>${n.label}` +
-    (n.badge ? `<span class="badge">${n.badge}</span>` : '') +
-    (n.badgeId ? `<span class="badge" id="${n.badgeId}" style="display:none"></span>` : '') +
-    `</a>`).join('');
+  nav.innerHTML = NAV_GROUPS.map(g =>
+    (g.sec ? `<div class="nav-sec">${g.sec}</div>` : '') +
+    g.items.map(n =>
+      `<a href="${n.href}" class="${n.page === page ? 'on' : ''}"><i>${n.icon}</i>${n.label}` +
+      (n.badge ? `<span class="badge">${n.badge}</span>` : '') +
+      (n.badgeId ? `<span class="badge" id="${n.badgeId}" style="display:none"></span>` : '') +
+      `</a>`).join('')
+  ).join('');
+})();
+
+/* ---- pinned sign-out: always visible at the foot of the sidebar ---- */
+(function pinnedSignout(){
+  const sb = document.querySelector('.sidebar'); if(!sb) return;
+  if(document.getElementById('signout-pinned')) return;
+  const bar = document.createElement('div');
+  bar.className = 'side-account';
+  bar.innerHTML = `<button class="signout-big" id="signout-pinned" title="Sign out of the IEC Suite"><i>🚪</i>Sign out</button>`;
+  sb.appendChild(bar);
+  bar.querySelector('#signout-pinned').addEventListener('click', () => {
+    fetch('/api/desk-logout', {method: 'GET'}).finally(() => { location.href = '/desk/login.html'; });
+  });
 })();
 
 /* nav badges from localStorage */
