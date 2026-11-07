@@ -1,0 +1,1403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Data Evaluation Questionnaire — Online Form | IEC MSO Data Network</title>
+<meta name="description" content="Complete the IEC MSO Data Network evaluation questionnaire online for your segment — pharmacy, home health, physical therapy, medical practice, gas & convenience, or general business. Counts only, no personal information; buyers quote against your answers.">
+<link rel="stylesheet" href="style.css">
+<style>
+  .qform { max-width: 820px; }
+  .qwarn { background: #fdf3e3; border: 1px solid var(--gold); border-left: 6px solid var(--gold); border-radius: 10px; padding: 16px 20px; margin: 22px 0; font-size: 16px; }
+  .qform fieldset { border: 1px solid var(--line); border-radius: var(--radius); padding: 22px 24px 8px; margin: 0 0 22px; background: #fff; }
+  .qform legend { font-weight: 800; color: var(--navy); font-size: 19px; padding: 0 8px; }
+  .qfield { margin: 0 0 20px; }
+  .qfield label.qlabel { display: block; font-weight: 600; color: var(--ink); margin-bottom: 7px; font-size: 16px; }
+  .qfield .qn { color: var(--gold); font-weight: 800; margin-right: 6px; }
+  .qform input[type="text"], .qform input[type="email"], .qform input[type="tel"], .qform textarea, .qform select {
+    width: 100%; padding: 11px 13px; border: 1px solid #c9c2b2; border-radius: 9px; font: inherit; font-size: 16px; background: #fff; color: var(--ink);
+  }
+  .qform textarea { min-height: 74px; resize: vertical; }
+  .qform input:focus, .qform textarea:focus, .qform select:focus { outline: 2px solid var(--gold-soft); border-color: var(--gold); }
+  .qchecks { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 2px; }
+  .qchecks label, .qchoice label { font-weight: 400; display: inline-flex; align-items: center; gap: 7px; font-size: 16px; cursor: pointer; }
+  .qchecks input, .qchoice input { width: 18px; height: 18px; accent-color: var(--navy); }
+  .qchoice { display: flex; flex-wrap: wrap; gap: 8px 22px; }
+  .qdetail { margin-top: 9px; }
+  .qsubs { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+  .qsubs label { display: block; font-size: 14px; color: var(--muted); font-weight: 600; margin-bottom: 5px; }
+  .qsegbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 8px 0 24px; }
+  .qsegbar select { max-width: 420px; }
+  .qreq { color: #a33; font-weight: 700; }
+  .qerr { display: none; background: #fbeae8; border: 1px solid #d99; border-radius: 10px; padding: 13px 18px; margin: 16px 0; font-size: 15px; }
+  .qthanks { display: none; background: var(--bg-soft); border: 1px solid var(--gold); border-radius: var(--radius); padding: 30px 32px; margin: 26px 0; }
+  .hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+  .qsubmit { font-size: 18px; padding: 14px 34px; }
+</style>
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a class="brand" href="welcome.html"><img class="brand-logo" src="assets/iec-logo.png" alt="IEC Inc."></a>
+    <button class="menu-btn" aria-label="Open menu" aria-expanded="false"><span></span><span></span><span></span></button>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="welcome.html">Home</a>
+      <a href="about.html">About</a>
+      <a href="services.html">Capabilities</a>
+      <a href="os.html">IEC OS</a>
+      <a href="healthcare.html">Healthcare</a>
+      <a href="data-network.html" class="active">Data Network</a>
+      <a href="real-estate.html">Real Estate</a>
+      <a href="international.html">International</a>
+      <a href="assets.html">Assets</a>
+      <a href="strategic-partner.html">Strategic Partner</a>
+      <a href="project-advisory.html">Advisory</a>
+      <a href="news.html">News</a>
+      <a href="welcome.html#nda">NDA</a>
+      <a class="nav-suite" href="https://iecincglobal-site.vercel.app/desk/login.html">IEC Suite</a>
+      <a class="nav-cta" href="https://wa.me/18578671767?text=Hello%20DrMorgan%2C%20I%27d%20like%20to%20connect%20with%20IEC%20Inc.">Contact IEC</a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <div class="eyebrow">IEC MSO Data Network</div>
+      <h1>Complete your questionnaire online.</h1>
+      <p class="lede">A few minutes, counts only — no download, nothing to print. Buyers evaluate your answers and quote real numbers; entering the evaluation costs nothing and commits you to nothing.</p>
+      <div class="chips">
+        <span class="chip">Counts only</span>
+        <span class="chip">No personal information</span>
+        <span class="chip">License, never a sale</span>
+      </div>
+    </div>
+    <div>
+      <img src="assets/datacenter.jpg" alt="Data infrastructure supporting secure health information systems">
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap qform">
+    <div class="eyebrow">About data licensing</div>
+    <h2>Licensing — and what your data is worth.</h2>
+    <p>AI companies train their systems on real-world operational data — records, workflows, scheduling, transactions, billing patterns — and they pay to license it. A license is <strong>not a sale</strong>: you keep full ownership, the license covers defined uses for a defined time, and the same data can be licensed to more than one buyer, so value can be earned repeatedly. Three things set the price: <strong>volume</strong>, <strong>years of history</strong>, and <strong>standardization</strong> — the same workflows repeated across locations. Approved data partnerships in this market are published at <strong>$100K–$2M per partnership</strong>.</p>
+    <p>The process: (1) you complete this questionnaire — counts only; (2) you sign IEC's exclusive data licensing grant, which makes IEC your sole counterparty to buyers (no brokers, no marketplaces); (3) buyers evaluate the counts and quote; (4) any data that ever moves is de-identified first, inside your own systems; (5) you see the terms before anything is final, and nothing is licensed without the agreement you signed.</p>
+
+    <div class="qwarn"><strong>Answer with counts, date ranges, and system names only. NEVER enter patient names, customer names, or any personal or identifying information anywhere in this form — none is needed, and none should ever be sent.</strong> (Your own business contact details below are the only personal information requested, so IEC can follow up with you.)</div>
+
+    <noscript><p class="qwarn">This form needs JavaScript to submit. You can also email your answers instead — write to <a href="mailto:info@iecincglobal.com">info@iecincglobal.com</a> and we will send you the questions for your segment.</p></noscript>
+
+    <form id="qForm" novalidate>
+      <fieldset>
+        <legend>Your contact details</legend>
+        <div class="qfield">
+          <label class="qlabel" for="cName">Your name <span class="qreq">*</span></label>
+          <input type="text" id="cName" autocomplete="name" required>
+        </div>
+        <div class="qfield">
+          <label class="qlabel" for="cBusiness">Business / organization</label>
+          <input type="text" id="cBusiness" autocomplete="organization">
+        </div>
+        <div class="qfield">
+          <label class="qlabel" for="cEmail">Email <span class="qreq">*</span></label>
+          <input type="email" id="cEmail" autocomplete="email" required>
+        </div>
+        <div class="qfield">
+          <label class="qlabel" for="cPhone">Phone</label>
+          <input type="tel" id="cPhone" autocomplete="tel">
+        </div>
+        <div class="hp" aria-hidden="true">
+          <label>Company website<input type="text" id="cWebsite" tabindex="-1" autocomplete="off"></label>
+        </div>
+      </fieldset>
+
+      <div class="qsegbar">
+        <label for="segSelect" style="font-weight:700;color:var(--navy)">Your segment:</label>
+        <select id="segSelect" aria-label="Choose your segment"></select>
+      </div>
+
+      <div id="qSections"></div>
+
+      <div class="qerr" id="qErr"></div>
+      <p><button type="submit" class="btn dark qsubmit" id="qSubmitBtn">Submit questionnaire</button></p>
+      <p style="font-size:14px;color:var(--muted)">Prefer email? You may also send your answers to <a href="mailto:info@iecincglobal.com">info@iecincglobal.com</a>. Questions: Mohammed Morgan, MD — 857-867-1767.</p>
+    </form>
+
+    <div class="qthanks" id="qThanks" tabindex="-1">
+      <h2 style="margin-top:0">Received — thank you.</h2>
+      <p>Your questionnaire is with IEC MSO. We review every submission personally and follow up with you directly. <strong>The next step is IEC's exclusive data grant for your review</strong> — the agreement that makes IEC your sole counterparty to buyers.</p>
+      <p style="font-size:14px;color:var(--muted)">Your submission reference: <span id="qRef"></span></p>
+    </div>
+
+    <p style="margin-top:26px"><em>IEC, Inc. — licensing only, never a sale. Your data stays in your systems; anything shared with a buyer is de-identified first, under agreement. More on how the Network works: <a href="data-network.html">the IEC MSO Data Network</a>.</em></p>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="foot-grid">
+      <div class="foot-brand">
+        <div class="brand"><img class="brand-logo foot-logo" src="assets/iec-logo-light.png" alt="IEC Inc."></div>
+        <p>International Empire Consultants, Inc. — Boston-based business development and strategic consulting across healthcare, technology, real estate and international markets for more than a decade.</p>
+      </div>
+      <nav class="foot-col" aria-label="Explore">
+        <h4>Explore</h4>
+        <a href="welcome.html">Home</a>
+        <a href="services.html">Capabilities</a>
+        <a href="healthcare.html">Healthcare</a>
+        <a href="data-network.html">Data Network</a>
+        <a href="questionnaires.html">Questionnaires</a>
+        <a href="real-estate.html">Real Estate</a>
+        <a href="international.html">International</a>
+        <a href="assets.html">Assets</a>
+        <a href="news.html">News</a>
+      </nav>
+      <nav class="foot-col" aria-label="IEC OS">
+        <h4>IEC OS</h4>
+        <a href="os.html">Overview</a>
+        <a href="os-medical.html">For Medical</a>
+        <a href="os-dental.html">For Dental</a>
+      </nav>
+      <nav class="foot-col" aria-label="Company">
+        <h4>Company</h4>
+        <a href="about.html">About</a>
+        <a href="strategic-partner.html">Strategic Partner</a>
+        <a href="project-advisory.html">Advisory</a>
+        <a href="welcome.html#nda">Mutual NDA</a>
+        <a href="contact.html">Contact</a>
+      </nav>
+    </div>
+    <div class="foot-bottom">
+      <div class="copyright">&copy; 2026 International Empire Consultants, Inc. All rights reserved. &middot; <a href="privacy.html">Privacy</a> &middot; <a href="/desk/login.html">Team sign-in</a> &middot; Developed by IEC, Inc.</div>
+      <button class="to-top" id="toTop" aria-label="Back to top">&#8593;</button>
+    </div>
+  </div>
+</footer>
+<script src="nav.js" defer></script>
+<script>
+var SEGMENTS = {
+ "pharmacy": {
+  "name": "Pharmacy",
+  "title": "Pharmacy Operations",
+  "sections": [
+   {
+    "title": "A. The business",
+    "fields": [
+     {
+      "n": 1,
+      "type": "area",
+      "label": "Legal entities and store names covered by this questionnaire (list each)"
+     },
+     {
+      "n": 2,
+      "type": "text",
+      "label": "Store locations (city/state only)"
+     },
+     {
+      "n": 3,
+      "type": "text",
+      "label": "Year each store opened"
+     },
+     {
+      "n": 4,
+      "type": "text",
+      "label": "Total employees (full-time / part-time)"
+     },
+     {
+      "n": 5,
+      "type": "text",
+      "label": "Who is the decision-maker for a data licensing agreement? Name + title"
+     }
+    ]
+   },
+   {
+    "title": "B. Systems",
+    "fields": [
+     {
+      "n": 6,
+      "type": "text",
+      "label": "Pharmacy management / dispensing system at each store (name + version if known — e.g., PrimeRx, QS1, Enterprise, RxConnect)"
+     },
+     {
+      "n": 7,
+      "type": "checks",
+      "label": "Other systems in daily use (check all that apply)",
+      "options": [
+       "Microsoft 365",
+       "Google Workspace",
+       "QuickBooks/accounting",
+       "Point of sale",
+       "IVR/phone",
+       "Delivery routing",
+       "Other"
+      ],
+      "detail": true
+     },
+     {
+      "n": 8,
+      "type": "choice",
+      "label": "Are all stores on the same dispensing system?",
+      "options": [
+       "Yes",
+       "No"
+      ],
+      "detail": true
+     }
+    ]
+   },
+   {
+    "title": "C. Volume & history (per store or combined — counts only)",
+    "fields": [
+     {
+      "n": 9,
+      "type": "text",
+      "label": "Average prescriptions filled per day (all stores)"
+     },
+     {
+      "n": 10,
+      "type": "text",
+      "label": "Total prescriptions filled per year (last full year)"
+     },
+     {
+      "n": 11,
+      "type": "text",
+      "label": "How many years of dispensing history are stored in the system? From year:"
+     },
+     {
+      "n": 12,
+      "type": "fields",
+      "label": "Years of history available for:",
+      "subs": [
+       "Inventory records (years)",
+       "Billing/payer records (years)",
+       "Delivery logs (years)"
+      ]
+     },
+     {
+      "n": 13,
+      "type": "text",
+      "label": "Number of active patient profiles in the system (count only)"
+     },
+     {
+      "n": 14,
+      "type": "fields",
+      "label": "Approximate payer mix (%):",
+      "subs": [
+       "Medicare %",
+       "Medicaid %",
+       "Commercial %",
+       "Cash %"
+      ]
+     },
+     {
+      "n": 15,
+      "type": "area",
+      "label": "Specialty / compounding / LTC / DME lines, if any (describe briefly)"
+     }
+    ]
+   },
+   {
+    "title": "D. Workflows & documentation",
+    "fields": [
+     {
+      "n": 16,
+      "type": "checks",
+      "label": "Do written SOPs exist for:",
+      "options": [
+       "Dispensing",
+       "Inventory",
+       "Billing",
+       "Delivery",
+       "Staff training"
+      ],
+      "detail": false
+     },
+     {
+      "n": 17,
+      "type": "text",
+      "label": "Languages used with patients and in documentation (e.g., English, Spanish, Arabic — list all)"
+     },
+     {
+      "n": 18,
+      "type": "text",
+      "label": "Approximate number of staff trained on the same standard workflows across stores"
+     }
+    ]
+   },
+   {
+    "title": "E. Scope & exclusions",
+    "fields": [
+     {
+      "n": 19,
+      "type": "area",
+      "label": "Any data you would exclude from licensing (describe categories only)"
+     },
+     {
+      "n": 20,
+      "type": "choice",
+      "label": "Any existing agreements that restrict licensing your operational data?",
+      "options": [
+       "No",
+       "Yes"
+      ],
+      "detail": true
+     },
+     {
+      "n": 21,
+      "type": "choice",
+      "label": "Are you willing to sign an exclusive data licensing grant to IEC MSO for evaluation?",
+      "options": [
+       "Yes",
+       "Not yet — questions first"
+      ],
+      "detail": false
+     }
+    ]
+   }
+  ]
+ },
+ "home-health": {
+  "name": "Home Health",
+  "title": "Home Health Operations",
+  "sections": [
+   {
+    "title": "A. The business",
+    "fields": [
+     {
+      "n": 1,
+      "type": "area",
+      "label": "Legal entities covered by this questionnaire (list each)"
+     },
+     {
+      "n": 2,
+      "type": "text",
+      "label": "Service areas (city/state only)"
+     },
+     {
+      "n": 3,
+      "type": "text",
+      "label": "Year each entity started"
+     },
+     {
+      "n": 4,
+      "type": "text",
+      "label": "Total employees (full-time / part-time), and approximate number of field clinicians/caregivers"
+     },
+     {
+      "n": 5,
+      "type": "text",
+      "label": "Decision-maker for a data licensing agreement — name + title"
+     }
+    ]
+   },
+   {
+    "title": "B. Systems",
+    "fields": [
+     {
+      "n": 6,
+      "type": "text",
+      "label": "Home-health EHR / operations platform (e.g., WellSky, Axxess, HCHB, AlayaCare — name + since when)"
+     },
+     {
+      "n": 7,
+      "type": "checks",
+      "label": "Other systems in daily use:",
+      "options": [
+       "Microsoft 365",
+       "Google Workspace",
+       "Salesforce/CRM",
+       "Accounting",
+       "Payroll",
+       "EVV system if separate",
+       "Other"
+      ],
+      "detail": true
+     },
+     {
+      "n": 8,
+      "type": "choice",
+      "label": "Are all entities on the same platform?",
+      "options": [
+       "Yes",
+       "No"
+      ],
+      "detail": true
+     }
+    ]
+   },
+   {
+    "title": "C. Volume & history (counts only)",
+    "fields": [
+     {
+      "n": 9,
+      "type": "text",
+      "label": "Active patients on census (current, count only)"
+     },
+     {
+      "n": 10,
+      "type": "fields",
+      "label": "Visits per month (all entities):",
+      "subs": [
+       "Skilled nursing",
+       "Therapy",
+       "Aide/HHA",
+       "Other"
+      ]
+     },
+     {
+      "n": 11,
+      "type": "text",
+      "label": "Total visits per year (last full year)"
+     },
+     {
+      "n": 12,
+      "type": "fields",
+      "label": "Years of history in the EHR:",
+      "subs": [
+       "From year",
+       "Visit records (years)",
+       "Payer/billing records (years)"
+      ]
+     },
+     {
+      "n": 13,
+      "type": "fields",
+      "label": "Approximate payer mix (%):",
+      "subs": [
+       "Medicare %",
+       "Medicaid %",
+       "Medicare Advantage %",
+       "Commercial %",
+       "Private pay %"
+      ]
+     },
+     {
+      "n": 14,
+      "type": "checks",
+      "label": "Service lines (check all that apply):",
+      "options": [
+       "Skilled nursing",
+       "PT/OT/ST",
+       "Home health aide",
+       "Medical social work",
+       "Psychiatric/behavioral health",
+       "Hospice",
+       "Private duty"
+      ],
+      "detail": false
+     }
+    ]
+   },
+   {
+    "title": "D. Workflows & documentation",
+    "fields": [
+     {
+      "n": 15,
+      "type": "checks",
+      "label": "Do written SOPs exist for:",
+      "options": [
+       "Intake/referral",
+       "Scheduling",
+       "Visit documentation",
+       "OASIS",
+       "Billing",
+       "Caregiver training"
+      ],
+      "detail": false
+     },
+     {
+      "n": 16,
+      "type": "text",
+      "label": "Languages used with patients and in documentation (list all)"
+     },
+     {
+      "n": 17,
+      "type": "text",
+      "label": "Approximate number of staff trained on the same standard workflows across entities"
+     }
+    ]
+   },
+   {
+    "title": "E. Scope & exclusions",
+    "fields": [
+     {
+      "n": 18,
+      "type": "area",
+      "label": "Any data categories you would exclude (describe categories only)"
+     },
+     {
+      "n": 19,
+      "type": "choice",
+      "label": "Any existing agreements restricting licensing of your operational data?",
+      "options": [
+       "No",
+       "Yes"
+      ],
+      "detail": true
+     },
+     {
+      "n": 20,
+      "type": "choice",
+      "label": "Willing to sign an exclusive data licensing grant to IEC MSO for evaluation?",
+      "options": [
+       "Yes",
+       "Not yet — questions first"
+      ],
+      "detail": false
+     }
+    ]
+   }
+  ]
+ },
+ "pt": {
+  "name": "Physical Therapy / Rehab",
+  "title": "Physical Therapy / Rehab Operations",
+  "sections": [
+   {
+    "title": "A. The business",
+    "fields": [
+     {
+      "n": 1,
+      "type": "area",
+      "label": "Legal entities and clinic names covered (list each)"
+     },
+     {
+      "n": 2,
+      "type": "text",
+      "label": "Clinic locations (city/state only)"
+     },
+     {
+      "n": 3,
+      "type": "text",
+      "label": "Year each clinic opened"
+     },
+     {
+      "n": 4,
+      "type": "text",
+      "label": "Total employees (full-time / part-time), and number of licensed therapists"
+     },
+     {
+      "n": 5,
+      "type": "text",
+      "label": "Decision-maker for a data licensing agreement — name + title"
+     }
+    ]
+   },
+   {
+    "title": "B. Systems",
+    "fields": [
+     {
+      "n": 6,
+      "type": "text",
+      "label": "EHR / practice-management system at each clinic (e.g., WebPT, Clinicient, Prompt, Athena — name)"
+     },
+     {
+      "n": 7,
+      "type": "checks",
+      "label": "Other systems in daily use:",
+      "options": [
+       "Microsoft 365",
+       "Google Workspace",
+       "Billing/RCM service",
+       "Scheduling/reminder tool",
+       "Accounting",
+       "Other"
+      ],
+      "detail": true
+     },
+     {
+      "n": 8,
+      "type": "choice",
+      "label": "Are all clinics on the same system?",
+      "options": [
+       "Yes",
+       "No"
+      ],
+      "detail": true
+     }
+    ]
+   },
+   {
+    "title": "C. Volume & history (counts only)",
+    "fields": [
+     {
+      "n": 9,
+      "type": "text",
+      "label": "Patient visits per month (all clinics)"
+     },
+     {
+      "n": 10,
+      "type": "text",
+      "label": "Total visits per year (last full year)"
+     },
+     {
+      "n": 11,
+      "type": "text",
+      "label": "New evaluations per month"
+     },
+     {
+      "n": 12,
+      "type": "fields",
+      "label": "Years of history in the system:",
+      "subs": [
+       "From year",
+       "Visit/documentation records (years)",
+       "Billing records (years)"
+      ]
+     },
+     {
+      "n": 13,
+      "type": "text",
+      "label": "Active patient count in the system (count only)"
+     },
+     {
+      "n": 14,
+      "type": "fields",
+      "label": "Approximate payer mix (%):",
+      "subs": [
+       "Medicare %",
+       "Commercial %",
+       "Workers comp %",
+       "Auto/PI %",
+       "Cash %"
+      ]
+     },
+     {
+      "n": 15,
+      "type": "area",
+      "label": "Specialties/modalities offered (e.g., ortho, neuro, vestibular, aquatic, dry needling — list)"
+     }
+    ]
+   },
+   {
+    "title": "D. Workflows & documentation",
+    "fields": [
+     {
+      "n": 16,
+      "type": "checks",
+      "label": "Do written SOPs exist for:",
+      "options": [
+       "Intake",
+       "Scheduling",
+       "Documentation",
+       "Billing/coding",
+       "Front-desk",
+       "Therapist training"
+      ],
+      "detail": false
+     },
+     {
+      "n": 17,
+      "type": "text",
+      "label": "Languages used with patients and in documentation (list all)"
+     },
+     {
+      "n": 18,
+      "type": "text",
+      "label": "Approximate number of staff trained on the same standard workflows across clinics"
+     }
+    ]
+   },
+   {
+    "title": "E. Scope & exclusions",
+    "fields": [
+     {
+      "n": 19,
+      "type": "area",
+      "label": "Any data categories you would exclude (describe categories only)"
+     },
+     {
+      "n": 20,
+      "type": "choice",
+      "label": "Any existing agreements restricting licensing of your operational data?",
+      "options": [
+       "No",
+       "Yes"
+      ],
+      "detail": true
+     },
+     {
+      "n": 21,
+      "type": "choice",
+      "label": "Willing to sign an exclusive data licensing grant to IEC MSO for evaluation?",
+      "options": [
+       "Yes",
+       "Not yet — questions first"
+      ],
+      "detail": false
+     }
+    ]
+   }
+  ]
+ },
+ "medical-practice": {
+  "name": "Medical Practice / Group",
+  "title": "Medical Practice / Group Operations",
+  "sections": [
+   {
+    "title": "A. The business",
+    "fields": [
+     {
+      "n": 1,
+      "type": "area",
+      "label": "Legal entities and practice names covered (list each)"
+     },
+     {
+      "n": 2,
+      "type": "text",
+      "label": "Locations (city/state only) and specialties"
+     },
+     {
+      "n": 3,
+      "type": "text",
+      "label": "Year each location opened"
+     },
+     {
+      "n": 4,
+      "type": "text",
+      "label": "Total employees (full-time / part-time); number of physicians / APPs"
+     },
+     {
+      "n": 5,
+      "type": "text",
+      "label": "Decision-maker for a data licensing agreement — name + title"
+     }
+    ]
+   },
+   {
+    "title": "B. Systems",
+    "fields": [
+     {
+      "n": 6,
+      "type": "text",
+      "label": "EHR at each location (name + since when)"
+     },
+     {
+      "n": 7,
+      "type": "checks",
+      "label": "Other systems in daily use:",
+      "options": [
+       "Practice management/billing",
+       "Microsoft 365",
+       "Google Workspace",
+       "Phone/answering",
+       "Secure email/fax",
+       "Accounting",
+       "Other"
+      ],
+      "detail": true
+     },
+     {
+      "n": 8,
+      "type": "choice",
+      "label": "Are all locations on the same EHR?",
+      "options": [
+       "Yes",
+       "No"
+      ],
+      "detail": true
+     }
+    ]
+   },
+   {
+    "title": "C. Volume & history (counts only)",
+    "fields": [
+     {
+      "n": 9,
+      "type": "text",
+      "label": "Patient encounters per month (all locations)"
+     },
+     {
+      "n": 10,
+      "type": "text",
+      "label": "Total encounters per year (last full year)"
+     },
+     {
+      "n": 11,
+      "type": "text",
+      "label": "Total patient panel size (count only)"
+     },
+     {
+      "n": 12,
+      "type": "fields",
+      "label": "Years of history in the EHR:",
+      "subs": [
+       "From year",
+       "Encounter/note records (years)",
+       "Imaging/lab volumes per year",
+       "Billing records (years)"
+      ]
+     },
+     {
+      "n": 13,
+      "type": "fields",
+      "label": "Approximate payer mix (%):",
+      "subs": [
+       "Medicare %",
+       "Medicaid %",
+       "Commercial %",
+       "Workers comp %",
+       "Auto/PI %",
+       "Cash %"
+      ]
+     },
+     {
+      "n": 14,
+      "type": "area",
+      "label": "Service lines beyond core specialty (list)"
+     }
+    ]
+   },
+   {
+    "title": "D. Workflows & documentation",
+    "fields": [
+     {
+      "n": 15,
+      "type": "checks",
+      "label": "Do written SOPs exist for:",
+      "options": [
+       "Intake",
+       "Check-in/out",
+       "Documentation",
+       "Billing/coding",
+       "Referrals",
+       "Staff training"
+      ],
+      "detail": false
+     },
+     {
+      "n": 16,
+      "type": "text",
+      "label": "Languages used with patients and in documentation (list all — note any bilingual documentation)"
+     },
+     {
+      "n": 17,
+      "type": "text",
+      "label": "Approximate number of staff trained on the same standard workflows across locations"
+     }
+    ]
+   },
+   {
+    "title": "E. Scope & exclusions",
+    "fields": [
+     {
+      "n": 18,
+      "type": "area",
+      "label": "Any data categories you would exclude (describe categories only)"
+     },
+     {
+      "n": 19,
+      "type": "choice",
+      "label": "Any existing agreements restricting licensing of your operational data?",
+      "options": [
+       "No",
+       "Yes"
+      ],
+      "detail": true
+     },
+     {
+      "n": 20,
+      "type": "choice",
+      "label": "Willing to sign an exclusive data licensing grant to IEC MSO for evaluation?",
+      "options": [
+       "Yes",
+       "Not yet — questions first"
+      ],
+      "detail": false
+     }
+    ]
+   }
+  ]
+ },
+ "gas-convenience": {
+  "name": "Gas & Convenience",
+  "title": "Gas Station / Convenience Operations",
+  "sections": [
+   {
+    "title": "A. The business",
+    "fields": [
+     {
+      "n": 1,
+      "type": "area",
+      "label": "Legal entities and station/store names covered (list each)"
+     },
+     {
+      "n": 2,
+      "type": "text",
+      "label": "Locations (city/state only) and brands (e.g., Mobil, Exxon, BP, unbranded)"
+     },
+     {
+      "n": 3,
+      "type": "text",
+      "label": "Year each location was acquired/opened"
+     },
+     {
+      "n": 4,
+      "type": "text",
+      "label": "Total employees (full-time / part-time)"
+     },
+     {
+      "n": 5,
+      "type": "text",
+      "label": "Decision-maker for a data licensing agreement — name + title"
+     }
+    ]
+   },
+   {
+    "title": "B. Systems",
+    "fields": [
+     {
+      "n": 6,
+      "type": "text",
+      "label": "Point-of-sale system at each location (e.g., Gilbarco Passport, Verifone Ruby, NCR — name)"
+     },
+     {
+      "n": 7,
+      "type": "checks",
+      "label": "Other systems in daily use:",
+      "options": [
+       "Back-office",
+       "Fuel inventory/ATG",
+       "Accounting",
+       "Payroll",
+       "Camera/security",
+       "Loyalty program",
+       "Other"
+      ],
+      "detail": true
+     },
+     {
+      "n": 8,
+      "type": "choice",
+      "label": "Are all locations on the same POS/back-office?",
+      "options": [
+       "Yes",
+       "No"
+      ],
+      "detail": true
+     }
+    ]
+   },
+   {
+    "title": "C. Volume & history (counts only)",
+    "fields": [
+     {
+      "n": 9,
+      "type": "text",
+      "label": "Fuel gallons sold per month (all locations)"
+     },
+     {
+      "n": 10,
+      "type": "text",
+      "label": "Inside (convenience) sales per month (all locations)"
+     },
+     {
+      "n": 11,
+      "type": "text",
+      "label": "Transactions per day, average location"
+     },
+     {
+      "n": 12,
+      "type": "fields",
+      "label": "Years of history stored in the POS/back-office:",
+      "subs": [
+       "From year",
+       "Transaction records (years)",
+       "Fuel/inventory records (years)",
+       "Accounting records (years)"
+      ]
+     },
+     {
+      "n": 13,
+      "type": "checks",
+      "label": "Locations with (check all that apply — add counts in the details line):",
+      "options": [
+       "Car wash",
+       "Auto repair",
+       "Food service/QSR",
+       "ATM",
+       "Lottery"
+      ],
+      "detail": true
+     }
+    ]
+   },
+   {
+    "title": "D. Workflows & documentation",
+    "fields": [
+     {
+      "n": 14,
+      "type": "checks",
+      "label": "Do written SOPs exist for:",
+      "options": [
+       "Shift operations",
+       "Fuel ordering/inventory",
+       "Cash handling",
+       "Vendor ordering",
+       "Staff training",
+       "Safety/compliance"
+      ],
+      "detail": false
+     },
+     {
+      "n": 15,
+      "type": "text",
+      "label": "Approximate number of staff trained on the same standard workflows across locations"
+     },
+     {
+      "n": 16,
+      "type": "text",
+      "label": "Languages used with staff/customers (list all)"
+     }
+    ]
+   },
+   {
+    "title": "E. Scope & exclusions",
+    "fields": [
+     {
+      "n": 17,
+      "type": "area",
+      "label": "Any data categories you would exclude (describe categories only)"
+     },
+     {
+      "n": 18,
+      "type": "choice",
+      "label": "Any existing agreements (brand/franchise/dealer agreements) restricting licensing of your operational data?",
+      "options": [
+       "No",
+       "Yes"
+      ],
+      "detail": true
+     },
+     {
+      "n": 19,
+      "type": "choice",
+      "label": "Willing to sign an exclusive data licensing grant to IEC MSO for evaluation?",
+      "options": [
+       "Yes",
+       "Not yet — questions first"
+      ],
+      "detail": false
+     }
+    ]
+   }
+  ]
+ },
+ "general-business": {
+  "name": "General Business",
+  "title": "Business Operations (General)",
+  "sections": [
+   {
+    "title": "A. The business",
+    "fields": [
+     {
+      "n": 1,
+      "type": "area",
+      "label": "Legal entities covered (list each) and what each does (one line)"
+     },
+     {
+      "n": 2,
+      "type": "text",
+      "label": "Locations (city/state only)"
+     },
+     {
+      "n": 3,
+      "type": "text",
+      "label": "Year each entity started"
+     },
+     {
+      "n": 4,
+      "type": "text",
+      "label": "Total employees (full-time / part-time)"
+     },
+     {
+      "n": 5,
+      "type": "text",
+      "label": "Decision-maker for a data licensing agreement — name + title"
+     }
+    ]
+   },
+   {
+    "title": "B. Systems",
+    "fields": [
+     {
+      "n": 6,
+      "type": "fields",
+      "label": "Core operating systems (name each):",
+      "subs": [
+       "CRM",
+       "Job/project system",
+       "Accounting",
+       "Email/docs (e.g., Microsoft 365, Google Workspace)",
+       "Phone/call system",
+       "Other"
+      ]
+     },
+     {
+      "n": 7,
+      "type": "area",
+      "label": "Are records centralized in one system or spread across several? (describe briefly)"
+     }
+    ]
+   },
+   {
+    "title": "C. Volume & history (counts only)",
+    "fields": [
+     {
+      "n": 8,
+      "type": "text",
+      "label": "Customers/clients served per year"
+     },
+     {
+      "n": 9,
+      "type": "text",
+      "label": "Jobs/orders/projects completed per year"
+     },
+     {
+      "n": 10,
+      "type": "fields",
+      "label": "Years of history stored:",
+      "subs": [
+       "From year",
+       "Customer records (years)",
+       "Job/project records (years)",
+       "Financial records (years)"
+      ]
+     },
+     {
+      "n": 11,
+      "type": "text",
+      "label": "Call/email volume per month, if tracked (counts only)"
+     }
+    ]
+   },
+   {
+    "title": "D. Workflows & documentation",
+    "fields": [
+     {
+      "n": 12,
+      "type": "checks",
+      "label": "Do written SOPs exist for:",
+      "options": [
+       "Sales/intake",
+       "Operations/delivery",
+       "Billing",
+       "Customer service",
+       "Staff training"
+      ],
+      "detail": false
+     },
+     {
+      "n": 13,
+      "type": "text",
+      "label": "Approximate number of staff trained on the same standard workflows"
+     },
+     {
+      "n": 14,
+      "type": "text",
+      "label": "Languages used with customers and in documentation (list all)"
+     }
+    ]
+   },
+   {
+    "title": "E. Scope & exclusions",
+    "fields": [
+     {
+      "n": 15,
+      "type": "area",
+      "label": "Any data categories you would exclude (describe categories only)"
+     },
+     {
+      "n": 16,
+      "type": "choice",
+      "label": "Any existing agreements restricting licensing of your operational data?",
+      "options": [
+       "No",
+       "Yes"
+      ],
+      "detail": true
+     },
+     {
+      "n": 17,
+      "type": "choice",
+      "label": "Willing to sign an exclusive data licensing grant to IEC MSO for evaluation?",
+      "options": [
+       "Yes",
+       "Not yet — questions first"
+      ],
+      "detail": false
+     }
+    ]
+   }
+  ]
+ }
+};
+(function () {
+  var params = new URLSearchParams(location.search);
+  var slugs = Object.keys(SEGMENTS);
+  var current = slugs.indexOf(params.get("segment")) >= 0 ? params.get("segment") : "pharmacy";
+  var sel = document.getElementById("segSelect");
+  var host = document.getElementById("qSections");
+
+  slugs.forEach(function (slug) {
+    var o = document.createElement("option");
+    o.value = slug;
+    o.textContent = SEGMENTS[slug].title;
+    sel.appendChild(o);
+  });
+  sel.value = current;
+
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+
+  function render(slug) {
+    host.innerHTML = "";
+    SEGMENTS[slug].sections.forEach(function (section) {
+      var fs = el("fieldset");
+      var lg = el("legend", null, section.title);
+      fs.appendChild(lg);
+      section.fields.forEach(function (f) {
+        var wrap = el("div", "qfield");
+        wrap.dataset.qid = "q" + f.n;
+        wrap.dataset.label = "Q" + f.n + ". " + f.label;
+        wrap.dataset.type = f.type;
+        var lab = el("label", "qlabel");
+        var num = el("span", "qn", f.n + ".");
+        lab.appendChild(num);
+        lab.appendChild(document.createTextNode(f.label));
+        wrap.appendChild(lab);
+        if (f.type === "text") {
+          var inp = el("input"); inp.type = "text"; inp.className = "qval";
+          wrap.appendChild(inp);
+        } else if (f.type === "area") {
+          var ta = el("textarea"); ta.className = "qval"; ta.rows = 3;
+          wrap.appendChild(ta);
+        } else if (f.type === "checks" || f.type === "choice") {
+          var box = el("div", f.type === "checks" ? "qchecks" : "qchoice");
+          f.options.forEach(function (opt) {
+            var l = el("label");
+            var i = el("input");
+            i.type = f.type === "checks" ? "checkbox" : "radio";
+            i.name = "q" + f.n + "_" + slug;
+            i.value = opt;
+            l.appendChild(i);
+            l.appendChild(document.createTextNode(opt));
+            box.appendChild(l);
+          });
+          wrap.appendChild(box);
+          if (f.detail) {
+            var d = el("input"); d.type = "text"; d.className = "qdetail qdetailval";
+            d.placeholder = "Details / names (where the question asks)";
+            wrap.appendChild(d);
+          }
+        } else if (f.type === "fields") {
+          var grid = el("div", "qsubs");
+          f.subs.forEach(function (s) {
+            var cell = el("div");
+            var sl = el("label", null, s);
+            var si = el("input"); si.type = "text"; si.className = "qsubval"; si.dataset.sub = s;
+            cell.appendChild(sl); cell.appendChild(si);
+            grid.appendChild(cell);
+          });
+          wrap.appendChild(grid);
+        }
+        fs.appendChild(wrap);
+      });
+      host.appendChild(fs);
+    });
+  }
+
+  function collectAnswers() {
+    var answers = {};
+    host.querySelectorAll(".qfield").forEach(function (wrap) {
+      var type = wrap.dataset.type;
+      var val = "";
+      if (type === "text" || type === "area") {
+        val = wrap.querySelector(".qval").value.trim();
+      } else if (type === "checks") {
+        var picked = [];
+        wrap.querySelectorAll("input[type=checkbox]:checked").forEach(function (c) { picked.push(c.value); });
+        val = picked.join(", ");
+        var det = wrap.querySelector(".qdetailval");
+        if (det && det.value.trim()) val = (val ? val + " — " : "") + det.value.trim();
+      } else if (type === "choice") {
+        var r = wrap.querySelector("input[type=radio]:checked");
+        val = r ? r.value : "";
+        var det2 = wrap.querySelector(".qdetailval");
+        if (det2 && det2.value.trim()) val = (val ? val + " — " : "") + det2.value.trim();
+      } else if (type === "fields") {
+        var parts = [];
+        wrap.querySelectorAll(".qsubval").forEach(function (si) {
+          if (si.value.trim()) parts.push(si.dataset.sub + ": " + si.value.trim());
+        });
+        val = parts.join(" · ");
+      }
+      if (val) answers[wrap.dataset.label] = val;
+    });
+    return answers;
+  }
+
+  sel.addEventListener("change", function () {
+    current = sel.value;
+    var u = new URL(location.href);
+    u.searchParams.set("segment", current);
+    history.replaceState(null, "", u);
+    render(current);
+  });
+
+  render(current);
+
+  var form = document.getElementById("qForm");
+  var err = document.getElementById("qErr");
+  form.addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    err.style.display = "none";
+    var name = document.getElementById("cName").value.trim();
+    var email = document.getElementById("cEmail").value.trim();
+    if (!name) { err.textContent = "Please enter your name so we know who submitted the questionnaire."; err.style.display = "block"; return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { err.textContent = "Please enter a valid email address — that is how IEC follows up with you."; err.style.display = "block"; return; }
+    var btn = document.getElementById("qSubmitBtn");
+    btn.disabled = true;
+    btn.textContent = "Sending…";
+    var payload = {
+      segment: current,
+      contact: {
+        name: name,
+        business: document.getElementById("cBusiness").value.trim(),
+        email: email,
+        phone: document.getElementById("cPhone").value.trim()
+      },
+      answers: collectAnswers(),
+      company_website: document.getElementById("cWebsite").value
+    };
+    fetch("/api/questionnaire-submit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok && j.ok, j: j }; }); })
+      .then(function (res) {
+        if (!res.ok) throw new Error("submit_failed");
+        form.style.display = "none";
+        var t = document.getElementById("qThanks");
+        document.getElementById("qRef").textContent = res.j.id || "";
+        t.style.display = "block";
+        t.focus();
+        window.scrollTo({ top: t.offsetTop - 120, behavior: "smooth" });
+      })
+      .catch(function () {
+        btn.disabled = false;
+        btn.textContent = "Submit questionnaire";
+        err.innerHTML = "Something went wrong sending the form. Please try again, or email your answers to <a href=\"mailto:info@iecincglobal.com\">info@iecincglobal.com</a>.";
+        err.style.display = "block";
+      });
+  });
+})();
+</script>
+</body>
+</html>
