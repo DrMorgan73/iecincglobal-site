@@ -62,6 +62,16 @@
   .tl-stat{border:1px solid var(--line-soft);border-radius:12px;padding:10px 14px;min-width:118px}
   .tl-stat b{font-family:'Space Grotesk';font-size:19px;display:block}
   .tl-stat span{font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--dim)}
+  .chip.ok{color:#06281c;background:linear-gradient(135deg,#6ee7b7,#34d399);border-color:transparent}
+  .chip.warn{color:#3a2703;background:linear-gradient(135deg,#fde68a,#fbbf24);border-color:transparent}
+  .chip.bad{color:#3d0a0a;background:linear-gradient(135deg,#fca5a5,#f87171);border-color:transparent}
+  .chip.muted{color:var(--dim)}
+  .sign-health{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+  .health-badge{border:1px solid var(--line-soft);border-radius:12px;padding:10px 14px;font-size:13px;max-width:420px}
+  .health-badge b{font-family:'Space Grotesk';display:block;font-size:14px;margin-bottom:4px}
+  .health-badge .detail{display:block;font-size:12px;color:var(--dim);margin-top:4px}
+  .health-badge.armed{border-color:rgba(52,211,153,.55)}
+  .health-badge.dormant{border-color:rgba(248,113,113,.55)}
 </style>
 </head>
 <body data-page="demo-users">
@@ -120,6 +130,18 @@
     <div class="card" style="margin-bottom:16px">
       <h3>Permission matrix</h3>
       <div class="table-wrap"><div id="matrix"><div class="empty">Loading demo users…</div></div></div>
+    </div>
+
+    <div class="section-head">
+      <h2>Signings</h2>
+      <button class="btn small ghost" id="signings-refresh" type="button">↻ Refresh</button>
+    </div>
+    <p class="hint" style="margin-bottom:16px">Executed NDAs across every asset — who signed, when each copy was delivered, and whether demo provisioning followed. Provisioning health shows at a glance whether each asset's post-signing provisioning is armed.</p>
+
+    <div class="card" style="margin-bottom:16px">
+      <div id="signings-health"></div>
+      <div id="signings-status"></div>
+      <div class="table-wrap"><div id="signings"><div class="empty">Loading signings…</div></div></div>
     </div>
 
     <div class="section-head">
@@ -338,6 +360,104 @@ $('matrix').addEventListener('click', async e => {
 
 $('refresh').addEventListener('click', load);
 load();
+
+/* ================= Signings ================= */
+function signDate(v){
+  if (!v) return '—';
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return String(v);
+  return d.toLocaleDateString('en-US', { timeZone: 'America/New_York',
+    month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function deliveryBadge(v){
+  if (v === null || v === undefined) return '— (legacy)';
+  if (v === 'delivered') return '<span class="chip ok">Delivered</span>';
+  if (v === 'pending') return '<span class="chip warn">Pending</span>';
+  if (v === 'failed') return '<span class="chip bad">Failed</span>';
+  return `<span class="chip muted">${esc(v)}</span>`;
+}
+
+function provisioningBadge(v){
+  if (v === null || v === undefined) return '— (legacy)';
+  if (v === 'provisioned') return '<span class="chip ok">Provisioned</span>';
+  if (v === 'pending') return '<span class="chip warn">Pending</span>';
+  if (v === 'failed') return '<span class="chip bad">Failed</span>';
+  if (v === 'not_required') return '<span class="chip muted">Not required</span>';
+  return `<span class="chip muted">${esc(v)}</span>`;
+}
+
+function signingStatusBadge(v){
+  if (v === 'active') return '<span class="chip ok">Active</span>';
+  if (v === 'superseded') return '<span class="chip muted">Superseded</span>';
+  if (v === null || v === undefined) return '— (legacy)';
+  return `<span class="chip muted">${esc(v)}</span>`;
+}
+
+function signingsStatus(html, isErr){
+  $('signings-status').innerHTML = html ? `<div class="banner${isErr ? ' err' : ''}">${html}</div>` : '';
+}
+
+function renderSigningsHealth(health){
+  const items = Array.isArray(health) ? health : [];
+  $('signings-health').innerHTML = items.length ? `
+    <div class="sign-health">${items.map(h => h && h.armed
+      ? `<div class="health-badge armed"><b>${esc(h.asset || '—')}</b><span class="chip ok">Armed</span>${h.detail ? `<span class="detail">${esc(h.detail)}</span>` : ''}</div>`
+      : `<div class="health-badge dormant"><b>${esc((h && h.asset) || '—')}</b><span class="chip bad">Dormant — secret not configured</span>${h && h.detail ? `<span class="detail">${esc(h.detail)}</span>` : ''}</div>`
+    ).join('')}</div>` : '';
+}
+
+function renderSignings(data){
+  renderSigningsHealth(data.provisioningHealth);
+  const rows = [...(Array.isArray(data.signings) ? data.signings : [])].sort((a, b) => {
+    const ka = (a && (a.executionDate || a.effectiveDate || a.createdAt || a.signatureDate)) || '';
+    const kb = (b && (b.executionDate || b.effectiveDate || b.createdAt || b.signatureDate)) || '';
+    return String(kb).localeCompare(String(ka));
+  });
+  $('signings').innerHTML = rows.length ? `
+    <table class="matrix">
+      <thead><tr><th>Executed</th><th>Product / Origin</th><th>Counterparty</th><th>Signer</th><th>Signature date</th><th>IEC copy</th><th>Signer copy</th><th>Provisioning</th><th>Status</th></tr></thead>
+      <tbody>${rows.map(s => `
+        <tr>
+          <td>${esc(signDate(s.executionDate || s.effectiveDate || s.createdAt))}</td>
+          <td class="who"><b>${esc(s.product || '—')}</b>${s.origin ? `<span>${esc(s.origin)}</span>` : ''}</td>
+          <td>${esc(s.counterpartyName || '—')}</td>
+          <td class="who"><b>${esc(s.signerName || '—')}</b><span>${esc(s.signerEmail || '')}</span>${s.signerTitle ? `<span>${esc(s.signerTitle)}</span>` : ''}</td>
+          <td>${esc(signDate(s.signatureDate))}</td>
+          <td>${deliveryBadge(s.deliveryIec)}</td>
+          <td>${deliveryBadge(s.deliverySigner)}</td>
+          <td>${provisioningBadge(s.provisioningStatus)}</td>
+          <td>${signingStatusBadge(s.status)}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>` : '<div class="empty">No signings recorded yet.</div>';
+}
+
+async function loadSignings(){
+  signingsStatus('');
+  const { status, data } = await api({ action: 'signings' });
+  if (status === 401) {
+    signingsStatus('Your Desk session has expired. <a href="/desk/login.html">Sign in again</a> to see signings.', true);
+    $('signings-health').innerHTML = '';
+    $('signings').innerHTML = '<div class="empty">Session expired.</div>';
+    return;
+  }
+  if (status === 503 || data.error === 'not_configured') {
+    signingsStatus('<b>Signings view not configured</b> — the signings read secret still needs to be set on this project. Nothing can be shown until then.');
+    $('signings-health').innerHTML = '';
+    $('signings').innerHTML = '<div class="empty">Signings view not configured.</div>';
+    return;
+  }
+  if (status !== 200 || (!Array.isArray(data.signings) && !Array.isArray(data.provisioningHealth))) {
+    signingsStatus('Signings could not be loaded (' + esc(data.error || 'unknown error') + '). Try Refresh.', true);
+    $('signings').innerHTML = '<div class="empty">Signings unavailable.</div>';
+    return;
+  }
+  renderSignings(data);
+}
+
+$('signings-refresh').addEventListener('click', loadSignings);
+loadSignings();
 
 /* ================= Activity monitoring ================= */
 const ACT_ASSET_NAMES = { medexec: 'MEDEXEC', insnap: 'InSnap', curavia: 'CURAVIA', insnapp: 'INSNAPP', iecdocs: 'IEC Docs', 'iec-docs': 'IEC Docs' };

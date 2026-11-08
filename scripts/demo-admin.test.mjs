@@ -551,5 +551,71 @@ process.env.BLOB_READ_WRITE_TOKEN = "blob-test-token";
 r = await call({ action: "invite", asset: "medexec", email: "nobleb@example.com", name: "No Blob" });
 ok(r.body.ndaSent === true && r.body.emailed === true, "invite recovers once the store is configured");
 
+/* ---------------- 14. signings action ---------------- */
+console.log("signings");
+delete process.env.NDA_SIGNINGS_READ_SECRET;
+delete process.env.NDA_SIGNINGS_API_URL;
+r = await call({ action: "signings" }, null);
+ok(r.status === 401 && r.body.error === "unauthorized", "signings without session: 401");
+r = await call({ action: "signings" });
+ok(r.status === 503 && r.body.error === "not_configured",
+  "signings with session but no secret env: 503 not_configured");
+
+const signingsPayload = {
+  signings: [
+    {
+      id: "sig-1", product: "universal", origin: "medexec",
+      counterpartyName: "Example Clinic LLC", signerName: "Sign Er",
+      signerEmail: "signer@example.com", signerTitle: "CEO",
+      signatureDate: "2026-11-08", effectiveDate: "2026-11-08",
+      executionDate: "2026-11-08", createdAt: "2026-11-08T12:00:00.000Z",
+      status: "active", deliveryIec: "delivered", deliverySigner: "pending",
+      provisioningStatus: "provisioned"
+    },
+    {
+      id: "sig-0", product: "medexec", origin: null,
+      counterpartyName: "Legacy Org", signerName: "Old Signer",
+      signerEmail: "legacy@example.com", signerTitle: "",
+      signatureDate: "2026-11-01", effectiveDate: "2026-11-01",
+      executionDate: "2026-11-01", createdAt: "2026-11-01T12:00:00.000Z",
+      status: "superseded", deliveryIec: null, deliverySigner: null,
+      provisioningStatus: null
+    }
+  ],
+  provisioningHealth: [
+    { asset: "medexec", armed: true, detail: "provisioning secret configured" },
+    { asset: "curavia", armed: false, detail: "DEMO_PROVISION_SECRET not set" }
+  ]
+};
+const fetchBeforeSignings = globalThis.fetch;
+let signingsFetch = null;
+globalThis.fetch = async (url, opts = {}) => {
+  if (String(url) === "https://signings.stub/api/nda/signings") {
+    signingsFetch = { url: String(url), headers: opts.headers || {} };
+    return jsonRes(200, signingsPayload);
+  }
+  return fetchBeforeSignings(url, opts);
+};
+process.env.NDA_SIGNINGS_API_URL = "https://signings.stub/api/nda/signings";
+process.env.NDA_SIGNINGS_READ_SECRET = "signings-test-secret";
+r = await call({ action: "signings" });
+ok(r.status === 200 && eq(r.body, signingsPayload),
+  "signings with secret + stubbed upstream: payload passes through unchanged");
+ok(signingsFetch && signingsFetch.headers["x-nda-signings-secret"] === "signings-test-secret",
+  "upstream was called with the x-nda-signings-secret header");
+ok(!JSON.stringify(r.body).includes("signings-test-secret"),
+  "the signings secret is never exposed in the response");
+
+globalThis.fetch = async (url, opts = {}) => {
+  if (String(url) === "https://signings.stub/api/nda/signings") return jsonRes(502, { error: "boom" });
+  return fetchBeforeSignings(url, opts);
+};
+r = await call({ action: "signings" });
+ok(r.status === 502 && r.body.error === "signings_unavailable",
+  "signings upstream failure: 502 signings_unavailable");
+globalThis.fetch = fetchBeforeSignings;
+delete process.env.NDA_SIGNINGS_READ_SECRET;
+delete process.env.NDA_SIGNINGS_API_URL;
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

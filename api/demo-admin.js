@@ -9,6 +9,7 @@
      { action: "invite", asset, email, name }
      { action: "resend", asset, email }
      { action: "status", asset, email, status }   status: paused|active|revoked
+     { action: "signings" }
 
    AUTH: the Desk session cookie, verified with exactly the scheme
    middleware.js / api/desk-login.js use (HMAC-SHA256 over
@@ -94,6 +95,18 @@
      BLOB_READ_WRITE_TOKEN          (already set for the Office —
                                     the nda_sent invite records live
                                     in the same Blob store)
+     NDA_SIGNINGS_READ_SECRET       shared secret for the MEDEXEC
+                                    app's GET /api/nda/signings —
+                                    sent server-side only as the
+                                    x-nda-signings-secret header,
+                                    never exposed to the browser.
+                                    Unset → "signings" answers 503
+                                    { error: "not_configured" }
+                                    (fail-closed, per the pattern
+                                    above).
+     NDA_SIGNINGS_API_URL           optional override for that
+                                    endpoint; defaults to
+                                    https://app.getmedexec.com/api/nda/signings
 
    SECURITY: activation tokens from the stores are used only to
    build the emailed activation link. They are never logged and
@@ -1152,6 +1165,42 @@ async function actionStatus(res, body) {
 }
 
 /* ------------------------------------------------------------------ */
+/* Signings — read-through to the MEDEXEC app's NDA signings feed      */
+/* ------------------------------------------------------------------ */
+
+/* The executed-NDA record lives on the MEDEXEC app side, which
+   serves it at GET /api/nda/signings behind a shared secret. This
+   action is a pure server-side proxy: the Desk session gates it,
+   the secret (NDA_SIGNINGS_READ_SECRET) is sent only as the
+   x-nda-signings-secret header from here, and the upstream JSON
+   ({ signings, provisioningHealth }) passes through unchanged.
+   Fail-closed, mirroring the per-asset pattern: no secret
+   configured → 503 not_configured and nothing is fetched; an
+   upstream failure → 502 signings_unavailable. The payload exposes
+   no field beyond what the upstream contract defines — signer
+   emails there are the same emails "list" already exposes. */
+const DEFAULT_NDA_SIGNINGS_API_URL = "https://app.getmedexec.com/api/nda/signings";
+
+async function actionSignings(res) {
+  const secret = process.env.NDA_SIGNINGS_READ_SECRET || "";
+  if (!secret) {
+    console.log("[demo-admin] NO-OP — NDA_SIGNINGS_READ_SECRET is not configured for this project; signings not fetched.");
+    return reply(res, 503, { ok: false, error: "not_configured" });
+  }
+  const url = process.env.NDA_SIGNINGS_API_URL || DEFAULT_NDA_SIGNINGS_API_URL;
+  let data;
+  try {
+    const r = await fetch(url, { headers: { "x-nda-signings-secret": secret } });
+    if (!r.ok) throw new Error(`signings_upstream_${r.status}`);
+    data = await r.json();
+  } catch (e) {
+    console.error(`[demo-admin] signings FAILED: ${e && e.message}`);
+    return reply(res, 502, { ok: false, error: "signings_unavailable" });
+  }
+  return reply(res, 200, data);
+}
+
+/* ------------------------------------------------------------------ */
 /* Handler                                                             */
 /* ------------------------------------------------------------------ */
 
@@ -1169,6 +1218,7 @@ export default async function handler(req, res) {
   if (action === "invite") return actionInvite(res, body);
   if (action === "resend") return actionResend(res, body);
   if (action === "status") return actionStatus(res, body);
+  if (action === "signings") return actionSignings(res);
   return reply(res, 400, { ok: false, error: "unknown_action" });
 }
 
