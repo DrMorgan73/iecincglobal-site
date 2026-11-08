@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mutual NDA — IEC Inc.</title>
+<meta name="description" content="IEC's single mutual non-disclosure agreement. One signing covers every IEC asset — MEDEXEC, CURAVIA, InSnap, INSNAPP, IEC Docs and IEC MSO.">
+<link rel="stylesheet" href="style.css">
+<style>
+  .nda-origin{display:none;margin:0 0 18px;padding:12px 16px;border:1px solid var(--gold,#B98A2F);border-radius:10px;background:#FBF6EA;color:#5c4a12;font-size:15px}
+  .nda-origin.show{display:block}
+  .nda-doc{border:1px solid #DCE3EC;border-radius:14px;background:#fff;padding:28px 30px;max-height:560px;overflow:auto;box-shadow:0 8px 30px rgba(14,42,71,.06)}
+  .nda-doc h2{font-size:19px;margin:22px 0 8px;color:#0E2A47}
+  .nda-doc h2:first-child{margin-top:0}
+  .nda-doc p{white-space:pre-wrap;color:#26313F;margin:0 0 10px;line-height:1.65}
+  .nda-doc .sig-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:14px}
+  .nda-doc .sig-grid h3{font-size:16px;margin:0 0 6px;color:#0E2A47}
+  @media (max-width:720px){.nda-doc .sig-grid{grid-template-columns:1fr}}
+  .nda-form{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:8px}
+  .nda-form .full{grid-column:1/-1}
+  .nda-form label{display:block;font-size:13px;font-weight:700;letter-spacing:.02em;color:#0E2A47;margin-bottom:6px}
+  .nda-form input,.nda-form textarea{width:100%;padding:11px 12px;border:1px solid #C9D3E0;border-radius:9px;font:inherit;font-size:15px;background:#fff;color:#1A1A1A}
+  .nda-form textarea{min-height:74px;resize:vertical}
+  .nda-agree{grid-column:1/-1;display:flex;gap:10px;align-items:flex-start;font-size:14.5px;color:#26313F}
+  .nda-agree input{width:auto;margin-top:3px}
+  .nda-actions{grid-column:1/-1;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+  .nda-btn{appearance:none;border:0;border-radius:10px;padding:13px 22px;font:inherit;font-weight:700;cursor:pointer;background:#0E2A47;color:#fff}
+  .nda-btn[disabled]{opacity:.55;cursor:wait}
+  .nda-btn.secondary{background:#fff;color:#0E2A47;border:1.5px solid #0E2A47}
+  .nda-status{grid-column:1/-1;font-size:15px;color:#26313F;min-height:22px}
+  .nda-fine{grid-column:1/-1;font-size:13.5px;color:#5B6B85;line-height:1.6}
+  @media (max-width:720px){.nda-form{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a class="brand" href="welcome.html"><img class="brand-logo" src="assets/iec-logo.png" alt="IEC Inc."></a>
+    <button class="menu-btn" aria-label="Open menu" aria-expanded="false"><span></span><span></span><span></span></button>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="welcome.html">Home</a>
+      <a href="about.html">About</a>
+      <a href="services.html">Capabilities</a>
+      <a href="os.html">IEC OS</a>
+      <a href="healthcare.html">Healthcare</a>
+      <a href="data-network.html">Data Network</a>
+      <a href="questionnaires.html">Questionnaires</a>
+      <a href="real-estate.html">Real Estate</a>
+      <a href="international.html">International</a>
+      <a href="assets.html">Assets</a>
+      <a href="strategic-partner.html">Strategic Partner</a>
+      <a href="project-advisory.html">Advisory</a>
+      <a href="news.html">News</a>
+      <a class="nav-suite" href="https://iecincglobal-site.vercel.app/desk/login.html">IEC Suite</a>
+      <a class="nav-cta" href="https://wa.me/18578671767?text=Hello%20DrMorgan%2C%20I%27d%20like%20to%20connect%20with%20IEC%20Inc.">Contact IEC</a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="eyebrow">IEC — Mutual NDA</div>
+    <h1>One NDA for every IEC asset.</h1>
+    <p class="lede">International Empire Consultants, Inc. owns all of its products and services — MEDEXEC, CURAVIA, InSnap, INSNAPP, IEC Docs, IEC MSO and the rest of the IEC Assets. This is the single mutual non-disclosure agreement for all of them: sign once, and the signing covers every IEC asset. IEC has pre-signed; complete your details below and sign to execute.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <p class="nda-origin" id="origin-line" role="note"></p>
+    <div class="eyebrow">The agreement</div>
+    <h2>Mutual Non-Disclosure Agreement</h2>
+    <p>The text below is the complete agreement, filled in live with the details you enter — what you read here is exactly what is executed and recorded.</p>
+    <div class="nda-doc" id="agreement" aria-label="Mutual Non-Disclosure Agreement text"></div>
+  </div>
+</section>
+
+<section class="section soft">
+  <div class="wrap">
+    <div class="eyebrow">Sign</div>
+    <h2>Complete the agreement and sign</h2>
+    <form class="nda-form" id="signature-form" novalidate>
+      <div>
+        <label for="effective-date">Effective date</label>
+        <input id="effective-date" type="date" required>
+      </div>
+      <div>
+        <label for="iec-state">IEC state of incorporation</label>
+        <input id="iec-state" type="text" value="Massachusetts" required>
+      </div>
+      <div>
+        <label for="party-name">Counterparty legal name</label>
+        <input id="party-name" type="text" autocomplete="organization" required>
+      </div>
+      <div>
+        <label for="entity-type-state">Counterparty entity type and state</label>
+        <input id="entity-type-state" type="text" placeholder="e.g., Delaware limited liability company" required>
+      </div>
+      <div class="full">
+        <label for="counterparty-address">Counterparty principal address</label>
+        <input id="counterparty-address" type="text" autocomplete="street-address" required>
+      </div>
+      <div class="full">
+        <label for="agreement-purpose">Purpose</label>
+        <textarea id="agreement-purpose" required>the evaluation of, and discussions regarding, the IEC Assets, including product demonstrations, pilots, and related business discussions</textarea>
+      </div>
+      <div>
+        <label for="printed-name">Counterparty signer's printed name</label>
+        <input id="printed-name" type="text" autocomplete="name" required>
+      </div>
+      <div>
+        <label for="signer-title">Signer title (optional)</label>
+        <input id="signer-title" type="text">
+      </div>
+      <div>
+        <label for="signature-date">Signature date</label>
+        <input id="signature-date" type="date" required>
+      </div>
+      <div>
+        <label for="signer-email">Signer email for the executed copy</label>
+        <input id="signer-email" type="email" autocomplete="email" required>
+      </div>
+      <div class="full">
+        <label for="typed-signature">Typed signature</label>
+        <input id="typed-signature" type="text" placeholder="Type your full legal name" required>
+      </div>
+      <label class="nda-agree">
+        <input id="sign-agree" type="checkbox" required>
+        <span>I agree to sign this Mutual Non-Disclosure Agreement electronically, and I understand my typed signature above is my legal signature.</span>
+      </label>
+      <div class="nda-actions">
+        <button class="nda-btn" id="download-signed" type="submit">Sign agreement</button>
+        <button class="nda-btn secondary" id="download-copy" type="button" hidden>Download signed copy (PDF)</button>
+      </div>
+      <p class="nda-status" id="form-status" role="status"></p>
+      <p class="nda-fine">When you sign and submit, the executed NDA is recorded by IEC, Inc., and an executed PDF copy is emailed to IEC at info@iecincglobal.com and to you at the email address above. You can also download the signed PDF for your own records. This one signing covers all IEC Assets — MEDEXEC, CURAVIA, InSnap, INSNAPP, IEC Docs, IEC MSO and IEC's other products and services.</p>
+    </form>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="foot-grid">
+      <div class="foot-brand">
+        <div class="brand"><img class="brand-logo foot-logo" src="assets/iec-logo-light.png" alt="IEC Inc."></div>
+        <p>International Empire Consultants, Inc. — Boston-based business development and strategic consulting across healthcare, technology, real estate and international markets for more than a decade.</p>
+      </div>
+      <nav class="foot-col" aria-label="Explore">
+        <h4>Explore</h4>
+        <a href="welcome.html">Home</a>
+        <a href="services.html">Capabilities</a>
+        <a href="healthcare.html">Healthcare</a>
+        <a href="data-network.html">Data Network</a>
+        <a href="questionnaires.html">Questionnaires</a>
+        <a href="real-estate.html">Real Estate</a>
+        <a href="international.html">International</a>
+        <a href="assets.html">Assets</a>
+        <a href="news.html">News</a>
+      </nav>
+      <nav class="foot-col" aria-label="IEC OS">
+        <h4>IEC OS</h4>
+        <a href="os.html">Overview</a>
+        <a href="os-medical.html">For Medical</a>
+        <a href="os-dental.html">For Dental</a>
+      </nav>
+      <nav class="foot-col" aria-label="Company">
+        <h4>Company</h4>
+        <a href="about.html">About</a>
+        <a href="strategic-partner.html">Strategic Partner</a>
+        <a href="project-advisory.html">Advisory</a>
+        <a href="contact.html">Contact</a>
+      </nav>
+    </div>
+    <div class="foot-bottom">
+      <div class="copyright">&copy; 2026 International Empire Consultants, Inc. All rights reserved. &middot; Developed by IEC, Inc. &middot; <a href="/desk/login.html">Team sign-in</a></div>
+      <button class="to-top" id="toTop" aria-label="Back to top">&#8593;</button>
+    </div>
+  </div>
+</footer>
+<script src="nav.js" defer></script>
+<script>
+(function () {
+  "use strict";
+
+  // IEC's ONE universal Mutual Non-Disclosure Agreement (DrMorgan,
+  // 2026-11-08): IEC, Inc. is the owner of all of the IEC Assets, and a
+  // single execution of this instrument covers every one of them. The
+  // body is IEC's standard mutual NDA (sections 1–10, incl. the PHI/BAA
+  // clause) with the parties/purpose generalized to all IEC Assets.
+  // Every asset's old signing page now routes here; the ?origin=
+  // parameter only records which door the signer came through.
+  var agreementTexts = [
+    "This Mutual Non-Disclosure Agreement (\"Agreement\") is entered into as of [EFFECTIVE DATE] (\"Effective Date\"), by and between:\n\nInternational Empire Consultants, Inc., a [STATE] corporation with its principal place of business at 923 Hyde Park Ave, Boston, MA 02136 (\"IEC\"), and\n\n[COUNTERPARTY NAME], a [ENTITY TYPE/STATE] with its principal place of business at [ADDRESS] (\"Counterparty\").\n\nIEC is the owner of all of its products and services, including MEDEXEC, CURAVIA, InSnap, INSNAPP, IEC Docs and IEC MSO, together with IEC's other products and services (collectively, the \"IEC Assets\"). IEC and Counterparty are each a \"Party\" and together the \"Parties.\" Each Party may disclose Confidential Information to the other in connection with [PURPOSE] (the \"Purpose\"). One execution of this Agreement covers all of the IEC Assets.",
+    "\"Confidential Information\" means all non-public information disclosed by one Party (the \"Disclosing Party\") to the other (the \"Receiving Party\"), whether orally, visually, or in writing, that is designated as confidential or that a reasonable person would understand to be confidential given the circumstances of disclosure. It includes, without limitation: product designs, software, source code, algorithms, technical documentation, business plans, pricing, customer and patient-related information (subject to Section 9), financial data, and marketing strategies.\n\nExclusions. Confidential Information does not include information that: (a) is or becomes publicly available without breach of this Agreement; (b) was already known to the Receiving Party without a duty of confidentiality, as shown by written records; (c) is independently developed by the Receiving Party without use of or reference to the Disclosing Party's Confidential Information; or (d) is rightfully received from a third party without a duty of confidentiality.",
+    "The Receiving Party shall: (a) hold the Disclosing Party's Confidential Information in strict confidence; (b) use it solely for the Purpose; (c) not disclose it to any third party except as permitted in Section 3; and (d) protect it with at least the same degree of care it uses for its own confidential information, and in no event less than reasonable care.",
+    "The Receiving Party may disclose Confidential Information to its and its affiliates' employees, contractors, and professional advisors who have a need to know for the Purpose and who are bound by confidentiality obligations at least as protective as this Agreement. The Receiving Party remains responsible for any breach by such persons.",
+    "If the Receiving Party is required by law, regulation, or court order to disclose Confidential Information, it shall (to the extent legally permitted) promptly notify the Disclosing Party and cooperate to seek confidential treatment, disclosing only the minimum information legally required.",
+    "Nothing in this Agreement grants any intellectual property license or right, by implication or otherwise. Neither Party is obligated to enter into any further agreement or transaction. All Confidential Information is provided \"as is.\"",
+    "Upon the Disclosing Party's written request, or upon termination of discussions regarding the Purpose, the Receiving Party shall promptly return or destroy all Confidential Information (including copies), except for one archival copy retained for legal compliance, which remains subject to this Agreement.",
+    "This Agreement takes effect on the Effective Date and continues for two (2) years. The obligations in Sections 1–4 and 6 survive for two (2) years from the date of each disclosure. Notwithstanding the foregoing, the Receiving Party's obligations with respect to Confidential Information that qualifies as a trade secret under applicable law shall survive for so long as such information remains a trade secret.",
+    "The Parties acknowledge that breach may cause irreparable harm for which monetary damages are inadequate, and the Disclosing Party is entitled to seek injunctive relief in addition to any other remedies.",
+    "If any disclosure involves protected health information (\"PHI\") as defined by HIPAA, the Parties shall execute a Business Associate Agreement before any PHI is disclosed, and this Agreement does not authorize the disclosure of PHI.",
+    "This Agreement is the entire agreement on confidentiality for the Purpose and supersedes prior discussions on that subject. It may not be amended except in a signed writing. Neither Party may assign it without the other's written consent, except to a successor in a merger or asset sale. If any provision is unenforceable, the remainder continues in effect. This Agreement is governed by the laws of the Commonwealth of Massachusetts, without regard to conflict-of-law rules. The Parties consent to the exclusive jurisdiction of the state and federal courts located in the Commonwealth of Massachusetts for any dispute arising under this Agreement. No waiver of any provision of this Agreement is effective unless in a signed writing, and no waiver of one breach constitutes waiver of any other. It may be executed in counterparts, including by electronic signature.",
+    "IN WITNESS WHEREOF, the Parties have executed this Agreement as of the Effective Date.\n\nInternational Empire Consultants, Inc. — pre-signed by IEC\n\nSignature: Mohammed Morgan, MD  Name: Mohammed Morgan, MD\n\nTitle: Founder & CEO  Date: the date the executed copy is issued\n\n[COUNTERPARTY NAME]\n\nSignature: ___________________________  Name: ___________________________\n\nTitle: ___________________________  Date: ___________________________"
+  ];
+
+  var sectionTitles = [
+    "Parties & purpose",
+    "1. Confidential Information",
+    "2. Obligations",
+    "3. Permitted disclosures",
+    "4. Legally compelled disclosure",
+    "5. No license; no obligation",
+    "6. Return or destruction",
+    "7. Term and survival",
+    "8. Remedies",
+    "9. Protected health information",
+    "10. General",
+    "Execution"
+  ];
+
+  var ORIGIN_LABELS = {
+    "medexec": "MEDEXEC",
+    "curavia": "CURAVIA",
+    "insnap": "InSnap",
+    "inssnapp": "INSNAPP",
+    "iec-docs": "IEC Docs",
+    "iec": "IEC"
+  };
+
+  var params = new URLSearchParams(window.location.search);
+  var originParam = (params.get("origin") || "").toLowerCase();
+  var origin = Object.prototype.hasOwnProperty.call(ORIGIN_LABELS, originParam)
+    ? originParam
+    : (originParam === "direct" ? "direct" : null);
+  if (origin && origin !== "direct") {
+    var line = document.getElementById("origin-line");
+    line.textContent = "Referred from " + ORIGIN_LABELS[origin] + " — this is IEC's single mutual NDA. One signing covers every IEC asset, including " + ORIGIN_LABELS[origin] + ".";
+    line.classList.add("show");
+  }
+
+  var PURPOSE_PLACEHOLDER = "[PURPOSE]";
+  var agreementFieldIds = ["effective-date", "iec-state", "party-name", "entity-type-state", "counterparty-address", "agreement-purpose"];
+  var signerFieldIds = ["printed-name", "signature-date", "signer-title", "typed-signature", "signer-email"];
+
+  function getAgreementData() {
+    return {
+      effectiveDate: document.getElementById("effective-date").value.trim(),
+      iecState: document.getElementById("iec-state").value.trim(),
+      party: document.getElementById("party-name").value.trim(),
+      entityTypeState: document.getElementById("entity-type-state").value.trim(),
+      address: document.getElementById("counterparty-address").value.trim(),
+      purpose: document.getElementById("agreement-purpose").value.trim()
+    };
+  }
+
+  function fillAgreementText(text, data) {
+    var values = {
+      "[EFFECTIVE DATE]": data.effectiveDate || "[EFFECTIVE DATE]",
+      "[STATE]": data.iecState || "[STATE]",
+      "[COUNTERPARTY NAME]": data.party || "[COUNTERPARTY NAME]",
+      "[ENTITY TYPE/STATE]": data.entityTypeState || "[ENTITY TYPE/STATE]",
+      "[ADDRESS]": data.address || "[ADDRESS]"
+    };
+    values[PURPOSE_PLACEHOLDER] = data.purpose || PURPOSE_PLACEHOLDER;
+    Object.keys(values).forEach(function (placeholder) {
+      text = text.split(placeholder).join(values[placeholder]);
+    });
+    return text;
+  }
+
+  function escapeHtml(value) {
+    return String(value).replace(/[&<>"]/g, function (char) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[char];
+    });
+  }
+
+  function renderAgreement() {
+    var data = getAgreementData();
+    var html = "";
+    agreementTexts.forEach(function (text, index) {
+      if (index > 0) html += "<h2>" + escapeHtml(sectionTitles[index]) + "</h2>";
+      html += "<p>" + escapeHtml(fillAgreementText(text, data)) + "</p>";
+    });
+    document.getElementById("agreement").innerHTML = html;
+  }
+
+  function iecSignatureBlock() {
+    // IEC's signature is pre-applied: every executed copy goes out with
+    // both signatures. The date is a token: the server replaces it with
+    // the actual date the executed copy is issued — never with the
+    // client-entered Effective Date.
+    return '<div><h3>International Empire Consultants, Inc.</h3>'
+      + '<p>(Pre-signed by IEC)</p>'
+      + '<p>Signature: <em>Mohammed Morgan, MD</em></p>'
+      + '<p>Name: Mohammed Morgan, MD</p>'
+      + '<p>Title: Founder &amp; CEO</p>'
+      + '<p>Date: [IEC EXECUTION DATE]</p></div>';
+  }
+
+  function buildSignedHtml(data) {
+    var docSections = agreementTexts.slice(0, 11).map(function (text, index) {
+      var heading = index === 0 ? "" : '<h2>' + escapeHtml(sectionTitles[index]) + '</h2>';
+      return '<section' + (index === 0 ? ' class="intro"' : '') + '>' + heading + '<p>' + escapeHtml(fillAgreementText(text, data)) + '</p></section>';
+    }).join("");
+    var signatureBlock = '<section class="execution"><h2>Execution</h2><p><strong>IN WITNESS WHEREOF</strong>, the Parties have executed this Agreement as of the Effective Date.</p><div class="signatures">'
+      + iecSignatureBlock()
+      + '<div><h3>' + escapeHtml(data.party) + '</h3><p>Signature: <em>' + escapeHtml(data.signature) + '</em></p><p>Name: ' + escapeHtml(data.name) + '</p><p>Title: ' + escapeHtml(data.title || "—") + '</p><p>Date: ' + escapeHtml(data.date) + '</p></div></div></section>';
+    return '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>IEC Mutual Non-Disclosure Agreement</title></head><body><header><h1>Mutual Non-Disclosure Agreement</h1><p>International Empire Consultants, Inc. and ' + escapeHtml(data.party) + '</p></header>' + docSections + signatureBlock + '</body></html>';
+  }
+
+  // The executed copy is a PDF generated and recorded by the server;
+  // a successful submit returns its exact bytes, and this downloads
+  // them — the same PDF that was emailed to IEC and to the signer.
+  var signedPdf = null;
+
+  function downloadSignedPdf() {
+    if (!signedPdf) return;
+    var binary = atob(signedPdf.base64);
+    var bytes = new Uint8Array(binary.length);
+    for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    var blob = new Blob([bytes], { type: "application/pdf" });
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement("a");
+    link.href = url;
+    link.download = signedPdf.fileName;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  }
+
+  agreementFieldIds.forEach(function (fieldId) {
+    document.getElementById(fieldId).addEventListener("input", renderAgreement);
+  });
+  agreementFieldIds.concat(signerFieldIds).forEach(function (fieldId) {
+    document.getElementById(fieldId).addEventListener("input", function () {
+      if (!signedPdf) return;
+      signedPdf = null;
+      document.getElementById("download-copy").hidden = true;
+      document.getElementById("form-status").textContent = "Agreement details changed. Sign again to re-issue the executed copy.";
+    });
+  });
+
+  document.getElementById("signature-form").addEventListener("submit", function (event) {
+    event.preventDefault();
+    var form = event.currentTarget;
+    var status = document.getElementById("form-status");
+    if (!document.getElementById("sign-agree").checked) {
+      status.textContent = "Please check the box agreeing to sign electronically.";
+      return;
+    }
+    if (!form.checkValidity()) {
+      status.textContent = "Complete every required agreement and signature field before signing.";
+      form.reportValidity();
+      return;
+    }
+    var data = getAgreementData();
+    data.name = document.getElementById("printed-name").value.trim();
+    data.date = document.getElementById("signature-date").value;
+    data.title = document.getElementById("signer-title").value.trim();
+    data.signature = document.getElementById("typed-signature").value.trim();
+    data.email = document.getElementById("signer-email").value.trim();
+    if (!data.effectiveDate || !data.iecState || !data.party || !data.entityTypeState || !data.address || !data.purpose || !data.name || !data.date || !data.signature || !data.email) {
+      status.textContent = "Complete every required agreement and signature field before signing.";
+      return;
+    }
+    // No silent failure: success is shown ONLY after the server
+    // confirms it recorded the signing. The executed PDF comes back in
+    // the response; delivery status rides along and is worded honestly.
+    var submitButton = document.getElementById("download-signed");
+    submitButton.disabled = true;
+    status.textContent = "Signing and recording the executed agreement…";
+    fetch("https://app.getmedexec.com/api/nda/submit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        product: "universal",
+        origin: origin || "direct",
+        effectiveDate: data.effectiveDate,
+        iecState: data.iecState,
+        party: data.party,
+        entityTypeState: data.entityTypeState,
+        address: data.address,
+        purpose: data.purpose,
+        name: data.name,
+        title: data.title,
+        date: data.date,
+        signature: data.signature,
+        signerEmail: data.email,
+        documentHtml: buildSignedHtml(data)
+      })
+    }).then(function (response) {
+      return response.json().catch(function () { return null; }).then(function (body) {
+        return { ok: response.ok && !!body && body.ok === true, body: body };
+      });
+    }).then(function (result) {
+      submitButton.disabled = false;
+      if (!result.ok || !result.body.pdfBase64) {
+        signedPdf = null;
+        document.getElementById("download-copy").hidden = true;
+        status.textContent = "The signing could not be recorded — nothing was executed. Check your connection and sign again.";
+        return;
+      }
+      signedPdf = { base64: result.body.pdfBase64, fileName: result.body.fileName };
+      document.getElementById("download-copy").hidden = false;
+      if (result.body.delivery && result.body.delivery.signer === false) {
+        status.textContent = "Agreement signed and recorded. Your executed PDF is ready to download below — the emailed copy to you is still being delivered and will follow.";
+      } else if (result.body.delivery && result.body.delivery.iec === false) {
+        status.textContent = "Agreement signed and recorded, and your executed copy was emailed to you. Download your PDF below for your records.";
+      } else {
+        status.textContent = "Agreement signed and recorded. An executed PDF copy was emailed to IEC and to your email address.";
+      }
+    }).catch(function () {
+      submitButton.disabled = false;
+      signedPdf = null;
+      document.getElementById("download-copy").hidden = true;
+      status.textContent = "The signing could not be recorded — nothing was executed. Check your connection and sign again.";
+    });
+  });
+
+  document.getElementById("download-copy").addEventListener("click", function () {
+    downloadSignedPdf();
+  });
+
+  renderAgreement();
+})();
+</script>
+</body>
+</html>
