@@ -192,32 +192,5 @@ resetAll();
   ok2(dbRows.size === 0 && sentEmails.length === 0, "honeypot rejection stores + sends nothing");
 }
 
-/* 6 — one-time migration: Blob records move to the DB, idempotently */
-resetAll();
-process.env.QDB_MIGRATE_TOKEN = "migrate-secret";
-{
-  await store.appendSubmission({
-    id: "mig00001-aaaa", receivedAt: "2026-11-06T15:00:00.000Z", segment: "pharmacy",
-    contact: { name: "A", business: "B", email: "a@example.com", phone: "" },
-    answers: { Q: "1" }
-  });
-  await store.appendSubmission({
-    id: "mig00002-bbbb", receivedAt: "2026-11-07T15:00:00.000Z", segment: "pt",
-    contact: { name: "C", business: "D", email: "c@example.com", phone: "" },
-    answers: {}
-  });
-  const denied = await call("GET", { url: "/api/questionnaire-submit?migrate=1&token=wrong" });
-  ok2(denied.status === 404, "migration refuses a wrong token");
-  const r = await call("GET", { url: "/api/questionnaire-submit?migrate=1&token=migrate-secret" });
-  ok2(r.status === 200 && r.body.blobCount === 2 && r.body.inserted === 2 && r.body.dbTotal === 2,
-    "migration moves both Blob records into the database");
-  const row = dbRows.get("mig00001-aaaa");
-  ok2(!!row && row.submitted_at === "2026-11-06T15:00:00.000Z", "migration preserves the original timestamp");
-  const again = await call("GET", { url: "/api/questionnaire-submit?migrate=1&token=migrate-secret" });
-  ok2(again.status === 200 && again.body.inserted === 0 && again.body.dbTotal === 2,
-    "migration is idempotent on re-run");
-}
-delete process.env.QDB_MIGRATE_TOKEN;
-
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

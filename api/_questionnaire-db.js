@@ -74,14 +74,16 @@ async function runSql(query, params) {
   return data;
 }
 
-/* Shared row insert. With `ignoreConflict` a duplicate reference is
-   a no-op (returns null) — used by the one-time Blob migration so
-   re-running it is safe; live submissions take the strict path. */
-async function insertRow(record, rawPayload, companyWebsite, ignoreConflict) {
+/* Insert one submission as the primary record. `record` is the
+   endpoint's stored shape ({ id, receivedAt, segment, contact,
+   answers }); `rawPayload` is the exact received request body
+   (stored verbatim in raw_payload); `companyWebsite` is the raw
+   honeypot value (empty for real submissions). Returns the row's
+   reference. Throws on any failure. */
+export async function insertSubmission(record, rawPayload, companyWebsite) {
   const data = await runSql(
     `INSERT INTO ${TABLE} (reference, segment, contact, answers, company_website, submitted_at, raw_payload)` +
     ` VALUES ($1, $2, $3::jsonb, $4::jsonb, $5, $6::timestamptz, $7::jsonb)` +
-    (ignoreConflict ? ` ON CONFLICT (reference) DO NOTHING` : ``) +
     ` RETURNING reference`,
     [
       record.id,
@@ -94,40 +96,10 @@ async function insertRow(record, rawPayload, companyWebsite, ignoreConflict) {
     ]
   );
   const row = data.rows && data.rows[0];
-  return row ? row.reference : null;
-}
-
-/* Insert one submission as the primary record. `record` is the
-   endpoint's stored shape ({ id, receivedAt, segment, contact,
-   answers }); `rawPayload` is the exact received request body
-   (stored verbatim in raw_payload); `companyWebsite` is the raw
-   honeypot value (empty for real submissions). Returns the row's
-   reference. Throws on any failure. */
-export async function insertSubmission(record, rawPayload, companyWebsite) {
-  const reference = await insertRow(record, rawPayload, companyWebsite, false);
-  if (!reference) {
+  if (!row || !row.reference) {
     throw new Error("questionnaire db: insert returned no row");
   }
-  return reference;
-}
-
-/* One-time migration insert for a record that predates the
-   database (from the Blob document). The Blob record itself is the
-   raw_payload — the highest fidelity available for it — and its
-   honeypot value was never stored, so company_website is the empty
-   string the endpoint enforced. Duplicates are skipped. Resolves
-   true when a row was inserted, false when it already existed.
-   Throws on any failure. */
-export async function insertMigratedSubmission(blobRecord) {
-  const reference = await insertRow(blobRecord, blobRecord, "", true);
-  return !!reference;
-}
-
-/* Total rows in the table (migration verification). */
-export async function countSubmissions() {
-  const data = await runSql(`SELECT count(*)::int AS n FROM ${TABLE}`, []);
-  const row = data.rows && data.rows[0];
-  return row ? Number(row.n) : 0;
+  return row.reference;
 }
 
 /* Existence/content lookup by reference for the endpoint's GET

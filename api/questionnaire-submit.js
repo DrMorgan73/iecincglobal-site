@@ -262,40 +262,6 @@ export default async function handler(req, res) {
   if (req.method === "GET") {
     const url = new URL(req.url, "https://iecincglobal.com");
 
-    /* ONE-TIME Blob → database migration (2026-11-09). Fails closed
-       unless QDB_MIGRATE_TOKEN is configured AND presented. Runs
-       inside this function because only the deployed runtime can
-       read the Blob store. Idempotent: existing references are
-       skipped. Answers COUNTS ONLY — no submission content. This
-       branch is removed once the migration is verified. */
-    if (url.searchParams.has("migrate")) {
-      const expected = process.env.QDB_MIGRATE_TOKEN || "";
-      const presented = url.searchParams.get("token") || "";
-      if (!expected || !presented ||
-          presented.length !== expected.length ||
-          !crypto.timingSafeEqual(Buffer.from(presented), Buffer.from(expected))) {
-        return reply(res, 404, { ok: false, error: "not_found" });
-      }
-      if (!dbConfigured() || !submissionsConfigured()) {
-        return reply(res, 503, { ok: false, error: "not_configured" });
-      }
-      try {
-        const { readSubmissions } = await import("./_questionnaire-store.js");
-        const { insertMigratedSubmission, countSubmissions } = await import("./_questionnaire-db.js");
-        const records = await readSubmissions();
-        let inserted = 0;
-        for (const rec of records) {
-          if (await insertMigratedSubmission(rec)) inserted++;
-        }
-        const total = await countSubmissions();
-        console.log(`[questionnaire-submit] migration: blob=${records.length} inserted=${inserted} db_total=${total}.`);
-        return reply(res, 200, { ok: true, blobCount: records.length, inserted, dbTotal: total });
-      } catch (e) {
-        console.error(`[questionnaire-submit] migration FAILED: ${e && e.message}`);
-        return reply(res, 502, { ok: false, error: "migration_failed" });
-      }
-    }
-
     /* Existence check for a known submission id (verification only —
        returns no content). The database is the system of record;
        the Blob backup is consulted second. */
