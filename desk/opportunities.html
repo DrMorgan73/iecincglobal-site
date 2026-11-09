@@ -8,6 +8,23 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/desk/desk.css">
+<style>
+  .opp-status{min-height:18px;margin:2px 0 4px}
+  .opp-search{display:flex;align-items:center;gap:10px;margin-top:10px}
+  .opp-search input{flex:1;background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:10px;
+    padding:9px 13px;color:var(--ink);font:500 13.5px 'Inter';outline:none}
+  .opp-search input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(240,185,66,.15)}
+  .opp-count{font:600 12px 'Inter';color:var(--dim);white-space:nowrap}
+  .opp-edit-form{display:grid;gap:8px;margin-top:4px}
+  .opp-edit-form input,.opp-edit-form select,.opp-edit-form textarea{width:100%;background:rgba(0,0,0,.35);
+    border:1px solid var(--line);border-radius:10px;padding:8px 11px;color:var(--ink);font:500 13px 'Inter';outline:none}
+  .opp-edit-form input:focus,.opp-edit-form select:focus,.opp-edit-form textarea:focus{border-color:var(--gold)}
+  .opp-edit-form .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .opp-actions{display:flex;gap:12px;align-items:center}
+  .opp-edit{background:none;border:none;color:var(--gold);font:600 12px 'Inter';cursor:pointer;padding:0}
+  .opp-save{background:var(--gold);color:#0a0d14;border:none;border-radius:999px;padding:7px 16px;font:600 12.5px 'Inter';cursor:pointer}
+  .opp-cancel{background:none;border:1px solid var(--line);color:var(--dim);border-radius:999px;padding:7px 14px;font:600 12.5px 'Inter';cursor:pointer}
+</style>
 </head>
 <body data-page="opps">
 <div class="orbs" aria-hidden="true"><span class="orb gold"></span><span class="orb teal"></span><span class="orb violet"></span></div>
@@ -52,7 +69,7 @@
       </div>
     </div>
     <div class="section-head">
-      <div><h2>Dana — Opportunities</h2><p class="hint">Intake → verdict → pipeline. Saved privately in this browser.</p></div>
+      <div><h2>Dana — Opportunities</h2><p class="hint">Intake → verdict → pipeline. Live — saved in your IEC Suite, on every device.</p></div>
     </div>
     <div class="crm-layout">
       <form id="intake" class="card form-card" autocomplete="off">
@@ -82,6 +99,11 @@
             <button data-f="unscored">Unscored</button>
           </div>
         </div>
+        <div class="hint opp-status" id="opp-status">Loading the pipeline…</div>
+        <div class="opp-search">
+          <input id="opp-search" type="search" placeholder="Search name, type, side, contact, source, notes…" autocomplete="off">
+          <span class="opp-count" id="opp-count"></span>
+        </div>
         <div id="pipeline"></div>
       </div>
     </div>
@@ -92,13 +114,63 @@
 
 <script src="/desk/desk.js"></script>
 <script>
-const saveOpps = o => { try{ localStorage.setItem(OPP_KEY, JSON.stringify(o)); }catch{} refreshBadges(); };
+/* ---- live pipeline (DrMorgan's order 2026-11-09: this page "needs
+   to be live and search opportunities"). The pipeline lives server-
+   side in the Office Blob store via /api/opportunities — the Desk
+   session cookie authenticates every call. localStorage (OPP_KEY)
+   survives only as a mirror so the sidebar badge keeps its count,
+   and as the one-time migration source below; the server copy is
+   the truth. A failed save is reported on the status line and the
+   change is reverted — a save is never faked. ---- */
+const MIGRATED_KEY = 'morgan-desk-opportunities-migrated';
+let oppsState = [];
+let serverConfirmed = [];
 let filter = 'all';
+let query = '';
+let editingId = null;
+
+function setStatus(t){ const el = $('opp-status'); if(el) el.textContent = t; }
+function mirrorLocal(){ try{ localStorage.setItem(OPP_KEY, JSON.stringify(oppsState)); }catch{} refreshBadges(); }
+
+/* ---- search (tested by scripts/opportunities.test.mjs) ---- */
+const OPP_SEARCH_FIELDS = ['name', 'type', 'side', 'contact', 'source', 'notes'];
+function oppMatches(o, q){
+  const needle = String(q || '').trim().toLowerCase();
+  if(!needle) return true;
+  return OPP_SEARCH_FIELDS.some(f => String(o[f] ?? '').toLowerCase().includes(needle));
+}
+/* ---- end search ---- */
 
 function renderOpps(){
-  const opps = loadOpps();
-  const list = opps.filter(o => filter === 'all' || o.verdict === filter);
-  $('pipeline').innerHTML = list.length ? list.map(o => `
+  const list = oppsState.filter(o => (filter === 'all' || o.verdict === filter) && oppMatches(o, query));
+  $('opp-count').textContent = `${list.length} of ${oppsState.length}`;
+  if(!oppsState.length){
+    $('pipeline').innerHTML = `<div class="empty">No opportunities yet — add your first one on the left.</div>`;
+    return;
+  }
+  if(!list.length){
+    $('pipeline').innerHTML = `<div class="empty">Nothing matches — clear the search or pick another verdict.</div>`;
+    return;
+  }
+  $('pipeline').innerHTML = list.map(o => editingId === o.id ? `
+    <form class="opp opp-edit-form" data-edit="${o.id}">
+      <input name="name" required maxlength="80" value="${esc(o.name)}" placeholder="Opportunity name">
+      <div class="row2">
+        <select name="type">${['Residential','Commercial','Land','Mixed-use'].map(t => `<option${t === o.type ? ' selected' : ''}>${t}</option>`).join('')}</select>
+        <select name="side">${['Sell','Buy'].map(t => `<option${t === o.side ? ' selected' : ''}>${t}</option>`).join('')}</select>
+      </div>
+      <div class="row2">
+        <input name="value" type="number" min="0" step="1000" value="${o.value === '' || o.value == null ? '' : esc(o.value)}" placeholder="Value ($)">
+        <input name="source" maxlength="40" value="${esc(o.source)}" placeholder="Source">
+      </div>
+      <input name="contact" maxlength="80" value="${esc(o.contact)}" placeholder="Contact">
+      <select name="verdict">${Object.keys(VLABEL).map(v => `<option value="${v}"${v === o.verdict ? ' selected' : ''}>${VLABEL[v]}</option>`).join('')}</select>
+      <textarea name="notes" rows="3" maxlength="500" placeholder="Notes">${esc(o.notes)}</textarea>
+      <div class="opp-actions">
+        <button type="submit" class="opp-save">Save changes</button>
+        <button type="button" class="opp-cancel" data-cancel="1">Cancel</button>
+      </div>
+    </form>` : `
     <div class="opp">
       <div class="opp-top">
         <div>
@@ -110,17 +182,96 @@ function renderOpps(){
       ${o.notes ? `<div class="opp-notes">${esc(o.notes)}</div>` : ''}
       <div class="opp-foot">
         <span class="opp-meta">Added ${esc(o.added)}</span>
-        <button class="opp-del" data-id="${o.id}" title="Remove">✕ remove</button>
+        <span class="opp-actions">
+          <button class="opp-edit" data-id="${o.id}" title="Edit">✎ edit</button>
+          <button class="opp-del" data-id="${o.id}" title="Remove">✕ remove</button>
+        </span>
       </div>
-    </div>`).join('')
-    : `<div class="empty">No opportunities yet — add your first one on the left.</div>`;
+    </div>`).join('');
 }
 
-$('intake').addEventListener('submit', e => {
+/* POST the whole pipeline; on success the stored (sanitized) array
+   becomes the state. On failure: honest status + revert. */
+async function saveToServer(){
+  try{
+    const r = await fetch('/api/opportunities', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ opportunities: oppsState })
+    });
+    const data = await r.json().catch(() => ({}));
+    if(r.ok && data.ok){
+      oppsState = data.opportunities;
+      serverConfirmed = data.opportunities;
+      mirrorLocal(); renderOpps();
+      setStatus(`Saved in your IEC Suite · ${new Date().toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})}`);
+      return true;
+    }
+    if(r.status === 503 || data.error === 'not_configured'){
+      setStatus("⚠️ The Suite store isn't configured — this change was NOT saved.");
+    } else {
+      setStatus('⚠️ Save failed — the change was reverted.');
+    }
+  }catch{
+    setStatus('⚠️ Could not reach the Suite — the change was reverted.');
+  }
+  oppsState = serverConfirmed;
+  editingId = null;
+  mirrorLocal(); renderOpps();
+  return false;
+}
+
+/* Load on open. First authenticated load migrates this browser's old
+   localStorage pipeline into the Suite exactly once (merge by id —
+   the server copy wins a clash, so nothing ever duplicates); after
+   that, the server state wins on every load. */
+async function loadPipeline(){
+  let server = null, configured = true;
+  try{
+    const r = await fetch('/api/opportunities');
+    const data = await r.json().catch(() => ({}));
+    if(r.ok && data.ok){ server = data.opportunities || []; configured = data.configured !== false; }
+  }catch{}
+  if(server === null){
+    oppsState = loadOpps(); serverConfirmed = oppsState;
+    renderOpps();
+    setStatus('⚠️ Could not reach the Suite — showing this browser’s copy; changes cannot be saved right now.');
+    return;
+  }
+  if(!configured){
+    oppsState = loadOpps(); serverConfirmed = oppsState;
+    renderOpps();
+    setStatus("⚠️ The Suite store isn't configured — showing this browser's copy; changes will NOT be saved.");
+    return;
+  }
+  serverConfirmed = server;
+  let migrated = false;
+  try{ migrated = localStorage.getItem(MIGRATED_KEY) === '1'; }catch{}
+  if(!migrated){
+    const local = loadOpps();
+    const serverIds = new Set(server.map(o => o.id));
+    const fresh = local.filter(o => o && o.id && !serverIds.has(o.id));
+    if(fresh.length){
+      oppsState = [...server, ...fresh];
+      const okSave = await saveToServer();
+      if(okSave){
+        try{ localStorage.setItem(MIGRATED_KEY, '1'); }catch{}
+        setStatus(`Imported ${fresh.length} ${fresh.length === 1 ? 'opportunity' : 'opportunities'} from this browser — now saved in your IEC Suite.`);
+        return;
+      }
+      return; /* saveToServer already reported + reverted */
+    }
+    try{ localStorage.setItem(MIGRATED_KEY, '1'); }catch{}
+  }
+  oppsState = server;
+  serverConfirmed = server;
+  mirrorLocal(); renderOpps();
+  setStatus('Live — saved in your IEC Suite, on every device.');
+}
+
+$('intake').addEventListener('submit', async e => {
   e.preventDefault();
   const f = new FormData(e.target);
-  const opps = loadOpps();
-  opps.unshift({
+  oppsState.unshift({
     id: Date.now().toString(36),
     name: (f.get('name') || '').trim() || 'Untitled',
     type: f.get('type'), side: f.get('side'),
@@ -129,14 +280,38 @@ $('intake').addEventListener('submit', e => {
     notes: (f.get('notes') || '').trim(),
     added: new Date().toLocaleDateString([], {month:'short', day:'numeric'})
   });
-  saveOpps(opps); e.target.reset(); renderOpps();
+  e.target.reset(); renderOpps();
+  await saveToServer();
 });
 
-$('pipeline').addEventListener('click', e => {
+$('pipeline').addEventListener('click', async e => {
+  if(e.target.closest('[data-cancel]')){ editingId = null; renderOpps(); return; }
+  const ed = e.target.closest('.opp-edit');
+  if(ed){ editingId = ed.dataset.id; renderOpps(); return; }
   const b = e.target.closest('.opp-del');
   if(!b) return;
-  saveOpps(loadOpps().filter(o => o.id !== b.dataset.id));
+  oppsState = oppsState.filter(o => o.id !== b.dataset.id);
+  if(editingId === b.dataset.id) editingId = null;
   renderOpps();
+  await saveToServer();
+});
+
+$('pipeline').addEventListener('submit', async e => {
+  const form = e.target.closest('form[data-edit]');
+  if(!form) return;
+  e.preventDefault();
+  const f = new FormData(form);
+  const i = oppsState.findIndex(o => o.id === form.dataset.edit);
+  if(i < 0){ editingId = null; renderOpps(); return; }
+  oppsState[i] = { ...oppsState[i],
+    name: (f.get('name') || '').trim() || 'Untitled',
+    type: f.get('type'), side: f.get('side'),
+    value: f.get('value') || '', source: (f.get('source') || '').trim(),
+    contact: (f.get('contact') || '').trim(), verdict: f.get('verdict'),
+    notes: (f.get('notes') || '').trim()
+  };
+  editingId = null; renderOpps();
+  await saveToServer();
 });
 
 $('filters').addEventListener('click', e => {
@@ -146,7 +321,9 @@ $('filters').addEventListener('click', e => {
   renderOpps();
 });
 
-renderOpps();
+$('opp-search').addEventListener('input', e => { query = e.target.value; renderOpps(); });
+
+loadPipeline();
 </script>
 </body>
 </html>
