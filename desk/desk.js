@@ -6,10 +6,12 @@ const avatarFor = name => DESK + '/assets/team/' + String(name || '').toLowerCas
 
 /* ---- nav + the Office module registry ----
    NAV_GROUPS is the single source of truth for what the Office
-   contains: the sidebar renders it, the Organizer (desk/
-   organizer.html) rearranges it, and Muse's Office (desk/
-   office.html) renders its module grid from it. Ids must match
-   the allowlist in api/office-layout.js. */
+   contains: the sidebar renders it, and Muse's Office (desk/
+   office.html) renders its "Your office" grid from it — that grid
+   carries the rearrange controls (drag / hide / reset, saved via
+   api/office-layout.js). The standalone Organizer page was
+   retired 2026-11-09: the Suite Home IS the office. Ids must
+   match the allowlist in api/office-layout.js. */
 const NAV_GROUPS = [
   { sec: null, items: [
     { id: 'home',      href: '/',                    icon: '🏠', label: 'Home',          page: 'home',      desc: 'Suite command center — at-a-glance stats and quick actions.' },
@@ -30,7 +32,6 @@ const NAV_GROUPS = [
   { sec: 'Offices', items: [
     { id: 'office',    href: '/desk/office.html',        icon: '🏢', label: "Muse's Office", page: 'office',    desc: "Muse's desk — leave work, watch the notes, meet the team she runs." },
     { id: 'virtual',   href: '/desk/virtual-office.html', icon: '🏙️', label: 'Virtual Office', page: 'virtual',  desc: 'The 3D virtual office floor.' },
-    { id: 'organizer', href: '/desk/organizer.html',      icon: '🗂️', label: 'My Office',      page: 'organizer', desc: 'The Organizer — every module on one page; drag them into your order, hide what you do not use.' },
   ]},
   { sec: 'Intel', items: [
     { id: 'news',     href: '/desk/news.html',           icon: '📰', label: 'News',         page: 'news',     desc: "What's new in the Suite, plus Piper's daily WIIFM digest." },
@@ -72,7 +73,6 @@ function moduleRank(id){
   return i < 0 ? 1000 + fallback : i;
 }
 function moduleHidden(id){
-  if(id === 'organizer') return false; /* the door back to the Organizer */
   return !!(deskLayout && Array.isArray(deskLayout.hidden) && deskLayout.hidden.includes(id));
 }
 function renderNav(){

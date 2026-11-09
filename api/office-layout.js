@@ -30,8 +30,14 @@
    and POST answers 503 { error: "not_configured" } — a save is
    never faked.
 
-   The "organizer" module can never be hidden: it is the door back
-   to this page, and hiding it would lock the layout in place.
+   Consolidation (2026-11-09, DrMorgan: "My office is duplicate of
+   the suite fix it"): there is ONE office surface — the "Your
+   office" grid on desk/office.html carries the rearrange controls
+   (drag / ↑↓ / hide / reset) that used to live on a separate
+   Organizer page. The retired "organizer" module id is gone from
+   the registry below; a layout document saved before the
+   consolidation may still name it, and the sanitizer drops it
+   like any other unknown id — stale layouts load clean.
 
    Env (this Vercel project — iecincglobal-site):
      DESK_SESSION_SECRET   (already set for the Desk)
@@ -50,11 +56,10 @@ const MODULE_IDS = [
   "home", "suzy-chat", "demo-users",
   "opps", "dana-followup", "deals", "contacts",
   "projects", "team", "meeting",
-  "office", "virtual", "organizer",
+  "office", "virtual",
   "news", "growth", "strategy", "trade",
   "yt-archive", "docs", "vault"
 ];
-const NEVER_HIDDEN = "organizer";
 
 /* ------------------------------------------------------------------ */
 /* Desk session verification — mirrors middleware.js exactly           */
@@ -145,18 +150,18 @@ function sanitizeIds(value) {
 
 /* A complete, storable layout from a request body: the requested
    order, with any module it forgot appended in default order (a
-   module shipped later must appear, not vanish), and a hidden list
-   that can never contain the organizer itself. */
+   module shipped later must appear, not vanish), plus the hidden
+   list as given (known ids only, via the sanitizer). */
 function buildLayout(body) {
   const order = sanitizeIds(body && body.order);
   for (const id of MODULE_IDS) if (!order.includes(id)) order.push(id);
-  const hidden = sanitizeIds(body && body.hidden).filter(id => id !== NEVER_HIDDEN);
+  const hidden = sanitizeIds(body && body.hidden);
   return { order, hidden, updatedAt: new Date().toISOString() };
 }
 
 /* A stored layout goes back out through the same sanitizer, so a
-   hand-edited or stale document can never inject an unknown id or
-   hide the organizer. */
+   hand-edited or stale document can never inject an unknown id —
+   including "organizer", retired in the 2026-11-09 consolidation. */
 function publicLayout(stored) {
   if (!stored || typeof stored !== "object") return null;
   return buildLayout(stored);

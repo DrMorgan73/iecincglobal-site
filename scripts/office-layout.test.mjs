@@ -1,13 +1,19 @@
-/* Local test suite for api/office-layout.js (IEC Office — "My Office"
-   Organizer layout). Runs the real handler against the in-memory
+/* Local test suite for api/office-layout.js (IEC Office — "Your
+   office" layout) and the consolidated Office surface (2026-11-09:
+   the Organizer page was retired into the "Your office" grid on
+   desk/office.html). Runs the real handler against the in-memory
    Blob mock: session gate (401), default layout, save + read-back,
-   sanitizing (unknown ids dropped, missing modules appended,
-   organizer can never be hidden), reset, and the unconfigured-store
-   answers. No real Blob writes.
+   sanitizing (unknown ids dropped, missing modules appended, the
+   retired "organizer" id dropped everywhere), stale saved-layout
+   compatibility, reset, the unconfigured-store answers — plus
+   static checks that office.html carries the controls, that
+   organizer.html redirects to it, and that the desk.js registry
+   no longer lists a separate My Office module. No real Blob writes.
 
    Run: node scripts/office-layout.test.mjs   (exit 1 on any failure) */
 
 import crypto from "node:crypto";
+import { readFileSync } from "node:fs";
 import { register } from "node:module";
 
 register("./testing/blob-hooks.mjs", import.meta.url);
@@ -98,7 +104,22 @@ check("GET returns the saved layout", r.statusCode === 200 && r.payload.layout &
 /* --- sanitizing --- */
 r = await call("POST", { order: ["bogus", "home", "home", 42, null], hidden: ["organizer", "vault", "nope"] });
 check("unknown ids + duplicates dropped", !r.payload.layout.order.includes("bogus") && r.payload.layout.order.filter(x => x === "home").length === 1, r.payload.layout);
-check("organizer can never be hidden", !r.payload.layout.hidden.includes("organizer") && r.payload.layout.hidden.includes("vault"), r.payload.layout);
+check("retired 'organizer' id dropped everywhere", !r.payload.layout.order.includes("organizer") && !r.payload.layout.hidden.includes("organizer") && r.payload.layout.hidden.includes("vault"), r.payload.layout);
+check("registry holds exactly 19 modules, organizer retired", X.MODULE_IDS.length === 19 && !X.MODULE_IDS.includes("organizer"), X.MODULE_IDS);
+
+/* --- saved-layout compatibility: a pre-consolidation document ---
+   A layout saved while the Organizer still existed names the
+   "organizer" id in both lists. Seeded straight into the store
+   (the API itself would never write it) — the GET must serve it
+   back cleaned, with his real picks intact, never an error. */
+blobMock.__blobs.set("office-layout.json", {
+  content: JSON.stringify({ order: ["organizer", "vault", "home"], hidden: ["organizer", "trade"], updatedAt: "2026-11-09T00:00:00.000Z" }),
+  url: "https://blob.mock/office-layout.json",
+  uploadedAt: new Date()
+});
+r = await call("GET");
+check("stale layout loads, retired id gone", r.statusCode === 200 && r.payload.layout && !r.payload.layout.order.includes("organizer") && !r.payload.layout.hidden.includes("organizer"), r.payload);
+check("stale layout keeps his real picks", r.payload.layout.order[0] === "vault" && r.payload.layout.order.length === 19 && r.payload.layout.hidden.includes("trade"), r.payload.layout);
 
 /* --- reset --- */
 r = await call("POST", { action: "reset" });
@@ -117,6 +138,22 @@ check("GET unconfigured → ok, layout null", r.statusCode === 200 && r.payload.
 r = await call("POST", { order: ["home"], hidden: [] });
 check("POST unconfigured → 503 not_configured", r.statusCode === 503 && r.payload.error === "not_configured", r);
 process.env.BLOB_READ_WRITE_TOKEN = "blob-test-token";
+
+/* --- the consolidated surface (static page checks) ---
+   One office only: desk/office.html's "Your office" grid carries
+   the Organizer controls, desk/organizer.html is just a redirect
+   to it, and the desk.js registry lists no separate module. */
+const officeHtml = readFileSync(new URL("../desk/office.html", import.meta.url), "utf8");
+const organizerHtml = readFileSync(new URL("../desk/organizer.html", import.meta.url), "utf8");
+const deskJs = readFileSync(new URL("../desk/desk.js", import.meta.url), "utf8");
+check("office.html grid carries the controls", officeHtml.includes('id="org-status"') && officeHtml.includes('id="org-reset"') && officeHtml.includes('id="org-groups"') && officeHtml.includes('id="org-hidden"'), null);
+check("office.html wires drag, save and reset to the layout API", officeHtml.includes("dragstart") && officeHtml.includes("drop") && officeHtml.includes("/api/office-layout") && officeHtml.includes("action: 'reset'"), null);
+check("office.html has no dead grid and no link to the old page", !officeHtml.includes('id="office-modules"') && !officeHtml.includes("/desk/organizer.html"), null);
+check("organizer.html redirects to office.html", organizerHtml.includes("/desk/office.html") && (organizerHtml.includes("location.replace") || organizerHtml.includes('http-equiv="refresh"')), null);
+check("organizer.html is only a redirect (no module grid left)", !organizerHtml.includes("org-groups") && !organizerHtml.includes("OFFICE_MODULES"), null);
+check("desk.js registry has no organizer module", !deskJs.includes("id: 'organizer'") && !deskJs.includes('id:"organizer"'), null);
+const deskIds = [...deskJs.matchAll(/\{ id: '([a-z0-9-]+)',/g)].map(m => m[1]);
+check("desk.js registry and API allowlist agree exactly (19 ids)", deskIds.length === X.MODULE_IDS.length && deskIds.every(id => X.MODULE_IDS.includes(id)), deskIds);
 
 if (failures) { console.error(`\n${failures} failure(s)`); process.exit(1); }
 console.log("\nAll office-layout tests passed.");
