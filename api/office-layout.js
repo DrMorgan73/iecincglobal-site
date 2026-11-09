@@ -48,7 +48,7 @@ import { layoutConfigured, readLayout, writeLayout } from "./_office-layout-stor
 
 const MODULE_IDS = [
   "home", "suzy-chat", "demo-users",
-  "opps", "deals", "contacts",
+  "opps", "dana-followup", "deals", "contacts",
   "projects", "team", "meeting",
   "office", "virtual", "organizer",
   "news", "growth", "strategy", "trade",

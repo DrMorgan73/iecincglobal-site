@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dana — Follow-Up — IEC Suite</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/desk/desk.css">
+<style>
+  .df-decision{border-left:3px solid var(--gold)}
+  .df-decision h3{justify-content:space-between}
+  .df-decision .df-when{font-size:12px;color:var(--dim);font-weight:500;white-space:nowrap}
+  .df-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+  .df-actions .btn{width:auto}
+  .df-resolved{opacity:.62}
+  .df-tier{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--gold);border:1px solid rgba(240,185,66,.4);border-radius:999px;padding:2px 10px;margin-left:auto;white-space:nowrap}
+  .df-meta{margin-top:10px;font-size:13.5px;line-height:1.5;color:var(--text)}
+  .df-meta b{display:block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin-bottom:2px}
+  .df-note{margin-top:10px;font-size:13px;color:var(--teal)}
+  .df-run{font-size:13.5px;line-height:1.55}
+  .df-run h3{justify-content:space-between}
+  .df-run .df-date{font-size:12.5px;color:var(--gold);font-weight:600;white-space:nowrap}
+  .df-empty{color:var(--dim);font-size:14px;padding:6px 2px 14px}
+  .df-edit{margin-top:14px;border-top:1px solid var(--line-soft);padding-top:14px}
+  .df-status-line{min-height:20px}
+</style>
+</head>
+<body data-page="dana-followup">
+<div class="orbs" aria-hidden="true"><span class="orb gold"></span><span class="orb teal"></span><span class="orb violet"></span></div>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="side-brand">
+      <img class="logo-img" src="/assets/iec-logo.png" alt="IEC Inc.">
+      <div><h1>IEC <span>Suite</span></h1><p>International Empire Consultants, Inc.</p></div>
+    </div>
+    <nav id="nav"></nav>
+    <div class="side-foot">
+      <div class="themes" id="themes">
+        <button data-t="iec" style="--sw1:#f0b942;--sw2:#3b82f6" title="IEC Brand"></button>
+        <button data-t="midnight" style="--sw1:#f0b942;--sw2:#2dd4bf" title="Midnight Gold"></button>
+        <button data-t="amethyst" style="--sw1:#d8b4fe;--sw2:#f0abfc" title="Royal Amethyst"></button>
+        <button data-t="ocean" style="--sw1:#7dd3fc;--sw2:#5eead4" title="Deep Ocean"></button>
+        <button data-t="ember" style="--sw1:#fdba74;--sw2:#fbbf24" title="Sunset Ember"></button>
+        <button data-t="emerald" style="--sw1:#6ee7b7;--sw2:#f0b942" title="Emerald Noir"></button>
+        <button data-t="rose" style="--sw1:#fda4af;--sw2:#f0abfc" title="Rose Noir"></button>
+        <label class="cpick" title="Accent color"><input type="color" id="pick-gold" value="#f0b942"></label>
+        <label class="cpick" title="Highlight color"><input type="color" id="pick-teal" value="#2dd4bf"></label>
+        <button class="creset" id="pick-reset" title="Reset colors">⟲</button>
+      </div>
+      <button class="signout" id="signout"><i>🚪</i>Sign out</button>
+      <a class="public-link" href="/welcome.html">← Public site</a>
+      <div class="clockbox">
+        <div id="clock">--:--</div>
+        <div id="dateline">—</div>
+      </div>
+    </div>
+  </aside>
+
+  <main>
+    <div class="office-hero card">
+      <div class="office-avatar">🧭</div>
+      <div>
+        <h2>Dana — Follow-Up</h2>
+        <p class="office-role">The follow-up board for Dana's buyer scouting: the decisions waiting on you,
+        every buyer on the board with its status and next step, and Dana's run log. The board is saved
+        to your account and follows you across devices — Dana's Wednesday scout refreshes the map of
+        record, and this board tracks what happens next.</p>
+      </div>
+    </div>
+
+    <div class="org-bar">
+      <span class="org-status df-status-line" id="df-status">Loading the board…</span>
+      <button class="btn small ghost" id="df-reset" type="button">⟲ Reset to the starting board</button>
+    </div>
+
+    <div class="section-head"><h2>Waiting on you</h2><span class="hint">decisions only you can make — mark them resolved as you rule</span></div>
+    <div class="grid" id="df-decisions"></div>
+    <div id="df-decisions-empty" class="df-empty" style="display:none">Nothing is waiting on you right now. ✓</div>
+
+    <div id="df-resolved-wrap" style="display:none">
+      <div class="section-head"><h2>Resolved</h2><span class="hint">ruled and closed — reopen any of them if a ruling changes</span></div>
+      <div class="grid" id="df-resolved"></div>
+    </div>
+
+    <div class="section-head"><h2>Buyer board</h2><span class="hint">grouped by tier — update any follow-up and it saves to your account</span></div>
+    <div id="df-board"></div>
+
+    <div class="card form-card" style="margin-bottom:26px">
+      <h3>Add a buyer</h3>
+      <form id="df-add-buyer">
+        <label>Buyer name<input name="name" required maxlength="120" placeholder="Company name"></label>
+        <label>Tier
+          <select name="tier" id="df-add-tier"></select>
+        </label>
+        <label>Status<input name="status" maxlength="200" placeholder="e.g. Identified — door verified"></label>
+        <label>Last action<textarea name="lastAction" rows="2" maxlength="2000" placeholder="What happened most recently, with the date"></textarea></label>
+        <label>Next step<textarea name="nextStep" rows="2" maxlength="2000" placeholder="The next move, and whose it is"></textarea></label>
+        <label>Note<textarea name="note" rows="2" maxlength="2000" placeholder="Anything worth remembering (optional)"></textarea></label>
+        <button class="btn" type="submit">Add buyer</button>
+      </form>
+    </div>
+
+    <div class="section-head"><h2>Dana's run log</h2><span class="hint">every scout run, newest first</span></div>
+    <div class="grid" id="df-runs" style="margin-bottom:26px"></div>
+
+    <div class="card form-card">
+      <h3>Add a run entry</h3>
+      <form id="df-add-run">
+        <label>Date<input name="date" type="date" required></label>
+        <label>Summary<textarea name="summary" rows="2" maxlength="2000" placeholder="What the run covered"></textarea></label>
+        <label>Changes<textarea name="changes" rows="3" maxlength="4000" placeholder="What changed: new doors, closed doors, replies, ranking moves"></textarea></label>
+        <button class="btn" type="submit">Add run entry</button>
+      </form>
+    </div>
+
+    <footer>© 2026 International Empire Consultants, Inc. · IEC Suite</footer>
+  </main>
+</div>
+
+<script src="/desk/desk.js"></script>
+<script>
+/* Dana — Follow-Up board. State lives server-side via
+   /api/dana-dashboard (Desk-session gated, Office Blob store); this
+   page renders it and posts the whole board back on every change,
+   the same persistence pattern as the Organizer. When nothing has
+   been saved yet, the API serves the seed board built from Dana's
+   target map of record, and the status line says so. */
+const TIER_ORDER = ['Tier 1', 'Tier 2', 'Tier 3', 'Tier 4', 'Part A — Employers', 'Channel', 'Out'];
+let state = null;
+let editingBuyer = null;
+
+const uid = p => p + '-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+function setStatus(text){ $('df-status').textContent = text; }
+
+/* ---------- rendering ---------- */
+
+function decisionCard(d){
+  if(d.resolved){
+    return `<div class="card df-resolved" data-id="${esc(d.id)}">
+      <h3>${esc(d.title)}<span class="df-when">resolved ${esc(d.resolvedAt || '')}</span></h3>
+      <p>${esc(d.detail)}</p>
+      <div class="df-actions"><button class="btn small ghost" data-act="reopen" type="button">Reopen</button></div>
+    </div>`;
+  }
+  return `<div class="card df-decision" data-id="${esc(d.id)}">
+    <h3>${esc(d.title)}<span class="df-when">${esc(d.createdAt || '')}</span></h3>
+    <p>${esc(d.detail)}</p>
+    <div class="df-actions"><button class="btn small" data-act="resolve" type="button">Mark resolved</button></div>
+  </div>`;
+}
+
+function buyerCard(b){
+  const editing = editingBuyer === b.id;
+  return `<div class="card" data-buyer="${esc(b.id)}">
+    <h3>${esc(b.name)}<span class="df-tier">${esc(b.tier)}</span></h3>
+    <p>${esc(b.status)}</p>
+    ${b.lastAction ? `<div class="df-meta"><b>Last action</b>${esc(b.lastAction)}</div>` : ''}
+    ${b.nextStep ? `<div class="df-meta"><b>Next step</b>${esc(b.nextStep)}</div>` : ''}
+    ${b.note ? `<div class="df-note">${esc(b.note)}</div>` : ''}
+    ${editing ? `
+    <form class="df-edit form-card" data-edit-form="${esc(b.id)}">
+      <label>Status<input name="status" maxlength="200" value="${esc(b.status)}"></label>
+      <label>Last action<textarea name="lastAction" rows="2" maxlength="2000">${esc(b.lastAction)}</textarea></label>
+      <label>Next step<textarea name="nextStep" rows="2" maxlength="2000">${esc(b.nextStep)}</textarea></label>
+      <label>Note<textarea name="note" rows="2" maxlength="2000">${esc(b.note)}</textarea></label>
+      <div class="df-actions">
+        <button class="btn small" type="submit">Save follow-up</button>
+        <button class="btn small ghost" data-act="cancel-edit" type="button">Cancel</button>
+      </div>
+    </form>` : `
+    <div class="df-actions"><button class="btn small ghost" data-act="edit" type="button">Update follow-up</button></div>`}
+  </div>`;
+}
+
+function runCard(r){
+  return `<div class="card df-run" data-run="${esc(r.id)}">
+    <h3>Scout run<span class="df-date">${esc(r.date)}</span></h3>
+    ${r.summary ? `<p style="color:var(--text)">${esc(r.summary)}</p>` : ''}
+    ${r.changes ? `<div class="df-meta"><b>Changes</b>${esc(r.changes)}</div>` : ''}
+  </div>`;
+}
+
+function render(){
+  if(!state) return;
+  const open = state.decisions.filter(d => !d.resolved);
+  const done = state.decisions.filter(d => d.resolved);
+  $('df-decisions').innerHTML = open.map(decisionCard).join('');
+  $('df-decisions-empty').style.display = open.length ? 'none' : '';
+  $('df-resolved-wrap').style.display = done.length ? '' : 'none';
+  $('df-resolved').innerHTML = done.map(decisionCard).join('');
+
+  const tiers = [];
+  for(const b of state.buyers) if(!tiers.includes(b.tier)) tiers.push(b.tier);
+  tiers.sort((a, b) => {
+    const ia = TIER_ORDER.indexOf(a), ib = TIER_ORDER.indexOf(b);
+    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+  });
+  $('df-board').innerHTML = tiers.map(t => `
+    <div class="section-head"><h2 style="font-size:17px">${esc(t)}</h2><span class="hint">${state.buyers.filter(b => b.tier === t).length} on the board</span></div>
+    <div class="grid" style="margin-bottom:22px">${state.buyers.filter(b => b.tier === t).map(buyerCard).join('')}</div>
+  `).join('');
+
+  const runs = state.runs.slice().reverse();
+  $('df-runs').innerHTML = runs.length ? runs.map(runCard).join('') : '<div class="df-empty">No runs logged yet.</div>';
+}
+
+/* ---------- persistence ---------- */
+
+async function persist(savedMsg){
+  setStatus('Saving…');
+  try{
+    const r = await fetch('/api/dana-dashboard', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ state })
+    });
+    const d = await r.json().catch(() => null);
+    if(!r.ok || !d || !d.ok) throw new Error((d && d.error) || ('http_' + r.status));
+    state = d.state;
+    render();
+    setStatus(savedMsg || 'Saved ✓ — this board now follows you on every device.');
+  }catch(e){
+    setStatus('Could not save (' + e.message + '). Your change is on this page only — try again.');
+  }
+}
+
+/* ---------- actions ---------- */
+
+document.addEventListener('click', e => {
+  const btn = e.target.closest('[data-act]'); if(!btn) return;
+  const act = btn.dataset.act;
+
+  const dCard = btn.closest('[data-id]');
+  if(dCard && (act === 'resolve' || act === 'reopen')){
+    const d = state.decisions.find(x => x.id === dCard.dataset.id); if(!d) return;
+    if(act === 'resolve'){ d.resolved = true; d.resolvedAt = new Date().toISOString().slice(0, 10); }
+    else { d.resolved = false; d.resolvedAt = null; }
+    persist(act === 'resolve' ? 'Decision marked resolved ✓' : 'Decision reopened.');
+    return;
+  }
+
+  const bCard = btn.closest('[data-buyer]');
+  if(bCard && act === 'edit'){ editingBuyer = bCard.dataset.buyer; render(); }
+  if(bCard && act === 'cancel-edit'){ editingBuyer = null; render(); }
+});
+
+document.addEventListener('submit', e => {
+  const form = e.target.closest('[data-edit-form]'); if(!form) return;
+  e.preventDefault();
+  const b = state.buyers.find(x => x.id === form.dataset.editForm); if(!b) return;
+  const fd = new FormData(form);
+  b.status = String(fd.get('status') || '');
+  b.lastAction = String(fd.get('lastAction') || '');
+  b.nextStep = String(fd.get('nextStep') || '');
+  b.note = String(fd.get('note') || '');
+  editingBuyer = null;
+  persist('Follow-up saved ✓');
+});
+
+$('df-add-buyer').addEventListener('submit', e => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const name = String(fd.get('name') || '').trim();
+  if(!name) return;
+  state.buyers.push({
+    id: uid('b'),
+    name,
+    tier: String(fd.get('tier') || 'Tier 3'),
+    status: String(fd.get('status') || ''),
+    lastAction: String(fd.get('lastAction') || ''),
+    nextStep: String(fd.get('nextStep') || ''),
+    note: String(fd.get('note') || '')
+  });
+  e.target.reset();
+  persist('Buyer added ✓');
+});
+
+$('df-add-run').addEventListener('submit', e => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  state.runs.push({
+    id: uid('r'),
+    date: String(fd.get('date') || ''),
+    summary: String(fd.get('summary') || ''),
+    changes: String(fd.get('changes') || '')
+  });
+  e.target.reset();
+  e.target.date.value = new Date().toISOString().slice(0, 10);
+  persist('Run entry added ✓');
+});
+
+$('df-reset').addEventListener('click', async () => {
+  if(!confirm('Put the board back to its starting state? Your saved decisions, buyer follow-ups and run entries will be cleared.')) return;
+  try{
+    const r = await fetch('/api/dana-dashboard', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'reset' })
+    });
+    const d = await r.json().catch(() => null);
+    if(!r.ok || !d || !d.ok) throw new Error((d && d.error) || ('http_' + r.status));
+    state = d.state;
+    editingBuyer = null;
+    render();
+    setStatus('Back to the starting board.');
+  }catch(e){
+    setStatus('Could not reset (' + e.message + ').');
+  }
+});
+
+/* ---------- init ---------- */
+(function init(){
+  $('df-add-tier').innerHTML = TIER_ORDER.map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join('');
+  $('df-add-tier').value = 'Tier 1';
+  document.querySelector('#df-add-run [name="date"]').value = new Date().toISOString().slice(0, 10);
+})();
+
+(async function load(){
+  try{
+    const r = await fetch('/api/dana-dashboard');
+    const d = await r.json().catch(() => null);
+    if(!r.ok || !d || !d.ok || !d.state) throw new Error((d && d.error) || ('http_' + r.status));
+    state = d.state;
+    render();
+    setStatus(d.seeded
+      ? 'Showing the starting board from Dana\u2019s Nov 9 run — your first save makes it yours.'
+      : 'Your saved board is on. Everything here follows you across devices.');
+  }catch(e){
+    setStatus('The board could not be loaded (' + e.message + '). Reload to try again.');
+  }
+})();
+</script>
+</body>
+</html>
