@@ -268,9 +268,16 @@
   const total = opps.reduce((s, o) => s + (Number(o.value) || 0), 0);
   $('stat-value').textContent = total >= 1e6 ? '$' + (total / 1e6).toFixed(1) + 'M'
     : total >= 1e3 ? '$' + Math.round(total / 1e3) + 'K' : '$' + total;
+  /* Contacts stat = the audited verified master (desk.js
+     verifiedContactsCount), never the browser's stale localStorage
+     copy — that copy showed 5,040 while the verified master is the
+     real count. localStorage remains only as a fetch-failure fallback. */
   let cs = [];
   try{ cs = JSON.parse(localStorage.getItem('morgan-desk-contacts')) || []; }catch{}
   $('stat-contacts').textContent = cs.length;
+  verifiedContactsCount()
+    .then(n => { $('stat-contacts').textContent = n; })
+    .catch(() => {});
   const h = new Date().getHours();
   const w = h < 5 ? 'Still up' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
   $('greet').textContent = w + ', DrMorgan.';
