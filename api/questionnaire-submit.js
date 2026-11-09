@@ -18,30 +18,37 @@
    information. Contact fields are the submitter's own business
    contact, so a submission is attributable and IEC can follow up.
 
-   CHANNELS (both follow the established patterns of
-   api/demo-admin.js and api/_demo-invites-store.js, using only
-   env vars already configured on this project):
-     (a) Blob — the submission is appended to
+   CHANNELS:
+     (a) Database (PRIMARY, since 2026-11-09) — the submission is
+         INSERTed into the questionnaire_submissions table of the
+         Neon database iec_questionnaires
+         (api/_questionnaire-db.js; QUESTIONNAIRE_DATABASE_URL).
+         A failed insert surfaces as an error response — never a
+         silent loss.
+     (b) Blob (BACKUP) — the submission is also appended to
          questionnaire-submissions.json in the Office Blob store
-         (api/_questionnaire-store.js; BLOB_READ_WRITE_TOKEN).
-     (b) Email — a summary is sent to info@iecincglobal.com via
+         (api/_questionnaire-store.js; BLOB_READ_WRITE_TOKEN). A
+         backup failure is logged but never fails the submission.
+     (c) Email — a summary is sent to info@iecincglobal.com via
          Resend (DEMO_ADMIN_RESEND_API_KEY — the same key
          demo-admin uses), From the same system sender pattern
          demo-admin uses ("<org> <onboarding@resend.dev>"), with
          the IEC org signature (logo, no personal name).
-   A submission succeeds when AT LEAST ONE channel lands it; the
-   response reports which. If neither channel is configured the
-   endpoint fails closed with 503 not_configured — a submission
-   is never silently dropped. A Blob failure with a successful
-   email (and vice versa) still answers 200: the record exists
-   where IEC will see it.
+         Notification behavior is unchanged.
+   If NO store is configured and email is unavailable the endpoint
+   fails closed with 503 not_configured — a submission is never
+   silently dropped. When the database is not configured the Blob
+   store remains the primary write (legacy fallback) with the
+   original semantics: success when the Blob append or the email
+   lands.
 
    SANITY: POST only for submissions; bodies over 64 KB are
    rejected (413); every string is length-capped; the answers map
    is capped at 80 entries; a filled honeypot is refused with a
    generic 400. No sessions, no cookies — this is a public intake.
 
-   Env (this Vercel project — iecincglobal-site, all pre-existing):
+   Env (this Vercel project — iecincglobal-site):
+     QUESTIONNAIRE_DATABASE_URL  Neon iec_questionnaires database
      BLOB_READ_WRITE_TOKEN       Office Blob store
      DEMO_ADMIN_RESEND_API_KEY   Resend sending key (demo-admin's)
    ===================================================================== */
@@ -52,6 +59,11 @@ import {
   appendSubmission,
   findSubmission
 } from "./_questionnaire-store.js";
+import {
+  dbConfigured,
+  insertSubmission,
+  findSubmissionInDb
+} from "./_questionnaire-db.js";
 
 const SEGMENTS = {
   "pharmacy": "Pharmacy Operations",
@@ -247,19 +259,61 @@ async function sendNotification(record) {
 /* ------------------------------------------------------------------ */
 
 export default async function handler(req, res) {
-  /* Existence check for a known submission id (verification only —
-     returns no content). */
   if (req.method === "GET") {
     const url = new URL(req.url, "https://iecincglobal.com");
+
+    /* ONE-TIME Blob → database migration (2026-11-09). Fails closed
+       unless QDB_MIGRATE_TOKEN is configured AND presented. Runs
+       inside this function because only the deployed runtime can
+       read the Blob store. Idempotent: existing references are
+       skipped. Answers COUNTS ONLY — no submission content. This
+       branch is removed once the migration is verified. */
+    if (url.searchParams.has("migrate")) {
+      const expected = process.env.QDB_MIGRATE_TOKEN || "";
+      const presented = url.searchParams.get("token") || "";
+      if (!expected || !presented ||
+          presented.length !== expected.length ||
+          !crypto.timingSafeEqual(Buffer.from(presented), Buffer.from(expected))) {
+        return reply(res, 404, { ok: false, error: "not_found" });
+      }
+      if (!dbConfigured() || !submissionsConfigured()) {
+        return reply(res, 503, { ok: false, error: "not_configured" });
+      }
+      try {
+        const { readSubmissions } = await import("./_questionnaire-store.js");
+        const { insertMigratedSubmission, countSubmissions } = await import("./_questionnaire-db.js");
+        const records = await readSubmissions();
+        let inserted = 0;
+        for (const rec of records) {
+          if (await insertMigratedSubmission(rec)) inserted++;
+        }
+        const total = await countSubmissions();
+        console.log(`[questionnaire-submit] migration: blob=${records.length} inserted=${inserted} db_total=${total}.`);
+        return reply(res, 200, { ok: true, blobCount: records.length, inserted, dbTotal: total });
+      } catch (e) {
+        console.error(`[questionnaire-submit] migration FAILED: ${e && e.message}`);
+        return reply(res, 502, { ok: false, error: "migration_failed" });
+      }
+    }
+
+    /* Existence check for a known submission id (verification only —
+       returns no content). The database is the system of record;
+       the Blob backup is consulted second. */
     const id = String(url.searchParams.get("id") || "");
     if (!/^[A-Za-z0-9-]{8,80}$/.test(id)) {
       return reply(res, 400, { ok: false, error: "invalid_id" });
     }
-    if (!submissionsConfigured()) {
+    if (!dbConfigured() && !submissionsConfigured()) {
       return reply(res, 503, { ok: false, error: "not_configured" });
     }
     try {
-      const found = await findSubmission(id);
+      let found = null;
+      if (dbConfigured()) {
+        found = await findSubmissionInDb(id);
+      }
+      if (!found && submissionsConfigured()) {
+        found = await findSubmission(id);
+      }
       return reply(res, 200, {
         ok: true,
         found: !!found,
@@ -316,22 +370,45 @@ export default async function handler(req, res) {
     answers: sanitizeAnswers(body.answers)
   };
 
+  const dbReady = dbConfigured();
   const blobReady = submissionsConfigured();
   const mailReady = !!process.env.DEMO_ADMIN_RESEND_API_KEY;
-  if (!blobReady && !mailReady) {
-    console.log("[questionnaire-submit] NO-OP — neither BLOB_READ_WRITE_TOKEN nor DEMO_ADMIN_RESEND_API_KEY is configured; nothing recorded, nothing emailed.");
+  if (!dbReady && !blobReady && !mailReady) {
+    console.log("[questionnaire-submit] NO-OP — neither QUESTIONNAIRE_DATABASE_URL, BLOB_READ_WRITE_TOKEN nor DEMO_ADMIN_RESEND_API_KEY is configured; nothing recorded, nothing emailed.");
     return reply(res, 503, { ok: false, error: "not_configured" });
   }
 
+  /* PRIMARY write — the database. A failure is surfaced as an error
+     response below (never a silent loss); the backup append and the
+     notification still run first so the submission also exists
+     outside the database. */
   let stored = false;
+  let dbFailed = false;
+  if (dbReady) {
+    try {
+      await insertSubmission(
+        record,
+        body,
+        typeof body.company_website === "string" ? body.company_website : ""
+      );
+      stored = true;
+    } catch (e) {
+      dbFailed = true;
+      console.error(`[questionnaire-submit] DB insert FAILED: ${e && e.message}`);
+    }
+  }
+
+  /* BACKUP write — the Blob append. Silent: its failure never fails
+     the submission. When the database is not configured this remains
+     the primary write (legacy fallback) and decides `stored`. */
   if (blobReady) {
     try {
       await appendSubmission(record);
-      stored = true;
+      if (!dbReady) stored = true;
     } catch (e) {
-      console.error(`[questionnaire-submit] Blob append FAILED: ${e && e.message}`);
+      console.error(`[questionnaire-submit] Blob backup append FAILED: ${e && e.message}`);
     }
-  } else {
+  } else if (!dbReady) {
     console.log("[questionnaire-submit] Blob not configured — submission carried by the notification email only.");
   }
 
@@ -340,6 +417,9 @@ export default async function handler(req, res) {
     console.error(`[questionnaire-submit] notification email FAILED (${sent.reason}).`);
   }
 
+  if (dbFailed) {
+    return reply(res, 502, { ok: false, error: "store_failed" });
+  }
   if (!stored && !sent.sent) {
     return reply(res, 502, { ok: false, error: "delivery_failed" });
   }
