@@ -172,11 +172,21 @@ function mergeRecords(stored, candidate, targetKey) {
 
 /* Write the candidate document, then verify it landed whole
    (fresh re-read). On a mismatch, merge-repair against whatever
-   is actually stored and try again. Throws after WRITE_ATTEMPTS
-   unverified writes — loud, never silently lossy. */
+   is actually stored and try again. Attempts are spaced with a
+   short backoff: the Blob store's read-after-write propagation
+   can lag a fresh write by a moment (observed live 2026-11-09 —
+   a verify read issued immediately after a successful put still
+   served the pre-write document), so rapid-fire retries could
+   all land inside the lag window and miss a write that actually
+   succeeded. Throws after WRITE_ATTEMPTS unverified writes —
+   loud, never silently lossy. */
+const VERIFY_BACKOFF_MS = [0, 300, 800, 1500];
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
 async function commitInvites(before, candidate, target) {
   let next = candidate;
   for (let attempt = 0; attempt < WRITE_ATTEMPTS; attempt++) {
+    if (attempt > 0) await sleep(VERIFY_BACKOFF_MS[attempt] || 1500);
     await writeInvitesDoc(next);
     const stored = await readInvites();
     if (writeLanded(before, next, stored, target)) return stored;

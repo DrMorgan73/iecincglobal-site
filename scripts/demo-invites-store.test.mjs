@@ -34,6 +34,13 @@ process.env.BLOB_READ_WRITE_TOKEN = "test-blob-token";
    ?cb=...   -> the live document (cache-busted reads reach origin) */
 const cdnSnapshots = new Map();
 const fetches = [];
+/* One-shot read-after-write propagation lag: when armed for the
+   Nth cache-busted read, that read serves a stale text once —
+   the behaviour the live Blob store showed on 2026-11-09 (a
+   verify read right after a successful put still served the
+   pre-write document). */
+let bustedReads = 0;
+let lagArm = null;
 globalThis.fetch = async (url, opts = {}) => {
   const u = String(url);
   fetches.push(u);
@@ -46,6 +53,12 @@ globalThis.fetch = async (url, opts = {}) => {
     if (!cdnSnapshots.has(bare)) cdnSnapshots.set(bare, rec.content);
     const snap = cdnSnapshots.get(bare);
     return { ok: true, status: 200, text: async () => snap };
+  }
+  bustedReads++;
+  if (lagArm && bustedReads === lagArm.at) {
+    const text = lagArm.text;
+    lagArm = null;
+    return { ok: true, status: 200, text: async () => text };
   }
   return { ok: true, status: 200, text: async () => rec.content };
 };
@@ -153,6 +166,23 @@ rec = await store.stampNdaInviteEmail("legacy@example.com", "curavia",
   { sent: false, reason: "not_configured" }, new Date("2026-11-09T21:01:00.000Z"));
 ok(!!rec && rec.lastEmailStatus === "failed",
   "legacy record gains delivery-status fields on its first stamp");
+
+/* ---------------- 4. read-after-write propagation lag ---------------- */
+console.log("propagation lag (first verify read serves the pre-write doc)");
+await seedDoc("[]");
+const baseReads = bustedReads;
+/* The upsert reads fresh (busted read #base+1), writes, then
+   verifies (busted read #base+2) — arm the lag on the verify. */
+lagArm = { at: baseReads + 2, text: "[]" };
+rec = await store.upsertNdaInvite({ email: "lag@example.com", name: "Lag Person", asset: "medexec" },
+  new Date("2026-11-09T21:05:00.000Z"));
+ok(!!rec && rec.email === "lag@example.com",
+  "the upsert still succeeds — the verify retry outlasts the lag");
+ok(bustedReads - baseReads >= 3,
+  "the store re-read after the lagged verify (retry engaged, not a silent pass)");
+all = await store.readInvites();
+ok(all.length === 1 && all[0].email === "lag@example.com",
+  "the record is really stored once the lag clears");
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
