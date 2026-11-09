@@ -51,6 +51,9 @@
       </div>
     </div>
 
+    <div class="section-head"><h2>Your office</h2><span class="hint">your modules, your order · <a href="/desk/organizer.html" style="color:var(--gold)">rearrange →</a></span></div>
+    <div class="grid" id="office-modules"></div>
+
     <div class="section-head"><h2>On my desk</h2><span class="hint">live from this Suite</span></div>
     <div class="stats" id="desk-stats">
       <div class="stat"><div class="stat-num gold" id="st-inbox">0</div><div class="stat-lbl">notes for Muse</div></div>
@@ -76,6 +79,34 @@
 </div>
 
 <script src="/desk/desk.js"></script>
+<script>
+/* "Your office" — the Desk's modules (OFFICE_MODULES in desk.js),
+   rendered in DrMorgan's saved order with his hidden modules
+   omitted (/api/office-layout, arranged on desk/organizer.html).
+   No saved layout → the default order, everything shown. */
+(function officeModules(){
+  const box = $('office-modules'); if(!box || typeof OFFICE_MODULES === 'undefined') return;
+  function paint(layout){
+    const hidden = layout && Array.isArray(layout.hidden) ? layout.hidden : [];
+    const rank = id => {
+      if(!layout || !Array.isArray(layout.order)) return MODULE_DEFAULT_ORDER.indexOf(id);
+      const i = layout.order.indexOf(id);
+      return i < 0 ? 1000 + MODULE_DEFAULT_ORDER.indexOf(id) : i;
+    };
+    const mods = OFFICE_MODULES
+      .filter(m => m.id !== 'organizer' && !hidden.includes(m.id))
+      .slice()
+      .sort((a, b) => rank(a.id) - rank(b.id));
+    box.innerHTML = mods.map(m =>
+      `<a class="card action" href="${m.href}"><span class="a-ico">${m.icon}</span><b>${esc(m.label)}</b><span>${esc(m.desc)}</span></a>`).join('');
+  }
+  paint(typeof getCachedLayout === 'function' ? getCachedLayout() : null);
+  fetch('/api/office-layout')
+    .then(r => (r.ok ? r.json() : null))
+    .then(d => { if(d && d.ok) paint(d.layout); })
+    .catch(() => {});
+})();
+</script>
 <script>
 const CREW = [
   ['Suzy','Agenda','Owns the schedule and to-do list; watches every agent and flags stalls.'],

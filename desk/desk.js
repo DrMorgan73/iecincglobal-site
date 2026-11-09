@@ -4,52 +4,100 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','&lt;':'
 const DESK = '/desk';
 const avatarFor = name => DESK + '/assets/team/' + String(name || '').toLowerCase().replace(/[^a-z]/g, '') + '.jpg';
 
-/* ---- nav ---- */
+/* ---- nav + the Office module registry ----
+   NAV_GROUPS is the single source of truth for what the Office
+   contains: the sidebar renders it, the Organizer (desk/
+   organizer.html) rearranges it, and Muse's Office (desk/
+   office.html) renders its module grid from it. Ids must match
+   the allowlist in api/office-layout.js. */
 const NAV_GROUPS = [
   { sec: null, items: [
-    { href: '/',                 icon: '🏠', label: 'Home',         page: 'home' },
-    { href: '/desk/suzy-chat.html',     icon: '💬', label: 'Chat with Suzy', page: 'suzy-chat' },
-    { href: '/desk/demo-users.html',  icon: '🎟️', label: 'Demo Users', page: 'demo-users' },
+    { id: 'home',      href: '/',                    icon: '🏠', label: 'Home',          page: 'home',      desc: 'Suite command center — at-a-glance stats and quick actions.' },
+    { id: 'suzy-chat', href: '/desk/suzy-chat.html', icon: '💬', label: 'Chat with Suzy', page: 'suzy-chat', desc: 'Talk to Suzy — she carries the agenda, the briefing and the to-do list.' },
+    { id: 'demo-users', href: '/desk/demo-users.html', icon: '🎟️', label: 'Demo Users',  page: 'demo-users', desc: 'Demo accounts and the permission matrix for all five assets — plus NDA signings and the activity feed.' },
   ]},
   { sec: 'Deals & People', items: [
-    { href: '/desk/opportunities.html', icon: '💼', label: 'Dana — Opportunities',page: 'opps', badgeId: 'nav-opps' },
-    { href: '/desk/deals.html',         icon: '⚖️', label: 'Deals',        page: 'deals' },
-    { href: '/desk/contacts.html',      icon: '📇', label: 'Contacts',     page: 'contacts', badgeId: 'nav-contacts' },
+    { id: 'opps',     href: '/desk/opportunities.html', icon: '💼', label: 'Dana — Opportunities', page: 'opps', badgeId: 'nav-opps', desc: "Dana's pipeline — scouted employers and data buyers, ranked and followed up." },
+    { id: 'deals',    href: '/desk/deals.html',         icon: '⚖️', label: 'Deals',        page: 'deals',    desc: "Judy's deal evaluator — verdicts on every scored opportunity." },
+    { id: 'contacts', href: '/desk/contacts.html',      icon: '📇', label: 'Contacts',     page: 'contacts', badgeId: 'nav-contacts', desc: "Rosa's CRM — people, companies and segments, kept clean." },
   ]},
   { sec: 'Work', items: [
-    { href: '/desk/projects.html',     icon: '📁', label: 'Projects',     page: 'projects' },
-    { href: '/desk/team.html',          icon: '👥', label: 'Team',         page: 'team' },
-    { href: '/desk/meeting-room.html',  icon: '🏛️', label: 'Meeting Room', page: 'meeting', badge: '8 AM' },
+    { id: 'projects', href: '/desk/projects.html',     icon: '📁', label: 'Projects',     page: 'projects', desc: 'Every project, tracked in one place.' },
+    { id: 'team',     href: '/desk/team.html',          icon: '👥', label: 'Team',         page: 'team',     desc: 'The virtual crew — departments, agents and their briefings.' },
+    { id: 'meeting',  href: '/desk/meeting-room.html',  icon: '🏛️', label: 'Meeting Room', page: 'meeting', badge: '8 AM', desc: 'The 8 AM standup room — the whole crew, one table.' },
   ]},
   { sec: 'Offices', items: [
-    { href: '/desk/office.html',   icon: '🏢', label: "Muse's Office", page: 'office' },
-    { href: '/desk/virtual-office.html', icon: '🏙️', label: 'Virtual Office', page: 'virtual' },
+    { id: 'office',    href: '/desk/office.html',        icon: '🏢', label: "Muse's Office", page: 'office',    desc: "Muse's desk — leave work, watch the notes, meet the team she runs." },
+    { id: 'virtual',   href: '/desk/virtual-office.html', icon: '🏙️', label: 'Virtual Office', page: 'virtual',  desc: 'The 3D virtual office floor.' },
+    { id: 'organizer', href: '/desk/organizer.html',      icon: '🗂️', label: 'My Office',      page: 'organizer', desc: 'The Organizer — every module on one page; drag them into your order, hide what you do not use.' },
   ]},
   { sec: 'Intel', items: [
-    { href: '/desk/news.html',           icon: '📰', label: 'News',         page: 'news' },
-    { href: '/desk/growth.html',        icon: '🚀', label: 'Growth 24/7',  page: 'growth' },
-    { href: '/desk/strategy.html',      icon: '🎯', label: 'Strategy',     page: 'strategy' },
-    { href: '/desk/trade.html',         icon: '📈', label: 'Trade Pilot',  page: 'trade' },
+    { id: 'news',     href: '/desk/news.html',           icon: '📰', label: 'News',         page: 'news',     desc: "What's new in the Suite, plus Piper's daily WIIFM digest." },
+    { id: 'growth',   href: '/desk/growth.html',         icon: '🚀', label: 'Growth 24/7',  page: 'growth',   desc: 'The always-on growth board — campaigns and funnels.' },
+    { id: 'strategy', href: '/desk/strategy.html',       icon: '🎯', label: 'Strategy',     page: 'strategy', desc: 'Growth strategy and positioning, written down.' },
+    { id: 'trade',    href: '/desk/trade.html',          icon: '📈', label: 'Trade Pilot',  page: 'trade',    desc: "Sasha's paper-trading pilot — paper only." },
   ]},
   { sec: 'Records', items: [
-    { href: '/desk/yt-archive.html',  icon: '📺', label: 'YT Archive', page: 'yt-archive' },
-    { href: '/desk/documents.html',      icon: '📄', label: 'Documents',    page: 'docs' },
-    { href: '/desk/vault.html',         icon: '🔒', label: 'PDF Vault',    page: 'vault' },
+    { id: 'yt-archive', href: '/desk/yt-archive.html',  icon: '📺', label: 'YT Archive', page: 'yt-archive', desc: 'The YouTube archive — library and download jobs.' },
+    { id: 'docs',       href: '/desk/documents.html',   icon: '📄', label: 'Documents',  page: 'docs',       desc: 'Suite documents and files.' },
+    { id: 'vault',      href: '/desk/vault.html',       icon: '🔒', label: 'PDF Vault',  page: 'vault',      desc: 'The locked PDF vault.' },
   ]},
 ];
 const NAV = NAV_GROUPS.flatMap(g => g.items);
-(function buildNav(){
+const OFFICE_MODULES = NAV_GROUPS.flatMap(g => g.items.map(n => ({ ...n, group: g.sec || 'Everyday' })));
+const MODULE_DEFAULT_ORDER = OFFICE_MODULES.map(m => m.id);
+
+/* ---- DrMorgan's saved Office layout (api/office-layout) ----
+   { order:[ids], hidden:[ids] } lives server-side in the Office
+   Blob store so it follows him across devices. A localStorage
+   mirror paints the nav instantly; the server copy then wins. */
+const LAYOUT_CACHE_KEY = 'morgan-desk-office-layout';
+let deskLayout = null;
+function getCachedLayout(){
+  try{ return JSON.parse(localStorage.getItem(LAYOUT_CACHE_KEY)) || null; }catch{ return null; }
+}
+function setDeskLayout(layout){
+  deskLayout = layout && Array.isArray(layout.order) ? layout : null;
+  try{
+    if(deskLayout) localStorage.setItem(LAYOUT_CACHE_KEY, JSON.stringify(deskLayout));
+    else localStorage.removeItem(LAYOUT_CACHE_KEY);
+  }catch{}
+  renderNav();
+}
+function moduleRank(id){
+  const fallback = MODULE_DEFAULT_ORDER.indexOf(id);
+  if(!deskLayout) return fallback;
+  const i = deskLayout.order.indexOf(id);
+  return i < 0 ? 1000 + fallback : i;
+}
+function moduleHidden(id){
+  if(id === 'organizer') return false; /* the door back to the Organizer */
+  return !!(deskLayout && Array.isArray(deskLayout.hidden) && deskLayout.hidden.includes(id));
+}
+function renderNav(){
   const nav = $('nav'); if(!nav) return;
   const page = document.body.dataset.page || 'home';
-  nav.innerHTML = NAV_GROUPS.map(g =>
-    (g.sec ? `<div class="nav-sec">${g.sec}</div>` : '') +
-    g.items.map(n =>
-      `<a href="${n.href}" class="${n.page === page ? 'on' : ''}"><i>${n.icon}</i>${n.label}` +
-      (n.badge ? `<span class="badge">${n.badge}</span>` : '') +
-      (n.badgeId ? `<span class="badge" id="${n.badgeId}" style="display:none"></span>` : '') +
-      `</a>`).join('')
-  ).join('');
-})();
+  nav.innerHTML = NAV_GROUPS.map(g => {
+    const items = g.items
+      .filter(n => !moduleHidden(n.id))
+      .slice()
+      .sort((a, b) => moduleRank(a.id) - moduleRank(b.id));
+    if(!items.length) return '';
+    return (g.sec ? `<div class="nav-sec">${g.sec}</div>` : '') +
+      items.map(n =>
+        `<a href="${n.href}" class="${n.page === page ? 'on' : ''}"><i>${n.icon}</i>${n.label}` +
+        (n.badge ? `<span class="badge">${n.badge}</span>` : '') +
+        (n.badgeId ? `<span class="badge" id="${n.badgeId}" style="display:none"></span>` : '') +
+        `</a>`).join('');
+  }).join('');
+  refreshBadges();
+}
+deskLayout = getCachedLayout();
+renderNav();
+fetch('/api/office-layout')
+  .then(r => (r.ok ? r.json() : null))
+  .then(d => { if(d && d.ok) setDeskLayout(d.layout); })
+  .catch(() => {});
 
 /* ---- pinned sign-out: always visible at the foot of the sidebar ---- */
 (function pinnedSignout(){
