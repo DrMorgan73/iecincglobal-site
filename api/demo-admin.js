@@ -55,7 +55,11 @@
    held by invite — no email, no record, no provisioning — with
    reason "no_nda_route". "resend" on an nda_sent cell
    re-sends the NDA email; on a provisioned cell it keeps its
-   original meaning (re-send the activation link).
+   original meaning (re-send the activation link). Every NDA
+   email attempt's outcome is stamped on the invite record
+   (lastEmailStatus / lastEmailReason / lastEmailAt — the store's
+   delivery status, 2026-11-09) and "list" exposes it, so a
+   failed send stays visible on the matrix.
 
    ASSET REGISTRY: live entries carry repo/path/token-env. A future
    qualifying demo (website + application — the scope rule) joins
@@ -139,7 +143,8 @@ import {
   readInvites,
   findInvite,
   upsertNdaInvite,
-  touchNdaInvite
+  touchNdaInvite,
+  stampNdaInviteEmail
 } from "./_demo-invites-store.js";
 
 /* ------------------------------------------------------------------ */
@@ -746,6 +751,22 @@ async function emitOfficeEvent(asset, email, name, event, detail) {
   }
 }
 
+/* Persist an NDA email attempt's outcome on the invite record
+   (lastEmailStatus / lastEmailReason / lastEmailAt — the store's
+   stampNdaInviteEmail), so a failed send stays visible on the
+   matrix instead of living only in this response. Best-effort:
+   the email outcome is the action's result either way, so a stamp
+   failure is logged, never fatal, and never masks the send's own
+   outcome. The invite path stamps WITHOUT bumping the send
+   counters — upsertNdaInvite already counted the attempt. */
+async function stampInviteOutcome(asset, email, sent) {
+  try {
+    await stampNdaInviteEmail(email, asset.id, sent);
+  } catch (e) {
+    console.error(`[demo-admin] invite email-outcome stamp FAILED for ${asset.name}: ${e && e.message}`);
+  }
+}
+
 /* ------------------------------------------------------------------ */
 /* Accepted merge — stored "invited" + real activation activity        */
 /* ------------------------------------------------------------------ */
@@ -946,7 +967,10 @@ async function actionList(res) {
       status: "nda_sent",
       sentAt: r.sentAt || null,
       lastSentAt: r.lastSentAt || null,
-      sends: r.sends || 1
+      sends: r.sends || 1,
+      lastEmailStatus: r.lastEmailStatus || null,
+      lastEmailReason: r.lastEmailReason || null,
+      lastEmailAt: r.lastEmailAt || null
     })),
     matrix: buildMatrix(accounts, ndaRecords)
   });
@@ -1014,6 +1038,7 @@ async function actionInvite(res, body) {
   const resent = (record.sends || 1) > 1;
 
   const sent = await sendNdaEmail(asset, name, email);
+  await stampInviteOutcome(asset, email, sent);
   if (!sent.sent) {
     console.error(`[demo-admin] NDA email FAILED for ${asset.name} (${sent.reason}); the nda_sent record stands — Resend re-sends the NDA.`);
     return reply(res, 200, {
@@ -1060,17 +1085,21 @@ async function actionResend(res, body) {
       }
       if (record) {
         const sent = await sendNdaEmail(asset, record.name, email);
+        /* The attempt is stamped either way — counters bumped and
+           the outcome recorded — so a failed resend is as visible
+           on the matrix as a successful one. The stamp is
+           best-effort: it never changes the send's own outcome. */
+        try {
+          await touchNdaInvite(email, asset.id, new Date(), sent);
+        } catch (e) {
+          console.error(`[demo-admin] NDA resend stamp FAILED for ${asset.name}: ${e && e.message} (email outcome: ${sent.sent ? "sent" : sent.reason}).`);
+        }
         if (!sent.sent) {
           console.error(`[demo-admin] NDA resend FAILED for ${asset.name} (${sent.reason}).`);
           return reply(res, 200, {
             ok: true, emailed: false, state: "nda_sent",
             error: "email_failed", reason: sent.reason
           });
-        }
-        try {
-          await touchNdaInvite(email, asset.id);
-        } catch (e) {
-          console.error(`[demo-admin] NDA resend stamp FAILED for ${asset.name}: ${e && e.message} (the email did go out).`);
         }
         await emitOfficeEvent(asset, email, record.name, "nda_sent",
           "NDA invite re-sent from IEC Office");

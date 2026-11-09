@@ -103,11 +103,19 @@ globalThis.fetch = async (url, opts = {}) => {
   if (u === "https://api.resend.com/emails") {
     const body = JSON.parse(opts.body);
     sentEmails.push(body);
+    /* A "bounce" recipient models a provider rejection (the
+       production failure mode: Resend answers 403). */
+    if ((body.to || []).some(t => String(t).includes("bounce"))) {
+      return jsonRes(403, { name: "validation_error", message: "mock provider rejection" });
+    }
     return jsonRes(200, { id: `email-${sentEmails.length}` });
   }
   if (u.startsWith("https://blob.mock/")) {
+    /* The invites store cache-busts its document reads (?cb=…);
+       the mock matches on the bare URL, as the Blob origin does. */
+    const bare = u.split("?")[0];
     for (const rec of blobMock.__blobs.values()) {
-      if (rec.url === u) return textRes(200, rec.content);
+      if (rec.url === bare) return textRes(200, rec.content);
     }
     return textRes(404, "");
   }
@@ -290,6 +298,9 @@ ok(!!ndaRow && ndaRow.cells.medexec === "nda_sent" && ndaRow.cells.insnap === nu
 ok(Array.isArray(r.body.invites) && r.body.invites.length === 1 &&
    r.body.invites[0].email === "test.person@example.com" && r.body.invites[0].asset === "medexec" &&
    r.body.invites[0].status === "nda_sent", "list exposes the nda_sent record");
+ok(r.body.invites[0].lastEmailStatus === "sent" && r.body.invites[0].lastEmailReason === null &&
+   !!r.body.invites[0].lastEmailAt,
+  "delivery status (2026-11-09): the successful send is stamped on the record");
 
 /* ---------------- 6. re-invite, NDA resend, and the flip ---------------- */
 console.log("nda idempotency + flip");
@@ -477,15 +488,40 @@ r = await call({ action: "invite", asset: "insnap", email: "second@example.com",
 ok(r.body.ndaSent === true && r.body.emailed === false && r.body.error === "email_failed",
   "missing Resend key: nda_sent record stands, email_failed reported (no rollback)");
 ok(stores.insnap.puts === insPutsBefore, "no commit was made (NDA-first never commits)");
+r = await call({ action: "list" });
+const failedRec = r.body.invites.find(i => i.email === "second@example.com" && i.asset === "insnap");
+ok(!!failedRec && failedRec.lastEmailStatus === "failed" && failedRec.lastEmailReason === "not_configured" &&
+   !!failedRec.lastEmailAt && failedRec.sends === 1,
+  "delivery status (2026-11-09): the FAILED send is stamped on the record — visible in list, not just the response");
 process.env.DEMO_ADMIN_RESEND_API_KEY = "resend-test-key";
 r = await call({ action: "resend", asset: "insnap", email: "second@example.com" });
 ok(r.body.emailed === true && r.body.kind === "nda" && r.body.state === "nda_sent",
   "resend re-sends the NDA once the key is back");
+r = await call({ action: "list" });
+const resentRec = r.body.invites.find(i => i.email === "second@example.com" && i.asset === "insnap");
+ok(!!resentRec && resentRec.lastEmailStatus === "sent" && resentRec.lastEmailReason === null &&
+   resentRec.sends === 2,
+  "delivery status: the successful resend flips the record to sent and bumps the attempt count");
 ok(sentEmails[sentEmails.length - 1].from === "InSnap Demo Portal <onboarding@resend.dev>" &&
    sentEmails[sentEmails.length - 1].html.includes("https://insnap-job-engine.vercel.app/legal/cnda") &&
    sentEmails[sentEmails.length - 1].html.includes("InSnap · IEC, Inc.") &&
    sentEmails[sentEmails.length - 1].html.includes("https://iecincglobal.com/assets/iec-logo-email.png"),
   "InSnap NDA email: onboarding sender, CNDA route, IEC-logo org signature");
+
+r = await call({ action: "invite", asset: "curavia", email: "bounce@example.com", name: "Bounce Person" });
+ok(r.body.ndaSent === true && r.body.emailed === false && r.body.reason === "resend_403",
+  "provider rejection (403): record stands, failure reported");
+r = await call({ action: "list" });
+const bounceRec = r.body.invites.find(i => i.email === "bounce@example.com" && i.asset === "curavia");
+ok(!!bounceRec && bounceRec.lastEmailStatus === "failed" && bounceRec.lastEmailReason === "resend_403",
+  "delivery status: the provider rejection is stamped with its reason");
+r = await call({ action: "resend", asset: "curavia", email: "bounce@example.com" });
+ok(r.body.emailed === false && r.body.reason === "resend_403", "a failing resend reports the failure");
+r = await call({ action: "list" });
+const bounceRec2 = r.body.invites.find(i => i.email === "bounce@example.com" && i.asset === "curavia");
+ok(!!bounceRec2 && bounceRec2.lastEmailStatus === "failed" && bounceRec2.sends === 2 &&
+   bounceRec2.lastEmailAt >= bounceRec.lastEmailAt,
+  "delivery status: the failed RESEND is stamped too (attempt counted, failure kept)");
 
 /* ---------------- 13. NDA-first: routes, gates, merge ---------------- */
 console.log("nda routes + merge (pure and handler)");

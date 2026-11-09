@@ -66,7 +66,7 @@ const LIVE = {
 globalThis.fetch = async (url, opts = {}) => {
   const u = String(url);
   if (u.startsWith("https://blob.mock/")) {
-    const rec = __blobs.get(decodeURIComponent(u.slice("https://blob.mock/".length)));
+    const rec = __blobs.get(decodeURIComponent(u.slice("https://blob.mock/".length).split("?")[0]));
     return rec ? textRes(200, rec.content) : textRes(404, "");
   }
   for (const id of ["medexec", "insnap"]) {

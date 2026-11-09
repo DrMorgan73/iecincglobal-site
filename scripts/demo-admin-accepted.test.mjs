@@ -98,7 +98,7 @@ globalThis.fetch = async (url, opts = {}) => {
     }
   }
   if (u.startsWith("https://blob.mock/")) {
-    const pathname = decodeURIComponent(u.slice("https://blob.mock/".length));
+    const pathname = decodeURIComponent(u.slice("https://blob.mock/".length).split("?")[0]);
     const rec = blobMock.__blobs.get(pathname);
     return rec ? textRes(200, rec.content) : textRes(404, "");
   }

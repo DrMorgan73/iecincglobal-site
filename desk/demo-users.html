@@ -211,9 +211,18 @@ function cellHtml(row, asset){
   if (asset.configured === false) return '<span class="cell-none">Not configured</span>';
   if (!st) return '<span class="cell-none">—</span><br>' + btn('invite', 'Send NDA');
   if (st === 'nda_sent') {
-    return `<span class="chip nda_sent">${STATUS_LABEL.nda_sent}</span>` +
-      '<span class="seed-note">awaiting signature — link follows</span><br>' +
-      btn('resend', 'Resend NDA');
+    let out = `<span class="chip nda_sent">${STATUS_LABEL.nda_sent}</span>` +
+      '<span class="seed-note">awaiting signature — link follows</span>';
+    const inv = ((STATE && STATE.invites) || []).find(i => i.email === row.email && i.asset === asset.id);
+    if (inv && inv.lastEmailStatus === 'failed') {
+      out += `<span class="seed-note" style="color:var(--red)">NDA email failed${inv.lastEmailReason ? ' (' + esc(inv.lastEmailReason) + ')' : ''} — use Resend NDA</span>`;
+    } else if (inv && inv.lastEmailStatus === 'sent' && inv.lastEmailAt) {
+      const d = new Date(inv.lastEmailAt);
+      if (!Number.isNaN(d.getTime())) {
+        out += `<span class="seed-note">NDA email sent ${d.toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })} ET</span>`;
+      }
+    }
+    return out + '<br>' + btn('resend', 'Resend NDA');
   }
   let out = `<span class="chip ${st}">${STATUS_LABEL[st] || esc(st)}</span>`;
   if (row.seeds && row.seeds[asset.id]) out += '<span class="seed-note">seed account</span>';
