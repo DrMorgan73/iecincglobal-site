@@ -170,8 +170,16 @@ $('note-add').addEventListener('click', () => {
 (function stats(){
   try{
     $('st-opps').textContent = (JSON.parse(localStorage.getItem('morgan-desk-opportunities')) || []).length;
-    $('st-contacts').textContent = (JSON.parse(localStorage.getItem('morgan-desk-contacts')) || []).length;
   }catch{}
+  // CRM contacts = the verified deduped master (data/contacts-verified.json),
+  // built by scripts/build-contacts-verified.py. The browser's localStorage
+  // copy is stale by design — used only as a fallback if the fetch fails.
+  fetch('data/contacts-verified.json')
+    .then(r => { if(!r.ok) throw new Error(r.status); return r.json(); })
+    .then(list => { $('st-contacts').textContent = list.length; })
+    .catch(() => {
+      try{ $('st-contacts').textContent = (JSON.parse(localStorage.getItem('morgan-desk-contacts')) || []).length; }catch{}
+    });
 })();
 renderInbox();
 </script>

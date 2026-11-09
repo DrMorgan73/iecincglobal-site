@@ -112,16 +112,36 @@ fetch('/api/office-layout')
   });
 })();
 
-/* nav badges from localStorage */
+/* Verified CRM contacts count — one shared fetch + cache so every Desk page
+   shows the same audited number: the length of the deduped master
+   (desk/data/contacts-verified.json, built by scripts/build-contacts-verified.py).
+   The browser's localStorage copy is stale — fallback only if the fetch fails. */
+let _verifiedContactsCount = null;
+function verifiedContactsCount(){
+  if(_verifiedContactsCount !== null) return Promise.resolve(_verifiedContactsCount);
+  return fetch('/desk/data/contacts-verified.json')
+    .then(r => { if(!r.ok) throw new Error(r.status); return r.json(); })
+    .then(list => { _verifiedContactsCount = list.length; return _verifiedContactsCount; });
+}
+
+/* nav badges: opportunities from localStorage; contacts from the verified master */
 function refreshBadges(){
   try{
     const opps = JSON.parse(localStorage.getItem('morgan-desk-opportunities')) || [];
     const b1 = $('nav-opps');
     if(b1){ b1.textContent = opps.length; b1.style.display = opps.length ? '' : 'none'; }
-    const cs = JSON.parse(localStorage.getItem('morgan-desk-contacts')) || [];
-    const b2 = $('nav-contacts');
-    if(b2){ b2.textContent = cs.length; b2.style.display = cs.length ? '' : 'none'; }
   }catch{}
+  const b2 = $('nav-contacts');
+  if(b2){
+    verifiedContactsCount()
+      .then(n => { b2.textContent = n; b2.style.display = n ? '' : 'none'; })
+      .catch(() => {
+        try{
+          const cs = JSON.parse(localStorage.getItem('morgan-desk-contacts')) || [];
+          b2.textContent = cs.length; b2.style.display = cs.length ? '' : 'none';
+        }catch{}
+      });
+  }
 }
 refreshBadges();
 

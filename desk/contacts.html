@@ -239,7 +239,7 @@ renderContacts();
 // Unified contacts — 3,435 categorized contacts (ERC + iPhone), deduped 2026-10-05
 // Categories: Personal, Business, Healthcare, Legal, Real Estate, Restaurant/Food, etc.
 (function loadUnified(){
-  fetch('data/contacts-unified.json')
+  fetch('data/contacts-verified.json')
     .then(r => r.json())
     .then(data => {
       const KEY = 'morgan-desk-contacts';
