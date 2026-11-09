@@ -569,7 +569,7 @@ function buildLobby(){
     g.fillStyle = '#9aa7c2'; g.font = "400 24px Inter, sans-serif";
     g.fillText(et.toLocaleDateString([], {weekday:'long', month:'long', day:'numeric'}) + ' · ET', 256, 244);
     g.fillStyle = '#c9d1e0'; g.font = "400 22px Inter, sans-serif";
-    g.fillText('15 crew offices · Boardroom · Corner office', 256, 300);
+    g.fillText('Crew offices · Boardroom · Corner office', 256, 300);
     g.fillStyle = '#8b96ad'; g.font = "400 20px Inter, sans-serif";
     g.fillText('Use the directory (🗺️) to jump to any office', 256, 340);
     welcomeBoard.tex.needsUpdate = true;
@@ -881,15 +881,22 @@ async function init(){
   const norm = members.map(m=>({
     name: m.name,
     title: shortTitle(m.role || ''),
-    schedule: m.schedule || '',
+    /* crews carry "heartbeat", team members carry "schedule" —
+       reading only .schedule left every crew plaque on the
+       "On demand" fallback. */
+    schedule: m.schedule || m.heartbeat || '',
     photo: '/desk/assets/team/' + slug(m.name) + '.jpg'
   }));
   norm.slice(0, 8).forEach((m, i)=>{
     const x1 = -24 + i*6, x2 = x1 + 6, dx = (x1+x2)/2;
     buildOffice(m, x1, 2, x2, 14, dx, 2, i % 2 ? 1 : -1);
   });
-  norm.slice(8).forEach((m, i)=>{
-    const w = 48/7, x1 = -24 + i*w, x2 = x1 + w, dx = (x1+x2)/2;
+  /* The south row was sized for 7 offices (48/7) but holds every
+     member past the first 8 — with a 16-person roster the 8th
+     office overflowed into the east hall. Size by actual count. */
+  const south = norm.slice(8);
+  south.forEach((m, i)=>{
+    const w = 48 / Math.max(1, south.length), x1 = -24 + i*w, x2 = x1 + w, dx = (x1+x2)/2;
     buildOffice(m, x1, -14, x2, -2, dx, -2, i % 2 ? 1 : -1);
   });
   if(document.fonts && document.fonts.ready)

@@ -206,6 +206,16 @@ $('csv-export').addEventListener('click', () => {
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
 });
 
+/* Records merged in from the seed files below carry no id — without
+   one, their delete buttons can never match a record and ✕ is dead.
+   Give every stored record an id before the first render. */
+(function ensureIds(){
+  const cs = loadContacts();
+  let dirty = false;
+  cs.forEach(c => { if(!c.id){ c.id = newId(); dirty = true; } });
+  if(dirty) saveContacts(cs);
+})();
+
 renderContacts();
 </script>
 
@@ -221,7 +231,7 @@ renderContacts();
     let added = 0;
     for (const c of ERC_SEED) {
       if (!emails.has((c.email||'').toLowerCase())) {
-        existing.push(c);
+        existing.push({ ...c, id: newId() });
         emails.add((c.email||'').toLowerCase());
         added++;
       }
@@ -229,6 +239,7 @@ renderContacts();
     if (added > 0) {
       localStorage.setItem(KEY, JSON.stringify(existing));
       console.log('[Rosa] Seeded ' + added + ' ERC contacts. Total: ' + existing.length);
+      if (typeof renderContacts === 'function') renderContacts();
     }
   } catch(e) { console.error('[Rosa] seed failed', e); }
 })();
@@ -236,7 +247,8 @@ renderContacts();
 
 
 <script>
-// Unified contacts — 3,435 categorized contacts (ERC + iPhone), deduped 2026-10-05
+// Unified contacts — the verified master (desk/data/contacts-verified.json:
+// 4,651 deduped records, rebuilt 2026-11-09), merged into the local copy
 // Categories: Personal, Business, Healthcare, Legal, Real Estate, Restaurant/Food, etc.
 (function loadUnified(){
   fetch('data/contacts-verified.json')
@@ -250,7 +262,7 @@ renderContacts();
         for (const c of data) {
           const key = ((c.email||'').toLowerCase() + '|' + (c.phone||'').replace(/\D/g,''));
           if (!seen.has(key) && (c.email || c.phone)) {
-            existing.push(c);
+            existing.push({ ...c, id: newId() });
             seen.add(key);
             added++;
           }
@@ -258,6 +270,7 @@ renderContacts();
         if (added > 0) {
           localStorage.setItem(KEY, JSON.stringify(existing));
           console.log('[Rosa] Merged ' + added + ' categorized contacts. Total: ' + existing.length);
+          if (typeof renderContacts === 'function') renderContacts();
         }
       } catch(e) { console.error('[Rosa] Unified merge failed', e); }
     })

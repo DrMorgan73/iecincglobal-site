@@ -307,7 +307,7 @@ $('add-form').addEventListener('submit', async e => {
   }
   box.innerHTML = lines.join('');
   e.target.reset();
-  [...$('add-assets').querySelectorAll('input')].forEach(i => { i.checked = true; });
+  [...$('add-assets').querySelectorAll('input')].forEach(i => { if(!i.disabled) i.checked = true; });
   load();
 });
 

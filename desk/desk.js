@@ -233,6 +233,10 @@ try{ setTheme(localStorage.getItem('morgan-desk-theme') || 'midnight'); }catch{ 
   const box = $('themes'); if(!box) return;
   box.addEventListener('click', e => {
     const b = e.target.closest('button'); if(!b) return;
+    /* #pick-reset lives inside #themes but is NOT a theme button —
+       without this guard, resetting the accent colours also reset
+       the theme itself to midnight (setTheme(undefined)). */
+    if(b.id === 'pick-reset' || !b.dataset.t) return;
     setTheme(b.dataset.t);
   });
 })();

@@ -49,6 +49,7 @@
       <div class="stat"><div class="stat-num v-solid" id="stat-solid">0</div><div class="stat-label">Solid</div></div>
       <div class="stat"><div class="stat-num v-couldbe" id="stat-couldbe">0</div><div class="stat-label">Could be</div></div>
       <div class="stat"><div class="stat-num v-pass" id="stat-pass">0</div><div class="stat-label">Don't waste your time</div></div>
+      <div class="stat"><div class="stat-num" id="stat-unscored">0</div><div class="stat-label">Unscored</div></div>
     </div>
     <div class="section-head"><h2>All scored opportunities</h2></div>
     <div id="deals-list"></div>
@@ -61,11 +62,12 @@
 <script>
 function renderDeals(){
   const opps = loadOpps();
-  const counts = { solid:0, couldbe:0, pass:0 };
+  const counts = { solid:0, couldbe:0, pass:0, unscored:0 };
   opps.forEach(o => { if(counts[o.verdict] !== undefined) counts[o.verdict]++; });
   $('stat-solid').textContent = counts.solid;
   $('stat-couldbe').textContent = counts.couldbe;
   $('stat-pass').textContent = counts.pass;
+  $('stat-unscored').textContent = counts.unscored;
   $('deals-list').innerHTML = opps.length ? opps.map(o => `
     <div class="opp">
       <div class="opp-top">

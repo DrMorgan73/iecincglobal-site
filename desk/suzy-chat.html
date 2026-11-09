@@ -99,7 +99,10 @@
     if (/crew|muse|tell|pass|let.*know|new|update|remind|follow.?up|urgent|important/i.test(text) && text.length > 15){
       try{
         const inbox = JSON.parse(localStorage.getItem('muse-office-inbox') || '[]');
-        inbox.unshift({from: 'DrMorgan via Suzy chat', text: text, at: new Date().toISOString(), done: false});
+        /* Shape MUST match what Muse's Office renders ({title, body,
+           at, done}) — the old {from, text} shape rendered blank. */
+        inbox.unshift({ title: 'Suzy chat — ' + (text.length > 60 ? text.slice(0, 60) + '…' : text), body: text,
+          at: new Date().toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'}), done: false });
         localStorage.setItem('muse-office-inbox', JSON.stringify(inbox.slice(0, 50)));
       }catch(e){}
     }

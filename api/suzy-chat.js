@@ -3,7 +3,9 @@
 // data (briefing, crew roster). Anything she can't answer is queued to the
 // Office inbox for Muse. No external LLM needed — instant, private.
 //
-// Chat logs are appended to desk/data/suzy-chat-log.json for Muse's review.
+// No server-side chat log is kept. Messages meant for the crew are
+// saved by the client into the Office inbox (localStorage
+// "muse-office-inbox") for Muse's review — see desk/suzy-chat.html.
 
 export const config = { runtime: 'edge' };
 
@@ -32,7 +34,11 @@ async function checkSession(req) {
   const secret = process.env.DESK_SESSION_SECRET || '';
   if (!secret) return false;
   const expect = await hmacHex(secret, user + '.' + exp);
-  return sig === expect;
+  // Constant-time compare, mirroring middleware.js / api/demo-admin.js.
+  if (typeof sig !== 'string' || sig.length !== expect.length) return false;
+  let diff = 0;
+  for (let i = 0; i < sig.length; i++) diff |= sig.charCodeAt(i) ^ expect.charCodeAt(i);
+  return diff === 0;
 }
 
 // ---- Suzy's brain: answer from Suite data ----
@@ -123,15 +129,19 @@ export default async function handler(req) {
   const message = String(body.message || '').trim().slice(0, 2000);
   if (!message) return json({ ok: false, error: 'empty' }, 400);
 
-  // Load Suite data (same origin)
+  // Load Suite data (same origin). /desk/* sits behind the middleware
+  // session gate, so the caller's desk_session cookie must be forwarded
+  // — without it the gate redirects to the login page and the JSON
+  // parse fails silently, leaving briefing/crew answers empty.
   const base = new URL(req.url).origin;
+  const dataHeaders = { cookie: req.headers.get('cookie') || '' };
   let briefing = {}, crew = {};
   try {
-    const r = await fetch(base + '/desk/data/suzy.json', { cache: 'no-store' });
+    const r = await fetch(base + '/desk/data/suzy.json', { cache: 'no-store', headers: dataHeaders });
     if (r.ok) briefing = await r.json();
   } catch {}
   try {
-    const r = await fetch(base + '/desk/data/agents.json', { cache: 'no-store' });
+    const r = await fetch(base + '/desk/data/agents.json', { cache: 'no-store', headers: dataHeaders });
     if (r.ok) crew = await r.json();
   } catch {}
 

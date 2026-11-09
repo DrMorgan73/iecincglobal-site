@@ -46,7 +46,7 @@
       <div class="office-avatar">M</div>
       <div>
         <h2>Muse's Office</h2>
-        <p class="office-role">Office Manager · I run the 15-person virtual team, own every build end to end,
+        <p class="office-role">Office Manager · I run the virtual team, own every build end to end,
         and report only what moved, what stalled, and what needs DrMorgan's word.</p>
       </div>
     </div>
@@ -273,28 +273,23 @@ $('org-reset').addEventListener('click', async () => {
 })();
 </script>
 <script>
-const CREW = [
-  ['Suzy','Agenda','Owns the schedule and to-do list; watches every agent and flags stalls.'],
-  ['Vera','Partnerships & deals','Weekly hit-list of 5 verified partnership, JV and investor targets.'],
-  ['Iris','Project watchers','Five watchers: NEXUS, CURAVIA, MEDEXEC, INSSNAPP, 24HourDoctor.'],
-  ['Sage','Expertise','The BD playbook — how DrMorgan wins, written down.'],
-  ['Hazel','Connections','Keeps the relationship graph warm; weekly nudges.'],
-  ['Gemma','Opportunity','Finds and ranks the deals worth chasing.'],
-  ['Judy','Deal evaluator','Verdicts: SOLID · COULD BE · DON\u2019T WASTE YOUR TIME.'],
-  ['Piper','News WIIFM','Daily before 8 AM: what the news means for us.'],
-  ['Audrey','Compliance','Audits every project against the MA baseline.'],
-  ['Stella','Sharpening','Weekly betterment pass over everything we ship.'],
-  ['Ivy','Niche scout','Hunts unmet niches and uniqueness.'],
-  ['Nora','Usage','Watches Muse usage and reminds every 10%.'],
-  ['Tess','Inbox triage','Sorts the inbox daily; surfaces the top 5. Never deletes without a word.'],
-  ['Rosa','CRM keeper','Owns the client CRM: dedupe, segments, flags.'],
-  ['Eleanor','Legal counsel','40 years: contracts, litigation, real estate. On call.'],
-  ['Opal','Asset watcher','Watches every IEC asset; audits and suggests improvements.'],
-  ['Maya','Marketing','Brand, campaigns, content, lead generation.'],
-  ['Sasha','Trading strategist','Better strategies for the trade pilot. Paper only.'],
-];
-$('crew').innerHTML = CREW.map(([n,r,d]) =>
-  `<div class="card named"><h3>${esc(n)}</h3><div class="role">${esc(r)}</div><p>${esc(d)}</p></div>`).join('');
+/* The crew grid renders the roster of record (desk/data/agents.json:
+   team + crews) — the previous hardcoded array had drifted from it
+   (18 names incl. Eleanor, removed 2026-11-03, and Opal/Maya/Sasha,
+   who are not on the roster; Dana and Mara missing), and the
+   "team members" stat was a hardcoded 14 while the hero said 15.
+   One source now: the file. */
+(async function(){
+  try{
+    const d = await fetch('data/agents.json').then(r => r.json());
+    const members = [...(d.team || []), ...(d.crews || [])];
+    $('st-crew').textContent = members.length;
+    $('crew').innerHTML = members.map(m =>
+      `<div class="card named"><h3>${esc(m.name)}</h3><p>${esc(m.role || '')}</p></div>`).join('');
+  }catch{
+    $('crew').innerHTML = '<div class="empty">Crew roster could not be loaded.</div>';
+  }
+})();
 
 const INBOX_KEY = 'muse-office-inbox';
 const getInbox = () => { try{ return JSON.parse(localStorage.getItem(INBOX_KEY)) || []; }catch{ return []; } };

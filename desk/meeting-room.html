@@ -87,19 +87,28 @@ function initials(name){ return String(name).split(/[\s.]+/).filter(Boolean).map
 
 let TEAM = [], CREWS = [], MEETING = null, MODE = 'team';
 
-function nextMeetingTime(){
-  const n = new Date();
-  const t = new Date(n);
-  t.setHours(8, 0, 0, 0);
-  return t;
+/* The standup is 8:00 AM America/New_York. The old countdown used
+   8:00 in the BROWSER's timezone, never rolled to tomorrow, and so
+   showed "LIVE" from 8 AM until midnight every day. Now: LIVE only
+   during the 8:00–9:00 AM ET hour; otherwise a countdown to the
+   next 8:00 AM ET (today's if it is still ahead, else tomorrow's). */
+function meetingState(){
+  const et = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }));
+  const start = new Date(et); start.setHours(8, 0, 0, 0);
+  const end = new Date(start); end.setHours(9, 0, 0, 0);
+  if(et >= start && et < end) return { live: true, diff: 0 };
+  const next = et < start ? start : (() => { const t = new Date(start); t.setDate(t.getDate() + 1); return t; })();
+  return { live: false, diff: next - et };
 }
 function tickCountdown(){
   const el = $('wall-countdown'); if(!el) return;
-  const diff = nextMeetingTime() - new Date();
+  const s = meetingState();
   const live = $('wall-live');
-  if(diff <= 0){ el.textContent = 'LIVE'; if(live) live.hidden = false; return; }
-  const h = Math.floor(diff / 3600000), m = Math.floor(diff % 3600000 / 60000), s = Math.floor(diff % 60000 / 1000);
-  el.textContent = (h ? h + 'h ' : '') + String(m).padStart(2, '0') + 'm ' + String(s).padStart(2, '0') + 's';
+  if(s.live){ el.textContent = 'LIVE'; if(live) live.hidden = false; return; }
+  if(live) live.hidden = true;
+  const diff = s.diff;
+  const h = Math.floor(diff / 3600000), m = Math.floor(diff % 3600000 / 60000), sec = Math.floor(diff % 60000 / 1000);
+  el.textContent = (h ? h + 'h ' : '') + String(m).padStart(2, '0') + 'm ' + String(sec).padStart(2, '0') + 's';
 }
 
 function renderWall(){

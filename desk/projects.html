@@ -51,21 +51,30 @@
 
 <script src="/desk/desk.js"></script>
 <script>
-const SLABEL = { live:'Live', building:'Building', pilot:'Pilot', shelved:'Shelved', standby:'Standby' };
+/* Rendered from desk/data/projects.json's REAL schema (id, name,
+   note, tag, status: active|build|shelved, live, repo, watcher;
+   top-level "updated"). The page previously read blurb/team/
+   milestones/updated fields that do not exist in that file, so
+   every card rendered blank and every status fell back to a grey
+   dot. The data file is the record — the page aligns to it. */
+const SLABEL = { active:'Active', build:'Building', live:'Live', building:'Building', pilot:'Pilot', shelved:'Shelved', standby:'Standby' };
+const SDOT = { active:'green', build:'amber', live:'green', building:'amber', pilot:'blue', shelved:'gray', standby:'gray' };
 let PROJECTS = [];
+let PROJECTS_UPDATED = '';
 
 (async function(){
   try{
     const data = await fetch('/desk/data/projects.json').then(r => r.json());
     PROJECTS = (data.projects || []).map((p, i) => ({...p, _i: i}));
+    PROJECTS_UPDATED = data.updated || '';
     $('proj-count').textContent = PROJECTS.length + ' tracked';
     $('projects').innerHTML = PROJECTS.map(p => `
       <button class="card proj tap" data-proj="${p._i}">
         <span class="tag ${esc(p.status)}">${SLABEL[p.status] || p.status}</span>
         <h3 style="margin-top:10px">${esc(p.name)}</h3>
-        <p>${esc(p.blurb || '')}</p>
-        <div class="crew-hb" style="margin-top:12px"><b>${esc(p.team || '')}</b></div>
-        <div class="proj-upd"><span class="dot ${dot(p.status)}"></span> Updated ${esc(p.updated)}</div>
+        <p>${esc(p.note || '')}</p>
+        <div class="crew-hb" style="margin-top:12px"><b>${esc(p.tag || '')}</b>${p.watcher ? ` · watcher: ${esc(p.watcher)}` : ''}</div>
+        <div class="proj-upd"><span class="dot ${SDOT[p.status] || 'gray'}"></span> Updated ${esc(PROJECTS_UPDATED)}</div>
       </button>`).join('');
   }catch{
     $('projects').innerHTML = '<div class="empty">Project data not loaded.</div>';
@@ -75,14 +84,17 @@ let PROJECTS = [];
 $('projects').addEventListener('click', e => {
   const c = e.target.closest('[data-proj]'); if(!c) return;
   const p = PROJECTS[+c.dataset.proj]; if(!p) return;
-  const st = (p.milestones || []).map(m =>
-    `<li><span class="${m.done ? 'done' : ''}">${m.done ? '✅' : '⏳'} ${esc(m.title)}</span></li>`).join('');
   openDrawer(`
     <span class="tag ${esc(p.status)}">${SLABEL[p.status] || p.status}</span>
     <h2 style="margin:14px 0 8px;font-family:'Space Grotesk'">${esc(p.name)}</h2>
-    <p style="color:var(--dim);font-size:14.5px">${esc(p.blurb || '')}</p>
-    ${st ? `<h4 style="margin:16px 0 8px;font-family:'Space Grotesk'">Milestones</h4><ul class="milestones">${st}</ul>` : ''}
-    <div class="crew-hb" style="margin-top:14px">Team: <b>${esc(p.team || '')}</b> · Updated ${esc(p.updated)}</div>`);
+    <p style="color:var(--dim);font-size:14.5px">${esc(p.note || '')}</p>
+    <div class="crew-hb" style="margin-top:14px;line-height:1.9">
+      ${p.tag ? `Tag: <b>${esc(p.tag)}</b><br>` : ''}
+      ${p.live && p.live !== '—' ? `Live: <b>${esc(p.live)}</b><br>` : ''}
+      ${p.repo && p.repo !== '—' ? `Repo: <b>${esc(p.repo)}</b><br>` : ''}
+      ${p.watcher ? `Watcher: <b>${esc(p.watcher)}</b><br>` : ''}
+      Updated ${esc(PROJECTS_UPDATED)}
+    </div>`);
 });
 </script>
 </body>
