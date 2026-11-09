@@ -3,12 +3,15 @@
    the Organizer page was retired into the "Your office" grid on
    desk/office.html). Runs the real handler against the in-memory
    Blob mock: session gate (401), default layout, save + read-back,
-   sanitizing (unknown ids dropped, missing modules appended, the
-   retired "organizer" id dropped everywhere), stale saved-layout
-   compatibility, reset, the unconfigured-store answers — plus
-   static checks that office.html carries the controls, that
-   organizer.html redirects to it, and that the desk.js registry
-   no longer lists a separate My Office module. No real Blob writes.
+   sanitizing (unknown ids dropped, missing modules inserted at
+   their registry position, the retired "organizer" id dropped
+   everywhere), stale saved-layout compatibility, the stale-layout
+   self-heal (a layout saved before Dana — Follow-Up existed gains
+   it next to Dana — Opportunities on read), reset, the
+   unconfigured-store answers — plus static checks that office.html
+   carries the controls, that organizer.html redirects to it, and
+   that the desk.js registry no longer lists a separate My Office
+   module. No real Blob writes.
 
    Run: node scripts/office-layout.test.mjs   (exit 1 on any failure) */
 
@@ -92,9 +95,19 @@ check("fresh GET → ok, layout null", r.statusCode === 200 && r.payload.ok === 
 const order = ["vault", "docs", "opps", "home"];
 r = await call("POST", { order, hidden: ["trade", "growth"] });
 check("POST save → 200 ok", r.statusCode === 200 && r.payload.ok === true, r);
-check("saved order starts with his picks", JSON.stringify(r.payload.layout.order.slice(0, 4)) === JSON.stringify(order), r.payload.layout);
+check("saved order starts with his picks (missing modules slot in after them by registry position, picks keep relative order — see checks below)",
+  JSON.stringify(r.payload.layout.order.slice(0, 3)) === JSON.stringify(order.slice(0, 3)) &&
+  r.payload.layout.order.indexOf("home") > r.payload.layout.order.indexOf("opps"), r.payload.layout);
 check("all modules present in stored order", r.payload.layout.order.length === X.MODULE_IDS.length, r.payload.layout.order);
-check("missing modules appended in default order", r.payload.layout.order[4] === "suzy-chat", r.payload.layout.order);
+check("missing modules inserted at registry position — Dana — Follow-Up lands right after Dana — Opportunities",
+  r.payload.layout.order.indexOf("dana-followup") === r.payload.layout.order.indexOf("opps") + 1, r.payload.layout.order);
+check("missing modules inserted at registry position — Deals follows Dana — Follow-Up",
+  r.payload.layout.order.indexOf("deals") === r.payload.layout.order.indexOf("dana-followup") + 1, r.payload.layout.order);
+check("missing modules inserted at registry position — Suzy Chat right after Home, Demo Users after Suzy",
+  r.payload.layout.order.indexOf("suzy-chat") === r.payload.layout.order.indexOf("home") + 1 &&
+  r.payload.layout.order.indexOf("demo-users") === r.payload.layout.order.indexOf("suzy-chat") + 1, r.payload.layout.order);
+check("his explicit picks keep their relative order",
+  ["vault", "docs", "opps", "home"].every((id, i, a) => i === 0 || r.payload.layout.order.indexOf(a[i - 1]) < r.payload.layout.order.indexOf(id)), r.payload.layout.order);
 check("hidden stored", JSON.stringify(r.payload.layout.hidden) === JSON.stringify(["trade", "growth"]), r.payload.layout);
 check("updatedAt stamped", typeof r.payload.layout.updatedAt === "string" && r.payload.layout.updatedAt.length > 0, r.payload.layout);
 
@@ -120,6 +133,16 @@ blobMock.__blobs.set("office-layout.json", {
 r = await call("GET");
 check("stale layout loads, retired id gone", r.statusCode === 200 && r.payload.layout && !r.payload.layout.order.includes("organizer") && !r.payload.layout.hidden.includes("organizer"), r.payload);
 check("stale layout keeps his real picks", r.payload.layout.order[0] === "vault" && r.payload.layout.order.length === 19 && r.payload.layout.hidden.includes("trade"), r.payload.layout);
+
+/* --- stale layout self-heal: saved before dana-followup existed --- */
+const staleOrder = X.MODULE_IDS.filter(id => id !== "dana-followup");
+r = await call("POST", { order: staleOrder, hidden: [] });
+check("stale save (no dana-followup) accepted", r.statusCode === 200 && r.payload.ok === true, r);
+check("dana-followup healed in at registry position on save",
+  r.payload.layout.order.indexOf("dana-followup") === r.payload.layout.order.indexOf("opps") + 1, r.payload.layout.order);
+r = await call("GET");
+check("GET of a stale-shaped layout returns dana-followup next to opps",
+  r.payload.layout.order.indexOf("dana-followup") === r.payload.layout.order.indexOf("opps") + 1, r.payload.layout.order);
 
 /* --- reset --- */
 r = await call("POST", { action: "reset" });

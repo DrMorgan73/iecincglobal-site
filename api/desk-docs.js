@@ -9,10 +9,13 @@
 //   BLOB_READ_WRITE_TOKEN - Vercel Blob store token (auto-provisioned)
 //
 // Routes (all require a valid session):
-//   GET  /api/desk-docs            -> { docs: [{url, name, size, uploadedAt}] }
-//   GET  /api/desk-docs?dl=<url>   -> streams the file back (download proxy)
+//   GET  /api/desk-docs            -> { docs: [{id, name, size, uploadedAt}] }
+//        (id is the blob pathname — raw blob URLs are never returned)
+//   GET  /api/desk-docs?dl=<id>    -> streams the file back (download proxy)
 //   POST /api/desk-docs            -> JSON {name, data(base64)} -> { doc }
-//   DELETE /api/desk-docs?url=<url>
+//   DELETE /api/desk-docs?id=<id>
+// (dl/delete also accept a legacy full blob URL, matched server-side
+//  against the store listing, so an already-open old page keeps working.)
 
 import { put, list, del } from '@vercel/blob';
 import crypto from 'node:crypto';
@@ -58,7 +61,7 @@ export default async function handler(req, res) {
   try {
     if (req.method === 'GET' && req.query.dl) {
       const { blobs } = await list({ prefix: PREFIX });
-      const hit = blobs.find(b => b.url === req.query.dl);
+      const hit = blobs.find(b => b.pathname === req.query.dl || b.url === req.query.dl);
       if (!hit) return json(res, { ok: false, error: 'not_found' }, 404);
       const upstream = await fetch(hit.url);
       const name = hit.pathname.split('/').pop();
@@ -75,7 +78,7 @@ export default async function handler(req, res) {
         ok: true,
         docs: blobs
           .sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt))
-          .map(b => ({ url: b.url, name: b.pathname.split('/').pop(), size: b.size, uploadedAt: b.uploadedAt })),
+          .map(b => ({ id: b.pathname, name: b.pathname.split('/').pop(), size: b.size, uploadedAt: b.uploadedAt })),
       });
     }
 
@@ -86,15 +89,16 @@ export default async function handler(req, res) {
       if (buf.length > MAX_BYTES) return json(res, { ok: false, error: 'too_large' }, 413);
       const fname = safeName(name);
       const blob = await put(`${PREFIX}${crypto.randomUUID()}/${fname}`, buf, { access: 'public' });
-      return json(res, { ok: true, doc: { url: blob.url, name: fname, size: blob.size, uploadedAt: blob.uploadedAt } });
+      return json(res, { ok: true, doc: { id: blob.pathname, name: fname, size: blob.size, uploadedAt: blob.uploadedAt } });
     }
 
     if (req.method === 'DELETE') {
-      const target = req.query.url;
-      if (!target) return json(res, { ok: false, error: 'no_url' }, 400);
+      const target = req.query.id || req.query.url;
+      if (!target) return json(res, { ok: false, error: 'no_id' }, 400);
       const { blobs } = await list({ prefix: PREFIX });
-      if (!blobs.some(b => b.url === target)) return json(res, { ok: false, error: 'not_found' }, 404);
-      await del(target);
+      const hit = blobs.find(b => b.pathname === target || b.url === target);
+      if (!hit) return json(res, { ok: false, error: 'not_found' }, 404);
+      await del(hit.url);
       return json(res, { ok: true });
     }
 

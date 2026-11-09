@@ -52,16 +52,16 @@
 <script src="/desk/desk.js"></script>
 <script>
 let NEWS = [];
-const kindTag = k => ({ deliverable:'<span class="tag blue">deliverable</span>', briefing:'<span class="tag gold">briefing</span>', alert:'<span class="tag red">alert</span>', news:'<span class="tag">news</span>' }[k] || '');
+const kindTag = k => ({ deliverable:'<span class="tag blue">deliverable</span>', briefing:'<span class="tag gold">briefing</span>', alert:'<span class="tag red">alert</span>', announcement:'<span class="tag gold">announcement</span>', news:'<span class="tag">news</span>' }[k] || '');
 
 (async function(){
   try{
     const data = await fetch('/desk/data/presentations.json').then(r => r.json());
-    NEWS = (data.presentations || []).map((p, i) => ({...p, _i: i}));
+    NEWS = (data.presentations || []).slice();
     NEWS.sort((a, b) => String(b.id || '').localeCompare(String(a.id || '')));
     $('news-count').textContent = NEWS.length + ' updates';
-    $('news').innerHTML = NEWS.map(p => `
-      <button class="feed-item tap" data-news="${p._i}" style="width:100%;text-align:left;background:none;border:none;cursor:pointer">
+    $('news').innerHTML = NEWS.map((p, i) => `
+      <button class="feed-item tap" data-news="${i}" style="width:100%;text-align:left;background:none;border:none;cursor:pointer">
         <div class="feed-time">${esc(p.created || '')} · by ${esc(p.agent || '')} ${kindTag(p.kind)}</div>
         <div class="feed-body"><b style="color:var(--text)">${esc(p.title || '')}</b><br>${esc(p.summary || '')}</div>
       </button>`).join('');

@@ -49,6 +49,50 @@ const NAV = NAV_GROUPS.flatMap(g => g.items);
 const OFFICE_MODULES = NAV_GROUPS.flatMap(g => g.items.map(n => ({ ...n, group: g.sec || 'Everyday' })));
 const MODULE_DEFAULT_ORDER = OFFICE_MODULES.map(m => m.id);
 
+/* ---- Verified CRM contacts count ----
+   Declared BEFORE the first renderNav() call below: refreshBadges()
+   (invoked by renderNav) reads _verifiedContactsCount, and a `let`
+   declared later in the file is in the temporal dead zone at that
+   point — the ReferenceError killed the whole shell script (clock,
+   pinned sign-out, themes) on every page. One shared fetch + cache
+   so every Desk page shows the same audited number: the length of
+   the deduped master (desk/data/contacts-verified.json, built by
+   scripts/build-contacts-verified.py). The browser's localStorage
+   copy is stale — fallback only if the fetch fails. */
+let _verifiedContactsCount = null;
+function verifiedContactsCount(){
+  if(_verifiedContactsCount !== null) return Promise.resolve(_verifiedContactsCount);
+  return fetch('/desk/data/contacts-verified.json')
+    .then(r => { if(!r.ok) throw new Error(r.status); return r.json(); })
+    .then(list => { _verifiedContactsCount = list.length; return _verifiedContactsCount; });
+}
+
+/* ---- layout merge: modules missing from a saved order are inserted
+   at their registry position (after the nearest registry predecessor
+   that IS in the order), never dumped at the end — a module shipped
+   after the layout was saved (e.g. Dana — Follow-Up) must surface
+   next to its neighbours, not at the bottom of the sidebar. Mirrors
+   buildLayout() in api/office-layout.js. ---- */
+function insertMissingInRegistryOrder(order){
+  const seen = new Set();
+  const base = [];
+  for(const id of (Array.isArray(order) ? order : [])){
+    if(!MODULE_DEFAULT_ORDER.includes(id) || seen.has(id)) continue;
+    seen.add(id); base.push(id);
+  }
+  for(let i = 0; i < MODULE_DEFAULT_ORDER.length; i++){
+    const id = MODULE_DEFAULT_ORDER[i];
+    if(base.includes(id)) continue;
+    let insertAt = 0;
+    for(let j = i - 1; j >= 0; j--){
+      const idx = base.indexOf(MODULE_DEFAULT_ORDER[j]);
+      if(idx >= 0){ insertAt = idx + 1; break; }
+    }
+    base.splice(insertAt, 0, id);
+  }
+  return base;
+}
+
 /* ---- DrMorgan's saved Office layout (api/office-layout) ----
    { order:[ids], hidden:[ids] } lives server-side in the Office
    Blob store so it follows him across devices. A localStorage
@@ -59,7 +103,8 @@ function getCachedLayout(){
   try{ return JSON.parse(localStorage.getItem(LAYOUT_CACHE_KEY)) || null; }catch{ return null; }
 }
 function setDeskLayout(layout){
-  deskLayout = layout && Array.isArray(layout.order) ? layout : null;
+  deskLayout = layout && Array.isArray(layout.order)
+    ? { ...layout, order: insertMissingInRegistryOrder(layout.order) } : null;
   try{
     if(deskLayout) localStorage.setItem(LAYOUT_CACHE_KEY, JSON.stringify(deskLayout));
     else localStorage.removeItem(LAYOUT_CACHE_KEY);
@@ -91,9 +136,10 @@ function renderNav(){
         (n.badgeId ? `<span class="badge" id="${n.badgeId}" style="display:none"></span>` : '') +
         `</a>`).join('');
   }).join('');
-  refreshBadges();
+  try{ refreshBadges(); }catch(e){ /* a badge failure must never kill the shell */ }
 }
-deskLayout = getCachedLayout();
+const _cachedLayout = getCachedLayout();
+deskLayout = _cachedLayout ? { ..._cachedLayout, order: insertMissingInRegistryOrder(_cachedLayout.order) } : null;
 renderNav();
 fetch('/api/office-layout')
   .then(r => (r.ok ? r.json() : null))
@@ -113,36 +159,29 @@ fetch('/api/office-layout')
   });
 })();
 
-/* Verified CRM contacts count — one shared fetch + cache so every Desk page
-   shows the same audited number: the length of the deduped master
-   (desk/data/contacts-verified.json, built by scripts/build-contacts-verified.py).
-   The browser's localStorage copy is stale — fallback only if the fetch fails. */
-let _verifiedContactsCount = null;
-function verifiedContactsCount(){
-  if(_verifiedContactsCount !== null) return Promise.resolve(_verifiedContactsCount);
-  return fetch('/desk/data/contacts-verified.json')
-    .then(r => { if(!r.ok) throw new Error(r.status); return r.json(); })
-    .then(list => { _verifiedContactsCount = list.length; return _verifiedContactsCount; });
-}
-
-/* nav badges: opportunities from localStorage; contacts from the verified master */
+/* nav badges: opportunities from localStorage; contacts from the verified
+   master (verifiedContactsCount is declared near the top of this file,
+   before the first renderNav() call — see the note there). The whole
+   body is guarded: a badge failure must never kill the shell. */
 function refreshBadges(){
   try{
     const opps = JSON.parse(localStorage.getItem('morgan-desk-opportunities')) || [];
     const b1 = $('nav-opps');
     if(b1){ b1.textContent = opps.length; b1.style.display = opps.length ? '' : 'none'; }
   }catch{}
-  const b2 = $('nav-contacts');
-  if(b2){
-    verifiedContactsCount()
-      .then(n => { b2.textContent = n; b2.style.display = n ? '' : 'none'; })
-      .catch(() => {
-        try{
-          const cs = JSON.parse(localStorage.getItem('morgan-desk-contacts')) || [];
-          b2.textContent = cs.length; b2.style.display = cs.length ? '' : 'none';
-        }catch{}
-      });
-  }
+  try{
+    const b2 = $('nav-contacts');
+    if(b2){
+      verifiedContactsCount()
+        .then(n => { b2.textContent = n; b2.style.display = n ? '' : 'none'; })
+        .catch(() => {
+          try{
+            const cs = JSON.parse(localStorage.getItem('morgan-desk-contacts')) || [];
+            b2.textContent = cs.length; b2.style.display = cs.length ? '' : 'none';
+          }catch{}
+        });
+    }
+  }catch{}
 }
 refreshBadges();
 

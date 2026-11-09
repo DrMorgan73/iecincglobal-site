@@ -80,8 +80,8 @@ async function load(){
          <span class="doc-ico">📄</span>
          <div class="doc-meta"><b>${esc(x.name)}</b><span>${fmtSize(x.size)} · ${esc(new Date(x.uploadedAt).toLocaleDateString([], {month:'short',day:'numeric',year:'numeric'}))}</span></div>
          <div class="note-actions">
-           <a href="/api/desk-docs?dl=${encodeURIComponent(x.url)}"><button>⬇ download</button></a>
-           <button data-del="${esc(x.url)}">✕</button>
+           <a href="/api/desk-docs?dl=${encodeURIComponent(x.id)}"><button>⬇ download</button></a>
+           <button data-del="${esc(x.id)}">✕</button>
          </div>
        </div>`).join('')
       : '<div class="empty">No documents yet — drop the first one above.</div>';
@@ -90,7 +90,7 @@ async function load(){
 $('docs').addEventListener('click', async e => {
   const b = e.target.closest('[data-del]'); if(!b) return;
   if(!confirm('Delete this document?')) return;
-  await fetch('/api/desk-docs?url=' + encodeURIComponent(b.dataset.del), { method: 'DELETE' });
+  await fetch('/api/desk-docs?id=' + encodeURIComponent(b.dataset.del), { method: 'DELETE' });
   load();
 });
 

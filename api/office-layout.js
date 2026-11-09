@@ -148,13 +148,35 @@ function sanitizeIds(value) {
   return out;
 }
 
+/* Insert any module the given order forgot at its registry position —
+   after the nearest registry predecessor that IS in the order — never
+   dumped at the end: a module shipped after the layout was saved
+   (e.g. Dana — Follow-Up) must surface next to its neighbours, not at
+   the bottom of the sidebar. The modules that ARE in the order keep
+   their relative order exactly (they are DrMorgan's arrangement).
+   Mirrors insertMissingInRegistryOrder() in desk/desk.js. */
+function insertMissing(order) {
+  const out = order.slice();
+  for (let i = 0; i < MODULE_IDS.length; i++) {
+    const id = MODULE_IDS[i];
+    if (out.includes(id)) continue;
+    let insertAt = 0;
+    for (let j = i - 1; j >= 0; j--) {
+      const idx = out.indexOf(MODULE_IDS[j]);
+      if (idx >= 0) { insertAt = idx + 1; break; }
+    }
+    out.splice(insertAt, 0, id);
+  }
+  return out;
+}
+
 /* A complete, storable layout from a request body: the requested
-   order, with any module it forgot appended in default order (a
-   module shipped later must appear, not vanish), plus the hidden
-   list as given (known ids only, via the sanitizer). */
+   order, with any module it forgot inserted at its registry position
+   (a module shipped later must appear, in its place, not vanish),
+   plus the hidden list as given (known ids only, via the sanitizer —
+   the retired "organizer" id is unknown now and drops out there). */
 function buildLayout(body) {
-  const order = sanitizeIds(body && body.order);
-  for (const id of MODULE_IDS) if (!order.includes(id)) order.push(id);
+  const order = insertMissing(sanitizeIds(body && body.order));
   const hidden = sanitizeIds(body && body.hidden);
   return { order, hidden, updatedAt: new Date().toISOString() };
 }
@@ -214,4 +236,4 @@ export default async function handler(req, res) {
 }
 
 /* Exposed for the local test suite only. */
-export const _internals = { MODULE_IDS, buildLayout, sanitizeIds, publicLayout };
+export const _internals = { MODULE_IDS, buildLayout, sanitizeIds, publicLayout, insertMissing };
