@@ -6,29 +6,14 @@
 <title>IEC, Inc. | Healthcare MSO, Data Network &amp; International Business Development</title>
 <meta name="description" content="IEC, Inc. leads with healthcare — MSO management, growth and partnerships for medical and dental organizations — and operates the IEC MSO Data Network: bilingual, de-identified data licensed through one counterparty.">
 <link rel="stylesheet" href="style.css">
-<script>
-/* Day/night hero: pick skyline photo by visitor's local time BEFORE first paint.
-   Day 07:00-18:00, night otherwise. Re-checks every minute for open pages. */
-(function () {
-  function pick() {
-    try {
-      var h = new Date().getHours();
-      return (h >= 7 && h < 18) ? "day" : "night";
-    } catch (e) { return "night"; }
-  }
-  var el = document.documentElement;
-  el.setAttribute("data-hero-time", pick());
-  setInterval(function () {
-    var t = pick();
-    if (el.getAttribute("data-hero-time") !== t) el.setAttribute("data-hero-time", t);
-  }, 60000);
-})();
-</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
 </head>
-<body>
+<body class="cc-home">
 <header class="site-header">
   <div class="wrap header-inner">
-    <a class="brand" href="welcome.html"><img class="brand-logo" src="assets/iec-logo.png" alt="IEC Inc."></a>
+    <a class="brand" href="welcome.html"><img class="brand-logo" src="assets/iec-logo-light.png" alt="IEC Inc."></a>
     <button class="menu-btn" aria-label="Open menu" aria-expanded="false"><span></span><span></span><span></span></button>
     <nav class="site-nav" aria-label="Primary">
       <a href="welcome.html" class="active">Home</a>
@@ -51,26 +36,61 @@
   </div>
 </header>
 
-<section class="hero hero-image">
-  <div class="hero-bg hero-bg-night" aria-hidden="true"></div>
-  <div class="hero-bg hero-bg-day" aria-hidden="true"></div>
-  <div class="hero-veil" aria-hidden="true"></div>
-  <div class="wrap hero-grid">
-    <div>
-      <div class="eyebrow">Boston-based for more than a decade. Globally connected.</div>
-      <h1>Strategic relationships that turn opportunity into progress.</h1>
-      <p class="lede">IEC Inc. leads with healthcare — growth, partnerships and non-clinical management support for medical and dental organizations — and helps organizations across technology, real estate and international commerce enter markets, build partnerships and advance complex projects.</p>
-      <div class="chips">
-        <span class="chip">Healthcare</span>
-        <span class="chip">Technology</span>
-        <span class="chip">Real Estate</span>
-        <span class="chip">Global Markets</span>
-      </div>
-      <div class="location"><strong>Boston</strong> · United States · International reach</div>
+<section class="cc-hero">
+  <div class="wrap">
+    <div class="cc-rule" aria-hidden="true"></div>
+    <h1>Healthcare data and clinical expertise, <em>commanded from Boston.</em></h1>
+    <p class="cc-lede">IEC, Inc. is a healthcare, investment and international business firm. We control a multilingual network of practicing clinicians — and put its data and its judgment to work for the labs building medical AI.</p>
+    <div class="cc-btns">
+      <a class="cc-btn-gold" href="for-buyers.html">License the data</a>
+      <a class="cc-btn-ghost" href="for-buyers.html">Engage the experts</a>
     </div>
   </div>
-  <p class="hero-credit hero-credit-night">Photo: <a href="https://commons.wikimedia.org/wiki/File:Boston_Skyline_Panorama_Dusk.jpg">Fcb981</a>, CC BY-SA 3.0, via Wikimedia Commons</p>
-  <p class="hero-credit hero-credit-day">Photo: <a href="https://commons.wikimedia.org/wiki/File:Boston_skyline_from_Longfellow_Bridge_September_2017_panorama_2.jpg">King of Hearts</a>, CC BY-SA 4.0, via Wikimedia Commons</p>
+</section>
+
+<section class="cc-stats" aria-label="IEC at a glance">
+  <div class="wrap cc-stats-grid">
+    <div><b>30+</b><span>Years of combined experience</span></div>
+    <div><b>500+</b><span>MSO-managed network scale</span></div>
+    <div><b>15,000+</b><span>Patients in the anchor network</span></div>
+    <div><b>4</b><span>Provider languages — EN · ES · AR · Chinese</span></div>
+  </div>
+</section>
+
+<section class="cc-wall-sec">
+  <div class="wrap">
+    <div class="eyebrow">The portfolio</div>
+    <h2>The IEC asset family.</h2>
+    <p class="cc-sub">One firm, a wall of operating platforms — each one live, each one compounding the network.</p>
+    <div class="cc-wall">
+      <a class="cc-card" href="about.html"><b>IEC, Inc.</b><span>The firm — healthcare, investment, international business.</span></a>
+      <a class="cc-card" href="https://getmedexec.com" target="_blank" rel="noopener"><b>MEDEXEC</b><span>Executive platform for medical practice leadership.</span></a>
+      <a class="cc-card" href="https://www.getcuravia.com" target="_blank" rel="noopener"><b>CURAVIA</b><span>Care coordination and patient journey platform.</span></a>
+      <a class="cc-card" href="https://insnap-job-engine.vercel.app" target="_blank" rel="noopener"><b>InSnap</b><span>Instant matching between practices and professionals.</span></a>
+      <a class="cc-card" href="https://inssnapp.com" target="_blank" rel="noopener"><b>INSNAPP</b><span>Appointment recovery — no patient left unbooked.</span></a>
+      <a class="cc-card" href="data-network.html"><b>IEC MSO</b><span>Management services organization — the operating layer behind the network, presented standalone.</span></a>
+    </div>
+  </div>
+</section>
+
+<section class="cc-products">
+  <div class="wrap">
+    <div class="eyebrow">Two products · One network</div>
+    <h2>Scale and control, in both directions.</h2>
+    <p class="cc-sub">The same multilingual clinical network produces both products — real patient records for training, and the clinicians who can teach and judge the models.</p>
+    <div class="cc-pillars">
+      <div class="cc-pillar">
+        <b>IEC Data Network</b>
+        <p>De-identified clinical records documented natively in English and Spanish, with Arabic depth — the scarcest data in medical AI, licensed to labs under NDA. Licensed, never sold; one counterparty, one agreement.</p>
+        <a href="data-network.html">Explore the Data Network &rarr;</a>
+      </div>
+      <div class="cc-pillar">
+        <b>IEC Clinical Expert Network</b>
+        <p>Practicing MDs, PTs and healthcare professionals for clinical evaluation, annotation and model validation — English/Spanish bilingual, English/Arabic depth, and Chinese-speaking providers.</p>
+        <a href="for-buyers.html">For buyers &amp; labs &rarr;</a>
+      </div>
+    </div>
+  </div>
 </section>
 
 <section class="dn-band" aria-label="IEC MSO Data Network">
@@ -192,26 +212,6 @@
         <li><strong>Technology commercialization</strong> — practical paths that move healthcare technology from pilot to adoption.</li>
       </ul>
       <a class="btn dark" href="healthcare.html">Explore healthcare</a>
-    </div>
-  </div>
-</section>
-
-<section class="section">
-  <div class="wrap">
-    <div class="stats-band">
-      <div class="eyebrow" style="color:var(--gold-soft)">The IEC record</div>
-      <h2 style="color:#fff">Experience that crosses sectors and borders.</h2>
-      <div class="band-fig">
-        <div>
-          <img src="assets/medical-team.jpg" alt="Caregiver supporting a patient during a medical visit">
-        </div>
-        <div class="stats">
-          <div class="stat"><strong>20+ years</strong><span>Across healthcare and business development</span></div>
-          <div class="stat"><strong>2023</strong><span>Founded in Boston, Massachusetts</span></div>
-          <div class="stat"><strong>4 sectors</strong><span>Healthcare, technology, real estate, international commerce</span></div>
-          <div class="stat"><strong>5 regions</strong><span>U.S., GCC &amp; Middle East, North Africa, Europe, emerging markets</span></div>
-        </div>
-      </div>
     </div>
   </div>
 </section>

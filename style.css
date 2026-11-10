@@ -1,8 +1,8 @@
 /* IEC Inc. — iecincglobal.com static rebuild */
 :root {
-  --navy: #0e2a47;
-  --navy-2: #14365c;
-  --gold: #b98a2f;
+  --navy: #0B2447;
+  --navy-2: #0E2C55;
+  --gold: #C9A227;
   --gold-soft: #e9dcc0;
   --ink: #1c2733;
   --muted: #5a6b7d;
@@ -359,3 +359,67 @@ details.credits a { color: #aeb9c8; }
 .dn-col h3 { color: #fff; margin-bottom: 8px; }
 .dn-col p { color: #dbe4ee; font-size: 16.5px; line-height: 1.6; }
 @media (max-width: 860px) { .dn-cols { grid-template-columns: 1fr; } .dn-band { padding: 48px 0; } }
+
+/* ================= Command Center theme (Option A — DrMorgan's pick, 2026-11-10) =================
+   Dark navy #0B2447 + gold #C9A227 chrome across all public pages.
+   Header markup is shared site-wide; pages use assets/iec-logo-light.png in the header. */
+.site-header { background: rgba(8,26,54,.97); border-bottom: 1px solid rgba(201,162,39,.45); }
+.site-header.scrolled { box-shadow: 0 8px 28px rgba(3,10,24,.45); }
+.site-nav a { color: #c8d4e6; }
+.site-nav a:hover, .site-nav a.active { color: #fff; }
+.site-nav a.nav-cta { background: var(--gold); color: #131c2e; }
+.site-nav a.nav-cta:hover { background: #dbb636; color: #131c2e; }
+.site-nav a.nav-suite { background: transparent; border: 1px solid rgba(255,255,255,.45); color: #fff; padding: 9px 25px; }
+.site-nav a.nav-suite:hover { background: rgba(255,255,255,.12); color: #fff; }
+.menu-btn { border-color: rgba(255,255,255,.35); color: #fff; }
+.menu-btn span { background: #fff; }
+.btn { color: #131c2e; }
+.btn:hover { background: #dbb636; }
+.btn.dark { color: #fff; }
+.btn.ghost { color: #fff; }
+.site-footer { border-top: 3px solid var(--gold); }
+@media (max-width: 860px) {
+  .site-nav { background: #081a36; }
+  .site-nav a { border-bottom-color: rgba(255,255,255,.12); }
+  .site-nav a:hover { border-bottom-color: rgba(255,255,255,.12); }
+}
+
+/* Homepage — Command Center (welcome.html) */
+.cc-home { font-family: "Inter", var(--font); }
+.cc-home h1, .cc-home h2 { font-family: "Playfair Display", Georgia, serif; letter-spacing: 0; }
+.cc-hero { background: radial-gradient(720px 300px at 50% -60px, rgba(201,162,39,.22), transparent 65%), linear-gradient(#0d2a52, #081a36); color: #eef2f8; text-align: center; padding: 84px 0 64px; }
+.cc-rule { width: 56px; height: 2px; background: var(--gold); margin: 0 auto 24px; }
+.cc-hero h1 { font-size: clamp(34px, 5vw, 52px); line-height: 1.14; font-weight: 700; color: #fff; max-width: 22ch; margin: 0 auto 18px; }
+.cc-hero h1 em { color: var(--gold); font-style: normal; }
+.cc-lede { color: #b9c8dd; max-width: 62ch; margin: 0 auto 28px; font-size: 18px; line-height: 1.65; }
+.cc-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.cc-btn-gold { background: var(--gold); color: #131c2e; font-weight: 700; padding: 13px 26px; border-radius: 6px; text-decoration: none; font-size: 16px; }
+.cc-btn-gold:hover { background: #dbb636; }
+.cc-btn-ghost { border: 1px solid rgba(255,255,255,.45); color: #fff; padding: 13px 26px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 16px; }
+.cc-btn-ghost:hover { background: rgba(255,255,255,.08); }
+.cc-stats { background: #081a36; border-top: 1px solid rgba(201,162,39,.35); border-bottom: 1px solid rgba(201,162,39,.35); }
+.cc-stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); }
+.cc-stats-grid div { padding: 24px 14px; text-align: center; border-right: 1px solid rgba(255,255,255,.07); }
+.cc-stats-grid div:last-child { border-right: 0; }
+.cc-stats-grid b { display: block; font-family: "Playfair Display", Georgia, serif; font-size: 30px; color: var(--gold); }
+.cc-stats-grid span { font-size: 12.5px; letter-spacing: .07em; text-transform: uppercase; color: #9db1cc; }
+@media (max-width: 640px) { .cc-stats-grid { grid-template-columns: repeat(2, 1fr); } }
+.cc-wall-sec { background: #0B2447; color: #eef2f8; padding: 64px 0; }
+.cc-wall-sec h2 { color: #fff; }
+.cc-sub { color: #9db1cc; max-width: 62ch; margin-bottom: 26px; line-height: 1.6; }
+.cc-wall { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+@media (max-width: 860px) { .cc-wall { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 560px) { .cc-wall { grid-template-columns: 1fr; } }
+.cc-card { display: block; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.03); padding: 22px 18px; border-radius: 8px; text-decoration: none; transition: border-color .25s ease, transform .25s ease; }
+.cc-card:hover { border-color: var(--gold); transform: translateY(-2px); }
+.cc-card b { display: block; font-size: 18px; letter-spacing: .03em; color: #fff; margin-bottom: 5px; font-family: "Playfair Display", Georgia, serif; }
+.cc-card span { font-size: 14.5px; color: #9db1cc; line-height: 1.55; display: block; }
+.cc-products { background: linear-gradient(#0B2447, #081a36); color: #eef2f8; padding: 8px 0 68px; }
+.cc-products h2 { color: #fff; }
+.cc-pillars { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 640px) { .cc-pillars { grid-template-columns: 1fr; } }
+.cc-pillar { border-top: 3px solid var(--gold); background: #0E2C55; padding: 26px; }
+.cc-pillar b { font-family: "Playfair Display", Georgia, serif; font-size: 21px; color: #fff; display: block; margin-bottom: 9px; }
+.cc-pillar p { color: #b9c8dd; line-height: 1.65; margin: 0 0 14px; font-size: 16px; }
+.cc-pillar a { color: var(--gold); font-weight: 700; text-decoration: none; }
+.cc-pillar a:hover { text-decoration: underline; }
