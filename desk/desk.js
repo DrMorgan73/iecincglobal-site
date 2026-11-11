@@ -21,6 +21,7 @@ const NAV_GROUPS = [
   { sec: 'Deals & People', items: [
     { id: 'opps',     href: '/desk/opportunities.html', icon: '💼', label: 'Dana — Opportunities', page: 'opps', badgeId: 'nav-opps', desc: "Dana's pipeline — scouted employers and data buyers, ranked and followed up." },
     { id: 'dana-followup', href: '/desk/dana-followup.html', icon: '🧭', label: 'Dana — Follow-Up', page: 'dana-followup', desc: "Follow-up board for Dana's buyer scouting — pipeline, decisions, run log." },
+    { id: 'data-builder', href: '/desk/data-builder.html', icon: '🧱', label: 'Data Asset Builder', page: 'data-builder', desc: 'Builds buyer-safe specimen packages from data counts — upload a counts document, screen, map, validate, assess (medical & non-medical).' },
     { id: 'deals',    href: '/desk/deals.html',         icon: '⚖️', label: 'Deals',        page: 'deals',    desc: "Judy's deal evaluator — verdicts on every scored opportunity." },
     { id: 'contacts', href: '/desk/contacts.html',      icon: '📇', label: 'Contacts',     page: 'contacts', badgeId: 'nav-contacts', desc: "Rosa's CRM — people, companies and segments, kept clean." },
   ]},

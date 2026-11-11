@@ -1,0 +1,840 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Data Asset Builder — IEC Suite</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/desk/desk.css">
+<style>
+  .db-notice{border:1px solid rgba(45,212,191,.35);background:rgba(45,212,191,.07);border-radius:12px;
+    padding:11px 15px;font-size:13px;color:var(--text);margin-bottom:16px}
+  .db-notice b{color:var(--teal)}
+  .trackpick{display:flex;gap:8px;margin-bottom:14px}
+  .trackpick button{flex:1;font:600 13.5px 'Inter';padding:10px;border-radius:11px;cursor:pointer;
+    background:transparent;border:1px solid var(--line);color:var(--dim)}
+  .trackpick button.on{background:var(--gold);border-color:var(--gold);color:#0a0d14}
+  .syslist{display:grid;gap:6px;max-height:300px;overflow:auto;padding-right:4px}
+  .sysitem{display:flex;gap:8px;align-items:flex-start;border:1px solid var(--line-soft);border-radius:9px;padding:7px 9px;font-size:12.5px}
+  .sysitem input{width:auto;margin-top:2px}
+  .conf{font-size:10px;font-weight:700;letter-spacing:.07em;padding:2px 7px;border-radius:999px;text-transform:uppercase;white-space:nowrap}
+  .conf.VERIFIED{color:#06281c;background:linear-gradient(135deg,#6ee7b7,#34d399)}
+  .conf.PATTERN{color:#3a2703;background:linear-gradient(135deg,#fde68a,#fbbf24)}
+  .ctable{border:1px solid var(--line-soft);border-radius:12px;padding:12px;margin-top:12px;background:rgba(0,0,0,.18)}
+  .ctable h4{font-size:13.5px;margin-bottom:2px}
+  .ctable .defn{font-size:11.5px;color:var(--dim);margin-bottom:9px}
+  .ctable table{width:100%;border-collapse:collapse}
+  .ctable th{font-size:11px;color:var(--dim);text-align:left;padding:4px 6px;letter-spacing:.03em}
+  .ctable td{padding:3px 4px}
+  .ctable input{background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:8px;padding:6px 8px;
+    color:var(--text);font:500 12.5px 'Inter';width:100%;outline:none}
+  .ctable input:focus{border-color:var(--gold)}
+  .ctable input.num{max-width:110px}
+  .mini{font:600 11.5px 'Inter';background:none;border:1px solid var(--line);color:var(--dim);border-radius:999px;padding:5px 12px;cursor:pointer}
+  .mini:hover{color:var(--gold);border-color:var(--gold)}
+  .mini.gold{background:var(--gold);color:#0a0d14;border-color:var(--gold)}
+  .phases{display:grid;gap:8px;margin-top:12px}
+  .phase{display:flex;gap:11px;align-items:flex-start;border:1px solid var(--line-soft);border-radius:11px;padding:10px 13px;background:rgba(0,0,0,.18)}
+  .phase .dot{width:22px;height:22px;flex:none;border-radius:50%;border:2px solid var(--line);display:grid;place-items:center;font-size:11px}
+  .phase.active .dot{border-color:var(--gold);color:var(--gold)}
+  .phase.done .dot{border-color:#34d399;color:#34d399}
+  .phase.blocked .dot{border-color:#f87171;color:#f87171}
+  .phase b{font-size:13.5px}
+  .phase .sub{font-size:12px;color:var(--dim)}
+  .phase .stall{font-size:12px;color:#fbbf24}
+  .findings{margin-top:10px;display:grid;gap:7px}
+  .finding{font-size:12.5px;border-radius:9px;padding:8px 11px}
+  .finding.block{background:rgba(248,113,113,.12);border:1px solid rgba(248,113,113,.4)}
+  .finding.warn{background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.35)}
+  .finding.err{background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3)}
+  .finding.ok{background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.3)}
+  .maptable{width:100%;border-collapse:collapse;margin-top:10px}
+  .maptable th{font-size:11px;color:var(--dim);text-align:left;padding:5px 6px}
+  .maptable td{padding:5px 6px;border-top:1px solid var(--line-soft);font-size:12.5px;vertical-align:top}
+  .maptable select{background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:8px;color:var(--text);
+    font:500 12px 'Inter';padding:6px;max-width:260px;width:100%}
+  .pill{font-size:10.5px;font-weight:700;letter-spacing:.06em;padding:3px 10px;border-radius:999px;text-transform:uppercase;white-space:nowrap}
+  .pill.MATCH{color:#06281c;background:linear-gradient(135deg,#6ee7b7,#34d399)}
+  .pill.CLOSE{color:#3a2703;background:linear-gradient(135deg,#fde68a,#fbbf24)}
+  .pill.DIVERGENT{color:#3d0a0a;background:linear-gradient(135deg,#fca5a5,#f87171)}
+  .pill.FROZEN{color:#0a0d14;background:var(--gold)}
+  .cmptable{width:100%;border-collapse:collapse;margin-top:10px}
+  .cmptable th{font-size:11px;color:var(--dim);text-align:left;padding:5px 6px}
+  .cmptable td{padding:6px;border-top:1px solid var(--line-soft);font-size:12.5px;vertical-align:top}
+  .cmptable textarea{width:100%;background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:8px;
+    color:var(--text);font:500 12px 'Inter';padding:6px 8px;min-height:30px}
+  .disttable{width:100%;border-collapse:collapse;margin-top:6px}
+  .disttable th{font-size:11px;color:var(--dim);text-align:left;padding:4px 6px}
+  .disttable td{padding:4px 6px;border-top:1px solid var(--line-soft);font-size:12.5px}
+  .statusline{min-height:18px;font-size:12.5px;color:var(--dim);margin-top:8px}
+  .statusline.bad{color:#f87171}.statusline.good{color:#34d399}
+  details.mdbox{margin-top:12px}details.mdbox pre{white-space:pre-wrap;font-size:11.5px;max-height:420px;overflow:auto;
+    background:rgba(0,0,0,.3);border:1px solid var(--line-soft);border-radius:10px;padding:12px}
+  .frozenbar{border:1px solid var(--gold);background:rgba(240,185,66,.08);border-radius:11px;padding:10px 13px;font-size:12.5px;margin-top:10px}
+</style>
+</head>
+<body data-page="data-builder">
+<div class="orbs" aria-hidden="true"><span class="orb gold"></span><span class="orb teal"></span><span class="orb violet"></span></div>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="side-brand">
+      <img class="logo-img" src="/assets/iec-logo.png" alt="IEC Inc.">
+      <div><h1>IEC <span>Suite</span></h1><p>International Empire Consultants, Inc.</p></div>
+    </div>
+    <nav id="nav"></nav>
+    <div class="side-foot">
+      <div class="themes" id="themes">
+        <button data-t="iec" style="--sw1:#f0b942;--sw2:#3b82f6" title="IEC Brand"></button>
+        <button data-t="midnight" style="--sw1:#f0b942;--sw2:#2dd4bf" title="Midnight Gold"></button>
+        <button data-t="amethyst" style="--sw1:#d8b4fe;--sw2:#f0abfc" title="Royal Amethyst"></button>
+        <button data-t="ocean" style="--sw1:#7dd3fc;--sw2:#5eead4" title="Deep Ocean"></button>
+        <button data-t="ember" style="--sw1:#fdba74;--sw2:#fbbf24" title="Sunset Ember"></button>
+        <button data-t="emerald" style="--sw1:#6ee7b7;--sw2:#f0b942" title="Emerald Noir"></button>
+        <button data-t="rose" style="--sw1:#fda4af;--sw2:#f0abfc" title="Rose Noir"></button>
+        <label class="cpick" title="Accent color"><input type="color" id="pick-gold" value="#f0b942"></label>
+        <label class="cpick" title="Highlight color"><input type="color" id="pick-teal" value="#2dd4bf"></label>
+        <button class="creset" id="pick-reset" title="Reset colors">⟲</button>
+      </div>
+      <button class="signout" id="signout"><i>🚪</i>Sign out</button>
+      <a class="public-link" href="/welcome.html">← Public site</a>
+      <div class="clockbox">
+        <div id="clock">--:--</div>
+        <div id="dateline">—</div>
+      </div>
+    </div>
+  </aside>
+
+  <main>
+    <div class="office-hero card">
+      <div style="flex:none;width:72px;height:72px;border-radius:22px;display:grid;place-items:center;font-size:34px;background:rgba(240,185,66,.12);border:2px solid rgba(240,185,66,.5)">🧱</div>
+      <div>
+        <h2>Data Asset Builder</h2>
+        <p class="office-role">IEC's own assessment instrument — it turns a practice's or company's counts into the
+        model specimen package: instantiated dictionary, populated distributions, extraction plan, buyer-safe export.
+        Primary path: <b>upload the counts document and run</b> — parse, PHI screen, map, validate, assess. Medical and non-medical tracks.</p>
+      </div>
+    </div>
+
+    <div class="db-notice"><b>Counts and structure only.</b> This tool never takes patient or customer records.
+    Row-level documents are blocked by the PHI screen and <b>never stored</b>. Assets are identified by codename only —
+    the form never asks for a real name. No fees, splits, or prices exist anywhere in this tool.</div>
+
+    <div class="section-head">
+      <div><h2>Build an assessment</h2><p class="hint">Upload-and-run, or enter counts by hand. Saved in your IEC Suite (server-side), on every device.</p></div>
+    </div>
+
+    <div class="crm-layout">
+      <!-- ============ LEFT: asset + intake (manual path & edit path) ============ -->
+      <form id="intake" class="card form-card" autocomplete="off">
+        <h3>Asset</h3>
+        <div class="trackpick" id="trackpick">
+          <button type="button" data-track="medical" class="on">🩺 Medical</button>
+          <button type="button" data-track="non-medical">🏪 Non-medical</button>
+        </div>
+        <label>Codename (the only identifier — never a real name)
+          <input id="f-codename" maxlength="40" placeholder="e.g. ASSET-NORTH-01" required></label>
+
+        <h3 style="margin-top:18px">Variables</h3>
+        <div id="variables"></div>
+
+        <h3 style="margin-top:18px">Software systems carrying the data</h3>
+        <p class="hint" style="margin-bottom:8px">From the embedded catalog. VERIFIED = the vendor's published capability; PATTERN = modeled on its software class, not individually verified. Software count = systems selected: <b id="syscount">0</b></p>
+        <div class="syslist" id="syslist"></div>
+        <details style="margin-top:10px">
+          <summary style="font-size:12.5px;color:var(--gold);cursor:pointer">Add your own system to the catalog</summary>
+          <div style="margin-top:10px">
+            <label>System name<input id="cs-name" maxlength="60" placeholder="e.g. ClinicWorks Pro"></label>
+            <label>Vendor<input id="cs-vendor" maxlength="60" placeholder="Vendor"></label>
+            <div class="row2">
+              <label>Track<select id="cs-track"><option value="both">Both</option><option value="medical">Medical</option><option value="non-medical">Non-medical</option></select></label>
+              <label>Export routes<select id="cs-routes"><option value="native,vendor">Native export + vendor-assisted</option><option value="api">API</option><option value="native,api,sftp,vendor">All routes</option></select></label>
+            </div>
+            <label>Data classes (comma-separated, from the class list in the catalog)
+              <input id="cs-classes" maxlength="200" placeholder="e.g. EHR clinical, Scheduling"></label>
+            <button type="button" class="mini gold" id="cs-add">Add system</button>
+            <div class="statusline" id="cs-status"></div>
+          </div>
+        </details>
+
+        <h3 style="margin-top:18px">Asset totals</h3>
+        <div id="totals"></div>
+
+        <h3 style="margin-top:18px">Distribution counts</h3>
+        <p class="hint">Counts only — shares are computed by the tool from the stated denominators, never typed.</p>
+        <div id="tables"></div>
+
+        <button type="submit" class="btn" style="margin-top:16px">Save asset</button>
+        <div class="statusline" id="save-status"></div>
+        <div id="frozenbar"></div>
+      </form>
+
+      <!-- ============ RIGHT: assets, run pipeline, outputs, compare ============ -->
+      <div>
+        <div class="card pipeline-card">
+          <h3>Saved assets</h3>
+          <div id="assetlist"><p class="hint">Loading…</p></div>
+        </div>
+
+        <div class="card pipeline-card" style="margin-top:16px">
+          <h3>Upload &amp; run</h3>
+          <p class="hint">Upload the counts documents the practice/company provided — system report exports, one file per system if needed. CSV, XLSX, PDF, TXT or MD. Max 6 MB per file.</p>
+          <input type="file" id="run-files" multiple accept=".csv,.tsv,.xlsx,.pdf,.txt,.md" style="margin-top:10px;color:var(--dim)">
+          <button type="button" class="btn" id="run-btn" style="margin-top:12px">Run assessment on uploads</button>
+          <div class="phases" id="phases"></div>
+          <div class="findings" id="run-findings"></div>
+          <div id="mapreview"></div>
+          <div id="runhistory" style="margin-top:14px"></div>
+        </div>
+
+        <div class="card pipeline-card" style="margin-top:16px">
+          <h3>Outputs</h3>
+          <p class="hint">Produced only from an assessment that passes every validation check.</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+            <button type="button" class="mini gold" id="assess-btn">Assess &amp; preview</button>
+            <button type="button" class="mini" id="dl-md">Download specimen package (MD)</button>
+            <button type="button" class="mini" id="dl-pdf">Download specimen package (PDF)</button>
+          </div>
+          <div class="statusline" id="assess-status"></div>
+          <div id="outputs"></div>
+        </div>
+
+        <div class="card pipeline-card" style="margin-top:16px">
+          <h3>Compare — external assessment (internal only)</h3>
+          <p class="hint">Record another party's assessment of this same asset (e.g. DataSupply's) and see the accuracy side by side.
+          Freeze this tool's assessment <b>before</b> entering theirs — the comparison shows both timestamps, and an external entry that predates the freeze is flagged “not blind.”
+          Comparisons never appear in the specimen export.</p>
+          <div id="freezeblock" style="margin-top:10px"></div>
+          <details style="margin-top:12px">
+            <summary style="font-size:13px;color:var(--gold);cursor:pointer">Record an external assessment</summary>
+            <form id="ext-form" class="form-card" style="margin-top:10px" autocomplete="off">
+              <div class="row2">
+                <label>Source (their name)<input id="x-source" maxlength="60" placeholder="e.g. DataSupply" required></label>
+                <label>Date of their assessment<input id="x-date" type="date"></label>
+              </div>
+              <label>Document it came from<input id="x-doc" maxlength="120" placeholder="Document name / reference"></label>
+              <label>Their document (optional upload — screened like any upload)
+                <input type="file" id="x-file" accept=".csv,.tsv,.xlsx,.pdf,.txt,.md"></label>
+              <div class="row2">
+                <label>Subjects (patients/customers)<input id="x-subjects" type="number" min="0"></label>
+                <label>Encounters / transactions<input id="x-transactions" type="number" min="0"></label>
+              </div>
+              <div class="row2">
+                <label>Notes / records &amp; documents<input id="x-documents" type="number" min="0"></label>
+                <label>Cases (medical)<input id="x-cases" type="number" min="0"></label>
+              </div>
+              <div class="row2">
+                <label>Software systems<input id="x-systems" type="number" min="0"></label>
+                <label>Employees (FTE)<input id="x-employees" type="number" min="0"></label>
+              </div>
+              <div class="row2">
+                <label>Years of history<input id="x-years" type="number" min="0"></label>
+                <label>Data classes found (comma-separated)<input id="x-classes" maxlength="300" placeholder="EHR clinical, EVV, …"></label>
+              </div>
+              <label>Their value conclusion (their figure, in their words — recorded for comparison only, never exported)
+                <input id="x-value" maxlength="300" placeholder="e.g. “$X per term license” — as they stated it"></label>
+              <button type="submit" class="mini gold">Save external assessment</button>
+              <div class="statusline" id="x-status"></div>
+            </form>
+          </details>
+          <div id="comparisons" style="margin-top:12px"></div>
+          <div id="compareview"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+<script src="/desk/desk.js"></script>
+
+<script>
+/* Data Asset Builder page logic. All validation, screening, mapping
+   and assessment run SERVER-side (api/data-assets.js) — this page
+   renders forms and results. Counts and codenames only. */
+const API = '/api/data-assets';
+const BANDS_VISITS = ['1 visit only','2–5 visits','6–12 visits','13–24 visits','25 or more visits'];
+const BANDS_DEPTH = ['Under 6 months','6 months to under 2 years','2 years to under 5 years','5 years or more'];
+const BANDS_TXN = ['1 transaction only','2–5 transactions','6–12 transactions','13–24 transactions','25 or more transactions'];
+const TRACK_META = {
+  medical: {
+    label: 'Medical',
+    variables: [
+      { key:'specialtyMix', label:'Specialty / sector mix', type:'text', placeholder:'Pain management; physical therapy' },
+      { key:'languages', label:'Documentation languages', type:'text', placeholder:'EN, ES (native)' },
+      { key:'caseTypeMixNote', label:'Case-type mix (note)', type:'text', placeholder:"Workers' comp heavy; some personal injury" },
+      { key:'historyDepthYears', label:'History depth (years of records)', type:'int', placeholder:'25' },
+      { key:'workforceFTE', label:'Workforce scale (full-time employees)', type:'int', placeholder:'40' },
+      { key:'locationsCount', label:'Locations (count)', type:'int', placeholder:'1' }
+    ],
+    totals: [
+      { key:'totalPatients', label:'Distinct patients (whole asset)' },
+      { key:'totalEncounters', label:'Encounters (whole asset)' },
+      { key:'totalNotes', label:'Notes (whole asset)' },
+      { key:'totalCases', label:'Distinct cases (whole asset)' }
+    ],
+    tables: [
+      { id:'recordsByYear', num:'2.1', title:'Records by year (selected years)', kind:'subset', measure:[{key:'encounters',label:'Encounters'},{key:'patients',label:'Distinct patients'},{key:'notes',label:'Notes'}] },
+      { id:'patientsByDiagnosisFamily', num:'2.2', title:'Patients by diagnosis family', kind:'overlap', detailLabel:'ICD-10-CM range', measure:[{key:'patients',label:'Distinct patients'}] },
+      { id:'caseTypeMix', num:'2.3', title:'Case-type mix', kind:'partition', fixedRows:["Workers' compensation",'Personal injury','Commercial','Other'], measure:[{key:'cases',label:'Distinct cases'},{key:'encounters',label:'Encounters'}] },
+      { id:'noteLanguageShare', num:'2.4', title:'Note-language share', kind:'partition', fixedRows:['English (EN)','Spanish (ES)','Other languages'], measure:[{key:'notes',label:'Notes'}] },
+      { id:'visitsPerCaseBands', num:'2.5', title:'Visits per case — bands', kind:'partition', fixedRows:BANDS_VISITS, measure:[{key:'cases',label:'Cases'}] },
+      { id:'historyDepth', num:'2.6', title:'History-depth profile', kind:'partition', fixedRows:BANDS_DEPTH, measure:[{key:'patients',label:'Patients'}] }
+    ]
+  },
+  'non-medical': {
+    label: 'Non-medical',
+    variables: [
+      { key:'specialtyMix', label:'Sector mix', type:'text', placeholder:'Gas / convenience; home services' },
+      { key:'languages', label:'Customer-facing languages', type:'text', placeholder:'EN, ES' },
+      { key:'caseTypeMixNote', label:'Transaction-type mix (note)', type:'text', placeholder:'Fuel + in-store retail; repeat service contracts' },
+      { key:'historyDepthYears', label:'History depth (years of records)', type:'int', placeholder:'12' },
+      { key:'workforceFTE', label:'Workforce scale (full-time employees)', type:'int', placeholder:'66' },
+      { key:'locationsCount', label:'Locations (count)', type:'int', placeholder:'10' }
+    ],
+    totals: [
+      { key:'totalCustomers', label:'Distinct customers (whole asset)' },
+      { key:'totalTransactions', label:'Transactions (whole asset)' },
+      { key:'totalRecords', label:'Records / documents (whole asset)' },
+      { key:'totalLocations', label:'Locations (whole asset)' }
+    ],
+    tables: [
+      { id:'recordsByYear', num:'2.1', title:'Records by year (selected years)', kind:'subset', measure:[{key:'transactions',label:'Transactions'},{key:'customers',label:'Distinct customers'},{key:'records',label:'Records / documents'}] },
+      { id:'customersBySegment', num:'2.2', title:'Customers by segment', kind:'overlap', detailLabel:'Segment definition', measure:[{key:'customers',label:'Distinct customers'}] },
+      { id:'transactionTypeMix', num:'2.3', title:'Transaction-type mix', kind:'partition', fixedRows:['Sale','Service visit','Booking','Invoice','Other'], measure:[{key:'transactions',label:'Transactions'}] },
+      { id:'recordsBySourceSystem', num:'2.4', title:'Records by source system', kind:'partition', measure:[{key:'records',label:'Records'}] },
+      { id:'transactionsPerCustomerBands', num:'2.5', title:'Transactions per customer — bands', kind:'partition', fixedRows:BANDS_TXN, measure:[{key:'customers',label:'Customers'}] },
+      { id:'historyDepth', num:'2.6', title:'History-depth profile', kind:'partition', fixedRows:BANDS_DEPTH, measure:[{key:'customers',label:'Customers'}] }
+    ]
+  }
+};
+
+let catalog = [];
+let currentAsset = null;      // loaded asset object (or null for new)
+let loadedCountsJson = '';    // snapshot for manual-edit detection
+let currentRun = null;
+let comparisons = [];
+let phaseTimer = null;
+
+const api = async (url, opts) => {
+  const res = await fetch(url, opts);
+  const data = await res.json().catch(() => ({}));
+  return { res, data };
+};
+const post = body => api(API, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+const track = () => document.querySelector('#trackpick button.on').dataset.track;
+const meta = () => TRACK_META[track()];
+const fmtN = n => (n === null || n === undefined || n === '') ? '—' : Number(n).toLocaleString('en-US');
+
+/* ---------- form rendering ---------- */
+function renderVariables(values) {
+  $('variables').innerHTML = meta().variables.map(v =>
+    v.type === 'int'
+      ? `<label>${esc(v.label)}<input data-var="${v.key}" type="number" min="0" value="${values && values[v.key] ?? ''}" placeholder="${esc(v.placeholder || '')}"></label>`
+      : `<label>${esc(v.label)}<input data-var="${v.key}" maxlength="200" value="${esc(values && values[v.key] || '')}" placeholder="${esc(v.placeholder || '')}"></label>`
+  ).join('');
+}
+function renderSystems(selectedIds) {
+  const t = track();
+  const relevant = catalog.filter(s => s.track === t || s.track === 'both');
+  $('syslist').innerHTML = relevant.map(s => `
+    <label class="sysitem">
+      <input type="checkbox" data-sys="${esc(s.id)}" ${selectedIds.includes(s.id) ? 'checked' : ''}>
+      <span style="flex:1"><b>${esc(s.name)}</b> <span style="color:var(--dim)">${esc(s.vendor || '')}</span><br>
+      <span style="color:var(--dim);font-size:11.5px">${esc((s.classes || []).join(', ') || 'General')}${s.custom ? ' · added by operator' : ''}</span></span>
+      <span class="conf ${esc(s.confidence)}">${esc(s.confidence)}</span>
+    </label>`).join('') || '<p class="hint">Catalog is empty.</p>';
+  $('syscount').textContent = selectedIds.length;
+  document.querySelectorAll('[data-sys]').forEach(cb => cb.addEventListener('change', () => {
+    $('syscount').textContent = document.querySelectorAll('[data-sys]:checked').length;
+  }));
+}
+function renderTotals(totals) {
+  $('totals').innerHTML = meta().totals.map(t =>
+    `<label>${esc(t.label)}<input data-total="${t.key}" type="number" min="0" value="${totals && totals[t.key] ?? ''}"></label>`).join('');
+}
+function tableRowsHtml(td, tc) {
+  const rows = (tc && tc.rows && tc.rows.length) ? tc.rows
+    : (td.fixedRows || []).map(label => ({ label }));
+  return rows.map((r, i) => `<tr data-row="${i}">
+    <td>${td.fixedRows
+      ? `<input data-cell="label" value="${esc(r.label)}" readonly style="opacity:.75">`
+      : `<input data-cell="label" value="${esc(r.label || '')}" placeholder="Row label" maxlength="80">`}</td>
+    ${td.detailLabel ? `<td><input data-cell="detail" value="${esc(r.detail || '')}" placeholder="${esc(td.detailLabel)}" maxlength="80"></td>` : ''}
+    ${td.measure.map(m => `<td><input class="num" data-cell="${m.key}" type="number" min="0" value="${r[m.key] ?? ''}"></td>`).join('')}
+    <td>${td.fixedRows ? '' : `<button type="button" class="mini" data-delrow="${td.id}:${i}">✕</button>`}</td>
+  </tr>`).join('');
+}
+function renderTables(counts) {
+  $('tables').innerHTML = meta().tables.map(td => {
+    const tc = counts && counts.tables ? counts.tables[td.id] : null;
+    return `<div class="ctable" data-table="${td.id}">
+      <h4>Table ${td.num} — ${esc(td.title)}</h4>
+      <div class="defn">${td.kind === 'partition' ? 'Partition — rows must foot exactly to the denominator.' : td.kind === 'subset' ? 'Selected rows — they foot INSIDE the whole-asset totals and can never exceed them.' : 'Categories may overlap — the tool computes shares per 100 of the denominator.'}</div>
+      ${td.kind === 'overlap' ? `<label style="font-size:12.5px;display:flex;gap:8px;align-items:center;margin-bottom:8px"><input type="checkbox" data-overlap="${td.id}" ${tc && tc.overlap ? 'checked' : ''} style="width:auto"> Categories overlap (counts may pass the denominator)</label>` : ''}
+      <table><thead><tr><th>Row</th>${td.detailLabel ? `<th>${esc(td.detailLabel)}</th>` : ''}${td.measure.map(m => `<th>${esc(m.label)}</th>`).join('')}<th></th></tr></thead>
+      <tbody>${tableRowsHtml(td, tc)}</tbody></table>
+      ${td.fixedRows ? '' : `<button type="button" class="mini" data-addrow="${td.id}" style="margin-top:8px">+ Add row</button>`}
+    </div>`;
+  }).join('');
+  document.querySelectorAll('[data-addrow]').forEach(b => b.addEventListener('click', () => {
+    const td = meta().tables.find(x => x.id === b.dataset.addrow);
+    const tbody = document.querySelector(`[data-table="${td.id}"] tbody`);
+    const i = tbody.querySelectorAll('tr').length;
+    const tr = document.createElement('tr');
+    tr.dataset.row = i;
+    tr.innerHTML = `<td><input data-cell="label" placeholder="Row label" maxlength="80"></td>
+      ${td.detailLabel ? '<td><input data-cell="detail" maxlength="80"></td>' : ''}
+      ${td.measure.map(m => `<td><input class="num" data-cell="${m.key}" type="number" min="0"></td>`).join('')}
+      <td><button type="button" class="mini" onclick="this.closest('tr').remove()">✕</button></td>`;
+    tbody.appendChild(tr);
+  }));
+  document.querySelectorAll('[data-delrow]').forEach(b => b.addEventListener('click', () => b.closest('tr').remove()));
+}
+function renderForm(asset) {
+  renderVariables(asset && asset.variables);
+  renderSystems(asset ? (asset.systems || []).map(s => s.id) : []);
+  renderTotals(asset && asset.counts && asset.counts.totals);
+  renderTables(asset && asset.counts);
+  $('f-codename').value = asset ? asset.codename : '';
+  loadedCountsJson = asset ? JSON.stringify(asset.counts) : '';
+  renderFrozen(asset);
+}
+function renderFrozen(asset) {
+  const bar = $('frozenbar');
+  const fb = $('freezeblock');
+  if (asset && asset.frozen) {
+    bar.innerHTML = `<div class="frozenbar">🔒 <b>FROZEN</b> at ${esc(asset.frozen.at)} — this assessment is locked against edits so the comparison order is provable.</div>`;
+    fb.innerHTML = `<span class="pill FROZEN">Frozen ${esc(asset.frozen.at)}</span>`;
+    document.querySelectorAll('#intake input, #intake select, #intake button[type=submit]').forEach(el => { el.disabled = true; });
+  } else {
+    bar.innerHTML = '';
+    fb.innerHTML = asset
+      ? `<button type="button" class="mini" id="freeze-btn">Freeze this assessment (locks it, timestamped)</button>
+         <span class="hint" style="margin-left:8px">Freeze BEFORE entering an external assessment to keep the comparison blind.</span>`
+      : '<span class="hint">Save the asset first — then you can freeze its assessment and record external comparisons.</span>';
+    document.querySelectorAll('#intake input, #intake select, #intake button[type=submit]').forEach(el => { el.disabled = false; });
+    const fz = $('freeze-btn');
+    if (fz) fz.addEventListener('click', freezeAsset);
+  }
+}
+
+/* ---------- gather form → asset ---------- */
+function gatherAsset() {
+  const variables = {};
+  document.querySelectorAll('[data-var]').forEach(el => {
+    variables[el.dataset.var] = el.type === 'number' ? (el.value === '' ? null : Number(el.value)) : el.value;
+  });
+  const systems = [...document.querySelectorAll('[data-sys]:checked')].map(cb => ({ id: cb.dataset.sys }));
+  const totals = {};
+  document.querySelectorAll('[data-total]').forEach(el => { totals[el.dataset.total] = el.value === '' ? null : Number(el.value); });
+  const tables = {};
+  meta().tables.forEach(td => {
+    const rows = [];
+    document.querySelectorAll(`[data-table="${td.id}"] tbody tr`).forEach(tr => {
+      const row = { label: tr.querySelector('[data-cell="label"]').value };
+      const detail = tr.querySelector('[data-cell="detail"]');
+      if (detail) row.detail = detail.value;
+      td.measure.forEach(m => {
+        const el = tr.querySelector(`[data-cell="${m.key}"]`);
+        row[m.key] = el && el.value !== '' ? Number(el.value) : null;
+      });
+      rows.push(row);
+    });
+    const ov = document.querySelector(`[data-overlap="${td.id}"]`);
+    tables[td.id] = { overlap: ov ? ov.checked : false, rows };
+  });
+  return { codename: $('f-codename').value.trim(), track: track(), variables, systems, counts: { totals, tables } };
+}
+function manualEditsFor(asset) {
+  if (!loadedCountsJson) return [];
+  const before = JSON.parse(loadedCountsJson);
+  const edits = [];
+  for (const k of Object.keys(asset.counts.totals || {})) {
+    if ((before.totals || {})[k] !== asset.counts.totals[k]) edits.push(`totals.${k}`);
+  }
+  for (const tid of Object.keys(asset.counts.tables || {})) {
+    const bRows = ((before.tables || {})[tid] || {}).rows || [];
+    const aRows = asset.counts.tables[tid].rows || [];
+    aRows.forEach((r, i) => {
+      const b = bRows.find(x => x.label === r.label) || {};
+      for (const k of Object.keys(r)) {
+        if (k !== 'label' && b[k] !== r[k]) edits.push(`tables.${tid}.${r.label}.${k} (manual edit)`);
+      }
+    });
+  }
+  return edits.slice(0, 200);
+}
+
+/* ---------- assets list ---------- */
+async function loadAssets() {
+  const { data } = await api(API);
+  const box = $('assetlist');
+  if (data.notConfigured) { box.innerHTML = '<p class="hint">Storage is not configured on this deployment yet — assets cannot be saved.</p>'; return; }
+  if (!data.assets || !data.assets.length) { box.innerHTML = '<p class="hint">No assets yet. Name one by codename on the left and save it, then upload its counts documents.</p>'; return; }
+  box.innerHTML = data.assets.map(a => `<div class="opp">
+    <div class="opp-top"><span class="opp-name">${esc(a.codename)}</span>
+      <span>${a.frozen ? '<span class="pill FROZEN">Frozen</span>' : ''} <span class="verdict ${a.validationErrors === 0 ? 'solid' : 'couldbe'}">${a.validationErrors === 0 ? 'Checks pass' : a.validationErrors === null ? 'Not checked' : a.validationErrors + ' check(s) failing'}</span></span></div>
+    <div class="opp-meta">${a.track === 'medical' ? '🩺 Medical' : '🏪 Non-medical'} · ${a.systemsCount} system(s) · counts from ${esc(a.countsSource || 'manual')} · updated ${esc((a.updatedAt || '').slice(0, 10))}</div>
+    <div class="opp-foot"><span class="opp-meta">Patients/customers: ${fmtN(a.totals && (a.totals.totalPatients ?? a.totals.totalCustomers))}</span>
+    <span class="opp-actions"><button class="opp-edit" data-load="${esc(a.codename)}">Open</button></span></div>
+  </div>`).join('');
+  box.querySelectorAll('[data-load]').forEach(b => b.addEventListener('click', () => loadAsset(b.dataset.load)));
+}
+async function loadAsset(codename) {
+  const { data } = await api(`${API}?codename=${encodeURIComponent(codename)}`);
+  if (!data.asset) return;
+  currentAsset = data.asset;
+  comparisons = data.comparisons || [];
+  document.querySelectorAll('#trackpick button').forEach(b => b.classList.toggle('on', b.dataset.track === currentAsset.track));
+  renderForm(currentAsset);
+  renderRunHistory(data.runs || []);
+  renderComparisons();
+  $('outputs').innerHTML = ''; $('assess-status').textContent = '';
+  $('mapreview').innerHTML = ''; setPhases([]);
+}
+
+/* ---------- save / freeze ---------- */
+$('intake').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  const st = $('save-status');
+  const asset = gatherAsset();
+  if (!asset.codename) { st.textContent = 'A codename is required — it is the asset\'s only identifier.'; st.className = 'statusline bad'; return; }
+  asset.manualEdits = manualEditsFor(asset);
+  asset.countsSource = currentAsset && currentAsset.lastRunId && !asset.manualEdits.length ? 'run' : (asset.manualEdits.length ? 'run+manual' : 'manual');
+  if (currentAsset) { asset.lastRunId = currentAsset.lastRunId; }
+  const { res, data } = await post({ action: 'save-asset', asset });
+  if (!res.ok) { st.textContent = data.message || 'Save failed.'; st.className = 'statusline bad'; return; }
+  currentAsset = data.asset;
+  loadedCountsJson = JSON.stringify(currentAsset.counts);
+  renderFrozen(currentAsset);
+  const v = data.validation || { errors: [], warnings: [] };
+  st.innerHTML = `Saved. ${v.errors.length ? `<span style="color:#f87171">${v.errors.length} validation error(s) — see below; outputs stay blocked until they pass.</span>` : '<span style="color:#34d399">All validation checks pass.</span>'} ${v.warnings.length ? v.warnings.length + ' warning(s).' : ''}`;
+  st.className = 'statusline';
+  showValidation(v, $('run-findings'));
+  loadAssets();
+});
+async function freezeAsset() {
+  if (!currentAsset) return;
+  if (!confirm(`Freeze ${currentAsset.codename}? The assessment locks permanently and the freeze is timestamped — do this BEFORE entering an external assessment.`)) return;
+  const { res, data } = await post({ action: 'freeze-asset', codename: currentAsset.codename });
+  if (!res.ok) { alert(data.message || 'Freeze failed.'); if (data.errors) showValidation({ errors: data.errors, warnings: [] }, $('run-findings')); return; }
+  currentAsset = data.asset;
+  renderFrozen(currentAsset);
+  loadAssets();
+}
+
+/* ---------- validation display ---------- */
+function showValidation(v, box) {
+  const items = [];
+  (v.errors || []).forEach(e => items.push(`<div class="finding err">✕ ${esc(e.message)}</div>`));
+  (v.warnings || []).forEach(w => items.push(`<div class="finding warn">⚠ ${esc(w.message)}</div>`));
+  if (!items.length && (v.errors || v.warnings)) items.push('<div class="finding ok">✓ Every check passes — denominators stated, subsets inside totals, partitions footed exactly.</div>');
+  box.innerHTML = items.join('');
+}
+
+/* ---------- run pipeline ---------- */
+const PHASES = [
+  { id: 'parse', name: 'Phase 1 — Parse', sub: 'Tables, headers and count values out of the uploads.' },
+  { id: 'screen', name: 'Phase 2 — PHI screen', sub: 'Hard gate: row-level records or identifiers block the run; nothing blocked is stored.' },
+  { id: 'map', name: 'Phase 3 — Map', sub: 'The tool proposes the mapping; you confirm or correct it. Assessment never runs on an unconfirmed mapping.' },
+  { id: 'validate', name: 'Phase 4 — Validate', sub: 'Denominators, subsets ≤ totals, cross-table footing, grain separation.' },
+  { id: 'assess', name: 'Phase 5 — Assess', sub: 'Dictionary, distributions, extraction plan, specimen package.' }
+];
+function setPhases(states) {
+  $('phases').innerHTML = PHASES.map((p, i) => {
+    const s = states[i] || { state: 'idle', sub: p.sub };
+    const icon = s.state === 'done' ? '✓' : s.state === 'blocked' ? '✕' : s.state === 'active' ? '◌' : String(i + 1);
+    return `<div class="phase ${s.state}"><span class="dot">${icon}</span>
+      <div><b>${p.name}</b><div class="sub">${esc(s.sub || p.sub)}</div>${s.stall ? `<div class="stall">⏳ This phase is taking longer than usual (${s.elapsed}s) — it is still running; a stall is called out here, never a silent spinner.</div>` : ''}</div></div>`;
+  }).join('');
+}
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result).split(',')[1] || '');
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+}
+$('run-btn').addEventListener('click', async () => {
+  const files = [...($('run-files').files || [])];
+  const box = $('run-findings');
+  box.innerHTML = ''; $('mapreview').innerHTML = '';
+  if (!currentAsset) { box.innerHTML = '<div class="finding err">Save the asset first (codename + track) — uploads attach to a saved asset.</div>'; return; }
+  if (!files.length) { box.innerHTML = '<div class="finding err">Choose at least one counts document.</div>'; return; }
+  const started = Date.now();
+  const states = [{ state: 'active', sub: `Reading ${files.length} file(s)…` }, { state: 'idle' }, { state: 'idle' }, { state: 'idle' }, { state: 'idle' }];
+  setPhases(states);
+  phaseTimer = setInterval(() => {
+    const el = Math.round((Date.now() - started) / 1000);
+    const activeIdx = states.findIndex(s => s.state === 'active');
+    if (activeIdx >= 0 && el > 15) { states[activeIdx].stall = true; states[activeIdx].elapsed = el; setPhases(states); }
+  }, 1000);
+  try {
+    const payload = [];
+    for (const f of files) payload.push({ name: f.name, base64: await fileToBase64(f) });
+    const { res, data } = await post({ action: 'start-run', codename: currentAsset.codename, files: payload });
+    clearInterval(phaseTimer);
+    if (data.blocked) {
+      states[0] = { state: 'done', sub: 'Documents parsed.' };
+      states[1] = { state: 'blocked', sub: 'BLOCKED by the PHI screen — nothing was stored.' };
+      setPhases(states);
+      box.innerHTML = `<div class="finding block"><b>Run blocked.</b> ${esc(data.message)}</div>` +
+        (data.findings || []).flatMap(f => (f.findings || []).filter(x => x.severity === 'block').map(x =>
+          `<div class="finding block">“${esc(f.file)}” — ${esc(x.message)}</div>`)).join('');
+      return;
+    }
+    if (!res.ok) {
+      states[0] = { state: 'blocked', sub: data.message || 'The run failed.' };
+      setPhases(states);
+      box.innerHTML = `<div class="finding err">${esc(data.message || 'The run failed.')}</div>` +
+        (data.findings || []).flatMap(f => (f.parseWarnings || []).map(w => `<div class="finding warn">“${esc(f.file)}” — ${esc(w)}</div>`)).join('');
+      return;
+    }
+    currentRun = data.run;
+    const tblCount = currentRun.files.reduce((a, f) => a + f.tables.length, 0);
+    states[0] = { state: 'done', sub: `${currentRun.files.length} file(s) · ${tblCount} table(s) · ${currentRun.candidates.length} count value(s) found · files ${currentRun.files.every(f => f.stored) ? 'stored with the run' : 'parsed (file storage not configured — not retained)'}.` };
+    const warns = currentRun.screenFindings.filter(f => f.severity === 'warn');
+    states[1] = { state: 'done', sub: warns.length ? `Passed with ${warns.length} warning(s) — read them before confirming the mapping.` : 'Passed — counts and structure only.' };
+    states[2] = { state: 'active', sub: 'Waiting for you: review the proposed mapping below, correct anything, then confirm.' };
+    setPhases(states);
+    box.innerHTML = warns.map(w => `<div class="finding warn">⚠ ${esc(w.file)} — ${esc(w.message)}</div>`).join('') +
+      currentRun.files.flatMap(f => (f.parseWarnings || []).map(w => `<div class="finding warn">⚠ ${esc(f.name)} — ${esc(w)}</div>`)).join('');
+    renderMappingReview();
+  } catch (e) {
+    clearInterval(phaseTimer);
+    states[0] = { state: 'blocked', sub: 'Network error — the run did not complete.' };
+    setPhases(states);
+  }
+});
+function targetOptions(candidate) {
+  const m = meta();
+  const opts = ['<option value="">— do not map —</option>'];
+  for (const t of m.totals) opts.push(`<option value='${esc(JSON.stringify({ kind: 'total', key: t.key }))}'>Total — ${esc(t.label)}</option>`);
+  for (const td of m.tables) {
+    if (td.fixedRows) {
+      for (const row of td.fixedRows) for (const ms of td.measure) {
+        opts.push(`<option value='${esc(JSON.stringify({ kind: 'cell', table: td.id, row, column: ms.key }))}'>${esc(td.title)} · ${esc(row)} · ${esc(ms.label)}</option>`);
+      }
+    } else if (candidate.rowLabel) {
+      for (const ms of td.measure) {
+        opts.push(`<option value='${esc(JSON.stringify({ kind: 'cell', table: td.id, row: candidate.rowLabel, column: ms.key }))}'>${esc(td.title)} · row “${esc(candidate.rowLabel)}” · ${esc(ms.label)}</option>`);
+      }
+    }
+  }
+  return opts.join('');
+}
+function renderMappingReview() {
+  const run = currentRun;
+  if (!run) return;
+  const propById = Object.fromEntries((run.proposals || []).map(p => [p.candidateId, p]));
+  $('mapreview').innerHTML = `
+    <h4 style="margin-top:16px">Mapping review — confirm before assessment</h4>
+    <p class="hint">The tool's proposals are pre-selected. Correct any row, or set it to “do not map.” Grain is structural: each target table is single-grain (case, encounter, patient…), so a value can only land at its own grain.
+    ${run.systemProfiles && run.systemProfiles.length ? `<br>Starter profiles from the catalog apply for: ${run.systemProfiles.map(s => `${esc(s.system)} (${esc(s.confidence)})`).join(', ')}.` : ''}</p>
+    <table class="maptable"><thead><tr><th>Document value</th><th>From</th><th>Maps to</th><th>Why</th></tr></thead>
+    <tbody>${run.candidates.map(c => {
+      const p = propById[c.id] || {};
+      const sel = p.target ? JSON.stringify(p.target) : '';
+      return `<tr><td><b>${fmtN(c.value)}</b><br><span style="color:var(--dim)">${esc(c.label)}</span></td>
+        <td style="color:var(--dim)">${esc(c.file)}<br>${esc(c.origin)}</td>
+        <td><select data-map="${c.id}">${targetOptions(c)}</select></td>
+        <td style="color:var(--dim)">${esc(p.reason || '')}</td></tr>`;
+    }).join('')}</tbody></table>
+    <button type="button" class="btn" id="confirm-map" style="margin-top:12px">Confirm mapping &amp; run validation</button>`;
+  run.candidates.forEach(c => {
+    const p = propById[c.id];
+    const selEl = document.querySelector(`[data-map="${c.id}"]`);
+    if (selEl && p && p.target) selEl.value = JSON.stringify(p.target);
+  });
+  $('confirm-map').addEventListener('click', confirmMapping);
+}
+async function confirmMapping() {
+  if (!currentRun) return;
+  const mapping = currentRun.candidates.map(c => {
+    const selEl = document.querySelector(`[data-map="${c.id}"]`);
+    let target = null;
+    try { target = selEl && selEl.value ? JSON.parse(selEl.value) : null; } catch (e) { target = null; }
+    return { candidateId: c.id, include: !!target, target };
+  });
+  const states = [{ state: 'done', sub: 'Parsed.' }, { state: 'done', sub: 'Screen passed.' }, { state: 'done', sub: 'Mapping confirmed by the operator.' }, { state: 'active', sub: 'Running the audit checks…' }, { state: 'idle' }];
+  setPhases(states);
+  const { res, data } = await post({ action: 'confirm-run', runId: currentRun.id, mapping });
+  if (!res.ok) { $('run-findings').innerHTML = `<div class="finding err">${esc(data.message || 'Confirm failed.')}</div>`; return; }
+  currentAsset = data.asset;
+  loadedCountsJson = JSON.stringify(currentAsset.counts);
+  renderForm(currentAsset);
+  const v = data.validation;
+  states[3] = { state: v.errors.length ? 'blocked' : 'done', sub: v.errors.length ? `${v.errors.length} check(s) failed — each failure names the document value that caused it. The counts are saved as a draft; fix them in the form and save, or re-run.` : 'Every check passes.' };
+  states[4] = { state: v.errors.length ? 'idle' : 'done', sub: v.errors.length ? 'Outputs are produced only from a passing assessment.' : 'Outputs ready below — preview or download the specimen package.' };
+  setPhases(states);
+  showValidation(v, $('run-findings'));
+  loadAsset(currentAsset.codename);
+}
+function renderRunHistory(runs) {
+  const box = $('runhistory');
+  if (!runs || !runs.length) { box.innerHTML = ''; return; }
+  box.innerHTML = '<h4>Runs on this asset</h4>' + runs.map(r => `<div class="opp">
+    <div class="opp-top"><span class="opp-name">${esc(r.id)}</span><span class="verdict ${r.status === 'assessed' ? 'solid' : 'couldbe'}">${esc(r.status)}</span></div>
+    <div class="opp-meta">${esc((r.at || '').replace('T', ' ').slice(0, 16))} · files: ${r.files.map(f => esc(f.name) + (f.stored ? '' : ' (not retained)')).join(', ')} · ${r.candidates ? r.candidates.length : 0} candidate value(s)${r.validation ? ` · ${r.validation.errors.length} error(s), ${r.validation.warnings.length} warning(s)` : ''}</div>
+  </div>`).join('');
+}
+
+/* ---------- outputs ---------- */
+$('assess-btn').addEventListener('click', async () => {
+  const st = $('assess-status');
+  if (!currentAsset) { st.textContent = 'Open an asset first.'; st.className = 'statusline bad'; return; }
+  const { res, data } = await post({ action: 'assess', codename: currentAsset.codename });
+  if (!res.ok) {
+    st.textContent = data.message || 'Assessment blocked.';
+    st.className = 'statusline bad';
+    showValidation({ errors: data.errors || [], warnings: data.warnings || [] }, $('run-findings'));
+    return;
+  }
+  st.textContent = 'Assessment produced. The specimen package below is buyer-safe: codename only, real counts, synthetic specimens, no economics.';
+  st.className = 'statusline good';
+  const o = data.outputs;
+  $('outputs').innerHTML =
+    o.distributions.map(d => `<div class="ctable"><h4>Table ${d.num} — ${esc(d.title)}</h4>
+      <div class="defn">${esc(d.definition)}${d.denominatorLabel ? ` Denominator: ${esc(d.denominatorLabel)} = ${fmtN(d.denominator)}.` : ''}${d.overlap ? ' Categories overlap.' : ''}</div>
+      <table class="disttable"><thead><tr><th>Row</th>${d.measure.map(m => `<th>${esc(m.label)}</th><th>Per 100</th>`).join('')}</tr></thead>
+      <tbody>${d.rows.map(r => `<tr><td>${esc(r.label)}</td>${d.measure.map(m => `<td>${fmtN(r[m.key])}</td><td>${r.shares && r.shares[m.key] !== null && r.shares[m.key] !== undefined ? r.shares[m.key] : '—'}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`).join('') +
+    `<div class="ctable"><h4>Extraction plan — per system</h4>
+      ${o.extractionPlan.perSystem.map(s => `<p style="font-size:12.5px;margin-top:6px"><b>${esc(s.name)}</b> <span class="conf ${esc(s.confidence)}">${esc(s.confidence)}</span><br>
+      <span style="color:var(--dim)">${s.routes.map((r, i) => `${i + 1}. ${esc(r.label)}`).join(' · ') || 'Routes per the class pattern.'}</span></p>`).join('') || '<p class="hint">No systems selected — the plan is generic.</p>'}
+    </div>
+    <details class="mdbox"><summary style="font-size:12.5px;color:var(--gold);cursor:pointer">Full specimen package (Markdown)</summary><pre>${esc(data.markdown)}</pre></details>`;
+});
+async function downloadExport(format) {
+  const st = $('assess-status');
+  if (!currentAsset) { st.textContent = 'Open an asset first.'; st.className = 'statusline bad'; return; }
+  const res = await fetch(`${API}?export=${format}&codename=${encodeURIComponent(currentAsset.codename)}`);
+  if (!res.ok) {
+    const d = await res.json().catch(() => ({}));
+    st.textContent = d.message || 'Export blocked — the assessment must pass every check first.';
+    st.className = 'statusline bad';
+    if (d.errors) showValidation({ errors: d.errors, warnings: [] }, $('run-findings'));
+    return;
+  }
+  const blob = await res.blob();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `specimen-package-${currentAsset.codename}.${format === 'pdf' ? 'pdf' : 'md'}`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+$('dl-md').addEventListener('click', () => downloadExport('md'));
+$('dl-pdf').addEventListener('click', () => downloadExport('pdf'));
+
+/* ---------- catalog: add system ---------- */
+$('cs-add').addEventListener('click', async () => {
+  const st = $('cs-status');
+  const classes = $('cs-classes').value.split(',').map(s => s.trim()).filter(Boolean);
+  const routes = $('cs-routes').value.split(',');
+  const system = { name: $('cs-name').value, vendor: $('cs-vendor').value, track: $('cs-track').value, classes, routes };
+  const { res, data } = await post({ action: 'add-system', system });
+  if (!res.ok) { st.textContent = data.message || 'Could not add the system.'; st.className = 'statusline bad'; return; }
+  catalog = data.systems || catalog;
+  renderSystems(gatherAsset().systems.map(s => s.id));
+  st.textContent = `Added “${system.name}” to the catalog (PATTERN — operator-asserted, not verified).`;
+  st.className = 'statusline good';
+});
+
+/* ---------- compare ---------- */
+function readFileOrNull(input) {
+  const f = input.files && input.files[0];
+  return f ? fileToBase64(f).then(base64 => ({ name: f.name, base64 })) : Promise.resolve(null);
+}
+$('ext-form').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  const st = $('x-status');
+  if (!currentAsset) { st.textContent = 'Open an asset first.'; st.className = 'statusline bad'; return; }
+  const num = id => { const v = $(id).value; return v === '' ? null : Number(v); };
+  const external = {
+    source: $('x-source').value, date: $('x-date').value, docName: $('x-doc').value,
+    measures: {
+      subjects: num('x-subjects'), transactions: num('x-transactions'), documents: num('x-documents'),
+      cases: num('x-cases'), systems: num('x-systems'), employees: num('x-employees'),
+      yearsOfHistory: num('x-years'),
+      classesFound: $('x-classes').value.split(',').map(s => s.trim()).filter(Boolean)
+    },
+    valueConclusion: $('x-value').value
+  };
+  const file = await readFileOrNull($('x-file'));
+  const { res, data } = await post({ action: 'add-comparison', codename: currentAsset.codename, external, file });
+  if (!res.ok) { st.textContent = data.message || 'Could not save the external assessment.'; st.className = 'statusline bad'; return; }
+  comparisons = [data.comparison, ...comparisons];
+  st.textContent = `Saved ${data.comparison.source}'s assessment (entered ${data.comparison.enteredAt.replace('T', ' ').slice(0, 16)}).${data.comparison.fileNote ? ' ' + data.comparison.fileNote : ''}`;
+  st.className = 'statusline good';
+  renderComparisons();
+  showComparison(data.comparison.id, data.view);
+});
+function renderComparisons() {
+  const box = $('comparisons');
+  if (!currentAsset) { box.innerHTML = ''; return; }
+  if (!comparisons.length) { box.innerHTML = '<p class="hint">No external assessments recorded for this asset yet.</p>'; return; }
+  box.innerHTML = comparisons.map(c => `<div class="opp">
+    <div class="opp-top"><span class="opp-name">${esc(c.source)}</span>
+      <button class="opp-edit" data-cmp="${esc(c.id)}">Compare</button></div>
+    <div class="opp-meta">Their date: ${esc(c.date || '—')} · entered here: ${esc((c.enteredAt || '').replace('T', ' ').slice(0, 16))}${c.docName ? ` · from: ${esc(c.docName)}` : ''}${c.fileNote ? `<br>${esc(c.fileNote)}` : ''}</div>
+    ${c.valueConclusion ? `<div class="opp-notes">Their value conclusion (their figure): ${esc(c.valueConclusion)}</div>` : ''}
+  </div>`).join('');
+  box.querySelectorAll('[data-cmp]').forEach(b => b.addEventListener('click', () => showComparison(b.dataset.cmp)));
+}
+async function showComparison(id, precomputed) {
+  const view = precomputed || (await api(`${API}?compare=${encodeURIComponent(id)}&match=${$('th-match').value || 2}&close=${$('th-close').value || 10}`)).data.view;
+  if (!view) return;
+  const cmp = comparisons.find(c => c.id === id);
+  const noteFor = key => (cmp && cmp.divergenceNotes && cmp.divergenceNotes[key]) || '';
+  const rowHtml = r => `<tr><td>${esc(r.label)}</td><td>${fmtN(r.tool)}</td><td>${fmtN(r.external)}</td>
+    <td>${r.diff > 0 ? '+' : ''}${fmtN(r.diff)}</td><td>${r.pct === null ? '—' : r.pct + '%'}</td>
+    <td><span class="pill ${r.status}">${r.status}</span></td>
+    <td><textarea data-note="${r.key}" placeholder="What explains this divergence?">${esc(noteFor(r.key))}</textarea></td></tr>`;
+  $('compareview').innerHTML = `<div class="ctable">
+    <h4>Comparison — this tool vs ${esc(view.source || 'external')}</h4>
+    <div class="defn">${esc(view.blind.note)} Tool frozen: ${esc(view.blind.frozenAt || '—')} · External entered: ${esc(view.blind.externalEnteredAt || '—')}.</div>
+    <div class="defn">Thresholds — MATCH within <input id="th-match" type="number" min="0" max="100" value="${view.thresholds.matchPct}" style="width:56px;display:inline-block">% ·
+    CLOSE within <input id="th-close" type="number" min="0" max="100" value="${view.thresholds.closePct}" style="width:56px;display:inline-block">%
+    <button type="button" class="mini" id="th-apply">Recompute</button></div>
+    <div class="defn"><b>Accuracy summary:</b> ${view.summary.compared} measure(s) compared — ${view.summary.matched} matched, ${view.summary.close} close, ${view.summary.divergent} divergent. Largest divergences first in the table below.</div>
+    <table class="cmptable"><thead><tr><th>Measure</th><th>This tool</th><th>Theirs</th><th>Difference</th><th>Variance</th><th>Status</th><th>Divergence note</th></tr></thead>
+    <tbody>${[...view.largestFirst].map(rowHtml).join('')}
+    ${view.classesRow ? `<tr><td>Data classes found</td><td>${esc(view.classesRow.tool.join(', ') || '—')}</td><td>${esc(view.classesRow.external.join(', ') || '—')}</td><td colspan="2">Set overlap ${view.classesRow.overlapPct}%</td><td><span class="pill ${view.classesRow.status}">${view.classesRow.status}</span></td><td><textarea data-note="classesFound" placeholder="What explains this divergence?">${esc(noteFor('classesFound'))}</textarea></td></tr>` : ''}
+    </tbody></table>
+    ${view.valueConclusion ? `<p style="font-size:12.5px;margin-top:8px">Their value conclusion (their figure, recorded for comparison only — never exported): <b>${esc(view.valueConclusion)}</b></p>` : ''}
+    <button type="button" class="mini gold" id="notes-save" style="margin-top:8px">Save divergence notes</button>
+  </div>`;
+  $('th-apply').addEventListener('click', () => showComparison(id));
+  $('notes-save').addEventListener('click', async () => {
+    const notes = {};
+    document.querySelectorAll('[data-note]').forEach(t => { notes[t.dataset.note] = t.value; });
+    const { data } = await post({ action: 'update-comparison-notes', id, notes });
+    if (data.comparison) {
+      const i = comparisons.findIndex(c => c.id === id);
+      if (i >= 0) comparisons[i] = data.comparison;
+      $('assess-status').textContent = 'Divergence notes saved.';
+      $('assess-status').className = 'statusline good';
+    }
+  });
+}
+
+/* ---------- track picker / boot ---------- */
+document.querySelectorAll('#trackpick button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('#trackpick button').forEach(x => x.classList.toggle('on', x === b));
+  currentAsset = null;
+  renderForm(null);
+  $('frozenbar').innerHTML = '';
+  renderComparisons();
+}));
+(async () => {
+  setPhases([]);
+  const { data } = await api(`${API}?action=catalog`);
+  catalog = data.systems || [];
+  renderForm(null);
+  loadAssets();
+  if (data.notConfigured) $('save-status').textContent = 'Note: storage is not configured on this deployment — the builder runs, but saves will be refused honestly.';
+})();
+</script>
+</body>
+</html>
