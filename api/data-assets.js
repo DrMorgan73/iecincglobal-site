@@ -206,7 +206,11 @@ function sanitizeMapping(input) {
     let target = null;
     if (tgt && tgt.kind === "total") target = { kind: "total", key: str(tgt.key, 40) };
     else if (tgt && tgt.kind === "cell") target = { kind: "cell", table: str(tgt.table, 40), row: str(tgt.row, 80), column: str(tgt.column, 40) };
-    return { candidateId: str(m.candidateId, 20), include: m.include !== false, target };
+    /* overlap: the operator's mapping-time confirmation that the
+       target table's categories overlap (model §2.2) — carried
+       through so applyMapping can set the table's flag on the
+       upload path (kit defect D5). */
+    return { candidateId: str(m.candidateId, 20), include: m.include !== false, target, overlap: m.overlap === true };
   }).filter(Boolean);
 }
 

@@ -545,5 +545,186 @@ function buildXlsx() {
   neonMode = "ok";
 }
 
+/* --- Proposer rework: synthetic-kit defects D1–D5, regression ---
+   The kit cases (~/workspace/your_files/data-builder-test-kit-2026-11-11)
+   inlined: TEST-PRACTICE-01 (medical), TEST-OPERATOR-01 (non-medical),
+   and the broken practice whose PT row exceeds its total. */
+const KIT_MED = {
+  "test-practice-01-by-year.csv": "Year,Encounters,Patients,Notes\r\n2019,9800,4600,12100\r\n2022,11400,5300,14200\r\n2025,13100,5900,16300\r",
+  "test-practice-01-case-mix.csv": "Case type,Cases,Encounters\r\nWorkers' compensation,5760,46800\r\nPersonal injury,1440,10920\r\nCommercial,1728,14820\r\nOther,672,5460\r",
+  "test-practice-01-diagnosis-families.csv": "Diagnosis family,ICD-10-CM range,Patients\r\nLumbar disorders,\"M54.1x-M54.5x, M51.1x-M51.3x\",7050\r\nCervical disorders,\"M54.2, M50.x\",2625\r\nShoulder disorders,\"M75.x, M25.51x\",1575\r\nKnee and hip disorders,\"M17.x, M16.x, M25.55x-M25.56x\",1980\r\nNeuropathic pain,\"G60.x-G63.x, M79.2\",1830\r\nHeadache disorders,\"G43.x, G44.x\",990\r\nOther musculoskeletal,M-codes not above,1605\r",
+  "test-practice-01-history-depth.csv": "History depth,Patients\r\nUnder 6 months,2250\r\n6 months to under 2 years,3300\r\n2 years to under 5 years,3900\r\n5 years or more,5550\r",
+  "test-practice-01-note-language.csv": "Language,Notes\r\nEnglish (EN),57600\r\nSpanish (ES),36480\r\nOther languages,1920\r",
+  "test-practice-01-records-by-system.csv": "Source system,Documents\r\nAprima,58200\r\nDrChrono,24600\r\nRectangle Health,13200\r",
+  "test-practice-01-totals.csv": "Measure,Count\r\nDistinct patients,15000\r\nTotal encounters,78000\r\nTotal notes,96000\r\nDistinct cases,9600\r",
+  "test-practice-01-visits-per-case.csv": "Visits per case,Cases\r\n1 visit only,960\r\n2-5 visits,2880\r\n6-12 visits,2690\r\n13-24 visits,1730\r\n25 or more visits,1340\r"
+};
+const KIT_OPS = {
+  "test-operator-01-by-year.csv": "Year,Transactions,Customers,Records\r\n2021,61000,3100,39500\r\n2023,74500,3650,48200\r\n2025,88300,4050,57600\r",
+  "test-operator-01-history-depth.csv": "History depth,Customers\r\nUnder 6 months,1260\r\n6 months to under 2 years,2180\r\n2 years to under 5 years,2470\r\n5 years or more,2490\r",
+  "test-operator-01-per-customer-bands.csv": "Transactions per customer,Customers\r\n1 transaction only,1150\r\n2-5 transactions,1780\r\n6-12 transactions,1960\r\n13-24 transactions,1640\r\n25 or more transactions,1870\r",
+  "test-operator-01-records-by-system.csv": "Source system,Records\r\nWellSky,171500\r\nSalesforce,58300\r\nMicrosoft 365,38200\r",
+  "test-operator-01-segments.csv": "Segment,Definition,Customers\r\nMedicare home health clients,Certified home health episodes,5900\r\nMedicaid and waiver clients,State waiver programs,2300\r\nPrivate-duty and private-pay clients,Private pay personal care,1450\r\nRespite and companion clients,Companion and respite hours,680\r",
+  "test-operator-01-totals.csv": "Measure,Count\r\nDistinct customers,8400\r\nTotal transactions,412000\r\nTotal records,268000\r\nTotal locations,4\r",
+  "test-operator-01-transaction-mix.csv": "Transaction type,Transactions\r\nSale,12400\r\nService visit,356000\r\nBooking,28900\r\nInvoice,13700\r\nOther,1000\r"
+};
+const KIT_BRK = {
+  "test-practice-broken-by-year.csv": "Year,Encounters,Patients,Notes\r\n2023,2300,640,2900\r\n2024,2600,720,3100\r",
+  "test-practice-broken-case-mix.csv": "Case type,Cases,Encounters\r\nWorkers' compensation,186,3240\r\nPersonal injury,47,810\r\nCommercial,55,1030\r\nOther,22,320\r",
+  "test-practice-broken-diagnosis-families.csv": "Diagnosis family,ICD-10-CM range,Patients\r\nLumbar disorders,M54.1x-M54.5x,520\r\nPhysical therapy patients,PT cohort - all programs,1850\r\nCervical disorders,\"M54.2, M50.x\",210\r",
+  "test-practice-broken-history-depth.csv": "History depth,Patients\r\nUnder 6 months,240\r\n6 months to under 2 years,310\r\n2 years to under 5 years,350\r\n5 years or more,300\r",
+  "test-practice-broken-note-language.csv": "Language,Notes\r\nEnglish (EN),4140\r\nSpanish (ES),2480\r\nOther languages,280\r",
+  "test-practice-broken-totals.csv": "Measure,Count\r\nDistinct patients,1200\r\nTotal encounters,5400\r\nTotal notes,6900\r\nDistinct cases,310\r",
+  "test-practice-broken-visits-per-case.csv": "Visits per case,Cases\r\n1 visit only,62\r\n2-5 visits,109\r\n6-12 visits,74\r\n13-24 visits,41\r\n25 or more visits,24\r"
+};
+{
+  const P = core._internals.proposeMapping, A = core._internals.applyMapping;
+  const cand = (id, rowLabel, columnLabel, extra) => ({ id, label: `${rowLabel} — ${columnLabel}`, value: 100, rowLabel, columnLabel, file: "export.csv", tableName: "Table 1", ...(extra || {}) });
+  const targetOf = (track, c, systems) => P(track, [c], systems || [])[0].target;
+
+  /* D1: the canonical WC label and its variants reach the WC row */
+  for (const v of ["Workers' compensation", "Workers’ compensation", "Workers compensation", "Workers comp", "Work comp", "WC"]) {
+    const tg = targetOf("medical", cand("x", v, "Cases"));
+    check(`D1: "${v}" proposes the Workers' compensation row`, !!tg && tg.table === "caseTypeMix" && tg.row === "Workers' compensation" && tg.column === "cases", tg);
+  }
+  /* D3: all four canonical depth labels match their rows */
+  for (const [label, row] of [["Under 6 months", "Under 6 months"], ["6 months to under 2 years", "6 months to under 2 years"], ["2 years to under 5 years", "2 years to under 5 years"], ["5 years or more", "5 years or more"]]) {
+    const tg = targetOf("medical", cand("x", label, "Patients"));
+    check(`D3: depth label "${label}" proposes its history-depth row`, !!tg && tg.table === "historyDepth" && tg.row === row, tg);
+  }
+  /* D2: band classification is unit-aware — a years span is never a visits band */
+  {
+    const tg = targetOf("medical", cand("x", "2 years to under 5 years", "Cases"));
+    check("D2: a years span never lands in the visits bands", !!tg && tg.table === "historyDepth", tg);
+    const tv = targetOf("medical", cand("x", "2-5 visits", "Cases"));
+    check("D2: a visits band lands in the visits bands", !!tv && tv.table === "visitsPerCaseBands" && tv.row === "2–5 visits", tv);
+    const tt = targetOf("non-medical", cand("x", "2-5 transactions", "Customers"));
+    check("D2: a transactions band lands in the transactions bands", !!tt && tt.table === "transactionsPerCustomerBands" && tt.row === "2–5 transactions", tt);
+    const tx = targetOf("medical", cand("x", "2-5 transactions", "Cases"));
+    check("D2: a transactions label gets no visits proposal on the medical track", tx === null, tx);
+  }
+  /* D4: records-by-system rows get NO proposal on the medical track —
+     by source file name, and by system name when the source is opaque */
+  {
+    const byName = targetOf("medical", cand("x", "Aprima", "Documents", { file: "test-practice-01-records-by-system.csv" }), [{ name: "Aprima" }]);
+    check("D4: records-by-system row (named source) gets no proposal", byName === null, byName);
+    const opaque = targetOf("medical", cand("x", "Aprima", "Documents", { file: "book.xlsx", tableName: "sheet5" }), [{ name: "Aprima" }]);
+    check("D4: records-by-system row (opaque source) gets no proposal", opaque === null, opaque);
+    const strict = targetOf("medical", cand("x", "Aprima", "Documents", { file: "notes.csv" }), []);
+    check("D4: a foreign row never falls into the diagnosis table via the column fallback", strict === null, strict);
+    const other = targetOf("medical", cand("x", "Other musculoskeletal", "Patients"));
+    check("D4: 'Other musculoskeletal' is a diagnosis family, not a language/case 'Other'", !!other && other.table === "patientsByDiagnosisFamily", other);
+  }
+  /* Collision rule: canonical order, first wins — identical outcome
+     in either mapping order, and the loser is named in the notes */
+  {
+    const cands = [
+      { id: "c1", label: "Zeta — Count", value: 200 },
+      { id: "c2", label: "Alpha — Count", value: 100 }
+    ];
+    const m = id => ({ candidateId: id, include: true, target: { kind: "total", key: "totalPatients" } });
+    const fwd = A("medical", cands, [m("c1"), m("c2")]);
+    const rev = A("medical", cands, [m("c2"), m("c1")]);
+    check("collision rule is order-independent and keeps the canonical first entry",
+      fwd.counts.totals.totalPatients === 100 && rev.counts.totals.totalPatients === 100 && fwd.notes.length === 1 && rev.notes.length === 1,
+      { fwd: fwd.counts.totals, rev: rev.counts.totals, notes: fwd.notes });
+  }
+  /* D5 at the apply layer: the flag rides the mapping entry */
+  {
+    const cands = [{ id: "c1", label: "Lumbar disorders — Patients", value: 500, rowLabel: "Lumbar disorders", columnLabel: "Patients" }];
+    const cellT = { kind: "cell", table: "patientsByDiagnosisFamily", row: "Lumbar disorders", column: "patients" };
+    const withFlag = A("medical", cands, [{ candidateId: "c1", include: true, target: cellT, overlap: true }]);
+    const without = A("medical", cands, [{ candidateId: "c1", include: true, target: cellT }]);
+    check("D5: an overlap:true mapping entry sets the table's overlap flag",
+      withFlag.counts.tables.patientsByDiagnosisFamily.overlap === true && without.counts.tables.patientsByDiagnosisFamily.overlap === false);
+  }
+}
+/* D1–D5 end-to-end: TEST-PRACTICE-01 through the real API flow */
+{
+  await call("POST", { body: { action: "save-asset", asset: { codename: "KIT-MED-01", track: "medical",
+    variables: { specialtyMix: "Pain management; physical therapy", languages: "EN, ES (native)", historyDepthYears: 25, workforceFTE: 42, locationsCount: 1 },
+    systems: [{ id: "aprima" }, { id: "drchrono" }, { id: "rectangle-health" }], counts: core._internals.emptyCounts("medical") } } });
+  const files = Object.entries(KIT_MED).map(([name, text]) => ({ name, base64: b64(text) }));
+  const run = await call("POST", { body: { action: "start-run", codename: "KIT-MED-01", files } });
+  check("kit medical run starts", run.statusCode === 200 && run.payload.run.status === "awaiting-mapping", run.payload);
+  const props = run.payload.run.proposals, cands = run.payload.run.candidates;
+  const byId = Object.fromEntries(cands.map(c => [c.id, c]));
+  const tally = { high: 0, guess: 0, none: 0 };
+  for (const p of props) tally[p.target ? p.confidence : "none"]++;
+  check("kit proposals: 43 candidates at 24 high / 16 guess / 3 none (the README pattern)",
+    cands.length === 43 && tally.high === 24 && tally.guess === 16 && tally.none === 3, tally);
+  check("kit: every records-by-system candidate is unproposed",
+    props.filter(p => (byId[p.candidateId].file || "").includes("records-by-system")).every(p => p.target === null));
+  check("kit: the WC candidates land on the Workers' compensation row",
+    props.filter(p => byId[p.candidateId].rowLabel === "Workers' compensation")
+      .every(p => p.target && p.target.table === "caseTypeMix" && p.target.row === "Workers' compensation"));
+  const plain = await call("POST", { body: { action: "confirm-run", runId: run.payload.run.id, mapping: props.map(p => ({ candidateId: p.candidateId, include: !!p.target, target: p.target })) } });
+  check("kit Stage A: without the flag the ONLY error is the overlap artifact",
+    plain.payload.run.status === "validation-failed" && plain.payload.run.validation.errors.length === 1 && plain.payload.run.validation.errors[0].check === "overlap-off-mismatch",
+    plain.payload.run && plain.payload.run.validation);
+  const run2 = await call("POST", { body: { action: "start-run", codename: "KIT-MED-01", files } });
+  const props2 = run2.payload.run.proposals;
+  const confirm2 = await call("POST", { body: { action: "confirm-run", runId: run2.payload.run.id, mapping: props2.map(p => ({
+    candidateId: p.candidateId, include: !!p.target, target: p.target,
+    ...(p.target && p.target.kind === "cell" && p.target.table === "patientsByDiagnosisFamily" ? { overlap: true } : {})
+  })) } });
+  check("D5 end-to-end: overlap confirmed on the upload path validates clean",
+    confirm2.payload.run.status === "assessed" && confirm2.payload.run.validation.errors.length === 0, confirm2.payload.run && confirm2.payload.run.validation);
+  check("D5 end-to-end: the applied table carries the flag",
+    confirm2.payload.asset.counts.tables.patientsByDiagnosisFamily.overlap === true);
+  const x = await call("POST", { body: { action: "expert-assessment", codename: "KIT-MED-01" } });
+  const drv = Object.fromEntries((x.payload.expert ? x.payload.expert.drivers : []).map(d => [d.key, d.status]));
+  check("kit medical expert outcome: READY WITH GAPS with the README driver pattern",
+    x.payload.expert && x.payload.expert.readiness.verdict === "READY WITH GAPS" &&
+    drv.volume === "STRONG" && drv.history === "STRONG" && drv.longitudinalDepth === "STRONG" &&
+    drv.standardization === "MID" && drv.uniquenessScarcity === "STRONG" && drv.completenessQuality === "STRONG" &&
+    drv.deidentificationReadiness === "STRONG" && drv.terms === "INSUFFICIENT DATA", drv);
+}
+/* D1–D5 end-to-end: TEST-OPERATOR-01 (non-medical) through the API flow */
+{
+  const added = await call("POST", { body: { action: "add-system", system: { name: "Microsoft 365" } } });
+  const msId = added.payload.system && added.payload.system.id;
+  check("kit operator: the operator-added system registers", !!msId, added.payload);
+  await call("POST", { body: { action: "save-asset", asset: { codename: "KIT-OPS-01", track: "non-medical",
+    variables: { languages: "EN, ES", historyDepthYears: 20, workforceFTE: 66, locationsCount: 4 },
+    systems: [{ id: "wellsky" }, { id: "salesforce" }, { id: msId }], counts: core._internals.emptyCounts("non-medical") } } });
+  const files = Object.entries(KIT_OPS).map(([name, text]) => ({ name, base64: b64(text) }));
+  const run = await call("POST", { body: { action: "start-run", codename: "KIT-OPS-01", files } });
+  check("kit operator run starts", run.statusCode === 200 && run.payload.run.status === "awaiting-mapping", run.payload);
+  const props = run.payload.run.proposals, cands = run.payload.run.candidates;
+  const byId = Object.fromEntries(cands.map(c => [c.id, c]));
+  check("kit operator: records-by-system rows propose the records-by-system table at high confidence",
+    props.filter(p => (byId[p.candidateId].file || "").includes("records-by-system"))
+      .every(p => p.target && p.target.table === "recordsBySourceSystem" && p.confidence === "high") &&
+    props.some(p => p.target && p.target.table === "recordsBySourceSystem"));
+  const confirm = await call("POST", { body: { action: "confirm-run", runId: run.payload.run.id, mapping: props.map(p => ({
+    candidateId: p.candidateId, include: !!p.target, target: p.target,
+    ...(p.target && p.target.kind === "cell" && p.target.table === "customersBySegment" ? { overlap: true } : {})
+  })) } });
+  check("kit operator validates clean with overlap via upload",
+    confirm.payload.run.status === "assessed" && confirm.payload.run.validation.errors.length === 0, confirm.payload.run && confirm.payload.run.validation);
+  const x = await call("POST", { body: { action: "expert-assessment", codename: "KIT-OPS-01" } });
+  const drv = Object.fromEntries((x.payload.expert ? x.payload.expert.drivers : []).map(d => [d.key, d.status]));
+  check("kit operator expert outcome: READY WITH GAPS with the README driver pattern",
+    x.payload.expert && x.payload.expert.readiness.verdict === "READY WITH GAPS" &&
+    drv.volume === "MID" && drv.history === "STRONG" && drv.longitudinalDepth === "STRONG" &&
+    drv.standardization === "WEAK" && drv.uniquenessScarcity === "STRONG" && drv.completenessQuality === "STRONG" &&
+    drv.workforceScale === "STRONG" && drv.terms === "INSUFFICIENT DATA", drv);
+}
+/* Broken kit file: with the proposer fixed, the ONLY surviving error
+   is the file's own defect, naming its figure */
+{
+  const docs = Object.entries(KIT_BRK).map(([name, text]) => ({ name, parsed: core._internals.parseDocument({ name, base64: b64(text) }) }));
+  const cands = core._internals.extractCandidates(docs);
+  const props = core._internals.proposeMapping("medical", cands, [{ name: "Aprima" }, { name: "DrChrono" }, { name: "Rectangle Health" }]);
+  const applied = core._internals.applyMapping("medical", cands, props.map(p => ({
+    candidateId: p.candidateId, include: !!p.target, target: p.target,
+    ...(p.target && p.target.kind === "cell" && p.target.table === "patientsByDiagnosisFamily" ? { overlap: true } : {})
+  })));
+  const v = core._internals.validateAsset("medical", { historyDepthYears: 25, workforceFTE: 42 }, applied.counts, []);
+  check("broken kit: exactly one error survives — the PT row naming 1,850",
+    v.errors.length === 1 && v.errors[0].check === "row-exceeds-denominator" && /1,850/.test(v.errors[0].message), v.errors);
+}
+
 console.log(failures ? `\n${failures} FAILURE(S)` : "\nall checks passed");
 process.exit(failures ? 1 : 0);

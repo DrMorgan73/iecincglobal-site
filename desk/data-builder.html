@@ -690,6 +690,8 @@ function renderMappingReview() {
         <td><select data-map="${c.id}">${targetOptions(c)}</select></td>
         <td style="color:var(--dim)">${esc(p.reason || '')}</td></tr>`;
     }).join('')}</tbody></table>
+    ${m.tables.filter(td => td.kind === 'overlap').map(td => `
+    <label style="font-size:12.5px;display:flex;gap:8px;align-items:center;margin-top:10px"><input type="checkbox" data-run-overlap="${td.id}" style="width:auto"> The categories in “${esc(td.title)}” overlap — one subject can sit in several categories, so the counts may pass the denominator (model §2.2)</label>`).join('')}
     <button type="button" class="btn" id="confirm-map" style="margin-top:12px">Confirm mapping &amp; run validation</button>`;
   run.candidates.forEach(c => {
     const p = propById[c.id];
@@ -700,11 +702,14 @@ function renderMappingReview() {
 }
 async function confirmMapping() {
   if (!currentRun) return;
+  const overlapTables = new Set([...document.querySelectorAll('[data-run-overlap]')].filter(el => el.checked).map(el => el.getAttribute('data-run-overlap')));
   const mapping = currentRun.candidates.map(c => {
     const selEl = document.querySelector(`[data-map="${c.id}"]`);
     let target = null;
     try { target = selEl && selEl.value ? JSON.parse(selEl.value) : null; } catch (e) { target = null; }
-    return { candidateId: c.id, include: !!target, target };
+    const entry = { candidateId: c.id, include: !!target, target };
+    if (target && target.kind === 'cell' && overlapTables.has(target.table)) entry.overlap = true;
+    return entry;
   });
   const states = [{ state: 'done', sub: 'Parsed.' }, { state: 'done', sub: 'Screen passed.' }, { state: 'done', sub: 'Mapping confirmed by the operator.' }, { state: 'active', sub: 'Running the audit checks…' }, { state: 'idle' }];
   setPhases(states);

@@ -932,52 +932,115 @@ const TOTAL_RULES = [
   { re: /total locations|locations,?\s*(total|all)/i, key: "totalLocations" }
 ];
 
+/* Rule matching runs on a normalized label: curly apostrophes fold to
+   straight ones, apostrophes drop, case folds, whitespace collapses.
+   The canonical fixed-row label "Workers' compensation" therefore
+   reads identically to "Workers compensation", "Workers’ comp" and
+   "work comp" — the possessive apostrophe can never again defeat its
+   own rule (kit defect D1). */
+function normLabel(s) {
+  return String(s || "").replace(/[’‘]/g, "'").replace(/'/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+}
+
 const FIXED_ROW_RULES = {
   caseTypeMix: [
-    { re: /workers?\s*comp|\bwc\b/i, row: "Workers' compensation" },
-    { re: /personal\s*injury|\bpi\b/i, row: "Personal injury" },
-    { re: /commercial/i, row: "Commercial" },
-    { re: /other/i, row: "Other" }
+    { re: /workers?\s*comp|work\s*comp|\bwc\b/, row: "Workers' compensation" },
+    { re: /personal\s*injury|\bpi\b/, row: "Personal injury" },
+    { re: /commercial/, row: "Commercial" },
+    /* "Other" is domain-gated: the bare word, or "other" plus this
+       table's own vocabulary. "Other musculoskeletal" is a diagnosis
+       family, not a case type, and must never land here (kit D4). */
+    { otherRe: /^other(\s+(case|cases|type|types))?$/, row: "Other" }
   ],
   noteLanguageShare: [
-    { re: /english|\ben\b/i, row: "English (EN)" },
-    { re: /spanish|\bes\b|español/i, row: "Spanish (ES)" },
-    { re: /other/i, row: "Other languages" }
+    { re: /english|\ben\b/, row: "English (EN)" },
+    { re: /spanish|\bes\b|español/, row: "Spanish (ES)" },
+    { otherRe: /^other(\s+(language|languages|lang))?$/, row: "Other languages" }
   ],
   transactionTypeMix: [
-    { re: /sale/i, row: "Sale" },
-    { re: /service/i, row: "Service visit" },
-    { re: /booking|appointment/i, row: "Booking" },
-    { re: /invoice/i, row: "Invoice" },
-    { re: /other/i, row: "Other" }
+    { re: /sale/, row: "Sale" },
+    { re: /service/, row: "Service visit" },
+    { re: /booking|appointment/, row: "Booking" },
+    { re: /invoice/, row: "Invoice" },
+    { otherRe: /^other(\s+(transaction|transactions|type|types))?$/, row: "Other" }
   ]
 };
 
-function bandRow(label, tableId) {
-  const s = String(label || "");
-  if (tableId === "historyDepth") {
-    if (/under\s*6|<\s*6|0\s*(to|-|–)\s*6/i.test(s)) return "Under 6 months";
-    if (/6\s*months?\s*(to|-|–)?\s*(under\s*)?2|6\s*(to|-|–)\s*24/i.test(s)) return "6 months to under 2 years";
-    if (/2\s*(to|-|–)?\s*(under\s*)?5\s*years?|24\s*(to|-|–)\s*60/i.test(s)) return "2 years to under 5 years";
-    if (/5\s*(\+|or more|years?\s*\+)|≥\s*5|60\s*\+/i.test(s)) return "5 years or more";
-    return null;
+function fixedRowFor(tableId, rowLabel) {
+  const rules = FIXED_ROW_RULES[tableId];
+  if (!rules) return null;
+  const norm = normLabel(rowLabel);
+  if (!norm) return null;
+  for (const rule of rules) {
+    if (rule.otherRe ? rule.otherRe.test(norm) : rule.re.test(norm)) return rule.row;
   }
-  const nums = (s.match(/\d+/g) || []).map(Number);
-  if (/25\s*(\+|or more)|≥\s*25/i.test(s)) return tableId === "visitsPerCaseBands" ? "25 or more visits" : "25 or more transactions";
-  if (nums.length === 1 && nums[0] === 1) return tableId === "visitsPerCaseBands" ? "1 visit only" : "1 transaction only";
-  if (nums.includes(2) && nums.includes(5)) return tableId === "visitsPerCaseBands" ? "2–5 visits" : "2–5 transactions";
-  if (nums.includes(6) && nums.includes(12)) return tableId === "visitsPerCaseBands" ? "6–12 visits" : "6–12 transactions";
-  if (nums.includes(13) && nums.includes(24)) return tableId === "visitsPerCaseBands" ? "13–24 visits" : "13–24 transactions";
   return null;
 }
 
-function columnKeyFor(td, columnLabel) {
+/* Band classification is UNIT-AWARE (kit defects D2/D3). A label
+   carrying a time unit (years / months) can only be a history-depth
+   band; a label carrying the other count unit (transactions in a
+   visits table, visits in a transactions table) never matches; bare
+   numbers are the last resort and never cross units. All four
+   canonical depth labels of the model dictionary (BANDS_DEPTH) match
+   in their written forms and their month equivalents. */
+function bandRow(label, tableId) {
+  const norm = normLabel(label);
+  if (!norm) return null;
+  if (tableId === "historyDepth") {
+    if (/under\s*6\s*months?|<\s*6\s*months?|(^|\D)0\s*(to|-|–)\s*6\s*months?/.test(norm)) return "Under 6 months";
+    if (/6\s*months?\s*(to|-|–)\s*(under\s*)?2\s*years?|6\s*(to|-|–)\s*24\s*months?/.test(norm)) return "6 months to under 2 years";
+    if (/2\s*years?\s*(to|-|–)\s*(under\s*)?5\s*years?|24\s*(to|-|–)\s*60\s*months?/.test(norm)) return "2 years to under 5 years";
+    if (/5\s*years?\s*(or\s*more|\+)|(^|\D)5\s*\+|≥\s*5|60\s*\+\s*months?/.test(norm)) return "5 years or more";
+    return null;
+  }
+  const bands = tableId === "visitsPerCaseBands" ? BANDS_VISITS : BANDS_TXN;
+  if (/\byears?\b|\bmonths?\b/.test(norm)) return null;
+  if (tableId === "visitsPerCaseBands" && /\btransactions?\b/.test(norm)) return null;
+  if (tableId === "transactionsPerCustomerBands" && /\bvisits?\b|\bencounters?\b/.test(norm)) return null;
+  if (/25\s*(\+|or\s*more)|≥\s*25/.test(norm)) return bands[4];
+  const nums = (norm.match(/\d+/g) || []).map(Number);
+  if (nums.length === 1 && nums[0] === 1) return bands[0];
+  if (nums.includes(2) && nums.includes(5)) return bands[1];
+  if (nums.includes(6) && nums.includes(12)) return bands[2];
+  if (nums.includes(13) && nums.includes(24)) return bands[3];
+  return null;
+}
+
+function columnKeyFor(td, columnLabel, strict) {
   const s = String(columnLabel || "").toLowerCase();
   for (const m of td.measure) {
     const words = m.label.toLowerCase().split(/[^a-z]+/).filter(Boolean);
     if (words.some(w => s.includes(w))) return m.key;
   }
+  /* The single-measure fallback (any column will do) is what let
+     foreign rows pour into the dynamic category table (kit D4). In
+     strict mode the column must actually name the measure. */
+  if (strict) return null;
   return td.measure.length === 1 ? td.measure[0].key : null;
+}
+
+/* SOURCE-TABLE AWARENESS (kit defect D4, the root pattern). A
+   candidate's source — the CSV's file name, the text section's
+   heading, the sheet's name — says which distribution the row BELONGS
+   to. When the source is known, the proposer resolves the row inside
+   that table only; a row that fits nowhere in its own table gets NO
+   proposal, never a wrong one in another table. */
+function sourceKind(c) {
+  const s = normLabel(`${(c && c.file) || ""} ${(c && c.tableName) || ""}`);
+  if (!s) return null;
+  if (/diagnos/.test(s)) return "diagnosis";
+  if (/segment/.test(s)) return "segment";
+  if (/by[\s_-]*(source[\s_-]*)?system|source[\s_-]*system/.test(s)) return "recordsBySystem";
+  if (/case[\s_-]*(type|mix)/.test(s)) return "caseTypeMix";
+  if (/transaction[\s_-]*(type|mix)/.test(s)) return "transactionTypeMix";
+  if (/language/.test(s)) return "noteLanguage";
+  if (/history|depth/.test(s)) return "historyDepth";
+  if (/visits?[\s_-]*per|per[\s_-]*case/.test(s)) return "visitsBands";
+  if (/transactions?[\s_-]*per|per[\s_-]*customer/.test(s)) return "txnBands";
+  if (/by[\s_-]*year|per[\s_-]*year/.test(s)) return "recordsByYear";
+  if (/totals?/.test(s)) return "totals";
+  return null;
 }
 
 /* Propose a target for every candidate. A candidate may receive no
@@ -986,84 +1049,176 @@ function columnKeyFor(td, columnLabel) {
 export function proposeMapping(track, candidates, systems) {
   const t = trackDef(track);
   if (!t) return [];
-  const systemNames = (systems || []).map(s => String(s.name || "").toLowerCase());
+  const systemNames = (systems || []).map(s => normLabel(s && s.name ? s.name : s));
+  const totalKeys = new Set(t.totals.map(x => x.key));
+  const dynId = track === "medical" ? "patientsByDiagnosisFamily" : "customersBySegment";
   return (candidates || []).map(c => {
-    const hay = `${c.label} ${c.rowLabel || ""}`;
-    /* totals first — a "total" label wins over any table reading */
-    for (const rule of TOTAL_RULES) {
-      if (rule.key in Object.fromEntries(t.totals.map(x => [x.key, 1])) && rule.re.test(hay) && !/^\d{4}$/.test(String(c.rowLabel || ""))) {
-        return { candidateId: c.id, target: { kind: "total", key: rule.key }, confidence: "high", reason: `Label matches the ${rule.key} total.` };
-      }
-    }
-    /* records by year: the row label IS a year */
-    if (/^\d{4}$/.test(String(c.rowLabel || ""))) {
-      const td = tableDef(track, "recordsByYear");
-      const col = columnKeyFor(td, c.columnLabel);
-      if (col) return { candidateId: c.id, target: { kind: "cell", table: "recordsByYear", row: c.rowLabel, column: col }, confidence: "high", reason: "Row label is a year; column matched by its header." };
-    }
-    /* records by source system (non-medical): row label is a system */
-    if (track === "non-medical" && c.rowLabel && systemNames.includes(String(c.rowLabel).toLowerCase())) {
-      const td = tableDef(track, "recordsBySourceSystem");
-      const col = columnKeyFor(td, c.columnLabel);
-      if (col) return { candidateId: c.id, target: { kind: "cell", table: "recordsBySourceSystem", row: c.rowLabel, column: col }, confidence: "high", reason: "Row label matches a system selected for this asset." };
-    }
-    /* fixed-row tables */
-    for (const [tableId, rules] of Object.entries(FIXED_ROW_RULES)) {
-      const td = tableDef(track, tableId);
-      if (!td) continue;
-      for (const rule of rules) {
-        if (rule.re.test(String(c.rowLabel || ""))) {
-          const col = columnKeyFor(td, c.columnLabel);
-          if (col) return { candidateId: c.id, target: { kind: "cell", table: tableId, row: rule.row, column: col }, confidence: "high", reason: `Row label matches the "${rule.row}" row.` };
+    const kind = sourceKind(c);
+    const rowLabel = String(c.rowLabel || "");
+    const none = reason => ({ candidateId: c.id, target: null, confidence: "none", reason });
+    const cell = (table, row, column, confidence, reason) =>
+      ({ candidateId: c.id, target: { kind: "cell", table, row, column }, confidence, reason });
+
+    /* Totals first — but never from inside a source table that is a
+       category, band or fixed-row table: a "Distinct patients" column
+       header inside the diagnosis export must not claim every
+       category row as the asset total. */
+    if (!kind || kind === "totals" || kind === "recordsByYear") {
+      const hay = `${c.label} ${rowLabel}`;
+      for (const rule of TOTAL_RULES) {
+        if (totalKeys.has(rule.key) && rule.re.test(hay) && !/^\d{4}$/.test(rowLabel)) {
+          return { candidateId: c.id, target: { kind: "total", key: rule.key }, confidence: "high", reason: `Label matches the ${rule.key} total.` };
         }
       }
+      if (kind === "totals") return none("From the totals export but matches no asset total — map by hand or leave unmapped.");
     }
-    /* band tables */
-    for (const tableId of ["visitsPerCaseBands", "transactionsPerCustomerBands", "historyDepth"]) {
+
+    /* Records by year: the row label IS a year; that table's rows are
+       years by definition, so a non-year row from it goes nowhere. */
+    if (/^\d{4}$/.test(rowLabel)) {
+      const td = tableDef(track, "recordsByYear");
+      const col = td && columnKeyFor(td, c.columnLabel);
+      if (col) return cell("recordsByYear", rowLabel, col, "high", "Row label is a year; column matched by its header.");
+      return none("Year row whose column matches no records-by-year measure — map by hand or leave unmapped.");
+    }
+    if (kind === "recordsByYear") return none("From the by-year export but the row is not a year — map by hand or leave unmapped.");
+
+    /* Records by source system is a CLOSED world: the row belongs to
+       that table (non-medical track) or to no table at all. On the
+       medical track there is no records-by-system distribution, so
+       these figures stay unmapped by design — they must not corrupt
+       any count (kit D4). The same gate catches system rows whose
+       source table carried no usable name (e.g. a bare sheet name). */
+    const isSystemRow = !!rowLabel && systemNames.includes(normLabel(rowLabel));
+    if (kind === "recordsBySystem" || (kind === null && isSystemRow)) {
+      const td = tableDef(track, "recordsBySourceSystem");
+      if (td && isSystemRow) {
+        const col = columnKeyFor(td, c.columnLabel);
+        if (col) return cell("recordsBySourceSystem", rowLabel, col, "high", "Row label matches a system selected for this asset.");
+      }
+      return none("Records-by-system figure — no records-by-system table takes it on this track, or the row names no selected system. Left unmapped by design.");
+    }
+
+    /* Known source table: resolve inside that table ONLY. */
+    if (kind === "caseTypeMix" || kind === "noteLanguage" || kind === "transactionTypeMix") {
+      const tableId = kind === "noteLanguage" ? "noteLanguageShare" : kind;
+      const td = tableDef(track, tableId);
+      const row = td && fixedRowFor(tableId, rowLabel);
+      const col = row && columnKeyFor(td, c.columnLabel);
+      if (row && col) return cell(tableId, row, col, "high", `Row label matches the "${row}" row of its own source table.`);
+      return none(`From the ${tableId} export but matches no row of that table — map by hand or leave unmapped.`);
+    }
+    if (kind === "historyDepth" || kind === "visitsBands" || kind === "txnBands") {
+      const tableId = kind === "historyDepth" ? "historyDepth" : kind === "visitsBands" ? "visitsPerCaseBands" : "transactionsPerCustomerBands";
+      const td = tableDef(track, tableId);
+      const row = td && bandRow(rowLabel, tableId);
+      const col = row && columnKeyFor(td, c.columnLabel);
+      if (row && col) return cell(tableId, row, col, "guess", "Row label reads as a band of its own source table; confirm the band edges match.");
+      return none("From a band export but the label reads as no band of that table — map by hand or leave unmapped.");
+    }
+    if (kind === "diagnosis" || kind === "segment") {
+      const td = tableDef(track, dynId);
+      const col = td && c.columnLabel ? columnKeyFor(td, c.columnLabel, true) : null;
+      if (td && rowLabel && col) return cell(dynId, rowLabel, col, "guess", `Category row from its own source table — proposed for ${td.title}; confirm it belongs there.`);
+      return none("Category row whose column does not name the table's measure — map by hand or leave unmapped.");
+    }
+
+    /* Unknown source: the cascade, with the same guards — normalized,
+       domain-gated fixed rows; unit-aware bands; and a STRICT dynamic
+       table that takes a row only when its column names the measure
+       and the row matched nothing else. An unmatched row gets NO
+       proposal, never a wrong one. */
+    for (const tableId of Object.keys(FIXED_ROW_RULES)) {
       const td = tableDef(track, tableId);
       if (!td) continue;
-      const row = bandRow(c.rowLabel, tableId);
+      const row = fixedRowFor(tableId, rowLabel);
       if (row) {
         const col = columnKeyFor(td, c.columnLabel);
-        if (col) return { candidateId: c.id, target: { kind: "cell", table: tableId, row, column: col }, confidence: "guess", reason: "Row label reads as a band; confirm the band edges match." };
+        if (col) return cell(tableId, row, col, "high", `Row label matches the "${row}" row.`);
       }
     }
-    /* dynamic category tables (diagnosis families / segments) */
-    const dynId = track === "medical" ? "patientsByDiagnosisFamily" : "customersBySegment";
-    const dyn = tableDef(track, dynId);
-    if (dyn && c.rowLabel && c.columnLabel) {
-      const col = columnKeyFor(dyn, c.columnLabel);
-      if (col) return { candidateId: c.id, target: { kind: "cell", table: dynId, row: c.rowLabel, column: col }, confidence: "guess", reason: `Category row — proposed for ${dyn.title}; confirm it belongs there.` };
+    for (const tableId of ["historyDepth", "visitsPerCaseBands", "transactionsPerCustomerBands"]) {
+      const td = tableDef(track, tableId);
+      if (!td) continue;
+      const row = bandRow(rowLabel, tableId);
+      if (row) {
+        const col = columnKeyFor(td, c.columnLabel);
+        if (col) return cell(tableId, row, col, "guess", "Row label reads as a band; confirm the band edges match.");
+      }
     }
-    return { candidateId: c.id, target: null, confidence: "none", reason: "No confident match — map by hand or leave unmapped." };
+    const dyn = tableDef(track, dynId);
+    if (dyn && rowLabel && c.columnLabel) {
+      const col = columnKeyFor(dyn, c.columnLabel, true);
+      if (col) return cell(dynId, rowLabel, col, "guess", `Category row — proposed for ${dyn.title}; confirm it belongs there.`);
+    }
+    return none("No confident match — map by hand or leave unmapped.");
   });
 }
 
-/* Apply a confirmed mapping to a fresh counts object. */
+/* Apply a confirmed mapping to a fresh counts object.
+
+   COLLISION RULE — deterministic, never file-order-dependent: the
+   entries are applied in a canonical order derived only from their
+   content (target cell, then candidate label, then candidate value,
+   then candidate id), and the FIRST entry for a cell wins; a later
+   entry for the same cell is not applied and is named in the notes.
+   The same numbers uploaded in a different file order therefore
+   produce identical counts (kit defect D2's order-dependence).
+
+   OVERLAP (kit defect D5): a mapping entry may carry overlap: true —
+   the operator's confirmation, at mapping time, that the target
+   table's categories overlap (model §2.2). When such an entry lands
+   in an overlap-kind table, the applied table carries overlap: true,
+   so an uploaded overlapping table validates on the upload path. */
 export function applyMapping(track, candidates, mapping) {
   const counts = emptyCounts(track);
   const byId = new Map((candidates || []).map(c => [c.id, c]));
   const notes = [];
-  const seenCells = new Set();
-  let applied = 0;
+  const entries = [];
   for (const m of mapping || []) {
     if (!m || m.include === false || !m.target) continue;
     const c = byId.get(m.candidateId);
     if (!c) continue;
+    entries.push({ m, c });
+  }
+  const cellKeyOf = tgt => tgt.kind === "total" ? `total:${tgt.key}` : `cell:${tgt.table}|${tgt.row}|${tgt.column}`;
+  entries.sort((a, b) => {
+    const ka = cellKeyOf(a.m.target), kb = cellKeyOf(b.m.target);
+    if (ka !== kb) return ka < kb ? -1 : 1;
+    const la = String(a.c.label || ""), lb = String(b.c.label || "");
+    if (la !== lb) return la < lb ? -1 : 1;
+    if (a.c.value !== b.c.value) return a.c.value - b.c.value;
+    const ia = String(a.c.id), ib = String(b.c.id);
+    return ia < ib ? -1 : ia > ib ? 1 : 0;
+  });
+  const seenCells = new Map();
+  let applied = 0;
+  for (const { m, c } of entries) {
     const tgt = m.target;
-    const cellKey = tgt.kind === "total" ? `total:${tgt.key}` : `cell:${tgt.table}|${tgt.row}|${tgt.column}`;
-    if (seenCells.has(cellKey)) {
-      notes.push(`Two values were mapped to the same cell (${cellKey}); the later one ("${c.label}" = ${fmt(c.value)}) replaced the earlier.`);
-    }
-    seenCells.add(cellKey);
+    const cellKey = cellKeyOf(tgt);
     if (tgt.kind === "total") {
-      if (tgt.key in counts.totals) { counts.totals[tgt.key] = c.value; applied++; }
+      if (!(tgt.key in counts.totals)) continue;
+      if (seenCells.has(cellKey)) {
+        const kept = seenCells.get(cellKey);
+        notes.push(`Two values were mapped to the same cell (${cellKey}); under the deterministic collision rule the first in canonical order was kept ("${kept.label}" = ${fmt(kept.value)}) and this one was NOT applied ("${c.label}" = ${fmt(c.value)}). Correct the mapping and re-confirm if the kept value is wrong.`);
+        continue;
+      }
+      seenCells.set(cellKey, c);
+      counts.totals[tgt.key] = c.value;
+      applied++;
       continue;
     }
     const td = tableDef(track, tgt.table);
     if (!td || !td.measure.some(x => x.key === tgt.column)) continue;
+    if (seenCells.has(cellKey)) {
+      const kept = seenCells.get(cellKey);
+      notes.push(`Two values were mapped to the same cell (${cellKey}); under the deterministic collision rule the first in canonical order was kept ("${kept.label}" = ${fmt(kept.value)}) and this one was NOT applied ("${c.label}" = ${fmt(c.value)}). Correct the mapping and re-confirm if the kept value is wrong.`);
+      continue;
+    }
+    seenCells.set(cellKey, c);
     let tableCounts = counts.tables[tgt.table];
     if (!tableCounts) { tableCounts = counts.tables[tgt.table] = { overlap: false, rows: [] }; }
+    if (m.overlap === true && td.kind === "overlap") tableCounts.overlap = true;
     let row = tableCounts.rows.find(r => r.label === tgt.row);
     if (!row) {
       row = { label: tgt.row };
