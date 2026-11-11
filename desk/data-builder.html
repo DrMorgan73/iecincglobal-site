@@ -60,6 +60,11 @@
   .pill.CLOSE{color:#3a2703;background:linear-gradient(135deg,#fde68a,#fbbf24)}
   .pill.DIVERGENT{color:#3d0a0a;background:linear-gradient(135deg,#fca5a5,#f87171)}
   .pill.FROZEN{color:#0a0d14;background:var(--gold)}
+  .pill.STRONG{color:#06281c;background:linear-gradient(135deg,#6ee7b7,#34d399)}
+  .pill.MID{color:#3a2703;background:linear-gradient(135deg,#fde68a,#fbbf24)}
+  .pill.WEAK{color:#3d0a0a;background:linear-gradient(135deg,#fca5a5,#f87171)}
+  .pill.INSUFFICIENT{color:#e5e7eb;background:#4b5563}
+  .draftlabel{border:1px solid rgba(248,113,113,.55);background:rgba(248,113,113,.12);color:#fecaca;border-radius:10px;padding:9px 11px;font-weight:800;letter-spacing:.04em;text-align:center;margin:10px 0}
   .cmptable{width:100%;border-collapse:collapse;margin-top:10px}
   .cmptable th{font-size:11px;color:var(--dim);text-align:left;padding:5px 6px}
   .cmptable td{padding:6px;border-top:1px solid var(--line-soft);font-size:12.5px;vertical-align:top}
@@ -202,6 +207,47 @@
         </div>
 
         <div class="card pipeline-card" style="margin-top:16px">
+          <h3>Stage 2 — Expert assessment (internal only)</h3>
+          <p class="hint">The expert layer scores the stored counts and structure; it does not inspect records.
+          Every score shows the exact values behind it. Missing inputs produce <b>INSUFFICIENT DATA</b>, never a guessed score.
+          The de-identification pack is computed from aggregate distribution tables only.</p>
+          <div class="row2" style="margin-top:10px">
+            <label>Small-cell threshold (counts below this are flagged)
+              <input id="expert-threshold" type="number" min="2" max="100" step="1" value="11"></label>
+            <label>Expert workflow state
+              <input id="expert-state" readonly value="Open an asset to run Stage 2"></label>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+            <button type="button" class="mini gold" id="expert-run">Run expert assessment</button>
+            <button type="button" class="mini" id="expert-report-md">Internal report (MD)</button>
+            <button type="button" class="mini" id="expert-report-pdf">Internal report (PDF)</button>
+          </div>
+          <div class="statusline" id="expert-status"></div>
+          <div id="expert-results"></div>
+          <div id="expert-draft-box" style="margin-top:14px">
+            <div class="draftlabel">DRAFT — FOR EXPERT REVIEW AND SIGNATURE</div>
+            <p class="hint">Medical track only. The system prepares a draft and records who it is for; it never certifies.
+            No determination exists until the named qualified expert independently analyzes the actual dataset and signs.</p>
+            <form id="expert-draft-form" class="form-card" autocomplete="off">
+              <div class="row2">
+                <label>Named qualified expert<input id="expert-name" maxlength="120" placeholder="Full name" required></label>
+                <label>Credentials<input id="expert-credentials" maxlength="200" placeholder="Credentials / qualifications" required></label>
+              </div>
+              <div class="row2">
+                <label>Review date recorded<input id="expert-date" type="date" required></label>
+                <label>Draft status<input readonly value="DRAFT — FOR EXPERT REVIEW AND SIGNATURE"></label>
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+                <button type="submit" class="mini gold">Generate determination draft record</button>
+                <button type="button" class="mini" id="expert-det-md">Download draft (MD)</button>
+                <button type="button" class="mini" id="expert-det-pdf">Download draft (PDF)</button>
+              </div>
+              <div class="statusline" id="expert-draft-status"></div>
+            </form>
+          </div>
+        </div>
+
+        <div class="card pipeline-card" style="margin-top:16px">
           <h3>Compare — external assessment (internal only)</h3>
           <p class="hint">Record another party's assessment of this same asset (e.g. DataSupply's) and see the accuracy side by side.
           Freeze this tool's assessment <b>before</b> entering theirs — the comparison shows both timestamps, and an external entry that predates the freeze is flagged “not blind.”
@@ -330,7 +376,7 @@ const fmtN = n => (n === null || n === undefined || n === '') ? '—' : Number(n
 function renderVariables(values) {
   $('variables').innerHTML = meta().variables.map(v =>
     v.type === 'int'
-      ? `<label>${esc(v.label)}<input data-var="${v.key}" type="number" min="0" value="${values && values[v.key] ?? ''}" placeholder="${esc(v.placeholder || '')}"></label>`
+      ? `<label>${esc(v.label)}<input data-var="${v.key}" type="number" min="0" value="${(values && values[v.key]) ?? ''}" placeholder="${esc(v.placeholder || '')}"></label>`
       : `<label>${esc(v.label)}<input data-var="${v.key}" maxlength="200" value="${esc(values && values[v.key] || '')}" placeholder="${esc(v.placeholder || '')}"></label>`
   ).join('');
 }
@@ -351,7 +397,7 @@ function renderSystems(selectedIds) {
 }
 function renderTotals(totals) {
   $('totals').innerHTML = meta().totals.map(t =>
-    `<label>${esc(t.label)}<input data-total="${t.key}" type="number" min="0" value="${totals && totals[t.key] ?? ''}"></label>`).join('');
+    `<label>${esc(t.label)}<input data-total="${t.key}" type="number" min="0" value="${(totals && totals[t.key]) ?? ''}"></label>`).join('');
 }
 function tableRowsHtml(td, tc) {
   const rows = (tc && tc.rows && tc.rows.length) ? tc.rows
@@ -488,6 +534,7 @@ async function loadAsset(codename) {
   comparisons = data.comparisons || [];
   document.querySelectorAll('#trackpick button').forEach(b => b.classList.toggle('on', b.dataset.track === currentAsset.track));
   renderForm(currentAsset);
+  renderExpertPanel();
   renderRunHistory(data.runs || []);
   renderComparisons();
   $('outputs').innerHTML = ''; $('assess-status').textContent = '';
@@ -508,6 +555,7 @@ $('intake').addEventListener('submit', async ev => {
   currentAsset = data.asset;
   loadedCountsJson = JSON.stringify(currentAsset.counts);
   renderFrozen(currentAsset);
+  renderExpertPanel();
   const v = data.validation || { errors: [], warnings: [] };
   st.innerHTML = `Saved. ${v.errors.length ? `<span style="color:#f87171">${v.errors.length} validation error(s) — see below; outputs stay blocked until they pass.</span>` : '<span style="color:#34d399">All validation checks pass.</span>'} ${v.warnings.length ? v.warnings.length + ' warning(s).' : ''}`;
   st.className = 'statusline';
@@ -727,6 +775,102 @@ async function downloadExport(format) {
 $('dl-md').addEventListener('click', () => downloadExport('md'));
 $('dl-pdf').addEventListener('click', () => downloadExport('pdf'));
 
+/* ---------- Stage 2: expert assessment ---------- */
+let currentExpert = null;
+const expertThreshold = () => {
+  const n = Number($('expert-threshold').value);
+  return Number.isInteger(n) && n >= 2 && n <= 100 ? n : 11;
+};
+function renderExpertPanel() {
+  const state = $('expert-state');
+  const box = $('expert-draft-box');
+  if (!currentAsset) {
+    if (state) state.value = 'Open an asset to run Stage 2';
+    return;
+  }
+  const draft = currentAsset.expertDraft;
+  state.value = draft
+    ? `${draft.status} · recorded ${String(draft.generatedAt || '').replace('T', ' ').slice(0, 16)}`
+    : `${currentAsset.track === 'medical' ? 'Medical' : 'Non-medical'} asset open — no determination draft recorded`;
+  if (box) box.style.display = currentAsset.track === 'medical' ? '' : 'none';
+  if (draft) {
+    $('expert-name').value = draft.expertName || '';
+    $('expert-credentials').value = draft.credentials || '';
+    $('expert-date').value = draft.reviewDate || '';
+    if (draft.smallCellThreshold) $('expert-threshold').value = draft.smallCellThreshold;
+  }
+}
+function evidenceList(items) {
+  return `<ul style="margin:4px 0 0 16px;padding:0">${(items || []).map(x => `<li>${esc(x)}</li>`).join('')}</ul>`;
+}
+$('expert-run').addEventListener('click', async () => {
+  const st = $('expert-status');
+  if (!currentAsset) { st.textContent = 'Open an asset first.'; st.className = 'statusline bad'; return; }
+  const { res, data } = await post({ action: 'expert-assessment', codename: currentAsset.codename, smallCellThreshold: expertThreshold() });
+  if (!res.ok) { st.textContent = data.message || 'Expert assessment failed.'; st.className = 'statusline bad'; return; }
+  currentExpert = data.expert;
+  const x = currentExpert;
+  st.textContent = `Stage 2 complete — readiness: ${x.readiness.verdict}. Internal only; this is not a buyer document and not a certification.`;
+  st.className = 'statusline good';
+  $('expert-results').innerHTML = `
+    <div class="ctable"><h4>Readiness — ${esc(x.readiness.verdict)}</h4>
+      <div class="defn">${x.readiness.summary.scoredDrivers} of ${x.readiness.summary.totalDrivers} drivers scored · ${x.readiness.summary.strong} strong · ${x.readiness.summary.mid} mid · ${x.readiness.summary.weak} weak · ${x.readiness.summary.insufficientData} insufficient data.</div>
+      ${x.readiness.gaps.length ? `<b>Gap list</b>${evidenceList(x.readiness.gaps)}` : '<p class="hint">No gaps identified by the stored-evidence rules.</p>'}
+    </div>
+    <div class="ctable"><h4>Driver scores + evidence</h4>
+      <table><thead><tr><th>Driver</th><th>Score</th><th>Evidence</th></tr></thead><tbody>
+      ${x.drivers.map(d => `<tr><td><b>${esc(d.label)}</b><br><span style="color:var(--dim)">${esc(d.basis)}</span></td>
+        <td><span class="pill ${esc(d.status.split(' ')[0])}">${esc(d.status)}</span></td>
+        <td>${evidenceList(d.evidence)}${d.status === 'INSUFFICIENT DATA' ? `<p style="color:#fca5a5">Missing: ${esc(d.missing.join(', '))}</p>` : ''}</td></tr>`).join('')}
+      </tbody></table>
+    </div>
+    <div class="ctable"><h4>Data-quality findings</h4>
+      ${x.quality.findings.map(f => `<div class="finding ${f.severity === 'gap' ? 'err' : f.severity === 'watch' ? 'warn' : 'ok'}"><b>${esc(f.category)}:</b> ${esc(f.finding)}<br><span>${esc(f.evidence.join(' '))}</span></div>`).join('')}
+    </div>
+    <div class="ctable"><h4>${esc(x.riskPack.kind)}</h4>
+      <div class="defn">${esc(x.riskPack.framework)}. Threshold: below ${x.riskPack.smallCellThreshold}. Aggregate distributions only — no records are held or inspected.</div>
+      <p style="font-size:12.5px">Populated cells: ${fmtN(x.riskPack.summary.populatedCellCount)} · Small cells: <b>${fmtN(x.riskPack.summary.smallCellCount)}</b> · Rare-combination upper-bound flags: <b>${fmtN(x.riskPack.summary.rareCombinationCount)}</b> · Quasi-identifiers: ${fmtN(x.riskPack.summary.quasiIdentifierCount)}</p>
+      ${x.riskPack.smallCells.length ? `<b>Small cells (first 20)</b>${evidenceList(x.riskPack.smallCells.slice(0, 20).map(c => `${c.tableTitle} — ${c.row} — ${c.measureLabel}: ${fmtN(c.count)} (${c.severity})`))}` : '<p class="hint">No populated distribution cell is below the threshold.</p>'}
+      <b>Retained elements — expert questions</b>${evidenceList(x.riskPack.retainedElements.map(r => `${r.element}: ${r.riskQuestion}`))}
+      <b>Limitations</b>${evidenceList(x.limitations)}
+    </div>`;
+});
+async function downloadStage2(param, format, filename) {
+  const st = $('expert-status');
+  if (!currentAsset) { st.textContent = 'Open an asset first.'; st.className = 'statusline bad'; return; }
+  const extra = param === 'expertReport' ? `&smallCellThreshold=${expertThreshold()}` : '';
+  const res = await fetch(`${API}?${param}=${format}&codename=${encodeURIComponent(currentAsset.codename)}${extra}`);
+  if (!res.ok) {
+    const d = await res.json().catch(() => ({}));
+    st.textContent = d.message || 'Download blocked.';
+    st.className = 'statusline bad';
+    return;
+  }
+  const blob = await res.blob();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+$('expert-report-md').addEventListener('click', () => currentAsset && downloadStage2('expertReport', 'md', `expert-assessment-${currentAsset.codename}.md`));
+$('expert-report-pdf').addEventListener('click', () => currentAsset && downloadStage2('expertReport', 'pdf', `expert-assessment-${currentAsset.codename}.pdf`));
+$('expert-det-md').addEventListener('click', () => currentAsset && downloadStage2('expertDetermination', 'md', `expert-determination-DRAFT-${currentAsset.codename}.md`));
+$('expert-det-pdf').addEventListener('click', () => currentAsset && downloadStage2('expertDetermination', 'pdf', `expert-determination-DRAFT-${currentAsset.codename}.pdf`));
+$('expert-draft-form').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  const st = $('expert-draft-status');
+  if (!currentAsset) { st.textContent = 'Open a medical asset first.'; st.className = 'statusline bad'; return; }
+  const expert = { expertName: $('expert-name').value, credentials: $('expert-credentials').value, reviewDate: $('expert-date').value, smallCellThreshold: expertThreshold() };
+  const { res, data } = await post({ action: 'generate-expert-determination', codename: currentAsset.codename, expert });
+  if (!res.ok) { st.textContent = data.message || 'Draft generation failed.'; st.className = 'statusline bad'; return; }
+  currentAsset = data.asset;
+  currentExpert = data.expert;
+  renderExpertPanel();
+  st.textContent = 'DRAFT — FOR EXPERT REVIEW AND SIGNATURE. The draft record is saved. This is NOT certified and the system has made no determination.';
+  st.className = 'statusline good';
+});
+
 /* ---------- catalog: add system ---------- */
 $('cs-add').addEventListener('click', async () => {
   const st = $('cs-status');
@@ -824,6 +968,7 @@ document.querySelectorAll('#trackpick button').forEach(b => b.addEventListener('
   document.querySelectorAll('#trackpick button').forEach(x => x.classList.toggle('on', x === b));
   currentAsset = null;
   renderForm(null);
+  renderExpertPanel();
   $('frozenbar').innerHTML = '';
   renderComparisons();
 }));
@@ -832,6 +977,7 @@ document.querySelectorAll('#trackpick button').forEach(b => b.addEventListener('
   const { data } = await api(`${API}?action=catalog`);
   catalog = data.systems || [];
   renderForm(null);
+  renderExpertPanel();
   loadAssets();
   if (data.notConfigured) $('save-status').textContent = 'Note: storage is not configured on this deployment — the builder runs, but saves will be refused honestly.';
 })();

@@ -34,7 +34,9 @@ import {
 import { SEED_CATALOG, sanitizeCustomSystem } from "./_data-assets-catalog.js";
 import {
   trackDef, validateAsset, emptyCounts, parseDocument, phiScreen, PHI_BLOCK_MESSAGE,
-  extractCandidates, proposeMapping, applyMapping, assessAsset, compareAssessments
+  extractCandidates, proposeMapping, applyMapping, assessAsset, compareAssessments,
+  analyzeExpertAssessment, buildExpertReportDocument, buildExpertDeterminationDocument,
+  renderMarkdown
 } from "./_data-assets-core.js";
 import { blocksToPdf } from "./_data-assets-pdf.js";
 
@@ -146,9 +148,33 @@ function sanitizeAsset(input, catalogById, existing) {
     manualEdits: Array.isArray(input.manualEdits) ? input.manualEdits.map(s => str(s, 120)).slice(0, 200) : (existing ? existing.manualEdits || [] : []),
     countsSource: str(input.countsSource, 20) || (existing ? existing.countsSource : "manual"),
     lastRunId: str(input.lastRunId, 60) || (existing ? existing.lastRunId : null),
+    expertDraft: existing && existing.track === track ? existing.expertDraft || null : null,
     frozen: existing ? existing.frozen || null : null,
     createdAt: existing ? existing.createdAt : now,
     updatedAt: now
+  };
+}
+
+function sanitizeThreshold(v) {
+  const n = Number(v);
+  return Number.isInteger(n) && n >= 2 && n <= 100 ? n : 11;
+}
+
+function sanitizeExpertDraft(input) {
+  if (!input || typeof input !== "object") return null;
+  const expertName = str(input.expertName, 120);
+  const credentials = str(input.credentials, 200);
+  const reviewDate = str(input.reviewDate || input.date, 10);
+  if (!expertName || !credentials || !/^\d{4}-\d{2}-\d{2}$/.test(reviewDate)) return null;
+  const parsed = new Date(`${reviewDate}T00:00:00Z`);
+  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== reviewDate) return null;
+  return {
+    status: "DRAFT — FOR EXPERT REVIEW AND SIGNATURE",
+    expertName,
+    credentials,
+    reviewDate,
+    generatedAt: new Date().toISOString(),
+    smallCellThreshold: sanitizeThreshold(input.smallCellThreshold)
   };
 }
 
@@ -204,7 +230,8 @@ const summaryOf = a => ({
   totals: a.counts ? a.counts.totals : {},
   systemsCount: (a.systems || []).length,
   validationErrors: a.lastValidation ? a.lastValidation.errors.length : null,
-  countsSource: a.countsSource || "manual"
+  countsSource: a.countsSource || "manual",
+  expertDraft: a.expertDraft ? { status: a.expertDraft.status, generatedAt: a.expertDraft.generatedAt } : null
 });
 
 /* ------------------------------------------------------------------ */
@@ -221,6 +248,38 @@ export default async function handler(req, res) {
     if (req.method === "GET") {
       if (q.action === "catalog") {
         return res.status(200).json({ systems: list, seedCount: SEED_CATALOG.length });
+      }
+      if (q.expertReport) {
+        const asset = assetsDbConfigured() ? await readAsset(str(q.codename, 40)) : null;
+        if (!asset) return res.status(404).json({ error: "asset_not_found" });
+        const expert = analyzeExpertAssessment(asset, byId, { smallCellThreshold: sanitizeThreshold(q.smallCellThreshold) });
+        const document = buildExpertReportDocument(asset, expert);
+        if (q.expertReport === "pdf") {
+          const pdf = blocksToPdf(document, `Expert Assessment Report — INTERNAL ONLY — ${asset.codename}`, { watermark: "INTERNAL ONLY" });
+          res.setHeader("Content-Type", "application/pdf");
+          res.setHeader("Content-Disposition", `attachment; filename="expert-assessment-${asset.codename}.pdf"`);
+          return res.status(200).send(pdf);
+        }
+        res.setHeader("Content-Type", "text/markdown; charset=utf-8");
+        res.setHeader("Content-Disposition", `attachment; filename="expert-assessment-${asset.codename}.md"`);
+        return res.status(200).send(renderMarkdown(document));
+      }
+      if (q.expertDetermination) {
+        const asset = assetsDbConfigured() ? await readAsset(str(q.codename, 40)) : null;
+        if (!asset) return res.status(404).json({ error: "asset_not_found" });
+        if (asset.track !== "medical") return res.status(422).json({ error: "medical_only", message: "Expert determination drafts are available only on the medical track." });
+        if (!asset.expertDraft) return res.status(422).json({ error: "expert_not_recorded", message: "Record the named qualified expert, credentials and review date before generating the draft." });
+        const expert = analyzeExpertAssessment(asset, byId, { smallCellThreshold: asset.expertDraft.smallCellThreshold });
+        const document = buildExpertDeterminationDocument(asset, expert, asset.expertDraft);
+        if (q.expertDetermination === "pdf") {
+          const pdf = blocksToPdf(document, `DRAFT — FOR EXPERT REVIEW AND SIGNATURE — ${asset.codename}`, { watermark: "DRAFT" });
+          res.setHeader("Content-Type", "application/pdf");
+          res.setHeader("Content-Disposition", `attachment; filename="expert-determination-DRAFT-${asset.codename}.pdf"`);
+          return res.status(200).send(pdf);
+        }
+        res.setHeader("Content-Type", "text/markdown; charset=utf-8");
+        res.setHeader("Content-Disposition", `attachment; filename="expert-determination-DRAFT-${asset.codename}.md"`);
+        return res.status(200).send(renderMarkdown(document));
       }
       if (q.export) {
         const asset = assetsDbConfigured() ? await readAsset(str(q.codename, 40)) : null;
@@ -410,6 +469,31 @@ export default async function handler(req, res) {
       return res.status(200).json({ run, asset, validation });
     }
 
+    /* --------------------- Stage 2: expert assessment --------------------- */
+    if (action === "expert-assessment") {
+      const codename = sanitizeCodename(body.codename);
+      const asset = codename ? await readAsset(codename) : null;
+      if (!asset) return res.status(404).json({ error: "asset_not_found" });
+      const expert = analyzeExpertAssessment(asset, byId, { smallCellThreshold: sanitizeThreshold(body.smallCellThreshold) });
+      return res.status(200).json({ expert });
+    }
+
+    if (action === "generate-expert-determination") {
+      const codename = sanitizeCodename(body.codename);
+      const asset = codename ? await readAsset(codename) : null;
+      if (!asset) return res.status(404).json({ error: "asset_not_found" });
+      if (asset.track !== "medical") return res.status(422).json({ error: "medical_only", message: "Expert determination drafts are available only on the medical track." });
+      if (asset.frozen) return res.status(409).json({ error: "frozen", message: "This asset's assessment is frozen; a determination draft record cannot be added to it." });
+      const draft = sanitizeExpertDraft(body.expert || body);
+      if (!draft) return res.status(400).json({ error: "expert_required", message: "A named qualified expert, credentials and a valid review date are required. The system cannot generate a determination draft without them." });
+      const expert = analyzeExpertAssessment(asset, byId, { smallCellThreshold: draft.smallCellThreshold });
+      const document = buildExpertDeterminationDocument(asset, expert, draft);
+      asset.expertDraft = draft;
+      asset.updatedAt = new Date().toISOString();
+      await writeAsset(asset);
+      return res.status(200).json({ asset, expert, draft, determinationMarkdown: renderMarkdown(document) });
+    }
+
     /* --------------------- assess (outputs) --------------------- */
     if (action === "assess") {
       const codename = sanitizeCodename(body.codename);
@@ -494,4 +578,4 @@ export default async function handler(req, res) {
   }
 }
 
-export const _internals = { sanitizeAsset, sanitizeExternal, sanitizeCodename, validSession };
+export const _internals = { sanitizeAsset, sanitizeExternal, sanitizeCodename, validSession, sanitizeExpertDraft, sanitizeThreshold };

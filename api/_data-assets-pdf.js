@@ -48,13 +48,22 @@ function wrapRuns(runList, maxChars) {
   return lines.length ? lines : [[]];
 }
 
-export function blocksToPdf(blocks, title) {
+export function blocksToPdf(blocks, title, options = {}) {
   const pages = [];
   let ops = [];
   let y = PAGE.h - PAGE.margin;
 
+  const watermarkOp = () => {
+    const text = String(options.watermark || "").trim();
+    if (!text) return "";
+    /* A pale diagonal label rendered before the page content. The
+       document body also carries the full status label in text, so
+       the watermark is a visual reinforcement—not the only notice. */
+    return `0.93 0.94 0.96 rg BT /F2 24 Tf 0.7071 0.7071 -0.7071 0.7071 105 285 Tm (${escapePdfText(text)}) Tj ET`;
+  };
   const newPage = () => {
-    pages.push(ops.join("\n"));
+    const wm = watermarkOp();
+    pages.push((wm ? `${wm}\n` : "") + ops.join("\n"));
     ops = [];
     y = PAGE.h - PAGE.margin;
   };
@@ -130,7 +139,10 @@ export function blocksToPdf(blocks, title) {
     else if (b.t === "list") for (const item of b.items) para(`• ${item}`, 9.5, "0.16 0.18 0.24", 10);
     else if (b.t === "table") table(b.head, b.rows);
   }
-  pages.push(ops.join("\n"));
+  {
+    const wm = watermarkOp();
+    pages.push((wm ? `${wm}\n` : "") + ops.join("\n"));
+  }
 
   /* assemble the PDF object graph */
   const objects = [];

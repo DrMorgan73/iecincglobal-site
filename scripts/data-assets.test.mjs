@@ -338,6 +338,104 @@ function buildXlsx() {
     scanned.warnings.some(w => /No extractable text layer/.test(w)));
 }
 
+/* --- Stage 2: expert assessment layer --- */
+{
+  const catalogById = new Map(catalogMod.SEED_CATALOG.map(s => [s.id, s]));
+  const x = await call("POST", { body: { action: "expert-assessment", codename: "ASSET-NORTH-01", smallCellThreshold: 11 } });
+  check("Stage 2 expert assessment returns for a passing medical asset", x.statusCode === 200 && x.payload.expert && x.payload.expert.drivers.length === 8, x.payload);
+  const byKey = Object.fromEntries(x.payload.expert.drivers.map(d => [d.key, d]));
+  check("Stage 2: every driver carries evidence, including INSUFFICIENT DATA drivers",
+    x.payload.expert.drivers.every(d => Array.isArray(d.evidence) && d.evidence.length > 0), x.payload.expert.drivers);
+  check("Stage 2: volume evidence cites the exact stored totals",
+    byKey.volume.status === "MID" && byKey.volume.evidence.join(" ").includes("4,000") && byKey.volume.evidence.join(" ").includes("18,400"), byKey.volume);
+  check("Stage 2: longitudinal evidence computes the stored 2+ year share",
+    byKey.longitudinalDepth.status === "STRONG" && byKey.longitudinalDepth.evidence.join(" ").includes("60%"), byKey.longitudinalDepth);
+  check("Stage 2: uniqueness evidence uses the native non-English share",
+    byKey.uniquenessScarcity.status === "STRONG" && byKey.uniquenessScarcity.evidence.join(" ").includes("41%"), byKey.uniquenessScarcity);
+  check("Stage 2: terms are INSUFFICIENT DATA because Stage 1 stores no owner-terms fields",
+    byKey.terms.status === "INSUFFICIENT DATA" && byKey.terms.missing.includes("Buyer categories allowed / banned") && byKey.terms.evidence.length > 0, byKey.terms);
+  check("Stage 2: readiness is a verdict with a gap list",
+    ["READY", "READY WITH GAPS", "NOT READY"].includes(x.payload.expert.readiness.verdict) && Array.isArray(x.payload.expert.readiness.gaps));
+  check("Stage 2: quality analysis includes a per-system standardization read",
+    x.payload.expert.quality.findings.some(f => f.category === "Standardization" && /Aprima/.test(f.finding) && /no source coded-field percentage is claimed/i.test(f.evidence.join(" "))), x.payload.expert.quality.findings);
+
+  const emptyExpert = core._internals.analyzeExpertAssessment({
+    codename: "ASSET-EMPTY-EXPERT", track: "medical", variables: {}, systems: [],
+    counts: core._internals.emptyCounts("medical")
+  }, catalogById);
+  check("Stage 2: missing inputs score INSUFFICIENT DATA, never a guessed number",
+    ["volume", "history", "longitudinalDepth", "standardization", "completenessQuality", "deidentificationReadiness"].every(k =>
+      emptyExpert.drivers.find(d => d.key === k).status === "INSUFFICIENT DATA" &&
+      emptyExpert.drivers.find(d => d.key === k).score === null &&
+      emptyExpert.drivers.find(d => d.key === k).evidence.length > 0), emptyExpert.drivers);
+
+  const smallBody = JSON.parse(JSON.stringify(assetBody));
+  smallBody.codename = "ASSET-SMALL-01";
+  smallBody.counts.tables.noteLanguageShare.rows = [
+    { label: "English (EN)", notes: 14635 },
+    { label: "Spanish (ES)", notes: 9360 },
+    { label: "Other languages", notes: 5 }
+  ];
+  smallBody.counts.tables.patientsByDiagnosisFamily.rows.find(r => r.label === "Headache disorders").patients = 7;
+  smallBody.counts.tables.patientsByDiagnosisFamily.rows.find(r => r.label === "Other musculoskeletal").patients = 673;
+  const savedSmall = await call("POST", { body: { action: "save-asset", asset: smallBody } });
+  check("Stage 2 small-cell fixture saves clean", savedSmall.statusCode === 200 && savedSmall.payload.validation.errors.length === 0, savedSmall.payload);
+  const small = await call("POST", { body: { action: "expert-assessment", codename: "ASSET-SMALL-01", smallCellThreshold: 11 } });
+  check("Stage 2: cells below 11 are flagged with table, row, measure and count",
+    small.payload.expert.riskPack.smallCells.some(c => c.table === "noteLanguageShare" && c.row === "Other languages" && c.count === 5) &&
+    small.payload.expert.riskPack.smallCells.some(c => c.table === "patientsByDiagnosisFamily" && c.row === "Headache disorders" && c.count === 7), small.payload.expert.riskPack.smallCells);
+  check("Stage 2: rare combinations are marginal upper-bound flags, not invented cross-tabs",
+    small.payload.expert.riskPack.rareCombinations.length > 0 &&
+    small.payload.expert.riskPack.rareCombinations.every(c => c.upperBound < 11 && /Marginal upper bound only/.test(c.basis)), small.payload.expert.riskPack.rareCombinations.slice(0, 2));
+  const smallAt5 = await call("POST", { body: { action: "expert-assessment", codename: "ASSET-SMALL-01", smallCellThreshold: 5 } });
+  check("Stage 2: the small-cell threshold is adjustable",
+    !smallAt5.payload.expert.riskPack.smallCells.some(c => c.count === 5 || c.count === 7) && smallAt5.payload.expert.riskPack.smallCellThreshold === 5);
+
+  const report = await call("GET", { query: { expertReport: "md", codename: "ASSET-NORTH-01" } });
+  check("Stage 2 internal report downloads as MD with scores, verdict and evidence",
+    report.statusCode === 200 && String(report.payload).includes("Expert Assessment Report — INTERNAL ONLY") &&
+    String(report.payload).includes("Driver scores") && String(report.payload).includes("Readiness verdict"), report.payload && String(report.payload).slice(0, 200));
+  const reportPdf = await call("GET", { query: { expertReport: "pdf", codename: "ASSET-NORTH-01" } });
+  check("Stage 2 internal report PDF is real and watermarked INTERNAL ONLY",
+    reportPdf.statusCode === 200 && Buffer.isBuffer(reportPdf.payload) && reportPdf.payload.toString("latin1", 0, 5) === "%PDF-" &&
+    reportPdf.payload.toString("latin1").includes("(INTERNAL ONLY)"));
+
+  const noExpert = await call("POST", { body: { action: "generate-expert-determination", codename: "ASSET-NORTH-01", expert: { expertName: "", credentials: "", reviewDate: "" } } });
+  check("determination draft refuses to generate without expert name, credentials and date",
+    noExpert.statusCode === 400 && noExpert.payload.error === "expert_required", noExpert.payload);
+  const gen = await call("POST", { body: { action: "generate-expert-determination", codename: "ASSET-NORTH-01",
+    expert: { expertName: "Dr. Test Expert", credentials: "PhD, Biostatistics", reviewDate: "2026-11-11", smallCellThreshold: 11 } } });
+  check("determination draft records the named expert, credentials and date — as a DRAFT",
+    gen.statusCode === 200 && gen.payload.draft.status === "DRAFT — FOR EXPERT REVIEW AND SIGNATURE" &&
+    gen.payload.draft.expertName === "Dr. Test Expert" && gen.payload.draft.credentials === "PhD, Biostatistics" && gen.payload.draft.reviewDate === "2026-11-11", gen.payload);
+  check("determination draft is labeled in the document and never states certification",
+    (gen.payload.determinationMarkdown.match(/DRAFT — FOR EXPERT REVIEW AND SIGNATURE/g) || []).length >= 3 &&
+    gen.payload.determinationMarkdown.includes("NOT CERTIFIED") &&
+    gen.payload.determinationMarkdown.includes("The system has not made the determination"), gen.payload.determinationMarkdown.slice(0, 500));
+  const detPdf = await call("GET", { query: { expertDetermination: "pdf", codename: "ASSET-NORTH-01" } });
+  check("determination draft PDF is real and watermarked DRAFT",
+    detPdf.statusCode === 200 && Buffer.isBuffer(detPdf.payload) && detPdf.payload.toString("latin1", 0, 5) === "%PDF-" &&
+    detPdf.payload.toString("latin1").includes("(DRAFT)"));
+  const reopened = await call("GET", { query: { codename: "ASSET-NORTH-01" } });
+  check("the expert draft record persists on the asset without any certified status",
+    reopened.payload.asset.expertDraft && reopened.payload.asset.expertDraft.status === "DRAFT — FOR EXPERT REVIEW AND SIGNATURE" &&
+    !/certified/i.test(reopened.payload.asset.expertDraft.status), reopened.payload.asset.expertDraft);
+
+  const pkg = await call("GET", { query: { export: "md", codename: "ASSET-NORTH-01" } });
+  check("buyer-safe export excludes ALL Stage 2 content after the expert layer is completed",
+    pkg.statusCode === 200 && !String(pkg.payload).includes("Driver scores") && !String(pkg.payload).includes("READY WITH GAPS") &&
+    !String(pkg.payload).includes("Dr. Test Expert") && !String(pkg.payload).includes("Expert Determination Draft") &&
+    !String(pkg.payload).includes("Expert Assessment Report — INTERNAL ONLY"), String(pkg.payload).slice(0, 200));
+
+  const { readFile } = await import("node:fs/promises");
+  const ui = await readFile(new URL("../desk/data-builder.html", import.meta.url), "utf8");
+  check("Desk UI carries the Stage 2 panel, the adjustable threshold and the DRAFT label",
+    ui.includes("Stage 2 — Expert assessment (internal only)") && ui.includes('id="expert-threshold"') &&
+    ui.includes("DRAFT — FOR EXPERT REVIEW AND SIGNATURE") && ui.includes("expert-assessment"));
+  check("Desk UI has no workflow to mark a determination certified",
+    !ui.includes('id="expert-certify"') && !/>Certify</.test(ui) && !ui.includes("mark-certified"));
+}
+
 /* --- freeze + compare: blind discipline, accuracy summary --- */
 {
   const fr = await call("POST", { body: { action: "freeze-asset", codename: "ASSET-NORTH-01" } });
@@ -411,6 +509,20 @@ function buildXlsx() {
   wrongSys.tables.recordsBySourceSystem.rows[0].label = "Toast";
   const v2 = core._internals.validateAsset("non-medical", {}, wrongSys, systems);
   check("a records-by-system row naming a foreign system fails", v2.errors.some(e => e.check === "system-row"), v2.errors);
+
+  const catalogById = new Map(catalogMod.SEED_CATALOG.map(s => [s.id, s]));
+  const nx = core._internals.analyzeExpertAssessment({
+    codename: "ASSET-NONMED-EXPERT", track: "non-medical",
+    variables: { historyDepthYears: 12, workforceFTE: 66 }, systems: ["square", "pdi"], counts
+  }, catalogById);
+  const workforce = nx.drivers.find(d => d.key === "workforceScale");
+  check("Stage 2 non-medical track includes workforce scale as Driver 9, scored from the stored FTE",
+    !!workforce && workforce.status === "STRONG" && workforce.evidence.join(" ").includes("66 full-time employees"), workforce);
+  check("Stage 2 non-medical risk pack is the analogous modeled discipline pack",
+    /modeled on the medical de-identification discipline/.test(nx.riskPack.kind) && nx.riskPack.framework.includes("164.514(b)(1)") &&
+    nx.riskPack.retainedElements.some(r => r.element === "Coarse region code"), nx.riskPack);
+  check("Stage 2 non-medical quality read is per selected system",
+    nx.quality.metrics.perSystem.length === 2 && nx.quality.metrics.perSystem.some(s => s.name === "Square"), nx.quality.metrics.perSystem);
 }
 
 /* --- PDF writer sanity --- */

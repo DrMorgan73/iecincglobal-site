@@ -1412,6 +1412,622 @@ export function assessAsset(asset, catalogById) {
 }
 
 /* ================================================================== */
+/* STAGE 2 — EXPERT ASSESSMENT                                         */
+/*                                                                     */
+/* Stage 1 establishes counts and structure. Stage 2 applies the       */
+/* Evaluation Sheet's driver discipline to those stored facts. The     */
+/* sheet itself specifies Weak / Mid / Strong and the evidence         */
+/* sections (Evaluation Sheet lines 98–111), but not numeric cutoffs;   */
+/* the cutoffs below are therefore explicit implementation rules,      */
+/* recorded beside every score. A score is never manufactured from     */
+/* missing inputs: the driver returns INSUFFICIENT DATA and names      */
+/* the missing stored facts.                                           */
+/*                                                                     */
+/* The de-identification pack works ONLY from aggregate distribution   */
+/* marginals and the instantiated dictionary. It cannot—and does not   */
+/* claim to—measure record-level uniqueness. A qualified expert must   */
+/* analyze the actual extract, anticipated recipient, environment,     */
+/* and controls before any determination is signed.                    */
+/* ================================================================== */
+
+const STAGE2_DRIVER_BASIS = {
+  volume: "Evaluation Sheet §3 (lines 49–54); implementation bands are stated in the score evidence.",
+  history: "Evaluation Sheet §§2 and 4 (lines 38–60); implementation bands are stated in the score evidence.",
+  longitudinalDepth: "Evaluation Sheet §4 (lines 56–60); score uses the stored share of subjects with at least two years of linked history.",
+  standardization: "Evaluation Sheet §6 (lines 67–71); because Stage 1 stores no source coded-field percentage, this is a disclosed proxy from catalog mapping profiles plus dictionary structure—not a fabricated source percentage.",
+  uniquenessScarcity: "Evaluation Sheet §§5, 7 and 8 (lines 62–82); score uses stored content, language, cohort/segment and concentration values.",
+  completenessQuality: "Evaluation Sheet §6 (lines 67–71); score uses populated-cell coverage across the stored totals and distribution tables.",
+  deidentificationReadiness: "Evaluation Sheet §9 (lines 84–87) and the model Layer 4 expert-certification method; score uses aggregate small-cell and rare-combination exposure, not record-level data.",
+  terms: "Evaluation Sheet §10 (lines 89–94). Stage 1 intentionally stores no owner-terms fields, so this driver remains INSUFFICIENT DATA until those facts are supplied through a future governed intake.",
+  workforceScale: "Non-medical operational extension (Driver 9): stored full-time-equivalent workforce and location counts."
+};
+
+function stage2CatalogEntry(catalogById, id) {
+  if (!catalogById) return null;
+  if (typeof catalogById.get === "function") return catalogById.get(id) || null;
+  return catalogById[id] || null;
+}
+
+function stage2Count(value) {
+  const n = asCount(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function stage2Pct(n, d, digits = 1) {
+  if (n === null || n === undefined || !d) return null;
+  const v = (n / d) * 100;
+  return Math.round(v * (10 ** digits)) / (10 ** digits);
+}
+
+function stage2Driver(key, label, score, evidence, missing = []) {
+  return {
+    key,
+    label,
+    score: score === undefined ? null : score,
+    status: score === null || score === undefined ? "INSUFFICIENT DATA" : score === 3 ? "STRONG" : score === 2 ? "MID" : "WEAK",
+    evidence: (evidence || []).filter(Boolean),
+    missing,
+    basis: STAGE2_DRIVER_BASIS[key] || ""
+  };
+}
+
+function stage2Dist(distributions, id) {
+  return (distributions || []).find(d => d.id === id) || null;
+}
+
+function stage2Row(dist, label) {
+  return dist && (dist.rows || []).find(r => String(r.label).toLowerCase() === String(label).toLowerCase()) || null;
+}
+
+function stage2Coverage(asset) {
+  const t = trackDef(asset.track);
+  const totals = (asset.counts && asset.counts.totals) || {};
+  let expected = 0, populated = 0;
+  const missing = [];
+  for (const tot of t.totals) {
+    expected++;
+    if (stage2Count(totals[tot.key]) !== null) populated++;
+    else missing.push(tot.label);
+  }
+  const perTable = [];
+  for (const td of t.tables) {
+    const tc = ((asset.counts && asset.counts.tables) || {})[td.id] || { rows: [] };
+    let tExpected = 0, tPopulated = 0;
+    for (const row of tc.rows || []) {
+      for (const m of td.measure) {
+        tExpected++;
+        if (stage2Count(row[m.key]) !== null) tPopulated++;
+        else if (missing.length < 30) missing.push(`${td.title} — ${row.label} — ${m.label}`);
+      }
+    }
+    perTable.push({ table: td.id, title: td.title, expected: tExpected, populated: tPopulated, coveragePct: stage2Pct(tPopulated, tExpected) });
+    expected += tExpected;
+    populated += tPopulated;
+  }
+  return { expected, populated, missingCount: expected - populated, coveragePct: stage2Pct(populated, expected), perTable, missing: missing.slice(0, 30) };
+}
+
+function stage2SystemReads(asset, catalogById, dictionary) {
+  const sections = (dictionary || []).filter(s => s.fields);
+  const fields = sections.flatMap(s => s.fields.map(f => ({ ...f, section: s.title })));
+  const structured = fields.filter(f => /^(enum\b|list of \{code|integer\b|boolean\b|string \(|string$)/i.test(f.type || ""));
+  const coded = fields.filter(f => /list of \{code/i.test(f.type || ""));
+  const systems = (asset.systems || []).map(sel => {
+    const selId = typeof sel === "string" ? sel : sel && sel.id;
+    const selName = typeof sel === "string" ? sel : sel && sel.name;
+    const cat = stage2CatalogEntry(catalogById, selId) || (sel && typeof sel === "object" ? sel : {});
+    return {
+      id: selId,
+      name: cat.name || selName || selId,
+      confidence: cat.confidence || "PATTERN",
+      classes: cat.classes || [],
+      routes: (cat.routes || []).map(r => r.kind || r),
+      mappingProfileCount: (cat.mappingProfile || []).length,
+      mappingTargets: [...new Set((cat.mappingProfile || []).map(m => m.target).filter(Boolean))],
+      sourceCodedShare: null,
+      sourceCodedShareNote: "Not stored in Stage 1; no source-system coded-field percentage is claimed."
+    };
+  });
+  return {
+    systems,
+    dictionary: {
+      fieldCount: fields.length,
+      structuredFieldCount: structured.length,
+      structuredFieldSharePct: stage2Pct(structured.length, fields.length),
+      codedFieldCount: coded.length,
+      codedFields: coded.map(f => f.name)
+    }
+  };
+}
+
+function stage2Quality(asset, validation, distributions, coverage, systemReads, riskPack) {
+  const findings = [];
+  const add = (severity, category, finding, evidence) => findings.push({ severity, category, finding, evidence: (evidence || []).filter(Boolean) });
+  const totals = (asset.counts && asset.counts.totals) || {};
+  const subjectTotal = stage2Count(totals.totalPatients ?? totals.totalCustomers);
+  const activityTotal = stage2Count(totals.totalEncounters ?? totals.totalTransactions);
+  const documentTotal = stage2Count(totals.totalNotes ?? totals.totalRecords);
+
+  for (const e of validation.errors || []) add("gap", "Validation consistency", e.message, [`Check: ${e.check}`, e.table ? `Table: ${e.table}` : "Asset totals / variables"]);
+  for (const w of validation.warnings || []) add("watch", "Validation consistency", w.message, [`Check: ${w.check}`, w.table ? `Table: ${w.table}` : "Asset totals / variables"]);
+
+  add(coverage.coveragePct >= 95 ? "strength" : coverage.coveragePct >= 80 ? "watch" : "gap", "Completeness",
+    `Stored distribution coverage is ${coverage.coveragePct === null ? "not computable" : `${coverage.coveragePct}%`} (${fmt(coverage.populated)} of ${fmt(coverage.expected)} expected count cells populated).`,
+    coverage.missing.length ? [`Missing examples: ${coverage.missing.slice(0, 8).join("; ")}`] : ["No missing count cells were found in the stored totals or tables."]);
+
+  const yearDist = stage2Dist(distributions, "recordsByYear");
+  const years = (yearDist && yearDist.rows || []).map(r => r.label).filter(x => /^\d{4}$/.test(x)).map(Number).sort((a, b) => a - b);
+  if (!years.length) add("gap", "Completeness", "No usable selected-year rows are stored, so temporal coverage cannot be evidenced.", ["Table 2.1 contains no four-digit year row with the stored activity values."]);
+  else {
+    add(years.length >= 3 ? "strength" : "watch", "Completeness",
+      `Table 2.1 stores ${years.length} selected year(s), spanning ${years[0]}–${years[years.length - 1]}.`,
+      ["The model calls for selected years (normally earliest, middle and latest), not necessarily every intervening year; absence of an intervening year is therefore not automatically treated as missing data.", `Selected years: ${years.join(", ")}.`]);
+    const shownActivity = sum((yearDist.rows || []).map(r => stage2Count(r.encounters ?? r.transactions) || 0));
+    const shownPct = stage2Pct(shownActivity, activityTotal);
+    if (shownPct !== null) add(shownPct >= 25 ? "strength" : "watch", "Consistency", `Selected years carry ${fmt(shownActivity)} of ${fmt(activityTotal)} total activity (${shownPct}%).`, ["This is an evidence-density read only; the unshown balance is expected to fall in years not selected."]);
+  }
+
+  for (const pt of coverage.perTable) {
+    if (pt.expected && pt.populated === 0) add("gap", "Completeness", `${pt.title} is present as a table shell but has no populated count cells.`, [`${pt.populated} of ${pt.expected} cells populated.`]);
+    else if (pt.expected && pt.coveragePct < 100) add("watch", "Completeness", `${pt.title} is partially populated (${pt.coveragePct}%).`, [`${pt.populated} of ${pt.expected} cells populated.`]);
+  }
+
+  const t = trackDef(asset.track);
+  for (const td of t.tables.filter(x => x.fixedRows)) {
+    const rows = (((asset.counts || {}).tables || {})[td.id] || {}).rows || [];
+    const missingRows = td.fixedRows.filter(label => {
+      const row = rows.find(r => String(r.label).toLowerCase() === label.toLowerCase());
+      return !row || td.measure.some(m => stage2Count(row[m.key]) === null);
+    });
+    if (missingRows.length) add("gap", "Completeness", `${td.title} has missing band values.`, [`Missing or incomplete fixed rows: ${missingRows.join(", ")}.`]);
+  }
+
+  if (subjectTotal && activityTotal) {
+    const ratio = Math.round((activityTotal / subjectTotal) * 100) / 100;
+    add(ratio >= 2 ? "strength" : "watch", "Longitudinal depth", `The asset averages ${ratio} ${asset.track === "medical" ? "encounters" : "transactions"} per ${asset.track === "medical" ? "patient" : "customer"}.`, [`Activity total: ${fmt(activityTotal)}.`, `Subject total: ${fmt(subjectTotal)}.`]);
+  }
+  const depth = stage2Dist(distributions, "historyDepth");
+  if (depth) {
+    const key = asset.track === "medical" ? "patients" : "customers";
+    const two = sum(["2 years to under 5 years", "5 years or more"].map(label => (stage2Row(depth, label) || {})[key] || 0));
+    const five = (stage2Row(depth, "5 years or more") || {})[key] || 0;
+    const p2 = stage2Pct(two, subjectTotal), p5 = stage2Pct(five, subjectTotal);
+    if (p2 !== null) add(p2 >= 50 ? "strength" : p2 >= 25 ? "watch" : "gap", "Longitudinal depth", `${p2}% of subjects have at least two years of linked history; ${p5}% have at least five years.`, [`2+ years: ${fmt(two)} subjects.`, `5+ years: ${fmt(five)} subjects.`, `Denominator: ${fmt(subjectTotal)} subjects.`]);
+  }
+
+  for (const s of systemReads.systems) {
+    add(s.confidence === "VERIFIED" ? "strength" : "watch", "Standardization",
+      `${s.name}: ${s.mappingProfileCount} starter mapping(s), ${s.classes.length} catalog data class(es), route(s): ${s.routes.join(", ") || "not stated"}.`,
+      [`Catalog confidence: ${s.confidence}.`, "Structured-code share in the source system is NOT stored, so no source coded-field percentage is claimed.", `Dictionary coded fields available for mapping: ${systemReads.dictionary.codedFields.join(", ") || "none"}.`]);
+  }
+  if (!systemReads.systems.length) add("gap", "Standardization", "No source systems are selected, so no per-system standardization read can be made.", ["Systems selected: 0."]);
+  add("watch", "Standardization", `The instantiated dictionary carries ${systemReads.dictionary.structuredFieldCount} structured field(s) of ${systemReads.dictionary.fieldCount} (${systemReads.dictionary.structuredFieldSharePct}%).`, [`Structured share is a dictionary-design measure, not a measured source-data coded percentage.`, `Code-bearing dictionary fields: ${systemReads.dictionary.codedFields.join(", ") || "none"}.`]);
+
+  const overlap = stage2Dist(distributions, asset.track === "medical" ? "patientsByDiagnosisFamily" : "customersBySegment");
+  if (overlap && overlap.rows && overlap.rows.length) {
+    const key = asset.track === "medical" ? "patients" : "customers";
+    const totalOverlap = sum(overlap.rows.map(r => r[key] || 0));
+    add("strength", "Consistency", `${overlap.title} sums to ${fmt(totalOverlap)} against a subject denominator of ${fmt(subjectTotal)}; overlap is ${overlap.overlap ? "declared" : "not declared"}.`, [`Rows stored: ${overlap.rows.length}.`, `Largest row: ${overlap.rows.reduce((a, b) => ((b[key] || 0) > (a[key] || 0) ? b : a), overlap.rows[0]).label} (${fmt(Math.max(...overlap.rows.map(r => r[key] || 0)))}).`]);
+  }
+
+  if (riskPack) {
+    add(riskPack.summary.smallCellCount ? "watch" : "strength", "De-identification evidence",
+      riskPack.summary.smallCellCount ? `${riskPack.summary.smallCellCount} populated distribution cell(s) are below the ${riskPack.smallCellThreshold}-count threshold.` : `No populated distribution cell is below the ${riskPack.smallCellThreshold}-count threshold.`,
+      [`Populated cells reviewed: ${riskPack.summary.populatedCellCount}.`, `Rare-combination upper-bound flags: ${riskPack.summary.rareCombinationCount}.`, "Aggregate marginals cannot prove record-level uniqueness; a qualified expert must analyze the actual extract."]);
+  }
+
+  return {
+    metrics: {
+      coverage,
+      totals: { subjects: subjectTotal, activity: activityTotal, documents: documentTotal },
+      selectedYears: years,
+      standardization: systemReads.dictionary,
+      perSystem: systemReads.systems
+    },
+    findings
+  };
+}
+
+function stage2RiskPack(asset, distributions, dictionary, options = {}) {
+  const rawThreshold = Number(options.smallCellThreshold);
+  const threshold = Number.isInteger(rawThreshold) && rawThreshold >= 2 && rawThreshold <= 100 ? rawThreshold : 11;
+  const smallCells = [];
+  let populatedCellCount = 0;
+  for (const d of distributions || []) {
+    for (const row of d.rows || []) {
+      for (const m of d.measure || []) {
+        const count = stage2Count(row[m.key]);
+        if (count === null) continue;
+        populatedCellCount++;
+        if (count < threshold) {
+          smallCells.push({
+            table: d.id, tableTitle: d.title, row: row.label, measure: m.key, measureLabel: m.label,
+            count, denominator: stage2Count((asset.counts.totals || {})[m.total]),
+            sharePct: stage2Pct(count, stage2Count((asset.counts.totals || {})[m.total])),
+            severity: count === 1 ? "critical" : count <= 4 ? "high" : "review"
+          });
+        }
+      }
+    }
+  }
+
+  /* Rare combinations: only marginals are stored, so the true cross-tab
+     is unknown. If min(A,B) is below threshold, every intersection of A
+     and B is necessarily below threshold; that is an upper-bound flag,
+     not a measured intersection count. */
+  const groupsByUnit = {};
+  const addGroup = (unit, dist, measureKey, denominator) => {
+    if (!dist) return;
+    (groupsByUnit[unit] ||= []).push({ table: dist.id, tableTitle: dist.title, measure: measureKey, denominator,
+      rows: (dist.rows || []).map(r => ({ label: r.label, count: stage2Count(r[measureKey]) })).filter(r => r.count !== null) });
+  };
+  if (asset.track === "medical") {
+    addGroup("patients", stage2Dist(distributions, "patientsByDiagnosisFamily"), "patients", stage2Count(asset.counts.totals.totalPatients));
+    addGroup("patients", stage2Dist(distributions, "historyDepth"), "patients", stage2Count(asset.counts.totals.totalPatients));
+    addGroup("cases", stage2Dist(distributions, "caseTypeMix"), "cases", stage2Count(asset.counts.totals.totalCases));
+    addGroup("cases", stage2Dist(distributions, "visitsPerCaseBands"), "cases", stage2Count(asset.counts.totals.totalCases));
+    addGroup("encounters", stage2Dist(distributions, "caseTypeMix"), "encounters", stage2Count(asset.counts.totals.totalEncounters));
+  } else {
+    addGroup("customers", stage2Dist(distributions, "customersBySegment"), "customers", stage2Count(asset.counts.totals.totalCustomers));
+    addGroup("customers", stage2Dist(distributions, "transactionsPerCustomerBands"), "customers", stage2Count(asset.counts.totals.totalCustomers));
+    addGroup("customers", stage2Dist(distributions, "historyDepth"), "customers", stage2Count(asset.counts.totals.totalCustomers));
+    addGroup("transactions", stage2Dist(distributions, "transactionTypeMix"), "transactions", stage2Count(asset.counts.totals.totalTransactions));
+    addGroup("records", stage2Dist(distributions, "recordsBySourceSystem"), "records", stage2Count(asset.counts.totals.totalRecords));
+  }
+  const rareCombinations = [];
+  for (const [unit, groups] of Object.entries(groupsByUnit)) {
+    for (let i = 0; i < groups.length; i++) for (let j = i + 1; j < groups.length; j++) {
+      for (const a of groups[i].rows) for (const b of groups[j].rows) {
+        const upperBound = Math.min(a.count, b.count);
+        if (upperBound < threshold) rareCombinations.push({
+          unit, first: { table: groups[i].table, tableTitle: groups[i].tableTitle, row: a.label, measure: groups[i].measure, count: a.count },
+          second: { table: groups[j].table, tableTitle: groups[j].tableTitle, row: b.label, measure: groups[j].measure, count: b.count },
+          upperBound, threshold,
+          basis: "Marginal upper bound only: the actual cross-tabulation is not stored, but no intersection of these two categories can exceed the smaller marginal count."
+        });
+      }
+    }
+  }
+
+  const classifyField = f => {
+    const name = f.name || "";
+    const type = f.type || "";
+    if (/_key$/.test(name)) return ["Linkage key", "Can the key be linked to any external or retained mapping, and who controls the secret or mapping?"];
+    if (/zip3|region_code/.test(name)) return ["Coarse geography", "Is the retained geography populous enough in combination with the other retained fields?"];
+    if (/period/.test(name)) return ["Month-grain time", "Could month timing, sequence and a rare event identify a subject?"];
+    if (/age_/.test(name)) return ["Age band", "Are age bands broad enough at the extremes and in rare combinations?"];
+    if (/language/.test(name)) return ["Language", "Could a minority language combine with geography, time or a rare category to isolate a subject or disclose a sensitive attribute?"];
+    if (/code/.test(name) || /list of \{code/.test(type)) return ["Structured code", "Can rare code combinations single out a subject even though the code itself is not a direct identifier?"];
+    if (/text|note_text/.test(name)) return ["Free text", "Has the text been independently reviewed for names, dates, places, rare narratives and other identifiers before release?"];
+    if (/body_part|payer|case_type|setting|provider_role|source_system|plan_status|customer_type|channel|payment_method|referral_source|relationship_status/.test(name)) return ["Contextual attribute", "Does this attribute become identifying when combined with time, geography, language or a rare category?"];
+    return null;
+  };
+  const quasiIdentifiers = [];
+  for (const sec of (dictionary || []).filter(s => s.fields)) {
+    for (const f of sec.fields) {
+      const c = classifyField(f);
+      if (c) quasiIdentifiers.push({ section: `§${sec.num} ${sec.title}`, field: f.name, type: f.type, required: f.required, category: c[0], riskQuestion: c[1] });
+    }
+  }
+
+  const retainedElements = asset.track === "medical" ? [
+    { element: "Month-grain dates", treatment: "Encounter and case periods are retained as YYYY-MM after a per-patient date shift.", riskQuestion: "Does month timing—combined with ZIP-3, language, diagnosis/procedure rarity and sequence—create a very small or a material identification risk for any subgroup?" },
+    { element: "ZIP-3", treatment: "Only the first three postal-code digits are modeled; no finer geography is carried.", riskQuestion: "Which ZIP-3 areas are sparsely populated or institutionally distinctive, and must any be generalized or suppressed for this asset?" },
+    { element: "Date shifting", treatment: "A fixed per-patient shift preserves intervals and sequence while removing calendar truth.", riskQuestion: "Is the shift independently generated and protected, consistent for the same patient, different across patients, and impossible to reverse from known external event dates?" },
+    { element: "Pseudonymous linkage keys", treatment: "Random tokens or keyed HMAC values link records; the mapping is generated and retained only inside the practice environment.", riskQuestion: "Who holds the key/mapping, under what separation and access controls, and can the recipient obtain or reconstruct it?" }
+  ] : [
+    { element: "Month-grain periods", treatment: "Transactions are modeled at YYYY-MM after a per-customer shift.", riskQuestion: "Could month timing and sequence identify a customer or reveal commercially sensitive operating patterns?" },
+    { element: "Coarse region code", treatment: "Only an area prefix is modeled; full addresses are not carried.", riskQuestion: "Are any regions sparse enough that region plus category, language or timing singles out a customer or site?" },
+    { element: "Date shifting", treatment: "A fixed per-customer shift preserves sequence and intervals.", riskQuestion: "Can known external events reverse the shift or expose a customer's chronology?" },
+    { element: "Pseudonymous linkage keys", treatment: "Random tokens or keyed HMAC values link transactions; the mapping remains inside the business environment.", riskQuestion: "Who controls the key/mapping and can a recipient link the extract to another dataset?" }
+  ];
+
+  return {
+    kind: asset.track === "medical" ? "De-identification risk pack" : "Re-identification / commercial-sensitivity pack (modeled on the medical de-identification discipline)",
+    framework: asset.track === "medical" ? "45 CFR 164.514(b)(1) expert-certification analysis support" : "Modeled on 45 CFR 164.514(b)(1) expert-analysis discipline; HIPAA does not itself govern the non-medical asset",
+    smallCellThreshold: threshold,
+    smallCells,
+    rareCombinations: rareCombinations.slice(0, 100),
+    rareCombinationCountIsCapped: rareCombinations.length > 100,
+    quasiIdentifiers,
+    retainedElements,
+    summary: {
+      populatedCellCount,
+      smallCellCount: smallCells.length,
+      smallCellSharePct: stage2Pct(smallCells.length, populatedCellCount),
+      rareCombinationCount: rareCombinations.length,
+      quasiIdentifierCount: quasiIdentifiers.length,
+      retainedElementCount: retainedElements.length
+    },
+    limitations: [
+      "This pack analyzes aggregate distribution marginals and the modeled dictionary only; the tool does not hold the underlying records.",
+      "Marginal small cells identify where disclosure controls are needed, but they do not measure actual record-level uniqueness or re-identification probability.",
+      "No measured identifier-detection recall or precision is stored in Stage 1; the existing MEDEXEC de-identification audit found no labeled corpus or certification evidence in that codebase.",
+      "A qualified expert must independently analyze the actual extract, anticipated recipient, data environment, contractual prohibitions and security controls before signing any determination."
+    ]
+  };
+}
+
+export function analyzeExpertAssessment(asset, catalogById, options = {}) {
+  const validation = validateAsset(asset.track, asset.variables, asset.counts, asset.systems);
+  const dictionary = buildDictionary(asset.track, asset.variables, asset.systems);
+  const distributions = buildDistributions(asset.track, asset.counts, validation);
+  const coverage = stage2Coverage(asset);
+  const systemReads = stage2SystemReads(asset, catalogById, dictionary);
+  const riskPack = stage2RiskPack(asset, distributions, dictionary, options);
+  const quality = stage2Quality(asset, validation, distributions, coverage, systemReads, riskPack);
+
+  const totals = (asset.counts && asset.counts.totals) || {};
+  const vars = asset.variables || {};
+  const med = asset.track === "medical";
+  const subjects = stage2Count(totals.totalPatients ?? totals.totalCustomers);
+  const activity = stage2Count(totals.totalEncounters ?? totals.totalTransactions);
+  const docs = stage2Count(totals.totalNotes ?? totals.totalRecords);
+  const cases = stage2Count(totals.totalCases);
+  const drivers = [];
+
+  /* Volume */
+  if (subjects === null && activity === null) drivers.push(stage2Driver("volume", "Volume", null, [`Distinct ${med ? "patients" : "customers"}: not stored.`, `${med ? "Encounters" : "Transactions"}: not stored.`, `${med ? "Notes" : "Records / documents"}: ${docs === null ? "not stored" : fmt(docs)}.`], ["Distinct subject total", "Encounter / transaction total"]));
+  else {
+    const strong = med ? (subjects >= 10000 || activity >= 100000) : (subjects >= 25000 || activity >= 500000);
+    const mid = med ? (subjects >= 1000 || activity >= 10000) : (subjects >= 1000 || activity >= 10000);
+    drivers.push(stage2Driver("volume", "Volume", strong ? 3 : mid ? 2 : 1, [
+      `Distinct ${med ? "patients" : "customers"}: ${subjects === null ? "not stored" : fmt(subjects)}.`,
+      `${med ? "Encounters" : "Transactions"}: ${activity === null ? "not stored" : fmt(activity)}.`,
+      `${med ? "Notes" : "Records / documents"}: ${docs === null ? "not stored" : fmt(docs)}.`,
+      med ? "Implementation bands: STRONG at 10,000+ patients or 100,000+ encounters; MID at 1,000+ patients or 10,000+ encounters; otherwise WEAK." : "Implementation bands: STRONG at 25,000+ customers or 500,000+ transactions; MID at 1,000+ customers or 10,000+ transactions; otherwise WEAK."
+    ]));
+  }
+
+  /* History */
+  const yearsRows = (stage2Dist(distributions, "recordsByYear") || {}).rows || [];
+  const years = yearsRows.map(r => r.label).filter(x => /^\d{4}$/.test(x)).map(Number).sort((a, b) => a - b);
+  const observedSpan = years.length ? years[years.length - 1] - years[0] + 1 : null;
+  const historyYears = stage2Count(vars.historyDepthYears) ?? (observedSpan && observedSpan > 1 ? observedSpan : null);
+  if (historyYears === null) drivers.push(stage2Driver("history", "History", null, [`Stored history depth: not stated.`, `Selected years stored: ${years.length ? years.join(", ") : "none"}.`], ["History-depth variable or at least two selected years"]));
+  else drivers.push(stage2Driver("history", "History", historyYears >= 10 ? 3 : historyYears >= 3 ? 2 : 1, [
+    `Stored history depth: ${stage2Count(vars.historyDepthYears) === null ? "not separately stated" : `${fmt(stage2Count(vars.historyDepthYears))} years`}.`,
+    `Selected years stored: ${years.length ? years.join(", ") : "none"}${observedSpan ? `; observed selected-year span: ${observedSpan} year(s).` : "."}`,
+    "Implementation bands: STRONG at 10+ years; MID at 3–9 years; WEAK below 3 years."
+  ]));
+
+  /* Longitudinal depth */
+  const depthDist = stage2Dist(distributions, "historyDepth");
+  const depthKey = med ? "patients" : "customers";
+  const depthRows = depthDist && depthDist.rows || [];
+  const depthComplete = depthRows.length === 4 && depthRows.every(r => stage2Count(r[depthKey]) !== null) && subjects;
+  if (!depthComplete) drivers.push(stage2Driver("longitudinalDepth", "Longitudinal depth", null, [`Table 2.6 rows stored: ${depthRows.length}.`, `Distinct subject denominator: ${subjects === null ? "not stored" : fmt(subjects)}.`, `Populated depth-band values: ${depthRows.filter(r => stage2Count(r[depthKey]) !== null).length} of ${depthRows.length}.`], ["Complete Table 2.6 history-depth profile", "Distinct subject denominator"]));
+  else {
+    const two = sum(["2 years to under 5 years", "5 years or more"].map(label => (stage2Row(depthDist, label) || {})[depthKey] || 0));
+    const five = (stage2Row(depthDist, "5 years or more") || {})[depthKey] || 0;
+    const p2 = stage2Pct(two, subjects), p5 = stage2Pct(five, subjects);
+    drivers.push(stage2Driver("longitudinalDepth", "Longitudinal depth", p2 >= 50 ? 3 : p2 >= 25 ? 2 : 1, [
+      `Subjects with 2+ years of history: ${fmt(two)} of ${fmt(subjects)} (${p2}%).`,
+      `Subjects with 5+ years of history: ${fmt(five)} of ${fmt(subjects)} (${p5}%).`,
+      `Average ${med ? "encounters" : "transactions"} per subject: ${subjects && activity ? Math.round((activity / subjects) * 100) / 100 : "not computable"}.`,
+      "Implementation bands: STRONG at 50%+ with 2+ years; MID at 25–49%; WEAK below 25%."
+    ]));
+  }
+
+  /* Standardization */
+  if (!systemReads.systems.length) drivers.push(stage2Driver("standardization", "Standardization", null, ["Systems selected: 0.", `Instantiated dictionary: ${systemReads.dictionary.structuredFieldCount} structured fields of ${systemReads.dictionary.fieldCount}; no per-system read is possible without a selected system.`], ["At least one selected source system"]));
+  else {
+    const minProfile = Math.min(...systemReads.systems.map(s => s.mappingProfileCount));
+    const share = systemReads.dictionary.structuredFieldSharePct || 0;
+    const score = minProfile >= 6 && share >= 60 ? 3 : minProfile >= 3 && share >= 40 ? 2 : 1;
+    drivers.push(stage2Driver("standardization", "Standardization", score, [
+      ...systemReads.systems.map(s => `${s.name}: ${s.mappingProfileCount} starter mapping(s), classes ${s.classes.join(", ") || "not stated"}, routes ${s.routes.join(", ") || "not stated"}, catalog confidence ${s.confidence}.`),
+      `Instantiated dictionary: ${systemReads.dictionary.structuredFieldCount} structured fields of ${systemReads.dictionary.fieldCount} (${share}%); ${systemReads.dictionary.codedFieldCount} code-bearing field(s).`,
+      "No source-system coded-field percentage is stored; the score does not invent one.",
+      "Implementation bands: STRONG when the weakest selected system's starter profile has 6+ mappings and dictionary structured share is 60%+; MID at 3+ mappings and 40%+ structured share; otherwise WEAK."
+    ]));
+  }
+
+  /* Uniqueness / scarcity */
+  if (med) {
+    const langDist = stage2Dist(distributions, "noteLanguageShare");
+    const en = (stage2Row(langDist, "English (EN)") || {}).notes;
+    const nonEnglish = docs !== null && en !== null && en !== undefined ? docs - en : null;
+    const nonEnglishPct = stage2Pct(nonEnglish, docs);
+    const diagDist = stage2Dist(distributions, "patientsByDiagnosisFamily");
+    const wcRow = (stage2Dist(distributions, "caseTypeMix") || {}).rows ? stage2Row(stage2Dist(distributions, "caseTypeMix"), "Workers' compensation") : null;
+    const wcPct = wcRow ? stage2Pct(wcRow.encounters, activity) : null;
+    const langText = String(vars.languages || "");
+    const arabic = /\bAR\b|arabic/i.test(langText);
+    if (nonEnglishPct === null && !(diagDist && diagDist.rows.length) && wcPct === null) drivers.push(stage2Driver("uniquenessScarcity", "Uniqueness / scarcity", null, [`Documentation-language variable: ${vars.languages || "not stated"}.`, `Diagnosis families stored: ${diagDist ? diagDist.rows.length : 0}.`, `Workers' compensation share: not computable from the stored case-type table.`], ["Note-language distribution or language variable", "Diagnosis-family or case-type distribution"]));
+    else {
+      let score = nonEnglishPct >= 25 || arabic ? 3 : nonEnglishPct >= 5 ? 2 : 1;
+      if (score === 2 && ((wcPct || 0) >= 40 || ((diagDist && diagDist.rows) || []).length >= 5)) score = 3;
+      drivers.push(stage2Driver("uniquenessScarcity", "Uniqueness / scarcity", score, [
+        `Native non-English note share: ${nonEnglishPct === null ? "not computable" : `${nonEnglishPct}%`} (${nonEnglish === null ? "count not stored" : `${fmt(nonEnglish)} of ${fmt(docs)} notes`}).`,
+        `Documentation-language variable: ${vars.languages || "not stated"}.`,
+        `Diagnosis families stored: ${diagDist ? diagDist.rows.length : 0}; workers' compensation share of encounters: ${wcPct === null ? "not computable" : `${wcPct}%`}.`,
+        `Specialty mix: ${vars.specialtyMix || "not stated"}.`,
+        "Implementation bands: STRONG at 25%+ native non-English share, when Arabic is present, or when MID language evidence combines with 40%+ workers' compensation share or 5+ diagnosis families; MID at 5%+ non-English share; otherwise WEAK when evidence exists."
+      ]));
+    }
+  } else {
+    const segDist = stage2Dist(distributions, "customersBySegment");
+    const segRows = segDist ? segDist.rows.filter(r => stage2Count(r.customers) !== null) : [];
+    if (!segRows.length && !vars.specialtyMix && !vars.languages) drivers.push(stage2Driver("uniquenessScarcity", "Uniqueness / scarcity", null, ["Customer segments stored: 0.", "Sector mix: not stated.", "Customer-facing languages: not stated."], ["Customer-segment distribution", "Sector mix or customer-facing languages"]));
+    else {
+      const top = segRows.length ? Math.max(...segRows.map(r => r.customers || 0)) : null;
+      const topPct = stage2Pct(top, subjects);
+      const nonEnglish = /\bES\b|spanish|\bAR\b|arabic|chinese|mandarin/i.test(String(vars.languages || ""));
+      const score = segRows.length >= 3 && (topPct === null || topPct < 80) ? 3 : segRows.length >= 2 || nonEnglish ? 2 : 1;
+      drivers.push(stage2Driver("uniquenessScarcity", "Uniqueness / scarcity", score, [
+        `Customer segments stored: ${segRows.length}; largest segment: ${top === null ? "not stored" : `${fmt(top)} (${topPct}% of customers)`}.`,
+        `Sector mix: ${vars.specialtyMix || "not stated"}.`,
+        `Customer-facing languages: ${vars.languages || "not stated"}.`,
+        `Transaction-type note: ${vars.caseTypeMixNote || "not stated"}.`,
+        "Implementation bands: STRONG at 3+ populated customer segments with the largest segment below 80% of customers; MID at 2+ segments or a non-English language signal; otherwise WEAK when evidence exists."
+      ]));
+    }
+  }
+
+  /* Completeness / quality */
+  if (!coverage.expected || !coverage.populated) drivers.push(stage2Driver("completenessQuality", "Completeness / quality", null, [`Populated count cells: ${fmt(coverage.populated)} of ${fmt(coverage.expected)}.`, `Missing count cells: ${fmt(coverage.missingCount)}.`], ["At least one populated total or distribution count"]));
+  else drivers.push(stage2Driver("completenessQuality", "Completeness / quality", coverage.coveragePct >= 95 ? 3 : coverage.coveragePct >= 80 ? 2 : 1, [
+    `Populated count cells: ${fmt(coverage.populated)} of ${fmt(coverage.expected)} (${coverage.coveragePct}%).`,
+    `Missing count cells: ${fmt(coverage.missingCount)}.`,
+    coverage.missing.length ? `Missing examples: ${coverage.missing.slice(0, 6).join("; ")}.` : "No missing count cells were found.",
+    "Implementation bands: STRONG at 95%+ populated-cell coverage; MID at 80–94%; WEAK below 80%."
+  ]));
+
+  /* De-identification / re-identification readiness */
+  if (!riskPack.summary.populatedCellCount) drivers.push(stage2Driver("deidentificationReadiness", med ? "De-identification readiness" : "Re-identification readiness", null, [`Populated distribution cells reviewed: 0.`, `Small-cell threshold: below ${riskPack.smallCellThreshold}.`], ["At least one populated distribution count"]));
+  else {
+    const share = riskPack.summary.smallCellSharePct || 0;
+    const score = share === 0 && riskPack.summary.rareCombinationCount === 0 ? 3 : share <= 10 && riskPack.summary.rareCombinationCount <= 3 ? 2 : 1;
+    drivers.push(stage2Driver("deidentificationReadiness", med ? "De-identification readiness" : "Re-identification readiness", score, [
+      `Distribution cells below ${riskPack.smallCellThreshold}: ${riskPack.summary.smallCellCount} of ${riskPack.summary.populatedCellCount} populated cells (${share}%).`,
+      `Rare-combination upper-bound flags: ${riskPack.summary.rareCombinationCount}.`,
+      `Quasi-identifiers inventoried from the dictionary: ${riskPack.summary.quasiIdentifierCount}.`,
+      "This score assesses modeled disclosure-control readiness from aggregates; it is not a certification and does not measure record-level risk.",
+      "Implementation bands: STRONG when small-cell share is 0% and rare-combination flags are 0; MID when small-cell share is 10% or less and rare-combination flags are 3 or fewer; otherwise WEAK."
+    ]));
+  }
+
+  /* Terms: Stage 1 has no governed owner-terms intake. */
+  drivers.push(stage2Driver("terms", "Terms", null, [
+    "Stored asset variables contain no buyer-category permissions, exclusivity position, owner floor, or signature-readiness field."
+  ], ["Buyer categories allowed / banned", "Exclusivity position", "Owner floor", "Signature readiness"]));
+
+  /* Non-medical Driver 9 */
+  if (!med) {
+    const fte = stage2Count(vars.workforceFTE);
+    const locations = stage2Count(vars.locationsCount) ?? stage2Count(totals.totalLocations);
+    if (fte === null) drivers.push(stage2Driver("workforceScale", "Workforce scale (Driver 9)", null, [`Workforce scale: not stored.`, `Locations: ${locations === null ? "not stored" : fmt(locations)}.`], ["Workforce scale (full-time employees)"]));
+    else drivers.push(stage2Driver("workforceScale", "Workforce scale (Driver 9)", fte >= 35 ? 3 : fte >= 10 ? 2 : 1, [
+      `Workforce scale: ${fmt(fte)} full-time employees.`,
+      `Locations: ${locations === null ? "not stored" : fmt(locations)}.`,
+      "Implementation bands: STRONG at 35+ FTE; MID at 10–34 FTE; WEAK below 10 FTE."
+    ]));
+  }
+
+  const gaps = [];
+  for (const e of validation.errors) gaps.push(`Validation must be corrected: ${e.message}`);
+  for (const d of drivers) {
+    if (d.status === "INSUFFICIENT DATA") gaps.push(`${d.label}: insufficient data — missing ${d.missing.join(", ") || "required stored evidence"}.`);
+    else if (d.status === "WEAK") gaps.push(`${d.label}: weak on the stored evidence.`);
+  }
+  for (const f of quality.findings.filter(x => x.severity === "gap")) gaps.push(`${f.category}: ${f.finding}`);
+  if (riskPack.summary.smallCellCount) gaps.push(`Disclosure control: ${riskPack.summary.smallCellCount} small cell(s) require suppression, aggregation or expert-approved treatment before release.`);
+  if (riskPack.summary.rareCombinationCount) gaps.push(`Disclosure control: ${riskPack.summary.rareCombinationCount} rare-combination upper-bound flag(s) require expert review.`);
+  const scored = drivers.filter(d => d.score !== null);
+  const verdict = validation.errors.length || drivers.filter(d => d.status === "WEAK" || d.status === "INSUFFICIENT DATA").length >= 3 || coverage.coveragePct < 50
+    ? "NOT READY"
+    : drivers.every(d => d.score !== null) && drivers.every(d => d.score >= 2) && !drivers.some(d => d.status === "WEAK") && coverage.coveragePct >= 95 && riskPack.summary.smallCellSharePct <= 5
+      ? "READY"
+      : "READY WITH GAPS";
+
+  return {
+    version: "stage2-1",
+    track: asset.track,
+    codename: asset.codename,
+    smallCellThreshold: riskPack.smallCellThreshold,
+    validation: { errors: validation.errors, warnings: validation.warnings },
+    drivers,
+    quality,
+    riskPack,
+    readiness: {
+      verdict,
+      gaps: [...new Set(gaps)],
+      summary: {
+        scoredDrivers: scored.length,
+        totalDrivers: drivers.length,
+        strong: drivers.filter(d => d.status === "STRONG").length,
+        mid: drivers.filter(d => d.status === "MID").length,
+        weak: drivers.filter(d => d.status === "WEAK").length,
+        insufficientData: drivers.filter(d => d.status === "INSUFFICIENT DATA").length
+      }
+    },
+    limitations: riskPack.limitations
+  };
+}
+
+export function buildExpertReportDocument(asset, expert) {
+  const today = new Date().toISOString().slice(0, 10);
+  const blocks = [
+    B.h2(`Expert Assessment Report — INTERNAL ONLY — ${asset.codename}`),
+    B.p("**INTERNAL ONLY.** This report contains IEC's expert-layer judgments, scores, gaps and risk analysis. It is not part of the buyer-safe specimen package and must not be supplied to a buyer or channel as the specimen package."),
+    B.p(`**Asset codename:** ${asset.codename} · **Track:** ${trackDef(asset.track).label} · **Generated:** ${today}`),
+    B.p(`**Readiness verdict: ${expert.readiness.verdict}.** Drivers scored: ${expert.readiness.summary.scoredDrivers} of ${expert.readiness.summary.totalDrivers}; STRONG ${expert.readiness.summary.strong}, MID ${expert.readiness.summary.mid}, WEAK ${expert.readiness.summary.weak}, INSUFFICIENT DATA ${expert.readiness.summary.insufficientData}.`),
+    B.h3("Driver scores — every score carries its evidence"),
+    B.table(["Driver", "Score", "Evidence", "Basis / missing inputs"],
+      expert.drivers.map(d => [d.label, d.status, d.evidence.join(" "), d.status === "INSUFFICIENT DATA" ? `Missing: ${d.missing.join(", ")}. ${d.basis}` : d.basis])),
+    B.h3("Readiness gaps"),
+    ...(expert.readiness.gaps.length ? expert.readiness.gaps.map(g => B.p(`- ${g}`)) : [B.p("No gaps were identified by the stored-evidence rules.")]),
+    B.h3("Data-quality findings"),
+    B.table(["Severity", "Category", "Finding", "Evidence"],
+      expert.quality.findings.map(f => [f.severity, f.category, f.finding, f.evidence.join(" ")])),
+    B.h3("De-identification / re-identification risk summary"),
+    B.p(`**Pack:** ${expert.riskPack.kind}. **Framework:** ${expert.riskPack.framework}. **Small-cell threshold:** below ${expert.riskPack.smallCellThreshold}.`),
+    B.p(`Populated distribution cells reviewed: ${fmt(expert.riskPack.summary.populatedCellCount)}. Small cells: ${expert.riskPack.summary.smallCellCount} (${expert.riskPack.summary.smallCellSharePct}%). Rare-combination upper-bound flags: ${expert.riskPack.summary.rareCombinationCount}. Quasi-identifiers inventoried: ${expert.riskPack.summary.quasiIdentifierCount}.`),
+    B.h3("Small cells"),
+    ...(expert.riskPack.smallCells.length ? [B.table(["Table", "Row", "Measure", "Count", "Severity"], expert.riskPack.smallCells.slice(0, 100).map(c => [c.tableTitle, c.row, c.measureLabel, fmt(c.count), c.severity]))] : [B.p(`No populated distribution cell is below ${expert.riskPack.smallCellThreshold}.`)]),
+    ...(expert.riskPack.smallCells.length > 100 ? [B.p(`The report table is capped at 100 rows; the full computed count is ${expert.riskPack.smallCells.length}.`)] : []),
+    B.h3("Retained elements — questions for expert analysis"),
+    B.table(["Element", "Modeled treatment", "Risk question"], expert.riskPack.retainedElements.map(r => [r.element, r.treatment, r.riskQuestion])),
+    B.h3("Limitations"),
+    ...expert.limitations.map(x => B.p(`- ${x}`)),
+    B.p("— End of internal expert assessment report —")
+  ];
+  return blocks;
+}
+
+export function buildExpertDeterminationDocument(asset, expert, draft) {
+  if (asset.track !== "medical") throw new Error("Expert determination drafts are available only on the medical track.");
+  if (!draft || !draft.expertName || !draft.credentials || !draft.reviewDate) throw new Error("A named qualified expert, credentials and review date must be recorded before a determination draft can be generated.");
+  const label = "DRAFT — FOR EXPERT REVIEW AND SIGNATURE";
+  const dictionary = buildDictionary(asset.track, asset.variables, asset.systems);
+  const totals = (asset.counts && asset.counts.totals) || {};
+  const blocks = [
+    B.h2(`${label}`),
+    B.h2(`Expert Determination Draft — ${asset.codename}`),
+    B.p(`**${label}.** This system-generated draft is not a certification, determination, or expert opinion. It becomes a determination only if the named qualified expert independently analyzes the actual dataset and signs it.`),
+    B.p(`**Asset codename:** ${asset.codename} · **Draft generated:** ${draft.generatedAt || new Date().toISOString()} · **Expert named for review:** ${draft.expertName} · **Credentials recorded:** ${draft.credentials} · **Review date recorded:** ${draft.reviewDate}`),
+    B.h3("1. Data description"),
+    B.p(`The modeled asset contains ${fmt(stage2Count(totals.totalPatients))} distinct patients, ${fmt(stage2Count(totals.totalEncounters))} encounters, ${fmt(stage2Count(totals.totalNotes))} notes and ${fmt(stage2Count(totals.totalCases))} distinct cases, based on aggregate counts stored in the Data Asset Builder. The tool did not receive or analyze patient-level records for this draft.`),
+    B.table(["Dictionary section", "Grain", "Fields"], dictionary.filter(s => s.fields).map(s => [`§${s.num} ${s.title}`, s.grain, String(s.fields.length)])),
+    B.h3("2. Methods supplied for expert review"),
+    B.p("The system applied generally accepted aggregate disclosure checks available from the stored inventory: one stated denominator per distribution; computed shares; small-cell detection across every populated distribution cell; marginal upper-bound screening for rare combinations; an inventory of modeled quasi-identifiers; and a review of the elements the model deliberately retains. The threshold used for this draft is below ${expert.riskPack.smallCellThreshold}."),
+    B.p("The system did not inspect the actual record-level extract, did not measure identifier-detection recall or precision, and did not evaluate the anticipated recipient's other data, security environment or contractual controls. The expert must complete those analyses independently before signing."),
+    B.h3("3. Risk findings"),
+    B.p(`Populated distribution cells reviewed: ${fmt(expert.riskPack.summary.populatedCellCount)}. Small cells below ${expert.riskPack.smallCellThreshold}: ${expert.riskPack.summary.smallCellCount}. Rare-combination upper-bound flags: ${expert.riskPack.summary.rareCombinationCount}.`),
+    ...(expert.riskPack.smallCells.length ? [B.table(["Table", "Row", "Measure", "Count", "Severity"], expert.riskPack.smallCells.slice(0, 100).map(c => [c.tableTitle, c.row, c.measureLabel, fmt(c.count), c.severity]))] : [B.p("No aggregate small cells were detected at the stated threshold. This is not, by itself, a finding that record-level risk is very small.")]),
+    B.table(["Retained element", "Modeled treatment", "Question the expert must answer"], expert.riskPack.retainedElements.map(r => [r.element, r.treatment, r.riskQuestion])),
+    B.h3("4. Mitigations to be confirmed by the expert"),
+    B.p("- Suppress, aggregate or otherwise treat every small cell and rare combination the expert finds material; do not release unreviewed cross-tabulations."),
+    B.p("- Retain no exact dates; confirm the per-patient date shift is independently generated, consistently applied and protected."),
+    B.p("- Confirm ZIP-3 population/generalization decisions for sparse or distinctive areas."),
+    B.p("- Keep every identity mapping and key secret inside the practice environment, separated from the licensed extract and its recipient."),
+    B.p("- Independently review any free text for direct identifiers and rare identifying narratives before release."),
+    B.p("- Document the anticipated recipient, permitted uses, prohibition on re-identification/linkage, security controls and destruction/return terms relied upon."),
+    B.h3("5. Proposed determination language — for expert adoption only after independent analysis"),
+    B.p("Subject to the expert's independent analysis of the actual dataset and the mitigations above, the proposed language is: “Applying generally accepted statistical and scientific principles and methods, I have analyzed the dataset described in this determination. In my professional judgment, the risk is very small that the information could be used, alone or in combination with other reasonably available information, by an anticipated recipient to identify an individual who is a subject of the information.”"),
+    B.p(`**${label}.** The paragraph above is proposed language only. The system has not made the determination stated in it.`),
+    B.h3("6. Expert signature block"),
+    B.table(["Item", "Recorded / signature"], [
+      ["Status", label],
+      ["Expert signature", "________________________________________"],
+      ["Printed name (recorded)", draft.expertName],
+      ["Credentials (recorded)", draft.credentials],
+      ["Review date (recorded)", draft.reviewDate],
+      ["Certification status", "NOT CERTIFIED — draft awaiting the expert's independent review and signature"]
+    ]),
+    B.p(`**${label} — end of draft.**`)
+  ];
+  return blocks;
+}
+
+export function buildExpertAssessment(asset, catalogById, options = {}) {
+  const expert = analyzeExpertAssessment(asset, catalogById, options);
+  const reportDocument = buildExpertReportDocument(asset, expert);
+  return { expert, reportDocument, reportMarkdown: renderMarkdown(reportDocument) };
+}
+
+/* ================================================================== */
 /* COMPARE — the tool's assessment vs an EXTERNAL assessment of the   */
 /* same asset (e.g., DataSupply's), recorded by the operator.          */
 /*                                                                     */
@@ -1504,5 +2120,7 @@ export const _internals = {
   TRACKS, DICTIONARIES, validateAsset, emptyCounts, parseDelimited, parseTextDocument,
   parseXLSX, parsePDF, parseDocument, phiScreen, extractCandidates, proposeMapping,
   applyMapping, buildDictionary, buildDistributions, buildExtractionPlan, assessAsset,
-  buildPackageDocument, renderMarkdown, compareAssessments, toolDataClasses, COMPARE_MEASURES
+  buildPackageDocument, renderMarkdown, compareAssessments, toolDataClasses, COMPARE_MEASURES,
+  analyzeExpertAssessment, buildExpertAssessment, buildExpertReportDocument,
+  buildExpertDeterminationDocument, stage2RiskPack
 };
