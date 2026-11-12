@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Partner Portal — IEC Inc.</title>
+<meta name="description" content="Your IEC partner portal: your clients, each client's pipeline status, and your performance-based referral fees.">
+<link rel="stylesheet" href="style.css">
+<style>
+  .ctr-wrap{max-width:980px;margin:0 auto;padding:40px 20px 60px}
+  .ctr-card{border:1px solid #DCE3EC;border-radius:14px;background:#fff;padding:24px 26px;box-shadow:0 8px 30px rgba(14,42,71,.06);margin-bottom:22px}
+  .ctr-card h2{font-size:19px;margin:0 0 8px;color:#0E2A47}
+  .ctr-card h3{font-size:15.5px;margin:18px 0 8px;color:#0E2A47}
+  .ctr-card p{color:#26313F;line-height:1.65;margin:0 0 10px}
+  .ctr-pill{display:inline-block;border-radius:999px;padding:3px 12px;font-size:13px;font-weight:700}
+  .ctr-pill.ok{background:#E7F4E9;color:#1E6B2E}
+  .ctr-pill.warn{background:#FBF6EA;color:#5c4a12}
+  .ctr-pill.mut{background:#EEF1F5;color:#5B6B85}
+  .ctr-pill.bad{background:#FBEAEA;color:#8B1E1E}
+  table.ctr-refs{border-collapse:collapse;width:100%;margin:12px 0;font-size:14.5px}
+  table.ctr-refs th{background:#0E2A47;color:#fff;padding:8px 10px;text-align:left}
+  table.ctr-refs td{border:1px solid #DCE3EC;padding:8px 10px}
+  table.ctr-refs tr.clickable{cursor:pointer}
+  table.ctr-refs tr.clickable:hover td{background:#F4F7FB}
+  .ctr-form{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:6px}
+  .ctr-form .full{grid-column:1/-1}
+  @media (max-width:720px){.ctr-form{grid-template-columns:1fr}}
+  .ctr-form label{display:block;font-size:13px;font-weight:700;color:#0E2A47;margin-bottom:6px}
+  .ctr-form input,.ctr-form select,.ctr-form textarea{width:100%;padding:11px 12px;border:1px solid #C9D3E0;border-radius:9px;font:inherit;font-size:15px;background:#fff;color:#1A1A1A}
+  .ctr-btn{appearance:none;border:0;border-radius:10px;padding:13px 22px;font:inherit;font-weight:700;cursor:pointer;background:#0E2A47;color:#fff}
+  .ctr-btn[disabled]{opacity:.55;cursor:wait}
+  .ctr-btn.ghost{background:#fff;color:#0E2A47;border:1.5px solid #0E2A47;text-decoration:none;display:inline-block}
+  .ctr-btn.danger{background:#fff;color:#8B1E1E;border:1.5px solid #8B1E1E}
+  .ctr-status{font-size:15px;color:#26313F;min-height:22px}
+  .ctr-fine{font-size:13.5px;color:#5B6B85;line-height:1.6}
+  .ctr-steps{font-size:14.5px;color:#26313F;line-height:1.8}
+  .ctr-banner{border:1px solid #B98A2F;background:#FBF6EA;border-radius:10px;padding:12px 14px;font-size:14.5px;color:#5c4a12;line-height:1.6;margin-bottom:14px}
+  .ctr-banner.bad{border-color:#8B1E1E;background:#FBEAEA;color:#8B1E1E}
+  .pipe{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0}
+  .pipe span{border:1px solid #C9D3E0;border-radius:999px;padding:4px 11px;font-size:12.5px;font-weight:600;color:#5B6B85;background:#fff}
+  .pipe span.done{background:#0E2A47;border-color:#0E2A47;color:#fff}
+  .pipe span.now{background:#C9A227;border-color:#C9A227;color:#0E2A47}
+  .qsec{border-top:1px solid #DCE3EC;margin-top:16px;padding-top:6px}
+  .qfield{margin-bottom:12px}
+  .qfield label{font-size:13.5px}
+  .qchecks label,.qchoice label{display:flex;gap:8px;align-items:center;font-weight:500;font-size:14.5px;color:#26313F;margin-bottom:5px}
+  .qchecks input,.qchoice input{width:auto}
+  .qsubs{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media (max-width:720px){.qsubs{grid-template-columns:1fr}}
+  dl.ctr-dl{display:grid;grid-template-columns:200px 1fr;gap:6px 14px;font-size:14.5px;margin:10px 0}
+  dl.ctr-dl dt{font-weight:700;color:#0E2A47}
+  dl.ctr-dl dd{margin:0;color:#26313F}
+  @media (max-width:720px){dl.ctr-dl{grid-template-columns:1fr}}
+  .ctr-totals{display:flex;gap:26px;flex-wrap:wrap;font-size:15px;margin:8px 0}
+  .ctr-totals b{color:#0E2A47}
+</style>
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a class="brand" href="welcome.html"><img class="brand-logo" src="assets/iec-logo-light.png" alt="IEC Inc."></a>
+    <button class="menu-btn" aria-label="Open menu" aria-expanded="false"><span></span><span></span><span></span></button>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="welcome.html">Home</a>
+      <a href="data-network.html">Data Network</a>
+      <a href="contractors.html">Partners</a>
+      <a href="cnda.html">Mutual NDA</a>
+      <a class="nav-cta" href="https://wa.me/18578671767?text=Hello%20DrMorgan%2C%20I%27d%20like%20to%20connect%20with%20IEC%20Inc.">Contact IEC</a>
+    </nav>
+  </div>
+</header>
+
+<main class="ctr-wrap">
+  <div id="loading" class="ctr-card"><p class="ctr-status">Loading your portal…</p></div>
+
+  <div id="locked" class="ctr-card" style="display:none">
+    <h2>Your portal needs your activation link</h2>
+    <p>This portal is private to you: it shows only your clients and your fees. Open it through the one-time activation link IEC emailed you — the link sets your access for 30 days. Activation opens once IEC has recorded both of your signatures: the Contractor Referral Agreement and the NDA.</p>
+    <p>Lost your link, or never received one? Write to <a href="mailto:info@iecincglobal.com?subject=Partner%20portal%20activation%20—%20IEC">info@iecincglobal.com</a> and IEC will re-issue it.</p>
+    <p><a class="ctr-btn ghost" href="contractors.html">Back to the partner page</a></p>
+  </div>
+
+  <div id="portal" style="display:none">
+    <div class="ctr-card">
+      <h2 id="whoTitle">Your portal</h2>
+      <p id="whoLine"></p>
+      <p id="signLine"></p>
+      <div id="signAction" style="display:none">
+        <a class="ctr-btn ghost" href="cnda.html">Sign the NDA — Combined Master</a>
+      </div>
+      <div id="frozenBanner" class="ctr-banner" style="display:none"></div>
+    </div>
+
+    <div class="ctr-card" id="addCard">
+      <h2>Add a client</h2>
+      <p>Add a business owner you are introducing to IEC's data-licensing program. A client can be registered by <strong>one partner only</strong> — first to register wins; if the business is already registered, your add will be refused without naming anyone. Counts only: totals and distributions, never individual records, never patient or customer information.</p>
+      <form class="ctr-form" id="clientForm">
+        <div>
+          <label for="cBusiness">Business legal name</label>
+          <input id="cBusiness" type="text" required maxlength="160">
+        </div>
+        <div>
+          <label for="cIndustry">Business type</label>
+          <select id="cIndustry" required>
+            <option value="home-health">Home health</option>
+            <option value="physical-therapy">Physical therapy</option>
+            <option value="medical-practice">Medical practice</option>
+            <option value="pharmacy">Pharmacy</option>
+            <option value="gas-convenience">Gas / convenience</option>
+            <option value="general-business" selected>General business</option>
+          </select>
+        </div>
+        <div>
+          <label for="cOwner">Owner contact name</label>
+          <input id="cOwner" type="text" required maxlength="120">
+        </div>
+        <div>
+          <label for="cEmail">Owner contact email</label>
+          <input id="cEmail" type="email" required maxlength="120">
+        </div>
+        <div>
+          <label for="cLocations">Locations (count)</label>
+          <input id="cLocations" type="number" min="0" step="1">
+        </div>
+        <div>
+          <label for="cEmployees">Full-time employees</label>
+          <input id="cEmployees" type="number" min="0" step="1">
+        </div>
+        <div>
+          <label for="cSystems">Systems they run (names)</label>
+          <input id="cSystems" type="text" maxlength="500" placeholder="e.g. WellSky, Microsoft 365, Salesforce">
+        </div>
+        <div>
+          <label for="cYears">Years of records</label>
+          <input id="cYears" type="number" min="0" step="1">
+        </div>
+        <div class="full" id="qHost"></div>
+        <div class="full">
+          <button class="ctr-btn" type="submit" id="clientBtn">Add this client</button>
+        </div>
+        <p class="ctr-status full" id="clientStatus" role="status"></p>
+      </form>
+    </div>
+
+    <div class="ctr-card">
+      <h2>Your clients</h2>
+      <p class="ctr-steps">Each client moves: Added → Questionnaire sent → Questionnaire answered → Assessment done → NDA sent → NDA signed → Ready to register → Registered. Steps are recorded by IEC from the real events — a questionnaire counts as answered when its submission lands, and an NDA counts as signed when IEC has verified the signed copy. Select a client to see the full record.</p>
+      <div id="clientTable"><p class="ctr-status">Loading clients…</p></div>
+    </div>
+
+    <div class="ctr-card" id="detailCard" style="display:none">
+      <h2 id="dTitle">Client</h2>
+      <div class="pipe" id="dPipe"></div>
+      <dl class="ctr-dl" id="dProfile"></dl>
+      <div id="dQAction"></div>
+      <h3>Questionnaire answers (counts only)</h3>
+      <div id="dAnswers"></div>
+      <h3>Your fee on this client</h3>
+      <p id="dFee"></p>
+    </div>
+
+    <div class="ctr-card">
+      <h2>Your fees <span class="ctr-pill warn">Schedule DRAFT</span></h2>
+      <div class="ctr-totals" id="feeTotals"></div>
+      <div id="feeTable"><p class="ctr-status">Loading the fee schedule…</p></div>
+      <p class="ctr-fine">Brackets: 2.0% of the first $250,000 · 1.0% to $1,000,000 · 0.5% above · capped at $25,000 per license · paid once per client, on their first closed license, within 15 days after IEC is paid. The cap level and renewal treatment are still being finalised.</p>
+    </div>
+
+    <div class="ctr-card">
+      <button class="ctr-btn danger" id="logoutBtn" type="button">Sign out of the portal</button>
+      <p class="ctr-fine">Questions about a client or a payment? Write to <a href="mailto:info@iecincglobal.com">info@iecincglobal.com</a>.</p>
+    </div>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="foot-bottom">
+      <div class="copyright">&copy; 2026 International Empire Consultants, Inc. All rights reserved. &middot; <a href="privacy.html">Privacy</a> &middot; <a href="/desk/login.html">Team sign-in</a> &middot; Developed by IEC, Inc.</div>
+    </div>
+  </div>
+</footer>
+<script src="nav.js" defer></script>
+<script>
+(function () {
+  var usd = function (n) { return '$' + Number(n).toLocaleString('en-US'); };
+  var esc = function (s) { return String(s ?? '').replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  var PIPE_LABEL = {
+    added: 'Added', questionnaire_sent: 'Questionnaire sent', questionnaire_answered: 'Questionnaire answered',
+    assessment_done: 'Assessment done', cnda_sent: 'NDA sent', cnda_signed: 'NDA signed',
+    ready_to_register: 'Ready to register', registered: 'Registered'
+  };
+  var FEE_LABEL = { registered: 'Client added', agreement_signed: 'Client agreement signed', license_closed: 'License closed', fee_paid: 'Fee paid' };
+  var state = { me: null, currentClient: null };
+  var loading = document.getElementById('loading');
+  var locked = document.getElementById('locked');
+  var portal = document.getElementById('portal');
+
+  function api(path, opts) {
+    return fetch(path, opts).then(function (r) {
+      return r.json().then(function (d) { return { status: r.status, body: d }; });
+    });
+  }
+
+  function load() {
+    api('/api/contractors?action=me')
+      .then(function (out) {
+        loading.style.display = 'none';
+        if (!out.body || !out.body.ok) { locked.style.display = 'block'; return; }
+        portal.style.display = 'block';
+        state.me = out.body;
+        render(out.body);
+      })
+      .catch(function () {
+        loading.style.display = 'none';
+        locked.style.display = 'block';
+      });
+  }
+
+  function render(d) {
+    var c = d.contractor;
+    document.getElementById('whoTitle').textContent = 'Welcome, ' + c.name;
+    var statusPill = c.status === 'active' ? 'ok' : (c.status === 'revoked' ? 'bad' : 'warn');
+    document.getElementById('whoLine').innerHTML =
+      esc(c.company) + ' · ' + esc(c.email) + ' · Status: <span class="ctr-pill ' + statusPill + '">' + esc(c.status) + '</span>';
+    var signed = function (v) { return v === 'signed' ? '<span class="ctr-pill ok">signed</span>' : '<span class="ctr-pill warn">pending</span>'; };
+    document.getElementById('signLine').innerHTML =
+      'Referral Agreement: ' + signed(c.agreementStatus) + ' &nbsp;·&nbsp; NDA: ' + signed(c.ndaStatus);
+    if (c.agreementStatus !== 'signed' || c.ndaStatus !== 'signed') {
+      document.getElementById('signAction').style.display = 'block';
+    }
+    var frozen = document.getElementById('frozenBanner');
+    if (d.frozen) {
+      frozen.style.display = 'block';
+      frozen.className = 'ctr-banner' + (c.status === 'revoked' ? ' bad' : '');
+      frozen.textContent = c.status === 'revoked'
+        ? 'Your partnership is revoked. This is a frozen, read-only view of your clients — nothing can be added or changed, and your clients\u2019 steps do not move.'
+        : 'Your portal is paused. This is a read-only view of your clients — nothing can be added or changed while paused.';
+      document.getElementById('addCard').style.display = 'none';
+    }
+    renderQuestionnaireForm(d.questionnaireSections || []);
+    renderClients(d);
+    renderFees(d);
+  }
+
+  function renderQuestionnaireForm(sections) {
+    var host = document.getElementById('qHost');
+    if (!sections.length) { host.innerHTML = ''; return; }
+    var html = '<h3 style="margin-top:4px">Client information — the counts-only questionnaire</h3>' +
+      '<p class="ctr-fine">Answer with the owner what you already know; anything left blank can be completed by the owner on the questionnaire itself. Counts only — an answer containing an email address, a phone number or an ID number will be refused and nothing will be saved.</p>';
+    sections.forEach(function (sec) {
+      html += '<div class="qsec"><h3>' + esc(sec.title) + '</h3>';
+      sec.fields.forEach(function (f) {
+        var qid = 'q' + f.n;
+        html += '<div class="qfield" data-qwrap="' + f.n + '"><label for="' + qid + '">' + f.n + '. ' + esc(f.label) + '</label>';
+        if (f.type === 'area') {
+          html += '<textarea id="' + qid + '" rows="2" data-q="' + f.n + '"></textarea>';
+        } else if (f.type === 'fields') {
+          html += '<div class="qsubs">' + f.subs.map(function (s) {
+            return '<div><label>' + esc(s) + '</label><input type="text" data-q="' + f.n + '" data-sub="' + esc(s) + '"></div>';
+          }).join('') + '</div>';
+        } else if (f.type === 'checks' || f.type === 'choice') {
+          var kind = f.type === 'checks' ? 'checkbox' : 'radio';
+          html += '<div class="' + (f.type === 'checks' ? 'qchecks' : 'qchoice') + '">' + f.options.map(function (o) {
+            return '<label><input type="' + kind + '" name="' + qid + 'opt" value="' + esc(o) + '" data-q="' + f.n + '"> ' + esc(o) + '</label>';
+          }).join('') + '</div>';
+          if (f.detail) html += '<input type="text" placeholder="Details (where the question asks)" data-q="' + f.n + '" data-detail="1">';
+        } else {
+          html += '<input type="text" id="' + qid + '" data-q="' + f.n + '">';
+        }
+        html += '</div>';
+      });
+      html += '</div>';
+    });
+    host.innerHTML = html;
+  }
+
+  function collectAnswers() {
+    var answers = {};
+    document.querySelectorAll('#qHost [data-qwrap]').forEach(function (wrap) {
+      var n = wrap.getAttribute('data-qwrap');
+      var subs = wrap.querySelectorAll('[data-sub]');
+      if (subs.length) {
+        var obj = {};
+        subs.forEach(function (si) { if (si.value.trim()) obj[si.getAttribute('data-sub')] = si.value.trim(); });
+        if (Object.keys(obj).length) answers['q' + n] = obj;
+        return;
+      }
+      var boxes = wrap.querySelectorAll('input[type=checkbox], input[type=radio]');
+      if (boxes.length) {
+        var picked = [];
+        boxes.forEach(function (b) { if (b.checked) picked.push(b.value); });
+        var det = wrap.querySelector('[data-detail]');
+        var val = picked.join(', ');
+        if (det && det.value.trim()) val = (val ? val + ' — ' : '') + det.value.trim();
+        if (val) answers['q' + n] = val;
+        return;
+      }
+      var inp = wrap.querySelector('[data-q]');
+      if (inp && inp.value.trim()) answers['q' + n] = inp.value.trim();
+    });
+    return answers;
+  }
+
+  function pipeHtml(pipeline, current) {
+    var idx = pipeline.indexOf(current);
+    return pipeline.map(function (s, i) {
+      var cls = i < idx ? 'done' : (i === idx ? 'now' : '');
+      return '<span class="' + cls + '">' + esc(PIPE_LABEL[s] || s) + '</span>';
+    }).join('');
+  }
+
+  function renderClients(d) {
+    var clients = d.clients || [];
+    if (!clients.length) {
+      document.getElementById('clientTable').innerHTML = '<p>No clients yet — add your first one above.</p>';
+      return;
+    }
+    var rows = clients.map(function (r) {
+      var fee = r.feeAmount === null || r.feeAmount === undefined ? '—' : usd(r.feeAmount);
+      return '<tr class="clickable" data-client="' + esc(r.id) + '"><td>' + esc(r.businessName) + '</td><td>' + esc(r.industry) +
+        '</td><td>' + esc(PIPE_LABEL[r.pipelineStatus] || r.pipelineStatus) + '</td><td>' + esc(FEE_LABEL[r.status] || r.status) +
+        '</td><td>' + fee + '</td></tr>';
+    }).join('');
+    document.getElementById('clientTable').innerHTML =
+      '<table class="ctr-refs"><thead><tr><th>Business</th><th>Type</th><th>Pipeline step</th><th>Fee stage</th><th>Your fee</th></tr></thead><tbody>' + rows + '</tbody></table>';
+  }
+
+  function renderFees(d) {
+    var t = d.feeTotals || { earned: 0, paid: 0, outstanding: 0 };
+    document.getElementById('feeTotals').innerHTML =
+      '<span>Earned: <b>' + usd(t.earned) + '</b></span><span>Paid: <b>' + usd(t.paid) + '</b></span><span>Outstanding: <b>' + usd(t.outstanding) + '</b></span>';
+    var s = d.schedule;
+    var srows = s.examples.map(function (e) {
+      return '<tr><td>' + usd(e.licenseValue) + '</td><td>' + usd(e.fee) + (e.capped ? ' (capped)' : '') + '</td></tr>';
+    }).join('');
+    document.getElementById('feeTable').innerHTML =
+      '<table class="ctr-refs"><thead><tr><th>First closed license value</th><th>Your referral fee</th></tr></thead><tbody>' + srows + '</tbody></table>';
+  }
+
+  function showClient(id) {
+    api('/api/contractors?action=get-client&id=' + encodeURIComponent(id))
+      .then(function (out) {
+        if (!out.body || !out.body.ok) return;
+        var r = out.body.client;
+        state.currentClient = r;
+        var card = document.getElementById('detailCard');
+        card.style.display = 'block';
+        document.getElementById('dTitle').textContent = r.businessName;
+        document.getElementById('dPipe').innerHTML = pipeHtml(state.me.pipeline, r.pipelineStatus);
+        var rows = [
+          ['Owner contact', r.ownerName + ' · ' + r.ownerEmail],
+          ['Business type', r.industry],
+          ['Locations', r.locations === null ? '—' : r.locations],
+          ['Full-time employees', r.employees === null ? '—' : r.employees],
+          ['Systems', r.systems || '—'],
+          ['Years of records', r.yearsRecords === null ? '—' : r.yearsRecords],
+          ['Added', r.createdAt ? String(r.createdAt).slice(0, 10) : '—']
+        ];
+        document.getElementById('dProfile').innerHTML = rows.map(function (x) {
+          return '<dt>' + esc(x[0]) + '</dt><dd>' + esc(x[1]) + '</dd>';
+        }).join('');
+        var act = document.getElementById('dQAction');
+        if (r.pipelineStatus === 'added' && !out.body.frozen) {
+          act.innerHTML = '<p>Send the owner the questionnaire, then record that you sent it:</p>' +
+            '<p><a class="ctr-btn ghost" href="' + esc(out.body.questionnaireUrl) + '" target="_blank" rel="noopener">Open the client questionnaire</a> ' +
+            '<button class="ctr-btn" type="button" id="dSendBtn">I sent the questionnaire</button></p>' +
+            '<p class="ctr-status" id="dSendStatus" role="status"></p>';
+          document.getElementById('dSendBtn').addEventListener('click', function () {
+            var btn = this;
+            btn.disabled = true;
+            api('/api/contractors?action=send-questionnaire', {
+              method: 'POST', headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ clientId: r.id })
+            }).then(function (res) {
+              btn.disabled = false;
+              if (res.body && res.body.ok) { load(); showClient(r.id); }
+              else document.getElementById('dSendStatus').textContent = 'That step could not be recorded — please try again.';
+            });
+          });
+        } else {
+          act.innerHTML = r.questionnaireSubmissionId
+            ? '<p class="ctr-fine">Questionnaire submission on record: ' + esc(r.questionnaireSubmissionId) + '</p>'
+            : '';
+        }
+        var ans = r.questionnaireAnswers;
+        document.getElementById('dAnswers').innerHTML = ans && Object.keys(ans).length
+          ? '<dl class="ctr-dl">' + Object.keys(ans).map(function (k) {
+              return '<dt>' + esc(k) + '</dt><dd>' + esc(ans[k]) + '</dd>';
+            }).join('') + '</dl>'
+          : '<p>No answers recorded yet — they appear here when the questionnaire is answered.</p>';
+        document.getElementById('dFee').textContent =
+          r.feeAmount === null || r.feeAmount === undefined
+            ? 'No fee yet — your fee is set when this client\u2019s first license closes.'
+            : 'License ' + usd(r.licenseValue) + ' · your fee ' + usd(r.feeAmount) +
+              (r.status === 'fee_paid' ? ' · paid' + (r.feePaidAt ? ' on ' + String(r.feePaidAt).slice(0, 10) : '') : ' · due within 15 days after IEC is paid');
+        card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+  }
+
+  document.getElementById('clientTable').addEventListener('click', function (ev) {
+    var tr = ev.target.closest('tr[data-client]');
+    if (tr) showClient(tr.getAttribute('data-client'));
+  });
+
+  document.getElementById('clientForm').addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    var btn = document.getElementById('clientBtn');
+    var st = document.getElementById('clientStatus');
+    btn.disabled = true;
+    st.textContent = 'Adding your client…';
+    var num = function (id) {
+      var v = document.getElementById(id).value;
+      return v === '' ? undefined : Number(v);
+    };
+    api('/api/contractors?action=register-referral', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        businessName: document.getElementById('cBusiness').value,
+        ownerName: document.getElementById('cOwner').value,
+        ownerEmail: document.getElementById('cEmail').value,
+        industry: document.getElementById('cIndustry').value,
+        locations: num('cLocations'),
+        employees: num('cEmployees'),
+        systems: document.getElementById('cSystems').value || undefined,
+        yearsRecords: num('cYears'),
+        questionnaireAnswers: collectAnswers()
+      })
+    })
+      .then(function (out) {
+        btn.disabled = false;
+        if (out.body && out.body.ok) {
+          st.textContent = 'Client added. Open the client below to send the questionnaire.';
+          ev.target.reset();
+          load();
+        } else if (out.body && out.body.error === 'nda_required') {
+          st.textContent = 'Please complete both signatures first — clients open once IEC records them.';
+        } else if (out.body && out.body.error === 'agreement_required') {
+          st.textContent = 'Please sign the Contractor Referral Agreement first — clients open once IEC records your signature.';
+        } else if (out.body && out.body.error === 'already_registered') {
+          st.textContent = 'This business is already registered. A client can be registered by one partner only.';
+        } else if (out.body && out.body.error === 'identifier_content') {
+          st.textContent = 'One of the answers contains an email address, a phone number or an ID number. Counts only — please remove it and save again. Nothing was saved.';
+        } else if (out.status === 401) {
+          st.textContent = 'Your session ended — please use your activation link to sign in again.';
+        } else {
+          st.textContent = 'Please check the fields and try again.';
+        }
+      })
+      .catch(function () {
+        btn.disabled = false;
+        st.textContent = 'Something went wrong — please try again.';
+      });
+  });
+
+  document.getElementById('logoutBtn').addEventListener('click', function () {
+    api('/api/contractors?action=logout', { method: 'POST' })
+      .finally(function () { location.href = 'contractors.html'; });
+  });
+
+  load();
+})();
+</script>
+</body>
+</html>

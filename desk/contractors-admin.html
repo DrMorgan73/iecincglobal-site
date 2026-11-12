@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Partners — IEC Suite</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/desk/desk.css">
+<style>
+  table.matrix{width:100%;border-collapse:collapse;font-size:13.5px}
+  table.matrix th,table.matrix td{padding:11px 12px;border-bottom:1px solid var(--line-soft);text-align:left;vertical-align:top}
+  table.matrix th{font-family:'Space Grotesk';font-size:13px;letter-spacing:.03em;white-space:nowrap}
+  .chip{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+    padding:4px 11px;border-radius:999px;border:1px solid var(--line);color:var(--dim);white-space:nowrap}
+  .chip.invited{color:#3a2703;background:linear-gradient(135deg,#fde68a,#fbbf24);border-color:transparent}
+  .chip.active{color:#06281c;background:linear-gradient(135deg,#6ee7b7,#34d399);border-color:transparent}
+  .chip.paused{color:#0b2447;background:linear-gradient(135deg,#93c5fd,#60a5fa);border-color:transparent}
+  .chip.revoked{color:#3d0a0a;background:linear-gradient(135deg,#fca5a5,#f87171);border-color:transparent}
+  .chip.signed{color:#06281c;background:linear-gradient(135deg,#6ee7b7,#34d399);border-color:transparent}
+  .chip.pending{color:#3a2703;background:linear-gradient(135deg,#fde68a,#fbbf24);border-color:transparent}
+  .mini{font:600 11.5px 'Inter';padding:5px 10px;border-radius:8px;border:1px solid var(--line);
+    background:transparent;color:var(--gold);cursor:pointer;margin:5px 4px 0 0;white-space:nowrap}
+  .mini:hover{border-color:var(--gold);background:rgba(240,185,66,.08)}
+  .mini.danger{color:var(--red)}
+  .mini.danger:hover{border-color:var(--red);background:rgba(248,113,113,.08)}
+  .mini:disabled{opacity:.45;cursor:wait}
+  .banner{border:1px solid rgba(240,185,66,.45);background:rgba(240,185,66,.07);border-radius:14px;
+    padding:16px 18px;font-size:14px;margin-bottom:16px}
+  .banner.err{border-color:rgba(248,113,113,.5);background:rgba(248,113,113,.07)}
+  .banner a{color:var(--gold)}
+  .table-wrap{overflow-x:auto}
+  .who b{font-family:'Space Grotesk';font-size:14.5px;display:block}
+  .who span{font-size:12.5px;color:var(--dim)}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .row2 label{display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:600;letter-spacing:.04em;color:var(--dim);text-transform:uppercase}
+  .row2 input{font:500 13.5px 'Inter';padding:8px 11px;border-radius:9px;border:1px solid var(--line);background:transparent;color:var(--text)}
+  .lic-input{width:130px;font:500 13px 'Inter';padding:6px 9px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--text)}
+  .ev-input{width:230px;font:500 13px 'Inter';padding:6px 9px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--text)}
+  .claim-form{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+  .claim-form input{font:500 13.5px 'Inter';padding:8px 11px;border-radius:9px;border:1px solid var(--line);background:transparent;color:var(--text)}
+  .result-line{font-size:13px;margin-top:9px;color:var(--dim);word-break:break-all}
+  .result-line b{color:var(--text)}
+</style>
+</head>
+<body data-page="contractors-admin">
+<div class="orbs" aria-hidden="true"><span class="orb gold"></span><span class="orb teal"></span><span class="orb violet"></span></div>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="side-brand">
+      <img class="logo-img" src="/assets/iec-logo.png" alt="IEC Inc.">
+      <div><h1>IEC <span>Suite</span></h1><p>International Empire Consultants, Inc.</p></div>
+    </div>
+    <nav id="nav"></nav>
+    <div class="side-foot">
+      <button class="signout" id="signout"><i>🚪</i>Sign out</button>
+      <a class="public-link" href="/welcome.html">← Public site</a>
+      <div class="clockbox">
+        <div id="clock">--:--</div>
+        <div id="dateline">—</div>
+      </div>
+    </div>
+  </aside>
+
+  <main>
+    <div class="section-head">
+      <h2>Partners — Partner Portal Admin</h2>
+      <button class="btn small ghost" id="refresh" type="button">↻ Refresh</button>
+    </div>
+    <p class="hint" style="margin-bottom:16px">Partners work <b>under IEC</b> as IEC contractors on the referral-fee program. They are <b>not</b> producers and <b>not</b> under any channel: their pay is a performance-based referral fee, only when a license a client they added closes. Partners never hold a Desk login — they enter through a one-time activation link, and activation opens only once <b>both</b> signatures are recorded: the Contractor Referral Agreement and the NDA. A partner sees only his own clients. Client pipeline steps are recorded here, one at a time, from the real events — with the evidence noted.</p>
+
+    <div id="banner"></div>
+
+    <div class="card" style="margin-bottom:16px">
+      <h3>Fee schedule <span class="chip pending">Draft</span></h3>
+      <p class="hint" id="feeLine">Loading…</p>
+      <div id="feeTable"></div>
+      <p class="hint">Open rulings: per-license cap (currently $25,000) · renewals (currently unpaid — first license only). The portal always renders the live schedule from the API.</p>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <h3>Partners</h3>
+      <div class="table-wrap"><table class="matrix" id="ctrTable">
+        <thead><tr><th>Partner</th><th>Status</th><th>Agreement</th><th>NDA</th><th>Fees earned / paid</th><th>Actions</th></tr></thead>
+        <tbody><tr><td colspan="6">Loading…</td></tr></tbody>
+      </table></div>
+      <div class="result-line" id="inviteResult"></div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <h3>Clients — pipeline &amp; fees</h3>
+      <p class="hint">Pipeline: Added → Questionnaire sent → Questionnaire answered → Assessment done → CNDA sent → CNDA signed → Ready to register → Registered (with DataSupply — internal label; partners never see the channel name). Evidence is required for Questionnaire answered (the submission reference from Dana's database), Assessment done (the valuation reference) and CNDA signed (the countersignature verification note). A paused or revoked partner's clients do not move.</p>
+      <div class="table-wrap"><table class="matrix" id="refTable">
+        <thead><tr><th>Client</th><th>Partner</th><th>Pipeline</th><th>Fee stage</th><th>License</th><th>Fee</th><th>Actions</th></tr></thead>
+        <tbody><tr><td colspan="7">Loading…</td></tr></tbody>
+      </table></div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <h3>IEC-registered companies — duplicate guard</h3>
+      <p class="hint">Companies IEC itself has registered (for example through the DataSupply portal). A partner adding one of these — matched on the business name or the owner email — is refused with the same "already registered" answer as a partner-vs-partner duplicate; the partner never learns which side holds the registration. Keep this list current from the client ledger.</p>
+      <div class="table-wrap"><table class="matrix" id="claimTable">
+        <thead><tr><th>Company</th><th>Owner email</th><th>Note</th><th>Actions</th></tr></thead>
+        <tbody><tr><td colspan="4">Loading…</td></tr></tbody>
+      </table></div>
+      <form class="claim-form" id="claimForm">
+        <input id="claimBusiness" type="text" placeholder="Company legal name" required maxlength="160" size="28">
+        <input id="claimEmail" type="email" placeholder="Owner email (optional)" maxlength="120" size="24">
+        <input id="claimNote" type="text" placeholder="Note (e.g. registered via portal, date)" maxlength="300" size="30">
+        <button class="mini" type="submit">Add IEC-registered company</button>
+      </form>
+      <div class="result-line" id="claimResult"></div>
+    </div>
+  </main>
+</div>
+
+<script src="/desk/desk.js"></script>
+<script>
+(function () {
+  var usd = function (n) { return '$' + Number(n).toLocaleString('en-US'); };
+  var esc = function (s) { return String(s ?? '').replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  var banner = document.getElementById('banner');
+  var STATUS_LABEL = { registered: 'Client added', agreement_signed: 'Agreement signed', license_closed: 'License closed', fee_paid: 'Fee paid' };
+  var NEXT_STATUS = { registered: 'agreement_signed', agreement_signed: 'license_closed', license_closed: 'fee_paid' };
+  var PIPE_LABEL = {
+    added: 'Added', questionnaire_sent: 'Questionnaire sent', questionnaire_answered: 'Questionnaire answered',
+    assessment_done: 'Assessment done', cnda_sent: 'CNDA sent', cnda_signed: 'CNDA signed',
+    ready_to_register: 'Ready to register', registered: 'Registered'
+  };
+  var PIPE_NEXT = {
+    added: 'questionnaire_sent', questionnaire_sent: 'questionnaire_answered', questionnaire_answered: 'assessment_done',
+    assessment_done: 'cnda_sent', cnda_sent: 'cnda_signed', cnda_signed: 'ready_to_register', ready_to_register: 'registered'
+  };
+  var PIPE_EVIDENCE = { questionnaire_answered: 1, assessment_done: 1, cnda_signed: 1 };
+
+  function api(path, opts) {
+    return fetch(path, opts).then(function (r) {
+      if (r.status === 401) { location.href = '/desk/login.html'; throw new Error('unauthorized'); }
+      return r.json().then(function (d) { return { status: r.status, body: d }; });
+    });
+  }
+  function post(action, body) {
+    return api('/api/contractors?action=' + action, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body || {})
+    });
+  }
+
+  function load() {
+    api('/api/contractors?action=admin-list').then(function (out) {
+      if (!out.body || !out.body.ok) { banner.className = 'banner err'; banner.textContent = 'Could not load partners.'; return; }
+      render(out.body);
+    }).catch(function () {
+      banner.className = 'banner err'; banner.textContent = 'Could not load partners.';
+    });
+    api('/api/contractors?action=schedule').then(function (out) {
+      var s = out.body && out.body.schedule;
+      if (!s) return;
+      document.getElementById('feeLine').textContent =
+        'Brackets: 2.0% of the first $250,000 · 1.0% to $1,000,000 · 0.5% above · capped at ' + usd(s.cap) +
+        ' per license · paid within ' + s.paidWithinDays + ' days after IEC is paid.';
+      document.getElementById('feeTable').innerHTML =
+        '<table class="matrix"><thead><tr><th>First closed license value</th><th>Referral fee</th></tr></thead><tbody>' +
+        s.examples.map(function (e) {
+          return '<tr><td>' + usd(e.licenseValue) + '</td><td>' + usd(e.fee) + (e.capped ? ' (capped)' : '') + '</td></tr>';
+        }).join('') + '</tbody></table>';
+    });
+  }
+
+  function render(d) {
+    var ctrs = d.contractors || [];
+    var refs = d.referrals || [];
+    var claims = d.claims || [];
+    var byId = {};
+    ctrs.forEach(function (c) { byId[c.id] = c; });
+    document.querySelector('#ctrTable tbody').innerHTML = ctrs.length ? ctrs.map(function (c) {
+      var acts = '';
+      var signedBoth = c.ndaStatus === 'signed' && (c.agreementStatus || 'pending') === 'signed';
+      if (c.status === 'invited' || c.status === 'active') {
+        acts += '<button class="mini" data-invite="' + esc(c.id) + '">Send activation link</button>';
+      }
+      if ((c.agreementStatus || 'pending') !== 'signed') {
+        acts += '<button class="mini" data-agreement="' + esc(c.id) + '">Mark agreement signed</button>';
+      }
+      if (c.ndaStatus !== 'signed') {
+        acts += '<button class="mini" data-nda="' + esc(c.id) + '">Mark NDA signed</button>';
+      }
+      if (c.status === 'active') acts += '<button class="mini" data-status="paused" data-id="' + esc(c.id) + '">Pause</button>';
+      if (c.status === 'paused') acts += '<button class="mini" data-status="active" data-id="' + esc(c.id) + '">Resume</button>';
+      if (c.status !== 'revoked') acts += '<button class="mini danger" data-status="revoked" data-id="' + esc(c.id) + '">Revoke</button>';
+      var ft = c.feeTotals || { earned: 0, paid: 0 };
+      return '<tr><td class="who"><b>' + esc(c.name) + '</b><span>' + esc(c.email) + ' · ' + esc(c.company) + '</span></td>' +
+        '<td><span class="chip ' + esc(c.status) + '">' + esc(c.status) + '</span>' + (signedBoth ? '' : '<br><span style="font-size:12px;color:var(--dim)">activation blocked until both sign</span>') + '</td>' +
+        '<td><span class="chip ' + ((c.agreementStatus || 'pending') === 'signed' ? 'signed' : 'pending') + '">' + esc(c.agreementStatus || 'pending') + '</span></td>' +
+        '<td><span class="chip ' + (c.ndaStatus === 'signed' ? 'signed' : 'pending') + '">' + esc(c.ndaStatus) + '</span></td>' +
+        '<td>' + usd(ft.earned) + ' / ' + usd(ft.paid) + '</td>' +
+        '<td>' + acts + '</td></tr>';
+    }).join('') : '<tr><td colspan="6">No partners yet — registrations from /contractors.html appear here.</td></tr>';
+
+    document.querySelector('#refTable tbody').innerHTML = refs.length ? refs.map(function (r) {
+      var c = byId[r.contractorId];
+      var frozen = c && c.status !== 'active';
+      var next = NEXT_STATUS[r.status];
+      var pnext = PIPE_NEXT[r.pipelineStatus || 'added'];
+      var act = '';
+      if (pnext && !frozen) {
+        if (PIPE_EVIDENCE[pnext]) {
+          act += '<input class="ev-input" type="text" placeholder="Evidence — ' + (pnext === 'questionnaire_answered' ? 'submission reference' : pnext === 'assessment_done' ? 'valuation reference' : 'verification note') + '" data-ev="' + esc(r.id) + '"> ';
+        }
+        act += '<button class="mini" data-padvance="' + esc(r.id) + '" data-next="' + pnext + '">Record: ' + esc(PIPE_LABEL[pnext]) + '</button><br>';
+      }
+      if (next === 'license_closed') {
+        act += '<input class="lic-input" type="number" min="1" step="1" placeholder="License $ value" data-lic="' + esc(r.id) + '"> ' +
+          '<button class="mini" data-advance="' + esc(r.id) + '" data-next="license_closed">Close license</button>';
+      } else if (next) {
+        act += '<button class="mini" data-advance="' + esc(r.id) + '" data-next="' + next + '">' +
+          (next === 'agreement_signed' ? 'Mark client agreement signed' : 'Mark fee paid') + '</button>';
+      }
+      if (frozen) act += '<span style="font-size:12px;color:var(--dim)">Partner ' + esc(c.status) + ' — pipeline frozen</span>';
+      var profile = [r.locations != null ? r.locations + ' loc' : null, r.employees != null ? r.employees + ' FTE' : null, r.yearsRecords != null ? r.yearsRecords + ' yrs records' : null].filter(Boolean).join(' · ');
+      return '<tr><td class="who"><b>' + esc(r.businessName) + '</b><span>' + esc(r.ownerName) + ' · ' + esc(r.ownerEmail) + (profile ? '<br>' + esc(profile) : '') + (r.pipelineNote ? '<br>Evidence: ' + esc(r.pipelineNote) : '') + '</span></td>' +
+        '<td>' + esc(c ? c.email : r.contractorId) + '</td>' +
+        '<td><span class="chip">' + esc(PIPE_LABEL[r.pipelineStatus || 'added']) + '</span></td>' +
+        '<td><span class="chip">' + esc(STATUS_LABEL[r.status] || r.status) + '</span></td>' +
+        '<td>' + (r.licenseValue === null || r.licenseValue === undefined ? '—' : usd(r.licenseValue)) + '</td>' +
+        '<td>' + (r.feeAmount === null || r.feeAmount === undefined ? '—' : usd(r.feeAmount)) + '</td>' +
+        '<td>' + act + '</td></tr>';
+    }).join('') : '<tr><td colspan="7">No clients yet.</td></tr>';
+
+    document.querySelector('#claimTable tbody').innerHTML = claims.length ? claims.map(function (cl) {
+      return '<tr><td class="who"><b>' + esc(cl.businessName) + '</b></td><td>' + esc(cl.ownerEmail || '—') + '</td><td>' + esc(cl.note || '—') + '</td>' +
+        '<td><button class="mini danger" data-unclaim="' + esc(cl.id) + '">Remove</button></td></tr>';
+    }).join('') : '<tr><td colspan="4">None recorded — add the companies IEC has registered itself so partners cannot register them again.</td></tr>';
+  }
+
+  document.addEventListener('click', function (ev) {
+    var t = ev.target.closest('button[data-invite],button[data-nda],button[data-agreement],button[data-status],button[data-advance],button[data-padvance],button[data-unclaim]');
+    if (!t) return;
+    t.disabled = true;
+    var done = function (msg, isErr) {
+      t.disabled = false;
+      if (msg) {
+        var el = document.getElementById('inviteResult');
+        el.innerHTML = msg;
+        if (isErr) banner.className = 'banner err';
+      }
+      load();
+    };
+    if (t.hasAttribute('data-invite')) {
+      post('invite', { contractorId: t.getAttribute('data-invite') }).then(function (out) {
+        if (out.body && out.body.ok) {
+          done('Activation link (email this to the partner — the API sends no email itself; it activates only once both signatures are recorded): <b>' + esc(out.body.activationUrl) + '</b>');
+        } else done('Invite failed: ' + esc((out.body && out.body.error) || 'error'), true);
+      }).catch(function () { done('Invite failed.', true); });
+    } else if (t.hasAttribute('data-nda')) {
+      post('set-nda', { contractorId: t.getAttribute('data-nda'), signed: true }).then(function (out) {
+        done(out.body && out.body.ok ? 'NDA marked signed.' : 'Could not mark the NDA signed.', !(out.body && out.body.ok));
+      });
+    } else if (t.hasAttribute('data-agreement')) {
+      post('set-agreement', { contractorId: t.getAttribute('data-agreement'), signed: true }).then(function (out) {
+        done(out.body && out.body.ok ? 'Referral Agreement marked signed.' : 'Could not mark the agreement signed.', !(out.body && out.body.ok));
+      });
+    } else if (t.hasAttribute('data-status')) {
+      post('set-status', { contractorId: t.getAttribute('data-id'), status: t.getAttribute('data-status') }).then(function (out) {
+        done(out.body && out.body.ok ? '' : 'Status change failed.', !(out.body && out.body.ok));
+      });
+    } else if (t.hasAttribute('data-padvance')) {
+      var rid = t.getAttribute('data-padvance');
+      var pbody = { referralId: rid, status: t.getAttribute('data-next') };
+      var evInp = document.querySelector('input[data-ev="' + rid + '"]');
+      if (evInp) {
+        if (!evInp.value.trim()) { t.disabled = false; alert('Enter the evidence for this step first — the submission reference, valuation reference, or verification note.'); return; }
+        pbody.evidence = evInp.value.trim();
+        if (pbody.status === 'questionnaire_answered') pbody.submissionId = evInp.value.trim();
+      }
+      post('advance-client', pbody).then(function (out) {
+        if (out.body && out.body.ok) done('Pipeline step recorded: ' + esc(PIPE_LABEL[pbody.status]) + '.');
+        else done('Could not record the step: ' + esc((out.body && out.body.error) || 'error'), true);
+      });
+    } else if (t.hasAttribute('data-unclaim')) {
+      post('remove-claim', { claimId: t.getAttribute('data-unclaim') }).then(function (out) {
+        done(out.body && out.body.ok ? '' : 'Could not remove the company.', !(out.body && out.body.ok));
+      });
+    } else if (t.hasAttribute('data-advance')) {
+      var body = { referralId: t.getAttribute('data-advance'), status: t.getAttribute('data-next') };
+      if (body.status === 'license_closed') {
+        var inp = document.querySelector('input[data-lic="' + body.referralId + '"]');
+        var lv = inp ? Number(inp.value) : NaN;
+        if (!Number.isFinite(lv) || lv <= 0) { t.disabled = false; alert('Enter the closed license value first.'); return; }
+        body.licenseValue = lv;
+      }
+      post('advance-referral', body).then(function (out) {
+        if (out.body && out.body.ok) {
+          var f = out.body.referral && out.body.referral.feeAmount;
+          done(f !== null && f !== undefined ? 'License closed — referral fee ' + usd(f) + ' (per the schedule).' : '');
+        } else done('Could not advance the referral: ' + esc((out.body && out.body.error) || 'error'), true);
+      });
+    }
+  });
+
+  document.getElementById('claimForm').addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    var body = {
+      businessName: document.getElementById('claimBusiness').value,
+      ownerEmail: document.getElementById('claimEmail').value,
+      note: document.getElementById('claimNote').value
+    };
+    post('add-claim', body).then(function (out) {
+      var el = document.getElementById('claimResult');
+      if (out.body && out.body.ok) {
+        el.textContent = 'Recorded — partners can no longer register this company.';
+        ev.target.reset();
+      } else {
+        el.textContent = 'Could not record it: ' + ((out.body && out.body.error) || 'error');
+      }
+      load();
+    });
+  });
+
+  document.getElementById('refresh').addEventListener('click', load);
+  load();
+})();
+</script>
+</body>
+</html>

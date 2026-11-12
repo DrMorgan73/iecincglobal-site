@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Partner Portal — Screens Preview</title>
+<style>
+  body{margin:0;background:#0A1626;font-family:Inter,system-ui,Arial,sans-serif;color:#E8EEF5}
+  .page{max-width:1180px;margin:0 auto;padding:36px 20px 70px}
+  h1{font-size:30px;margin:0 0 8px}
+  h1 .gold{color:#C9A227}
+  .intro{color:#B9C6D6;line-height:1.65;max-width:820px}
+  .screen-label{display:flex;align-items:center;gap:12px;margin:38px 0 12px}
+  .tag{background:#C9A227;color:#0B2447;font-weight:800;font-size:12px;border-radius:999px;padding:4px 12px;letter-spacing:.05em}
+  .tag.desk{background:#7C5CFF;color:#fff}
+  .screen-label h2{font-size:20px;margin:0}
+  .frame{background:#F4F7FB;border-radius:16px;padding:26px;color:#1A1A1A;box-shadow:0 18px 50px rgba(0,0,0,.35)}
+  .frame.desk{background:#0D1526;color:#E8EEF5}
+  .card{border:1px solid #DCE3EC;border-radius:14px;background:#fff;padding:22px 24px;margin-bottom:18px}
+  .card h2{font-size:18px;margin:0 0 8px;color:#0E2A47}
+  .card h3{font-size:15px;margin:16px 0 8px;color:#0E2A47}
+  .card p{color:#26313F;line-height:1.6;margin:0 0 10px;font-size:14.5px}
+  .pill{display:inline-block;border-radius:999px;padding:3px 12px;font-size:12.5px;font-weight:700}
+  .pill.ok{background:#E7F4E9;color:#1E6B2E}.pill.warn{background:#FBF6EA;color:#5c4a12}
+  .pill.mut{background:#EEF1F5;color:#5B6B85}.pill.bad{background:#FBEAEA;color:#8B1E1E}
+  table{border-collapse:collapse;width:100%;margin:10px 0;font-size:14px}
+  th{background:#0E2A47;color:#fff;padding:8px 10px;text-align:left}
+  td{border:1px solid #DCE3EC;padding:8px 10px}
+  .btn{display:inline-block;border-radius:10px;padding:11px 20px;font-weight:700;background:#0E2A47;color:#fff;font-size:14.5px}
+  .btn.ghost{background:#fff;color:#0E2A47;border:1.5px solid #0E2A47}
+  .btn.gold{background:#C9A227;color:#0E2A47}
+  .form{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+  .form .full{grid-column:1/-1}
+  .form label{display:block;font-size:12.5px;font-weight:700;color:#0E2A47;margin-bottom:5px}
+  .form input,.form select,.form textarea{width:100%;box-sizing:border-box;padding:10px 11px;border:1px solid #C9D3E0;border-radius:9px;font-size:14.5px;background:#fff;color:#1A1A1A}
+  .fine{font-size:13px;color:#5B6B85;line-height:1.6}
+  .banner{border:1px solid #B98A2F;background:#FBF6EA;border-radius:10px;padding:11px 13px;font-size:14px;color:#5c4a12;margin-bottom:12px}
+  .pipe{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+  .pipe span{border:1px solid #C9D3E0;border-radius:999px;padding:4px 11px;font-size:12.5px;font-weight:600;color:#5B6B85;background:#fff}
+  .pipe span.done{background:#0E2A47;border-color:#0E2A47;color:#fff}
+  .pipe span.now{background:#C9A227;border-color:#C9A227;color:#0E2A47}
+  dl{display:grid;grid-template-columns:190px 1fr;gap:6px 14px;font-size:14.5px;margin:8px 0}
+  dt{font-weight:700;color:#0E2A47}dd{margin:0;color:#26313F}
+  .totals{display:flex;gap:26px;flex-wrap:wrap;font-size:15px;margin:8px 0}
+  .totals b{color:#0E2A47}
+  .steps{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:9px}
+  .steps li{display:flex;gap:11px;align-items:flex-start;font-size:14.5px;color:#26313F;line-height:1.55}
+  .num{flex:0 0 26px;height:26px;border-radius:50%;background:#0E2A47;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;font-size:13px}
+  .hero h2{font-size:26px;color:#0E2A47;margin:0 0 8px}
+  .chips span{display:inline-block;border:1px solid #C9D3E0;border-radius:999px;padding:4px 12px;font-size:12.5px;font-weight:600;color:#0E2A47;margin:0 6px 8px 0;background:#fff}
+  /* desk */
+  .dcard{border:1px solid #22314F;border-radius:14px;background:#111D33;padding:20px 22px;margin-bottom:16px}
+  .dcard h3{margin:0 0 10px;font-size:16px;color:#fff}
+  .dcard p{color:#9FB0C6;font-size:13.5px;line-height:1.6}
+  .dcard table th{background:#1B2B47}
+  .dcard table td{border-color:#22314F;color:#D7E1EE}
+  .chip{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:4px 10px;border-radius:999px}
+  .chip.green{background:#34D399;color:#06281C}.chip.amber{background:#FBBF24;color:#3A2703}
+  .chip.blue{background:#60A5FA;color:#0B2447}.chip.red{background:#F87171;color:#3D0A0A}.chip.plain{border:1px solid #33456B;color:#9FB0C6}
+  .mini{display:inline-block;font:600 11.5px Inter;padding:5px 10px;border-radius:8px;border:1px solid #33456B;color:#F0B942;margin:4px 4px 0 0}
+  .mini.danger{color:#F87171}
+  .who b{display:block;font-size:14px;color:#fff}
+  .who span{font-size:12.5px;color:#9FB0C6}
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>IEC Partner Portal — <span class="gold">Screens Preview</span></h1>
+  <p class="intro">Every screen of the Partner Portal as built, with <strong>synthetic data</strong> (partner "Karim Haddad — example") and <strong>real fee math</strong> from the portal's fee engine (2.0% of the first $250,000 · 1.0% to $1,000,000 · 0.5% above · capped at $25,000 per license, schedule DRAFT). Static preview — buttons are not wired. Partner-facing screens never name any channel or show any other party's economics.</p>
+
+  <!-- 1 REGISTER -->
+  <div class="screen-label"><span class="tag">PUBLIC</span><h2>1 · Partner register — request access</h2></div>
+  <div class="frame">
+    <div class="card hero">
+      <p style="color:#C9A227;font-weight:800;letter-spacing:.08em;font-size:12px">IEC PARTNER PORTAL</p>
+      <h2>Work under IEC. Add your clients. Get paid on performance.</h2>
+      <p>Partners work under IEC as IEC contractors. You add your clients to IEC's data-licensing program from your own portal, follow each client through the pipeline, and earn a referral fee that scales with the license — paid only when a license your client closes.</p>
+      <div class="chips"><span>Performance-based only</span><span>Scales with the license</span><span>Capped per license</span><span>IEC's share only</span></div>
+      <span class="btn gold">Request partner access</span> <span class="btn ghost">How the program works</span>
+    </div>
+    <div class="card">
+      <h2>How it works</h2>
+      <ol class="steps">
+        <li><span class="num">1</span><span><strong>Request access</strong> — your name, email and company. IEC records your request.</span></li>
+        <li><span class="num">2</span><span><strong>Sign first</strong> — the IEC Contractor Referral Agreement and the NDA. Both signatures come before activation and before any client is added.</span></li>
+        <li><span class="num">3</span><span><strong>IEC activates your portal</strong> — a one-time activation link by email. No shared logins, no passwords.</span></li>
+        <li><span class="num">4</span><span><strong>Add your clients</strong> — profile + counts-only questionnaire. One partner per client: first to register wins.</span></li>
+        <li><span class="num">5</span><span><strong>Track every client</strong> — questionnaire, assessment, NDA, registration.</span></li>
+        <li><span class="num">6</span><span><strong>Get paid on performance</strong> — fee paid within 15 days after IEC is paid on the closed license.</span></li>
+      </ol>
+    </div>
+    <div class="card">
+      <h2>Request partner access</h2>
+      <form class="form" onsubmit="return false">
+        <div><label>Your full name</label><input value="Karim Haddad"></div>
+        <div><label>Your email</label><input value="karim@example.com"></div>
+        <div class="full"><label>Your company</label><input value="Karim Consulting LLC"></div>
+        <div class="full"><span class="btn">Register</span></div>
+      </form>
+      <p class="fine">After you register, you sign the Contractor Referral Agreement and the NDA; once IEC records both signatures, IEC sends your portal activation link.</p>
+    </div>
+  </div>
+
+  <!-- 2 DASHBOARD -->
+  <div class="screen-label"><span class="tag">PARTNER</span><h2>2 · Partner dashboard</h2></div>
+  <div class="frame">
+    <div class="card">
+      <h2>Welcome, Karim Haddad</h2>
+      <p>Karim Consulting LLC · karim@example.com · Status: <span class="pill ok">active</span></p>
+      <p>Referral Agreement: <span class="pill ok">signed</span> &nbsp;·&nbsp; NDA: <span class="pill ok">signed</span></p>
+    </div>
+    <div class="card">
+      <h2>Your clients</h2>
+      <p class="fine">Added → Questionnaire sent → Questionnaire answered → Assessment done → NDA sent → NDA signed → Ready to register → Registered. Steps are recorded by IEC from the real events.</p>
+      <table>
+        <thead><tr><th>Business</th><th>Type</th><th>Pipeline step</th><th>Fee stage</th><th>Your fee</th></tr></thead>
+        <tbody>
+          <tr><td>Harbor Dental Group</td><td>medical-practice</td><td>Registered</td><td>Fee paid</td><td>$7,500</td></tr>
+          <tr><td>Sunrise Home Care LLC</td><td>home-health</td><td>NDA signed</td><td>Client added</td><td>—</td></tr>
+          <tr><td>Northgate Pharmacy</td><td>pharmacy</td><td>Questionnaire answered</td><td>Client added</td><td>—</td></tr>
+          <tr><td>Summit Physical Therapy</td><td>physical-therapy</td><td>Added</td><td>Client added</td><td>—</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card">
+      <h2>Your fees <span class="pill warn">Schedule DRAFT</span></h2>
+      <div class="totals"><span>Earned: <b>$7,500</b></span><span>Paid: <b>$7,500</b></span><span>Outstanding: <b>$0</b></span></div>
+    </div>
+  </div>
+
+  <!-- 3 ADD CLIENT -->
+  <div class="screen-label"><span class="tag">PARTNER</span><h2>3 · Add a client — profile + counts-only questionnaire</h2></div>
+  <div class="frame">
+    <div class="card">
+      <h2>Add a client</h2>
+      <p>A client can be registered by <strong>one partner only</strong> — first to register wins. Counts only: totals and distributions, never individual records.</p>
+      <form class="form" onsubmit="return false">
+        <div><label>Business legal name</label><input value="Sunrise Home Care LLC"></div>
+        <div><label>Business type</label><select><option>Home health</option></select></div>
+        <div><label>Owner contact name</label><input value="Marta Ruiz"></div>
+        <div><label>Owner contact email</label><input value="marta@sunrisehc.example"></div>
+        <div><label>Locations (count)</label><input value="3"></div>
+        <div><label>Full-time employees</label><input value="66"></div>
+        <div><label>Systems they run (names)</label><input value="WellSky, Microsoft 365, Salesforce"></div>
+        <div><label>Years of records</label><input value="20"></div>
+      </form>
+      <h3>C. Volume &amp; history (counts only)</h3>
+      <form class="form" onsubmit="return false">
+        <div><label>8. Customers/clients served per year</label><input value="4,150"></div>
+        <div><label>9. Jobs/orders/projects completed per year</label><input value="38,900 visits"></div>
+        <div><label>11. Call/email volume per month, if tracked (counts only)</label><input value="2,300"></div>
+        <div><label>14. Languages used with customers and in documentation</label><input value="English, Spanish"></div>
+        <div class="full"><span class="btn">Add this client</span></div>
+      </form>
+      <p class="fine">An answer containing an email address, a phone number or an ID number is refused and nothing is saved.</p>
+    </div>
+  </div>
+
+  <!-- 4 CLIENT DETAIL -->
+  <div class="screen-label"><span class="tag">PARTNER</span><h2>4 · Client detail + pipeline</h2></div>
+  <div class="frame">
+    <div class="card">
+      <h2>Sunrise Home Care LLC</h2>
+      <div class="pipe">
+        <span class="done">Added</span><span class="done">Questionnaire sent</span><span class="done">Questionnaire answered</span><span class="done">Assessment done</span><span class="done">NDA sent</span><span class="now">NDA signed</span><span>Ready to register</span><span>Registered</span>
+      </div>
+      <dl>
+        <dt>Owner contact</dt><dd>Marta Ruiz · marta@sunrisehc.example</dd>
+        <dt>Business type</dt><dd>home-health</dd>
+        <dt>Locations</dt><dd>3</dd>
+        <dt>Full-time employees</dt><dd>66</dd>
+        <dt>Systems</dt><dd>WellSky, Microsoft 365, Salesforce</dd>
+        <dt>Years of records</dt><dd>20</dd>
+      </dl>
+      <p class="fine">Questionnaire submission on record: qs-2026-1204</p>
+      <h3>Questionnaire answers (counts only)</h3>
+      <dl>
+        <dt>Q8. Customers/clients served per year</dt><dd>4,150</dd>
+        <dt>Q10. Years of history stored:</dt><dd>From year: 2005 · Customer records (years): 20 · Financial records (years): 12</dd>
+        <dt>Q14. Languages</dt><dd>English, Spanish</dd>
+      </dl>
+      <h3>Your fee on this client</h3>
+      <p>No fee yet — your fee is set when this client's first license closes.</p>
+    </div>
+  </div>
+
+  <!-- 5 FEES -->
+  <div class="screen-label"><span class="tag">PARTNER</span><h2>5 · Fees view</h2></div>
+  <div class="frame">
+    <div class="card">
+      <h2>Your fees <span class="pill warn">Schedule DRAFT</span></h2>
+      <div class="totals"><span>Earned: <b>$7,500</b></span><span>Paid: <b>$7,500</b></span><span>Outstanding: <b>$0</b></span></div>
+      <table>
+        <thead><tr><th>First closed license value</th><th>Your referral fee</th></tr></thead>
+        <tbody>
+          <tr><td>$100,000</td><td>$2,000</td></tr>
+          <tr><td>$250,000</td><td>$5,000</td></tr>
+          <tr><td>$500,000</td><td>$7,500</td></tr>
+          <tr><td>$1,000,000</td><td>$12,500</td></tr>
+          <tr><td>$2,000,000</td><td>$17,500</td></tr>
+          <tr><td>$5,000,000</td><td>$25,000 (capped)</td></tr>
+          <tr><td>$14,500,000</td><td>$25,000 (capped)</td></tr>
+        </tbody>
+      </table>
+      <p class="fine">Brackets: 2.0% of the first $250,000 · 1.0% to $1,000,000 · 0.5% above · capped at $25,000 per license · paid once per client, on their first closed license, within 15 days after IEC is paid. The cap level and renewal treatment are still being finalised. Harbor Dental Group: license $500,000 → fee $7,500 · paid.</p>
+    </div>
+  </div>
+
+  <!-- 6 DESK ADMIN -->
+  <div class="screen-label"><span class="tag desk">IEC DESK</span><h2>6 · Desk admin — partners, clients, duplicate guard</h2></div>
+  <div class="frame desk">
+    <div class="dcard">
+      <h3>Partners</h3>
+      <table>
+        <thead><tr><th>Partner</th><th>Status</th><th>Agreement</th><th>NDA</th><th>Fees earned / paid</th><th>Actions</th></tr></thead>
+        <tbody>
+          <tr><td class="who"><b>Karim Haddad</b><span>karim@example.com · Karim Consulting LLC</span></td><td><span class="chip green">active</span></td><td><span class="chip green">signed</span></td><td><span class="chip green">signed</span></td><td>$7,500 / $7,500</td><td><span class="mini">Pause</span><span class="mini danger">Revoke</span></td></tr>
+          <tr><td class="who"><b>Omar Farouk</b><span>omar@example.com · Omar Advisory</span></td><td><span class="chip amber">invited</span><br><span style="font-size:12px;color:#9FB0C6">activation blocked until both sign</span></td><td><span class="chip green">signed</span></td><td><span class="chip amber">pending</span></td><td>$0 / $0</td><td><span class="mini">Send activation link</span><span class="mini">Mark NDA signed</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="dcard">
+      <h3>Clients — pipeline &amp; fees</h3>
+      <table>
+        <thead><tr><th>Client</th><th>Partner</th><th>Pipeline</th><th>Fee stage</th><th>License</th><th>Fee</th><th>Actions</th></tr></thead>
+        <tbody>
+          <tr><td class="who"><b>Sunrise Home Care LLC</b><span>Marta Ruiz · 3 loc · 66 FTE · 20 yrs records<br>Evidence: Countersigned copy opened and read; signature + date confirmed</span></td><td>karim@example.com</td><td><span class="chip plain">CNDA signed</span></td><td><span class="chip plain">Client added</span></td><td>—</td><td>—</td><td><span class="mini">Record: Ready to register</span></td></tr>
+          <tr><td class="who"><b>Northgate Pharmacy</b><span>Sam North · submission qs-2026-1190</span></td><td>karim@example.com</td><td><span class="chip plain">Questionnaire answered</span></td><td><span class="chip plain">Client added</span></td><td>—</td><td>—</td><td><span class="mini">Record: Assessment done</span></td></tr>
+          <tr><td class="who"><b>Harbor Dental Group</b><span>Lena Ortiz</span></td><td>karim@example.com</td><td><span class="chip plain">Registered</span></td><td><span class="chip plain">Fee paid</span></td><td>$500,000</td><td>$7,500</td><td></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="dcard">
+      <h3>IEC-registered companies — duplicate guard</h3>
+      <p>Companies IEC itself has registered. A partner adding one is refused with the same "already registered" answer; the partner never learns which side holds the registration.</p>
+      <table>
+        <thead><tr><th>Company</th><th>Owner email</th><th>Note</th><th>Actions</th></tr></thead>
+        <tbody>
+          <tr><td class="who"><b>Virginia Trade Partners LLC</b></td><td>—</td><td>Registered by IEC directly, Nov 2026</td><td><span class="mini danger">Remove</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <p class="intro" style="margin-top:34px">Local build only — nothing pushed, nothing deployed. Deployment on DrMorgan's word.</p>
+</div>
+</body>
+</html>
