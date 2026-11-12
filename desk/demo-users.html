@@ -19,6 +19,7 @@
     padding:4px 11px;border-radius:999px;border:1px solid var(--line);color:var(--dim);white-space:nowrap}
   .chip.invited{color:#3a2703;background:linear-gradient(135deg,#fde68a,#fbbf24);border-color:transparent}
   .chip.nda_sent{color:#fbbf24;background:rgba(251,191,36,.12);border-color:rgba(251,191,36,.6)}
+  .chip.nda_signed{color:#a7f3d0;background:rgba(52,211,153,.12);border-color:rgba(110,231,183,.55)}
   .chip.active{color:#06281c;background:linear-gradient(135deg,#6ee7b7,#34d399);border-color:transparent}
   .chip.paused{color:#0b2447;background:linear-gradient(135deg,#93c5fd,#60a5fa);border-color:transparent}
   .chip.revoked{color:#3d0a0a;background:linear-gradient(135deg,#fca5a5,#f87171);border-color:transparent}
@@ -101,7 +102,7 @@
       <h2>Demo Users — All Assets</h2>
       <button class="btn small ghost" id="refresh" type="button">↻ Refresh</button>
     </div>
-    <p class="hint" style="margin-bottom:16px">One control point for every asset demo: who has access, and what state it is in. Changes commit to each asset's provisioning store and take effect on its redeploy. Invitations are <b>NDA-first</b>: sending an invite emails the asset's confidentiality agreement to sign, and the demo access link follows automatically once it is executed.</p>
+    <p class="hint" style="margin-bottom:16px">One control point for every asset demo: who has access, and what state it is in. Changes commit to each asset's provisioning store and take effect on its redeploy. Invitations are <b>NDA-first</b>: sending an invite emails the asset's confidentiality agreement to sign, and the demo access link follows automatically once it is executed. Signed on paper instead? Use <b>Mark NDA signed</b> on the person's row — it records the verified paper signature for that one asset and provisions the demo; if provisioning cannot run, the cell shows <b>NDA signed</b> until the link is created.</p>
 
     <div id="banner"></div>
 
@@ -157,6 +158,7 @@
               <option value="logout">Logout</option>
               <option value="invite_sent">Invite sent</option>
               <option value="nda_sent">NDA sent</option>
+              <option value="nda_signed">NDA signed</option>
               <option value="status_changed">Status changed</option>
             </select>
           </label>
@@ -174,7 +176,7 @@
 
     <div class="card note" style="margin-top:16px">
       <h3>The demo blueprint</h3>
-      <p>Demos exist for every asset that has a website and an application — MEDEXEC, InSnap, CURAVIA, INSNAPP and IEC Docs — and every one follows the same model: a provisioning store as the single source of truth, a one-time activation link (the signer sets their own password — passwords are never emailed), the <b>invited / active / paused / revoked</b> status ladder — preceded by an <b>nda_sent</b> pre-state: invitations from this portal are NDA-first, so a person starts as NDA sent and becomes invited only when the executed NDA triggers provisioning on the asset side — and a login notification to DrMorgan on every activation and sign-in. When a future asset qualifies (website + application) and its demo is built, it plugs into this portal with one registry entry — no new control panel, no separate user list.</p>
+      <p>Demos exist for every asset that has a website and an application — MEDEXEC, InSnap, CURAVIA, INSNAPP and IEC Docs — and every one follows the same model: a provisioning store as the single source of truth, a one-time activation link (the signer sets their own password — passwords are never emailed), the <b>invited / active / paused / revoked</b> status ladder — preceded by an <b>nda_sent</b> pre-state: invitations from this portal are NDA-first, so a person starts as NDA sent and becomes invited only when the executed NDA triggers provisioning on the asset side — and a login notification to DrMorgan on every activation and sign-in. A paper-signed NDA is the one exception the portal handles by hand: <b>Mark NDA signed</b> on the person's row records the verified signature (basis, date, operator) for that one asset and provisions the demo from here; until an entry exists, the cell reads <b>NDA signed</b> — never invited on the strength of the paper alone. When a future asset qualifies (website + application) and its demo is built, it plugs into this portal with one registry entry — no new control panel, no separate user list.</p>
     </div>
 
     <footer>© 2026 International Empire Consultants, Inc. · IEC Suite · Developed by IEC, Inc.</footer>
@@ -200,7 +202,7 @@ function banner(html, isErr){
   $('banner').innerHTML = html ? `<div class="banner${isErr ? ' err' : ''}">${html}</div>` : '';
 }
 
-const STATUS_LABEL = { invited: 'Invited', active: 'Accepted', paused: 'Paused', revoked: 'Revoked', nda_sent: 'NDA sent' };
+const STATUS_LABEL = { invited: 'Invited', active: 'Accepted', paused: 'Paused', revoked: 'Revoked', nda_sent: 'NDA sent', nda_signed: 'NDA signed' };
 
 function cellHtml(row, asset){
   const st = row.cells[asset.id];
@@ -222,7 +224,23 @@ function cellHtml(row, asset){
         out += `<span class="seed-note">NDA email sent ${d.toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })} ET</span>`;
       }
     }
-    return out + '<br>' + btn('resend', 'Resend NDA');
+    return out + '<br>' + btn('resend', 'Resend NDA') + btn('mark-signed', 'Mark NDA signed');
+  }
+  if (st === 'nda_signed') {
+    /* Paper-signed, recorded by the Desk — but no provisioning
+       entry yet, so NO access link exists. The cell says exactly
+       that; "Provision now" retries the provisioning leg of the
+       mark-signed action. */
+    let out = `<span class="chip nda_signed">${STATUS_LABEL.nda_signed}</span>`;
+    const inv = ((STATE && STATE.invites) || []).find(i => i.email === row.email && i.asset === asset.id);
+    if (inv && inv.signedDate) {
+      out += `<span class="seed-note">signed ${esc(inv.signedDate)}${inv.signedBasis ? ' · ' + esc(inv.signedBasis) : ''}</span>`;
+    }
+    if (inv && inv.markedBy) {
+      out += `<span class="seed-note">marked by ${esc(inv.markedBy)}</span>`;
+    }
+    out += '<span class="seed-note">provisioning pending — no access link yet</span>';
+    return out + '<br>' + btn('mark-signed', 'Provision now');
   }
   let out = `<span class="chip ${st}">${STATUS_LABEL[st] || esc(st)}</span>`;
   if (row.seeds && row.seeds[asset.id]) out += '<span class="seed-note">seed account</span>';
@@ -283,6 +301,10 @@ async function load(){
 }
 
 function describe(assetName, data){
+  if (data.ndaSigned && data.provisioning === 'provisioned' && data.emailed) return `<b>${esc(assetName)}:</b> NDA marked signed — demo account created and the activation email sent.`;
+  if (data.ndaSigned && data.provisioning === 'provisioned' && !data.emailed) return `<b>${esc(assetName)}:</b> NDA marked signed and the account created, but the activation email failed — use Resend on the matrix to send the link.`;
+  if (data.ndaSigned && data.provisioning === 'already_provisioned') return `<b>${esc(assetName)}:</b> NDA marked signed — the demo was already provisioned (${esc(STATUS_LABEL[data.state] || data.state || 'standing')}).`;
+  if (data.ndaSigned) return `<b>${esc(assetName)}:</b> NDA marked signed (paper, ${esc(data.signedDate || '')}). Provisioning did not complete${data.reason ? ' (' + esc(data.reason) + ')' : ''} — the cell shows NDA SIGNED until the access link is created; use Provision now to retry.`;
   if (data.ndaSent && data.emailed) return `<b>${esc(assetName)}:</b> NDA sent — they sign first; the demo access link follows automatically once it's executed.`;
   if (data.ndaSent && !data.emailed) return `<b>${esc(assetName)}:</b> recorded as NDA sent, but the NDA email failed — use Resend NDA on the matrix.`;
   if (data.held || data.reason === 'no_nda_route') return `<b>${esc(assetName)}:</b> held — this asset has no NDA signing route yet, so nothing was sent and no account was created.`;
@@ -326,17 +348,39 @@ $('matrix').addEventListener('click', async e => {
   const { act, asset, email, name } = b.dataset;
   const assetName = (STATE.assets.find(a => a.id === asset) || {}).name || asset;
   if (act === 'revoke' && !confirm(`Revoke ${name}'s ${assetName} demo access? Their activation link and login both stop working.`)) return;
+  let markBody = null;
+  if (act === 'mark-signed') {
+    /* The confirmation NAMES the one record (person + asset) —
+       marking signed is an attestation about that record only.
+       An already-signed record skips the prompts: the click is
+       a provisioning retry with the stored basis and date. */
+    const inv = ((STATE && STATE.invites) || []).find(i => i.email === email && i.asset === asset);
+    if (inv && inv.status === 'nda_signed') {
+      if (!confirm(`Provision ${name}'s ${assetName} demo now?\n\nThe NDA for ${name} <${email}> — ${assetName} only — is already marked signed (paper, ${inv.signedDate || 'date on file'}). This creates the demo account and emails the activation link. No other record changes.`)) return;
+      markBody = { action: 'mark-nda-signed', asset, email, name, basis: inv.signedBasis || undefined, signedDate: inv.signedDate || undefined };
+    } else {
+      const basis = prompt(`Mark the NDA as signed for ${name} — ${assetName}.\n\nBasis (what was verified — recorded on ${name}'s ${assetName} record only):`, 'Paper agreement — verified by IEC');
+      if (basis === null) return;
+      const todayET = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date());
+      const signedDate = prompt(`Date the NDA was signed by ${name} (${assetName}) — YYYY-MM-DD:`, todayET);
+      if (signedDate === null) return;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(signedDate.trim())) { banner(`Mark NDA signed cancelled — "${esc(signedDate)}" is not a YYYY-MM-DD date.`, true); return; }
+      if (!confirm(`Mark the NDA as SIGNED for ${name} <${email}> — ${assetName} only?\n\nBasis: ${basis}\nSigned date: ${signedDate}\n\nThis records the signature on this one record and provisions the ${assetName} demo. No other record changes.`)) return;
+      markBody = { action: 'mark-nda-signed', asset, email, name, basis, signedDate: signedDate.trim() };
+    }
+  }
   b.disabled = true;
   let data;
   if (act === 'invite') ({ data } = await api({ action: 'invite', asset, email, name }));
   else if (act === 'resend') ({ data } = await api({ action: 'resend', asset, email }));
+  else if (act === 'mark-signed') ({ data } = await api(markBody));
   else {
     const target = act === 'pause' ? 'paused' : act === 'resume' ? 'active' : 'revoked';
     ({ data } = await api({ action: 'status', asset, email, status: target }));
   }
   if (window.suzyToast) {
-    const msg = act === 'invite' || act === 'resend'
-      ? describe(assetName, data).replace(/<[^>]+>/g, '')
+    const msg = act === 'invite' || act === 'resend' || act === 'mark-signed'
+      ? (data.ok ? describe(assetName, data) : `<b>${esc(assetName)}:</b> ${esc(data.error || 'action failed')}.`).replace(/<[^>]+>/g, '')
       : data.ok
         ? `${assetName}: ${email} is now ${STATUS_LABEL[data.status] || data.status}.`
         : `${assetName}: ${data.error || 'action failed'}.`;

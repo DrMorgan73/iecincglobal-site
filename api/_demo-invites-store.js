@@ -22,6 +22,18 @@
                              lastEmailStatus, lastEmailReason,
                              lastEmailAt } ]
 
+   MARK-SIGNED (2026-11-12): a record's status can move from
+   "nda_sent" to "nda_signed" through markNdaInviteSigned — the
+   Desk's manual path for a paper-signed agreement (the signer
+   returned a signed copy outside the web signing flow, so no
+   asset-side trigger ever fires). The signed state carries its
+   own fields — signedDate (the date on the paper), signedBasis
+   (what was verified), markedBy (the Desk operator) and markedAt
+   (when the Desk recorded it) — and never touches the send
+   counters or any web-signing record: it is an Office-side
+   attestation about THIS record only, keyed by (email, asset)
+   exactly like every other mutation here.
+
    DELIVERY STATUS (2026-11-09): every NDA email attempt — invite
    or resend, success or failure — stamps its outcome on the
    record (lastEmailStatus "sent" | "failed", lastEmailReason,
@@ -131,6 +143,15 @@ function recordMatches(stored, intended) {
   if (!stored || !intended) return false;
   if (stored.lastSentAt !== intended.lastSentAt) return false;
   if ((stored.sends || 1) !== (intended.sends || 1)) return false;
+  /* A mark-signed mutation must see its signed state intact: the
+     status flip and the attestation fields it set. (Other
+     mutations keep status "nda_sent", so this only ever engages
+     for markNdaInviteSigned's own target record.) */
+  if (intended.status === "nda_signed") {
+    if (stored.status !== "nda_signed") return false;
+    if (stored.signedDate !== intended.signedDate) return false;
+    if (stored.markedAt !== intended.markedAt) return false;
+  }
   if ("lastEmailStatus" in intended && intended.lastEmailStatus !== null &&
       stored.lastEmailStatus !== intended.lastEmailStatus) return false;
   if ("lastEmailAt" in intended && intended.lastEmailAt &&
@@ -254,6 +275,49 @@ export async function stampNdaInviteEmail(email, assetId, outcome, now = new Dat
   applyEmailOutcome(existing, outcome, now);
   await commitInvites(before, candidate, existing);
   return existing;
+}
+
+/* Record the NDA as SIGNED on one (email, asset) record — the
+   manual path for a paper-signed agreement verified outside the
+   web signing flow (DrMorgan's order 2026-11-12). Sets status
+   "nda_signed" plus the attestation fields (signedDate — the
+   date on the paper, signedBasis — what was verified, markedBy —
+   the Desk operator, markedAt — when this was recorded). The
+   send counters and email-outcome fields are NOT touched, and no
+   other record changes: the mutation is keyed to this one
+   (email, asset) pair. A paper-first case with no invite record
+   yet gets one created in the signed state (sends 0, no send
+   timestamps — the record honestly says no NDA email was ever
+   sent from the Desk for it). Returns the stored record. Throws
+   on transport failure or an unverified write, like every
+   mutation here. */
+export async function markNdaInviteSigned(email, assetId, fields = {}, now = new Date()) {
+  const before = await readInvites();
+  const candidate = before.map(r => ({ ...r }));
+  let target = findInvite(candidate, email, assetId);
+  if (!target) {
+    target = {
+      email,
+      name: fields.name || "",
+      asset: assetId,
+      status: "nda_sent",
+      sentAt: null,
+      lastSentAt: null,
+      sends: 0,
+      lastEmailStatus: null,
+      lastEmailReason: null,
+      lastEmailAt: null
+    };
+    candidate.push(target);
+  }
+  if (fields.name && !target.name) target.name = fields.name;
+  target.status = "nda_signed";
+  target.signedDate = fields.signedDate || null;
+  target.signedBasis = fields.basis || "Paper agreement — verified by IEC";
+  target.markedBy = fields.markedBy || "desk";
+  target.markedAt = (now instanceof Date ? now : new Date(now)).toISOString();
+  await commitInvites(before, candidate, target);
+  return target;
 }
 
 /* Stamp a re-send of the NDA email on an existing record (the

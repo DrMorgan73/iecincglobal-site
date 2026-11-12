@@ -9,6 +9,7 @@
      { action: "invite", asset, email, name }
      { action: "resend", asset, email }
      { action: "status", asset, email, status }   status: paused|active|revoked
+     { action: "mark-nda-signed", asset, email, name?, basis?, signedDate? }
 
    AUTH: the Desk session cookie, verified with exactly the scheme
    middleware.js / api/desk-login.js use (HMAC-SHA256 over
@@ -60,6 +61,26 @@
    (lastEmailStatus / lastEmailReason / lastEmailAt — the store's
    delivery status, 2026-11-09) and "list" exposes it, so a
    failed send stays visible on the matrix.
+
+   MARK NDA SIGNED (DrMorgan's order, 2026-11-12): a signer who
+   returns a PAPER agreement (verified by IEC outside the web
+   signing flow) never trips the asset-side trigger, so their
+   cell would sit at "nda_sent" forever. "mark-nda-signed"
+   records the signed state on that person's invite record for
+   that ONE asset (signedDate / signedBasis / markedBy /
+   markedAt — the store's markNdaInviteSigned; an attestation
+   about the paper, never a fabricated web-signing record), then
+   provisions the demo the same way the asset-side trigger
+   would: a fresh "invited" entry in the asset's provisioning
+   store plus the activation email. The signed record is written
+   FIRST and stands whatever provisioning does; when no entry
+   can be created (the asset's Office key unset, the store
+   unreadable) the response and the matrix say so honestly —
+   state "nda_signed", provisioning outcome + reason — and the
+   cell shows NDA SIGNED, never a faked "invited". Re-marking an
+   already-signed record is the provisioning retry: idempotent,
+   no duplicate entry, no second activation email when an entry
+   already stands.
 
    ASSET REGISTRY: live entries carry repo/path/token-env. A future
    qualifying demo (website + application — the scope rule) joins
@@ -144,7 +165,8 @@ import {
   findInvite,
   upsertNdaInvite,
   touchNdaInvite,
-  stampNdaInviteEmail
+  stampNdaInviteEmail,
+  markNdaInviteSigned
 } from "./_demo-invites-store.js";
 
 /* ------------------------------------------------------------------ */
@@ -851,10 +873,12 @@ function publicAccount(a) {
 /* The permission matrix: one row per person (union by email across
    live assets), each cell that asset's status or null. NDA-first
    invite records merge UNDER the same person: a cell with no
-   provisioning entry shows "nda_sent"; a provisioned entry always
-   wins over the nda_sent record (the flip is the asset store
-   gaining the entry — the record simply stops being the latest
-   word on that cell). */
+   provisioning entry shows the record's own state — "nda_sent",
+   or "nda_signed" once the Desk has marked a verified paper
+   signature (2026-11-12); a provisioned entry always wins over
+   the invite record (the flip is the asset store gaining the
+   entry — the record simply stops being the latest word on that
+   cell). */
 function buildMatrix(accounts, ndaRecords = []) {
   const liveAssets = ASSETS.filter(a => a.live);
   const people = new Map();
@@ -879,7 +903,11 @@ function buildMatrix(accounts, ndaRecords = []) {
     const email = normalizeEmail(rec.email);
     if (!email) continue;
     const p = personFor(email, rec.name);
-    if (!(asset.id in p.cells)) p.cells[asset.id] = "nda_sent";
+    if (!(asset.id in p.cells)) {
+      p.cells[asset.id] = String(rec.status || "").toLowerCase() === "nda_signed"
+        ? "nda_signed"
+        : "nda_sent";
+    }
   }
   const rows = [...people.values()];
   for (const p of rows) {
@@ -964,13 +992,17 @@ async function actionList(res) {
       email: normalizeEmail(r.email),
       name: String(r.name || ""),
       asset: r.asset,
-      status: "nda_sent",
+      status: String(r.status || "").toLowerCase() === "nda_signed" ? "nda_signed" : "nda_sent",
       sentAt: r.sentAt || null,
       lastSentAt: r.lastSentAt || null,
-      sends: r.sends || 1,
+      sends: r.sends || 0,
       lastEmailStatus: r.lastEmailStatus || null,
       lastEmailReason: r.lastEmailReason || null,
-      lastEmailAt: r.lastEmailAt || null
+      lastEmailAt: r.lastEmailAt || null,
+      signedDate: r.signedDate || null,
+      signedBasis: r.signedBasis || null,
+      markedBy: r.markedBy || null,
+      markedAt: r.markedAt || null
     })),
     matrix: buildMatrix(accounts, ndaRecords)
   });
@@ -1180,6 +1212,157 @@ async function actionStatus(res, body) {
   });
 }
 
+/* MARK NDA SIGNED (DrMorgan's order, 2026-11-12): the manual
+   path for a paper-signed agreement. The signed state is
+   recorded on the person's invite record for this ONE asset
+   first — that record is the attestation (basis, signed date,
+   operator) and it stands whatever happens next — then the
+   demo is provisioned the way the asset-side signing trigger
+   would have done it: a fresh "invited" entry in the asset's
+   provisioning store plus the activation email. Provisioning
+   can fail honestly (Office key unset → "not_configured";
+   store unreadable/unwritable → "failed"): the response then
+   reports state "nda_signed" with the provisioning outcome and
+   reason, and the matrix cell shows NDA SIGNED — an access
+   state is never claimed that the store does not hold. Keyed
+   strictly to the one (email, asset) pair: no other record or
+   entry is read for writing or modified. */
+async function actionMarkNdaSigned(res, body, operator) {
+  const asset = findAsset(body.asset);
+  if (!asset) return reply(res, 400, { ok: false, error: "unknown_asset" });
+  if (!asset.live) return reply(res, 400, { ok: false, error: "asset_not_live" });
+  const email = normalizeEmail(body.email);
+  if (!plausibleEmail(email)) return reply(res, 400, { ok: false, error: "invalid_email" });
+  const name = String(body.name || "").trim().slice(0, 200);
+  const basis = String(body.basis || "").trim().slice(0, 300) || "Paper agreement — verified by IEC";
+  /* The date on the paper, YYYY-MM-DD. Defaults to today
+     (America/New_York) when the caller does not supply one. */
+  let signedDate = String(body.signedDate || "").trim();
+  if (signedDate) {
+    const m = signedDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    const real = m && !Number.isNaN(Date.parse(`${signedDate}T12:00:00Z`)) &&
+      new Date(`${signedDate}T12:00:00Z`).getUTCDate() === Number(m[3]);
+    if (!real) return reply(res, 400, { ok: false, error: "invalid_signed_date" });
+  } else {
+    signedDate = easternIso(new Date()).slice(0, 10);
+  }
+
+  if (!invitesConfigured()) {
+    console.log("[demo-admin] NO-OP — BLOB_READ_WRITE_TOKEN is not configured; a signed state cannot be recorded, so nothing was marked or provisioned.");
+    return reply(res, 503, { ok: false, error: "not_configured" });
+  }
+
+  /* Where do things stand BEFORE the mark? The invite record
+     (for the name and the already-signed check) and — when the
+     asset's Office key is set — the provisioning entry. A store
+     read failure is remembered, not fatal: the mark is recorded
+     either way and provisioning reports the failure honestly. */
+  let record = null;
+  try {
+    record = findInvite(await readInvites(), email, asset.id);
+  } catch (e) {
+    console.error(`[demo-admin] mark-nda-signed FAILED for ${asset.name}: invites read: ${e && e.message}`);
+    return reply(res, 502, { ok: false, error: "store_failed" });
+  }
+  const alreadySigned = !!record && String(record.status || "").toLowerCase() === "nda_signed";
+  const entryName = name || (record && record.name) || "";
+  const tokenConfigured = !!process.env[asset.tokenEnv];
+  let entry = null;
+  let storeReadFailed = false;
+  if (tokenConfigured) {
+    try {
+      entry = (await readStore(asset)).find(a => normalizeEmail(a.email) === email) || null;
+    } catch (e) {
+      storeReadFailed = true;
+      console.error(`[demo-admin] mark-nda-signed for ${asset.name}: provisioning store read FAILED: ${e && e.message}`);
+    }
+  }
+
+  /* 1 — record the signed state. Record first, exactly like the
+     invite path: if this write fails, nothing is provisioned on
+     the strength of an unrecorded attestation. */
+  try {
+    await markNdaInviteSigned(email, asset.id, {
+      name: entryName, basis, signedDate, markedBy: operator || "desk"
+    });
+  } catch (e) {
+    console.error(`[demo-admin] mark-nda-signed record FAILED for ${asset.name}: ${e && e.message}`);
+    return reply(res, 502, { ok: false, error: "store_failed" });
+  }
+
+  /* 2 — provision, unless an entry already stands. The insert
+     re-checks inside the mutation (a concurrent asset-side
+     trigger may have landed first): whoever's write lands
+     first, there is exactly one entry and at most one
+     activation email from this action. */
+  let provisioning = "already_provisioned";
+  let provisionReason = null;
+  let emailed = null;
+  if (!entry) {
+    if (!tokenConfigured) {
+      provisioning = "not_configured";
+      provisionReason = "asset_not_configured";
+    } else if (storeReadFailed) {
+      provisioning = "failed";
+      provisionReason = "store_failed";
+    } else {
+      const token = crypto.randomBytes(24).toString("hex");
+      try {
+        const outcome = await mutateStore(asset, (list, source) => {
+          const nowEntry = list.find(a => normalizeEmail(a.email) === email) || null;
+          if (nowEntry) {
+            return { result: { created: false, status: String(nowEntry.status || "invited").toLowerCase() } };
+          }
+          return {
+            write: insertEntry(source, {
+              email, name: entryName, token, status: "invited", issuedAt: easternIso(new Date())
+            }),
+            message: `IEC Office: invite ${email} to ${asset.name} demo (NDA marked signed — paper agreement)`,
+            result: { created: true, status: "invited" }
+          };
+        });
+        if (outcome.created) {
+          provisioning = "provisioned";
+          const sent = await sendActivationEmail(asset, entryName, email, token);
+          emailed = sent.sent;
+          if (!sent.sent) {
+            provisionReason = sent.reason;
+            console.error(`[demo-admin] ${asset.name} activation email FAILED for ${email} after mark-signed provisioning (${sent.reason}); the account stands — Resend re-sends the link.`);
+          }
+        } else {
+          provisioning = "already_provisioned";
+          entry = { status: outcome.status };
+        }
+      } catch (e) {
+        provisioning = "failed";
+        provisionReason = "store_failed";
+        console.error(`[demo-admin] mark-nda-signed provisioning FAILED for ${asset.name}: ${e && e.message}`);
+      }
+    }
+  }
+
+  const state = entry
+    ? String(entry.status || "invited").toLowerCase()
+    : provisioning === "provisioned" ? "invited" : "nda_signed";
+  await emitOfficeEvent(asset, email, entryName, "nda_signed",
+    `NDA marked signed from IEC Office — ${basis} (signed ${signedDate}); provisioning: ${provisioning}${provisionReason ? ` (${provisionReason})` : ""}`);
+  console.log(`[demo-admin] ${asset.name}: ${email} NDA marked signed (signed ${signedDate}, by ${operator || "desk"}); provisioning=${provisioning}, state=${state}.`);
+  return reply(res, 200, {
+    ok: true,
+    asset: asset.id,
+    email,
+    ndaSigned: true,
+    alreadySigned,
+    state,
+    signedDate,
+    basis,
+    markedBy: operator || "desk",
+    provisioning,
+    emailed,
+    ...(provisionReason ? { reason: provisionReason } : {})
+  });
+}
+
 /* ------------------------------------------------------------------ */
 /* Handler                                                             */
 /* ------------------------------------------------------------------ */
@@ -1191,6 +1374,9 @@ export default async function handler(req, res) {
   if (!session || !(await validSession(session))) {
     return reply(res, 401, { ok: false, error: "unauthorized" });
   }
+  /* The Desk operator's session user — stamped as markedBy on a
+     manual mark-signed (the session was just verified above). */
+  const operator = String(session).split(".")[0] || "desk";
 
   const body = await readBody(req);
   const action = String(body.action || "");
@@ -1198,6 +1384,7 @@ export default async function handler(req, res) {
   if (action === "invite") return actionInvite(res, body);
   if (action === "resend") return actionResend(res, body);
   if (action === "status") return actionStatus(res, body);
+  if (action === "mark-nda-signed") return actionMarkNdaSigned(res, body, operator);
   return reply(res, 400, { ok: false, error: "unknown_action" });
 }
 

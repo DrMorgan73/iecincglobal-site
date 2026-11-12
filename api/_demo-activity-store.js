@@ -48,6 +48,7 @@ export const KNOWN_EVENTS = [
   "logout",
   "invite_sent",
   "nda_sent",
+  "nda_signed",
   "status_changed"
 ];
 
