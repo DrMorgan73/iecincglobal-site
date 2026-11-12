@@ -34,7 +34,8 @@
        own referral fees. A paused or revoked partner keeps a
        read-only FROZEN view of his clients; every write is
        refused and his clients' pipeline does not move.
-     - ADMIN (Desk session): invite, mark agreement/NDA signed,
+     - ADMIN (Desk session): invite, email the invitation from
+       info@iecincglobal.com, mark agreement/NDA signed,
        pause/revoke partners, advance the client pipeline (one
        step at a time, from the real events, with the evidence
        recorded), advance the fee pipeline, mark fee paid, record
@@ -281,6 +282,108 @@ async function sendSignupNotification(p) {
   }
 }
 
+/* ------------------------------------------------------------------ */
+/* Partner invitation email — sent by the OFFICE from the Desk, via
+   the same Resend integration (sender on IEC's verified domain).
+   From is info@iecincglobal.com (DrMorgan's order, 2026-11-12):
+   partner invitations are IEC office mail, never personal mail.
+   The body mirrors the approved invitation composition: greeting,
+   the three steps (agreement in-portal, then the NDA step, then
+   the portal opens), the activation button + raw link, the 7-day /
+   do-not-forward lines, and the full IEC signature. No fee or
+   percentage content — economics live in the signed agreement.
+   Never throws: the caller records provenance ONLY on success and
+   surfaces the failure reason honestly.                          */
+/* ------------------------------------------------------------------ */
+
+const INVITE_FROM_ADDRESS = 'info@iecincglobal.com';
+const INVITE_MAIL_FROM = `IEC, Inc. <${INVITE_FROM_ADDRESS}>`;
+const INVITE_SUBJECT = 'Your IEC Partner Portal invitation';
+const INVITE_SIGNATURE_TEXT = [
+  'Mohammed Morgan, MD',
+  'Founder & CEO, IEC, Inc.',
+  '923 Hyde Park Ave, Boston, MA 02136',
+  'info@iecincglobal.com'
+].join('\n');
+const INVITE_SIGNATURE_HTML = [
+  '<table cellpadding="0" cellspacing="0" border="0" style="margin-top:22px;font-family:Arial,Helvetica,sans-serif;max-width:520px">',
+  '<tr><td style="padding-bottom:10px"><img src="https://iecincglobal.com/assets/iec-logo-email.png" width="160" alt="IEC, Inc." style="display:block;border:0"></td></tr>',
+  '<tr><td style="border-top:3px solid #1a3a5c;padding-top:12px;font-size:13px;line-height:1.55;color:#1A1A1A">',
+  '<strong style="font-size:15px;color:#1a3a5c">Mohammed Morgan, MD</strong><br>',
+  '<strong style="color:#1a3a5c">Founder &amp; CEO, IEC, Inc.</strong><br>',
+  '<span style="color:#555555">923 Hyde Park Ave, Boston, MA 02136</span><br>',
+  '<a href="tel:+18578671767" style="color:#1a3a5c;text-decoration:none">857-867-1767</a> &middot; ',
+  '<a href="mailto:info@iecincglobal.com" style="color:#1a3a5c;text-decoration:none">info@iecincglobal.com</a> &middot; ',
+  '<a href="https://iecincglobal.com" style="color:#1a3a5c;text-decoration:none">iecincglobal.com</a>',
+  '</td></tr>',
+  '</table>'
+].join('');
+
+function buildInvitationEmail(c, activationUrl) {
+  const first = String(c.name || '').trim().split(/\s+/)[0] || 'there';
+  const text = [
+    `Dear ${first},`,
+    '',
+    'You have been invited to join the IEC Partner Portal — the private portal where IEC\u2019s partners register their clients, track each one through the pipeline, and follow their referrals.',
+    '',
+    'Your invitation is personal. Here is how it works:',
+    '',
+    '1. Open your activation link below. It takes you first to the IEC Contractor Referral Agreement — read it in the portal and accept it there by typing your full name. That acceptance is your signature.',
+    '2. Next comes the confidentiality step: you will be directed to sign IEC\u2019s confidentiality agreement (NDA).',
+    '3. Once both are recorded, your portal opens: your dashboard, your client registrations, and your pipeline.',
+    '',
+    'Activate your portal:',
+    activationUrl,
+    '',
+    'The link is yours alone — please do not forward it. It stays valid for 7 days.',
+    '',
+    'Welcome aboard.',
+    '',
+    'Best regards,',
+    INVITE_SIGNATURE_TEXT
+  ].join('\n');
+  const html = [
+    '<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#1a1a1a;line-height:1.55">',
+    `<p>Dear ${escapeHtml(first)},</p>`,
+    '<p>You have been invited to join the <strong>IEC Partner Portal</strong> — the private portal where IEC&rsquo;s partners register their clients, track each one through the pipeline, and follow their referrals.</p>',
+    '<p>Your invitation is personal. Here is how it works:</p>',
+    '<p><strong>1.</strong> Open your activation link below. It takes you first to the IEC Contractor Referral Agreement — read it in the portal and accept it there by typing your full name. That acceptance is your signature.<br>',
+    '<strong>2.</strong> Next comes the confidentiality step: you will be directed to sign IEC&rsquo;s confidentiality agreement (NDA).<br>',
+    '<strong>3.</strong> Once both are recorded, your portal opens: your dashboard, your client registrations, and your pipeline.</p>',
+    `<p style="margin:22px 0"><a href="${escapeHtml(activationUrl)}" style="background:#1a3a5c;color:#ffffff;padding:12px 22px;text-decoration:none;border-radius:4px;font-weight:bold">Activate your Partner Portal</a></p>`,
+    `<p style="font-size:12px;color:#555555">If the button does not open, use this link:<br><a href="${escapeHtml(activationUrl)}">${escapeHtml(activationUrl)}</a></p>`,
+    '<p>The link is yours alone — please do not forward it. It stays valid for 7 days.</p>',
+    '<p>Welcome aboard.</p>',
+    '<p>Best regards,<br>Mohammed Morgan, MD<br>Founder &amp; CEO, IEC, Inc.<br>923 Hyde Park Ave, Boston, MA 02136<br>info@iecincglobal.com</p>',
+    INVITE_SIGNATURE_HTML,
+    '</div>'
+  ].join('\n');
+  return {
+    from: INVITE_MAIL_FROM,
+    to: [c.email],
+    subject: INVITE_SUBJECT,
+    text, html
+  };
+}
+
+/* { sent:true, id } | { sent:false, reason } — never throws. */
+async function sendInvitationEmail(c, activationUrl) {
+  const key = process.env.DEMO_ADMIN_RESEND_API_KEY || '';
+  if (!key) return { sent: false, reason: 'not_configured' };
+  try {
+    const r = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(buildInvitationEmail(c, activationUrl))
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) return { sent: false, reason: `resend_${r.status}` };
+    return { sent: true, id: data.id || null };
+  } catch (e) {
+    return { sent: false, reason: 'send_failed' };
+  }
+}
+
 /* The client shape a partner may see: his own client's profile,
    counts-only answers, pipeline stage and HIS fee — nothing about
    any other party, any channel, or the client's own economics. */
@@ -319,6 +422,14 @@ function questionnaireUrl(industry) {
   const base = String(process.env.CONTRACTOR_PORTAL_BASE_URL || 'https://iecincglobal.com').replace(/\/$/, '');
   const slug = SEGMENT_BY_INDUSTRY[industry] || industry;
   return `${base}/questionnaire-form.html?segment=${encodeURIComponent(slug)}`;
+}
+
+function portalBase() {
+  return String(process.env.CONTRACTOR_PORTAL_BASE_URL || 'https://iecincglobal.com').replace(/\/$/, '');
+}
+
+function activationUrlFor(token) {
+  return `${portalBase()}/api/contractors?action=activate&token=${encodeURIComponent(token)}`;
 }
 
 async function readBody(req) {
@@ -717,8 +828,39 @@ export default async function handler(req, res) {
     const token = mintActivationToken(c.id);
     if (!token) return json(res, { ok: false, error: 'not_configured' }, 503);
     await updateContractor(c.id, { activationTokenHash: hashToken(token) });
-    const base = String(process.env.CONTRACTOR_PORTAL_BASE_URL || 'https://iecincglobal.com').replace(/\/$/, '');
-    return json(res, { ok: true, activationUrl: `${base}/api/contractors?action=activate&token=${encodeURIComponent(token)}` });
+    return json(res, { ok: true, activationUrl: activationUrlFor(token) });
+  }
+
+  /* Email the invitation FROM info@iecincglobal.com (Resend, the
+     verified-domain channel) — the office's real send, replacing
+     the hand-emailed link. The emailed link is minted for this
+     send; its hash and the invitation provenance (sent-at + from)
+     are recorded ONLY when the send succeeds, so a failed send
+     leaves the record untouched and the error surfaces here. */
+  if (req.method === 'POST' && action === 'send-invitation') {
+    const body = await readBody(req);
+    const c = await readContractorById(str(body.contractorId, 64));
+    if (!c) return json(res, { ok: false, error: 'not_found' }, 404);
+    if (c.status === 'revoked') return json(res, { ok: false, error: 'revoked' }, 409);
+    const token = mintActivationToken(c.id);
+    if (!token) return json(res, { ok: false, error: 'not_configured' }, 503);
+    const activationUrl = activationUrlFor(token);
+    const mail = await sendInvitationEmail(c, activationUrl);
+    if (!mail.sent) {
+      return json(res, { ok: false, error: mail.reason },
+        mail.reason === 'not_configured' ? 503 : 502);
+    }
+    const invitationSentAt = new Date().toISOString();
+    await updateContractor(c.id, {
+      activationTokenHash: hashToken(token),
+      invitationSentAt, invitationFrom: INVITE_FROM_ADDRESS
+    });
+    return json(res, {
+      ok: true, emailed: true,
+      from: INVITE_FROM_ADDRESS, invitationFrom: INVITE_FROM_ADDRESS,
+      invitationSentAt, activationUrl,
+      contractorId: c.id, name: c.name, email: c.email
+    });
   }
 
   if (req.method === 'POST' && action === 'set-nda') {
@@ -880,5 +1022,7 @@ export const _internals = {
   validDeskSession, publicSchedule, publicContractor, publicClient, feeTotals,
   INDUSTRIES, REFERRAL_ORDER, CONTRACTOR_ORDER, CLIENT_PIPELINE,
   PIPELINE_EVIDENCE, SEGMENT_BY_INDUSTRY, questionnaireUrl, formatUSD,
-  resolveActivationToken, agreementAcceptance, nameMatches
+  resolveActivationToken, agreementAcceptance, nameMatches,
+  INVITE_FROM_ADDRESS, INVITE_MAIL_FROM, INVITE_SUBJECT,
+  buildInvitationEmail, activationUrlFor
 };

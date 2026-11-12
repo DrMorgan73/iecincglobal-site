@@ -16,6 +16,7 @@ const DESK_SECRET = 'test-desk-secret';
 process.env.CONTRACTOR_PORTAL_SECRET = SECRET;
 process.env.DESK_SESSION_SECRET = DESK_SECRET;
 process.env.CONTRACTORS_DATABASE_URL = 'postgres://test:test@neon-sql.test/neondb';
+process.env.DEMO_ADMIN_RESEND_API_KEY = 'test-resend-key';
 
 /* ---------------- mocked Neon SQL endpoint ---------------- */
 const TABLES = { contractors: new Map(), contractor_referrals: new Map(), client_claims: new Map() };
@@ -80,11 +81,19 @@ function neonSql(query, params) {
 }
 
 const jsonRes = (status, obj) => ({ ok: status >= 200 && status < 300, status, json: async () => obj, text: async () => JSON.stringify(obj) });
+/* Mocked Resend: records every composed email; mode 'fail' answers
+   500 so the failure path (no provenance recorded) is exercised. */
+const RESEND = { mode: 'ok', calls: [] };
 globalThis.fetch = async (url, opts = {}) => {
   const u = String(url);
   if (u === 'https://neon-sql.test/sql') {
     const { query, params } = JSON.parse(opts.body);
     return jsonRes(200, neonSql(query, params || []));
+  }
+  if (u === 'https://api.resend.com/emails') {
+    RESEND.calls.push(JSON.parse(opts.body));
+    if (RESEND.mode === 'fail') return jsonRes(500, { message: 'mock resend failure' });
+    return jsonRes(200, { id: 'resend-mock-id' });
   }
   throw new Error(`unmocked fetch: ${u}`);
 };
@@ -350,6 +359,71 @@ console.log('frozen partner');
   check('revoked partner still sees his clients, frozen',
     meR.statusCode === 200 && meR.payload.frozen === true && meR.payload.contractor.status === 'revoked'
     && meR.payload.clients.length === 3, meR.payload.contractor);
+}
+
+/* ================= invitation email (from info@) ================= */
+console.log('invitation email');
+{
+  // Composition unit checks: from, subject, own link, no economics.
+  const composed = mod._internals.buildInvitationEmail(
+    { name: 'Lena Ortiz', email: 'lena@harbordental.test' },
+    'https://iecincglobal.com/api/contractors?action=activate&token=TOK');
+  check('invitation composes From IEC, Inc. <info@iecincglobal.com>',
+    composed.from === 'IEC, Inc. <info@iecincglobal.com>', composed.from);
+  check('invitation subject is exact', composed.subject === 'Your IEC Partner Portal invitation', composed.subject);
+  check('invitation is addressed to the partner', JSON.stringify(composed.to) === JSON.stringify(['lena@harbordental.test']), composed.to);
+  check('invitation carries the activation link (text + html button)',
+    composed.text.includes('token=TOK') && composed.html.includes('token=TOK')
+    && composed.html.includes('Activate your Partner Portal'));
+  check('invitation states the 3 steps + 7 days + do-not-forward',
+    composed.text.includes('typing your full name') && composed.text.includes('confidentiality agreement (NDA)')
+    && composed.text.includes('do not forward it') && composed.text.includes('7 days'));
+  check('invitation carries NO fee or percentage content',
+    !/%|referral fee|\$\d/.test(composed.text) && !/%|referral fee|\$\d/.test(composed.html));
+
+  // A fresh partner for the send paths (Karim is revoked by now).
+  await call('POST', 'register', { cookie: null, body: { name: 'Omar Farouk', email: 'omar@example.test', company: 'Omar Ventures LLC' } });
+  const omar = await storeMod.readContractorByEmail('omar@example.test');
+
+  const noDesk = await call('POST', 'send-invitation', { cookie: null, body: { contractorId: omar.id } });
+  check('send-invitation refuses without a Desk session (401)',
+    noDesk.statusCode === 401 && RESEND.calls.length === 0, noDesk.payload);
+  const badId = await call('POST', 'send-invitation', { cookie: deskCookie(), body: { contractorId: 'no-such-id' } });
+  check('send-invitation for a missing record -> 404, nothing sent',
+    badId.statusCode === 404 && RESEND.calls.length === 0, badId.payload);
+
+  const sent = await call('POST', 'send-invitation', { cookie: deskCookie(), body: { contractorId: omar.id } });
+  check('office emails the invitation (200, from info@)',
+    sent.statusCode === 200 && sent.payload.ok && sent.payload.emailed === true
+    && sent.payload.from === 'info@iecincglobal.com', sent.payload);
+  check('exactly one email went out, to the partner, from info@',
+    RESEND.calls.length === 1 && RESEND.calls[0].from === 'IEC, Inc. <info@iecincglobal.com>'
+    && JSON.stringify(RESEND.calls[0].to) === JSON.stringify(['omar@example.test'])
+    && RESEND.calls[0].subject === 'Your IEC Partner Portal invitation', RESEND.calls[0] && RESEND.calls[0].from);
+  check('the emailed link is the link the response reports (record\u2019s own current link)',
+    !!sent.payload.activationUrl && RESEND.calls[0].text.includes(sent.payload.activationUrl)
+    && RESEND.calls[0].html.includes(sent.payload.activationUrl.replace(/&/g, '&amp;')));
+  const omarAfter = await storeMod.readContractorById(omar.id);
+  check('provenance recorded on success (sent-at + from info@)',
+    !!omarAfter.invitationSentAt && omarAfter.invitationFrom === 'info@iecincglobal.com', omarAfter);
+  const emailedToken = new URL(sent.payload.activationUrl).searchParams.get('token');
+  const agr = await call('GET', 'agreement', { query: `token=${encodeURIComponent(emailedToken)}` });
+  check('the emailed link resolves for the agreement step',
+    agr.statusCode === 200 && agr.payload.ok && agr.payload.contractor.email === 'omar@example.test', agr.payload);
+
+  // Failure path: Resend 500 -> error surfaces, NOTHING is recorded.
+  await call('POST', 'register', { cookie: null, body: { name: 'Sara Nasser', email: 'sara@example.test', company: 'Sara Media LLC' } });
+  const sara = await storeMod.readContractorByEmail('sara@example.test');
+  RESEND.mode = 'fail';
+  const failed = await call('POST', 'send-invitation', { cookie: deskCookie(), body: { contractorId: sara.id } });
+  RESEND.mode = 'ok';
+  check('a failed send surfaces the error (502 resend_500)',
+    failed.statusCode === 502 && failed.payload.ok === false && failed.payload.error === 'resend_500', failed.payload);
+  const saraAfter = await storeMod.readContractorById(sara.id);
+  check('a failed send records NO provenance',
+    !saraAfter.invitationSentAt && (saraAfter.invitationFrom || '') === '', saraAfter);
+  check('a failed send does NOT supersede the stored activation hash',
+    (await storeMod.readActivationHash(sara.id)) === '', await storeMod.readActivationHash(sara.id));
 }
 
 console.log(failures === 0 ? `\nALL GREEN — 0 failures` : `\n${failures} FAILURE(S)`);

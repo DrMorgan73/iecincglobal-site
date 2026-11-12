@@ -178,6 +178,7 @@
       var signedBoth = c.ndaStatus === 'signed' && (c.agreementStatus || 'pending') === 'signed';
       if (c.status === 'invited' || c.status === 'active') {
         acts += '<button class="mini" data-invite="' + esc(c.id) + '">Send activation link</button>';
+        acts += '<button class="mini" data-email-invite="' + esc(c.id) + '">Email invitation</button>';
       }
       if ((c.agreementStatus || 'pending') !== 'signed') {
         acts += '<button class="mini" data-agreement="' + esc(c.id) + '">Mark agreement signed</button>';
@@ -209,6 +210,9 @@
           ? '<span><b>Accepted in portal:</b> ' + esc(c.agreementAcceptedName || '') + (c.agreementSignedAt ? ' · ' + esc(String(c.agreementSignedAt).slice(0, 16).replace('T', ' ')) : '') + (c.agreementAcceptedVersion ? ' · version ' + esc(c.agreementAcceptedVersion) : '') + '</span>'
           : (c.agreementStatus === 'signed' ? '<span><b>Accepted in portal:</b> — (signed on paper, recorded by the office)</span>' : '')) +
         '<span><b>NDA:</b> ' + esc(c.ndaStatus) + '</span>' +
+        (c.invitationSentAt
+          ? '<span><b>Invitation:</b> emailed ' + esc(String(c.invitationSentAt).slice(0, 16).replace('T', ' ')) + ' from ' + esc(c.invitationFrom || 'info@iecincglobal.com') + '</span>'
+          : '<span><b>Invitation:</b> not emailed yet</span>') +
         '<span><b>Phone:</b> ' + fv(c.phone) + '</span>' +
         '<span><b>Address:</b> ' + fv(addr) + '</span>' +
         '<span><b>Website:</b> ' + fv(c.website) + '</span>' +
@@ -255,7 +259,7 @@
   }
 
   document.addEventListener('click', function (ev) {
-    var t = ev.target.closest('button[data-details],button[data-invite],button[data-nda],button[data-agreement],button[data-status],button[data-advance],button[data-padvance],button[data-unclaim]');
+    var t = ev.target.closest('button[data-details],button[data-invite],button[data-email-invite],button[data-nda],button[data-agreement],button[data-status],button[data-advance],button[data-padvance],button[data-unclaim]');
     if (!t) return;
     if (t.hasAttribute('data-details')) {
       var drow = document.getElementById('detail-' + t.getAttribute('data-details'));
@@ -275,9 +279,16 @@
     if (t.hasAttribute('data-invite')) {
       post('invite', { contractorId: t.getAttribute('data-invite') }).then(function (out) {
         if (out.body && out.body.ok) {
-          done('Activation link (email this to the partner — the API sends no email itself; it activates only once both signatures are recorded): <b>' + esc(out.body.activationUrl) + '</b>');
+          done('Activation link (fallback — copy and send it yourself if needed, or use “Email invitation” to send it from info@iecincglobal.com; it activates only once both signatures are recorded): <b>' + esc(out.body.activationUrl) + '</b>');
         } else done('Invite failed: ' + esc((out.body && out.body.error) || 'error'), true);
       }).catch(function () { done('Invite failed.', true); });
+    } else if (t.hasAttribute('data-email-invite')) {
+      post('send-invitation', { contractorId: t.getAttribute('data-email-invite') }).then(function (out) {
+        if (out.body && out.body.ok) {
+          done('Invitation emailed from <b>info@iecincglobal.com</b> · ' + esc(String(out.body.invitationSentAt || '').slice(0, 16).replace('T', ' ')) +
+            ' UTC to ' + esc(out.body.email || '') + '. Fallback link: <b>' + esc(out.body.activationUrl) + '</b>');
+        } else done('Invitation email failed: ' + esc((out.body && out.body.error) || 'error'), true);
+      }).catch(function () { done('Invitation email failed.', true); });
     } else if (t.hasAttribute('data-nda')) {
       post('set-nda', { contractorId: t.getAttribute('data-nda'), signed: true }).then(function (out) {
         done(out.body && out.body.ok

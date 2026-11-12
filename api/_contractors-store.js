@@ -122,7 +122,10 @@ async function ensureTables() {
     website text NOT NULL DEFAULT '',
     heard_about text NOT NULL DEFAULT '',
     notes text NOT NULL DEFAULT '',
-    activated_at timestamptz, created_at timestamptz NOT NULL DEFAULT now(),
+    activated_at timestamptz,
+    invitation_sent_at timestamptz,
+    invitation_from text NOT NULL DEFAULT '',
+    created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now())`);
   await neonQuery(`CREATE TABLE IF NOT EXISTS contractor_referrals (
     id text PRIMARY KEY, contractor_id text NOT NULL, business_name text NOT NULL,
@@ -157,6 +160,8 @@ async function ensureTables() {
     `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS website text NOT NULL DEFAULT ''`,
     `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS heard_about text NOT NULL DEFAULT ''`,
     `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS notes text NOT NULL DEFAULT ''`,
+    `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS invitation_sent_at timestamptz`,
+    `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS invitation_from text NOT NULL DEFAULT ''`,
     `ALTER TABLE contractor_referrals ADD COLUMN IF NOT EXISTS owner_gross numeric`,
     `ALTER TABLE contractor_referrals ADD COLUMN IF NOT EXISTS locations integer`,
     `ALTER TABLE contractor_referrals ADD COLUMN IF NOT EXISTS employees integer`,
@@ -196,6 +201,8 @@ function rowToContractor(r) {
     agreementAcceptedVersion: r.agreement_accepted_version || '',
     agreementAcceptedVia: r.agreement_accepted_via || '',
     activatedAt: r.activated_at || null, createdAt: r.created_at || null,
+    invitationSentAt: r.invitation_sent_at || null,
+    invitationFrom: r.invitation_from || '',
     source: r.source || 'office-invite',
     contractorType: r.contractor_type || '',
     phone: r.phone || '',
@@ -286,7 +293,8 @@ export async function readActivationHash(contractorId) {
 /* Patch one contractor's status fields. `patch` keys: status,
    ndaStatus, agreementStatus, agreementSignedAt,
    agreementAcceptedName, agreementAcceptedVersion,
-   agreementAcceptedVia, activationTokenHash, activatedAt.
+   agreementAcceptedVia, activationTokenHash, activatedAt,
+   invitationSentAt, invitationFrom.
    Returns false when the row does not exist. Status transitions
    are enforced by the API layer, not here. */
 export async function updateContractor(id, patch) {
@@ -294,7 +302,7 @@ export async function updateContractor(id, patch) {
   await ensureTables();
   const sets = [];
   const params = [];
-  const map = { status: 'status', ndaStatus: 'nda_status', agreementStatus: 'agreement_status', agreementSignedAt: 'agreement_signed_at', agreementAcceptedName: 'agreement_accepted_name', agreementAcceptedVersion: 'agreement_accepted_version', agreementAcceptedVia: 'agreement_accepted_via', activationTokenHash: 'activation_token_hash', activatedAt: 'activated_at' };
+  const map = { status: 'status', ndaStatus: 'nda_status', agreementStatus: 'agreement_status', agreementSignedAt: 'agreement_signed_at', agreementAcceptedName: 'agreement_accepted_name', agreementAcceptedVersion: 'agreement_accepted_version', agreementAcceptedVia: 'agreement_accepted_via', activationTokenHash: 'activation_token_hash', activatedAt: 'activated_at', invitationSentAt: 'invitation_sent_at', invitationFrom: 'invitation_from' };
   for (const [k, col] of Object.entries(map)) {
     if (patch[k] !== undefined) { params.push(patch[k]); sets.push(`${col} = $${params.length}`); }
   }
