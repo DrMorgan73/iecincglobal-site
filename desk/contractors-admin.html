@@ -280,11 +280,15 @@
       }).catch(function () { done('Invite failed.', true); });
     } else if (t.hasAttribute('data-nda')) {
       post('set-nda', { contractorId: t.getAttribute('data-nda'), signed: true }).then(function (out) {
-        done(out.body && out.body.ok ? 'NDA marked signed.' : 'Could not mark the NDA signed.', !(out.body && out.body.ok));
+        done(out.body && out.body.ok
+          ? 'NDA marked signed for ' + esc(out.body.name || '') + ' &lt;' + esc(out.body.email || '') + '&gt; — that record only.'
+          : 'Could not mark the NDA signed.', !(out.body && out.body.ok));
       });
     } else if (t.hasAttribute('data-agreement')) {
       post('set-agreement', { contractorId: t.getAttribute('data-agreement'), signed: true }).then(function (out) {
-        done(out.body && out.body.ok ? 'Referral Agreement marked signed.' : 'Could not mark the agreement signed.', !(out.body && out.body.ok));
+        done(out.body && out.body.ok
+          ? 'Referral Agreement marked signed for ' + esc(out.body.name || '') + ' &lt;' + esc(out.body.email || '') + '&gt; — that record only.'
+          : 'Could not mark the agreement signed.', !(out.body && out.body.ok));
       });
     } else if (t.hasAttribute('data-status')) {
       post('set-status', { contractorId: t.getAttribute('data-id'), status: t.getAttribute('data-status') }).then(function (out) {

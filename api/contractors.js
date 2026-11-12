@@ -729,7 +729,13 @@ export default async function handler(req, res) {
       return json(res, { ok: false, error: 'invalid_transition' }, 409);
     }
     await updateContractor(c.id, { ndaStatus: 'signed' });
-    return json(res, { ok: true, ndaStatus: 'signed' });
+    /* The response names the ONE record marked (id + email) so the
+       office sees exactly which partner record changed — two
+       partners can share a name; only this record's id was updated. */
+    return json(res, {
+      ok: true, ndaStatus: 'signed',
+      contractorId: c.id, name: c.name, email: c.email
+    });
   }
 
   /* Mark the Contractor Referral Agreement signed on paper
@@ -747,7 +753,11 @@ export default async function handler(req, res) {
     await updateContractor(c.id, {
       agreementStatus: 'signed', agreementSignedAt: new Date().toISOString()
     });
-    return json(res, { ok: true, agreementStatus: 'signed' });
+    /* Same single-record identification as set-nda. */
+    return json(res, {
+      ok: true, agreementStatus: 'signed',
+      contractorId: c.id, name: c.name, email: c.email
+    });
   }
 
   if (req.method === 'POST' && action === 'set-status') {
