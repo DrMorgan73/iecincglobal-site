@@ -1234,6 +1234,14 @@ var SEGMENTS = {
   ]
  }
 };
+/* Nonprofit (school / mosque) runs the exact same field set as general
+   business — it shares the same sections object, so the two can never
+   drift apart. Only the segment slug and label differ. */
+SEGMENTS["nonprofit"] = {
+ "name": "Nonprofit — School / Mosque",
+ "title": "Nonprofit — School / Mosque",
+ "sections": SEGMENTS["general-business"].sections
+};
 (function () {
   var params = new URLSearchParams(location.search);
   var slugs = Object.keys(SEGMENTS);

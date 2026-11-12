@@ -71,7 +71,8 @@ const SEGMENTS = {
   "pt": "Physical Therapy / Rehab Operations",
   "medical-practice": "Medical Practice / Group Operations",
   "gas-convenience": "Gas Station / Convenience Operations",
-  "general-business": "Business Operations (General)"
+  "general-business": "Business Operations (General)",
+  "nonprofit": "Nonprofit — School / Mosque"
 };
 
 const NOTIFY_TO = "info@iecincglobal.com";
