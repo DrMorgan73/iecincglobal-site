@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Contractor Referral Agreement — IEC Inc.</title>
+<meta name="description" content="Read and accept the IEC Contractor Referral Agreement — the signature step of your Partner Portal activation.">
+<link rel="stylesheet" href="style.css">
+<style>
+  .ctr-wrap{max-width:980px;margin:0 auto;padding:40px 20px 60px}
+  .ctr-card{border:1px solid #DCE3EC;border-radius:14px;background:#fff;padding:24px 26px;box-shadow:0 8px 30px rgba(14,42,71,.06);margin-bottom:22px}
+  .ctr-card h2{font-size:19px;margin:0 0 8px;color:#0E2A47}
+  .ctr-card p{color:#26313F;line-height:1.65;margin:0 0 10px}
+  .ctr-pill{display:inline-block;border-radius:999px;padding:3px 12px;font-size:13px;font-weight:700}
+  .ctr-pill.ok{background:#E7F4E9;color:#1E6B2E}
+  .ctr-pill.warn{background:#FBF6EA;color:#5c4a12}
+  .ctr-btn{appearance:none;border:0;border-radius:10px;padding:13px 22px;font:inherit;font-weight:700;cursor:pointer;background:#0E2A47;color:#fff}
+  .ctr-btn[disabled]{opacity:.55;cursor:not-allowed}
+  .ctr-btn.ghost{background:#fff;color:#0E2A47;border:1.5px solid #0E2A47;text-decoration:none;display:inline-block}
+  .ctr-status{font-size:15px;color:#26313F;min-height:22px}
+  .ctr-fine{font-size:13.5px;color:#5B6B85;line-height:1.6}
+  .ctr-form label{display:block;font-size:13px;font-weight:700;color:#0E2A47;margin-bottom:6px}
+  .ctr-form input[type=text]{width:100%;padding:11px 12px;border:1px solid #C9D3E0;border-radius:9px;font:inherit;font-size:15px;background:#fff;color:#1A1A1A}
+  .agree-check{display:flex;gap:10px;align-items:flex-start;margin:14px 0;font-size:14.5px;color:#26313F;line-height:1.55}
+  .agree-check input{margin-top:3px;width:auto}
+  .agree-scroll{border:1px solid #DCE3EC;border-radius:10px;background:#FDFDFB;max-height:62vh;overflow-y:auto;padding:26px 30px}
+  .agree-body{font-family:Georgia,serif;color:#1a1a1a;font-size:10.8pt;line-height:1.55}
+  .agree-body h1{color:#0B2447;font-size:16pt;border-bottom:3px solid #C9A227;padding-bottom:6px}
+  .agree-body h2{color:#0B2447;font-size:12.5pt;margin-top:16px}
+  .agree-body h3{color:#0B2447;font-size:11pt}
+  .agree-body table{border-collapse:collapse;width:100%;margin:8px 0;font-size:10pt}
+  .agree-body th{background:#0B2447;color:#fff;padding:6px 8px;text-align:left}
+  .agree-body td{border:1px solid #ccc;padding:6px 8px}
+  .agree-body strong{color:#0B2447}
+  .agree-title{border-bottom:3px solid #C9A227;padding-bottom:12px;margin-bottom:16px}
+  .agree-title h2{font-size:22px;margin:0 0 4px}
+  .agree-title p{margin:0 0 4px}
+  dl.ctr-dl{display:grid;grid-template-columns:200px 1fr;gap:6px 14px;font-size:14.5px;margin:10px 0}
+  dl.ctr-dl dt{font-weight:700;color:#0E2A47}
+  dl.ctr-dl dd{margin:0;color:#26313F}
+  @media (max-width:720px){dl.ctr-dl{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a class="brand" href="welcome.html"><img class="brand-logo" src="assets/iec-logo-light.png" alt="IEC Inc."></a>
+    <button class="menu-btn" aria-label="Open menu" aria-expanded="false"><span></span><span></span><span></span></button>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="welcome.html">Home</a>
+      <a href="data-network.html">Data Network</a>
+      <a href="contractors.html">Partner Portal</a>
+      <a href="cnda.html">Mutual NDA</a>
+      <a class="nav-cta" href="https://wa.me/18578671767?text=Hello%20DrMorgan%2C%20I%27d%20like%20to%20connect%20with%20IEC%20Inc.">Contact IEC</a>
+    </nav>
+  </div>
+</header>
+
+<main class="ctr-wrap">
+  <div id="loading" class="ctr-card"><p class="ctr-status">Loading your agreement…</p></div>
+
+  <div id="badlink" class="ctr-card" style="display:none">
+    <h2>This link is no longer valid</h2>
+    <p>Activation links are single-use and expire. If you already activated your portal, open it from your saved link or sign in again from the partner page. If you still need to sign, write to <a href="mailto:info@iecincglobal.com?subject=Partner%20portal%20activation%20—%20IEC">info@iecincglobal.com</a> and IEC will re-issue your link.</p>
+    <p><a class="ctr-btn ghost" href="contractors.html">Back to the partner page</a></p>
+  </div>
+
+  <div id="main" style="display:none">
+    <div class="ctr-card">
+      <div class="agree-title">
+        <h2>IEC Contractor Referral Agreement</h2>
+        <p>IEC, Inc. (International Empire Consultants, Inc.) · 923 Hyde Park Ave, Boston, MA 02136</p>
+        <p class="ctr-fine">Agreement version <span id="verLine">—</span> · Prepared for <b id="whoLine">—</b></p>
+      </div>
+      <p>Referral Agreement: <span id="agrPill"></span> &nbsp;·&nbsp; NDA: <span id="ndaPill"></span></p>
+      <p class="ctr-fine">This is the full agreement, exactly as it will stand between you and IEC. Read it in the panel below — your acceptance at the bottom is your signature of record, the same way partners accept agreements inside a portal. Nothing is charged and nothing is owed for signing.</p>
+      <div class="agree-scroll" id="agreePanel" tabindex="0">
+        <div class="agree-body" id="agreeBody"></div>
+      </div>
+      <p class="ctr-fine" id="scrollHint">Scroll to the end of the agreement to enable acceptance.</p>
+    </div>
+
+    <div class="ctr-card" id="acceptCard">
+      <h2>Accept the agreement</h2>
+      <form class="ctr-form" id="acceptForm">
+        <div>
+          <label for="typedName">Type your full legal name — exactly as it appears on your record above</label>
+          <input id="typedName" type="text" autocomplete="name" maxlength="160" disabled>
+        </div>
+        <label class="agree-check">
+          <input type="checkbox" id="agreeBox" disabled>
+          <span>I have read this Agreement, including Exhibit A and the Earnings Disclaimer in Section 14, and I agree to it. I understand my typed name and this acceptance are my signature.</span>
+        </label>
+        <button class="ctr-btn" type="submit" id="acceptBtn" disabled>I agree — accept the Agreement</button>
+        <p class="ctr-status" id="acceptStatus" role="status"></p>
+      </form>
+    </div>
+
+    <div class="ctr-card" id="doneCard" style="display:none">
+      <h2>Agreement accepted</h2>
+      <dl class="ctr-dl" id="doneDetails"></dl>
+      <div id="nextStep"></div>
+    </div>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="foot-bottom">
+      <div class="copyright">&copy; 2026 International Empire Consultants, Inc. All rights reserved. &middot; <a href="privacy.html">Privacy</a> &middot; <a href="/desk/login.html">Team sign-in</a> &middot; Developed by IEC, Inc.</div>
+    </div>
+  </div>
+</footer>
+<script src="nav.js" defer></script>
+<script>
+(function () {
+  var esc = function (s) { return String(s ?? '').replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  var token = new URLSearchParams(location.search).get('t') || '';
+  var state = { data: null, read: false };
+  var loading = document.getElementById('loading');
+  var badlink = document.getElementById('badlink');
+  var main = document.getElementById('main');
+
+  function api(path, opts) {
+    return fetch(path, opts).then(function (r) {
+      return r.json().then(function (d) { return { status: r.status, body: d }; }).catch(function () { return { status: r.status, body: null }; });
+    });
+  }
+
+  function pill(v) {
+    return v === 'signed'
+      ? '<span class="ctr-pill ok">signed</span>'
+      : '<span class="ctr-pill warn">pending</span>';
+  }
+
+  function showBad() {
+    loading.style.display = 'none';
+    main.style.display = 'none';
+    badlink.style.display = 'block';
+  }
+
+  function renderNextStep() {
+    var d = state.data;
+    var host = document.getElementById('nextStep');
+    if (d.ndaStatus === 'signed') {
+      host.innerHTML = '<p>Both of your signatures stand. Continue to open your portal — your activation completes now.</p>' +
+        '<p><a class="ctr-btn" href="/api/contractors?action=activate&amp;token=' + encodeURIComponent(token) + '">Continue to my portal</a></p>';
+    } else {
+      host.innerHTML = '<p><strong>One step remains: the NDA.</strong> The IEC General CNDA (Combined Master) is signed through IEC\u2019s NDA page. IEC verifies the signed copy; once it is recorded, this same activation link opens your portal.</p>' +
+        '<p><a class="ctr-btn ghost" href="cnda.html">Sign the NDA — Combined Master</a></p>' +
+        '<p class="ctr-fine">Your agreement acceptance above is already recorded — you will not be asked for it again.</p>';
+    }
+  }
+
+  function renderDone() {
+    var d = state.data;
+    document.getElementById('acceptCard').style.display = 'none';
+    var card = document.getElementById('doneCard');
+    card.style.display = 'block';
+    var rows;
+    if (d.acceptance) {
+      rows = [
+        ['Accepted by', d.acceptance.name],
+        ['Accepted on', String(d.acceptance.at || '').slice(0, 10)],
+        ['Agreement version', d.acceptance.version || d.version],
+        ['Recorded as', 'Accepted in the Partner Portal']
+      ];
+    } else {
+      rows = [
+        ['Status', 'Signed'],
+        ['Recorded as', 'Signed on paper and recorded by IEC']
+      ];
+    }
+    document.getElementById('doneDetails').innerHTML = rows.map(function (x) {
+      return '<dt>' + esc(x[0]) + '</dt><dd>' + esc(x[1]) + '</dd>';
+    }).join('');
+    renderNextStep();
+  }
+
+  function render(d) {
+    state.data = d;
+    loading.style.display = 'none';
+    main.style.display = 'block';
+    document.getElementById('verLine').textContent = d.version;
+    document.getElementById('whoLine').textContent = d.contractor.name + ' · ' + d.contractor.company;
+    document.getElementById('agrPill').innerHTML = pill(d.agreementStatus);
+    document.getElementById('ndaPill').innerHTML = pill(d.ndaStatus);
+    document.getElementById('agreeBody').innerHTML = d.html;
+    var panel = document.getElementById('agreePanel');
+    function checkScroll() {
+      if (panel.scrollTop + panel.clientHeight >= panel.scrollHeight - 24 && !state.read) {
+        state.read = true;
+        document.getElementById('scrollHint').textContent = 'You have read to the end of the agreement.';
+        document.getElementById('typedName').disabled = false;
+        document.getElementById('agreeBox').disabled = false;
+        syncButton();
+      }
+    }
+    panel.addEventListener('scroll', checkScroll);
+    setTimeout(checkScroll, 60);
+    if (d.agreementStatus === 'signed') {
+      document.getElementById('scrollHint').style.display = 'none';
+      renderDone();
+    }
+  }
+
+  function syncButton() {
+    var ready = state.read
+      && document.getElementById('agreeBox').checked
+      && document.getElementById('typedName').value.trim().length > 1;
+    document.getElementById('acceptBtn').disabled = !ready;
+  }
+  document.getElementById('agreeBox').addEventListener('change', syncButton);
+  document.getElementById('typedName').addEventListener('input', syncButton);
+
+  document.getElementById('acceptForm').addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    var btn = document.getElementById('acceptBtn');
+    var st = document.getElementById('acceptStatus');
+    btn.disabled = true;
+    st.textContent = 'Recording your acceptance…';
+    api('/api/contractors?action=accept-agreement', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        token: token,
+        typedName: document.getElementById('typedName').value,
+        accept: document.getElementById('agreeBox').checked
+      })
+    }).then(function (out) {
+      if (out.body && out.body.ok) {
+        state.data.agreementStatus = 'signed';
+        state.data.acceptance = out.body.acceptance || state.data.acceptance;
+        state.data.ndaStatus = out.body.ndaStatus || state.data.ndaStatus;
+        document.getElementById('agrPill').innerHTML = pill('signed');
+        document.getElementById('ndaPill').innerHTML = pill(state.data.ndaStatus);
+        renderDone();
+        document.getElementById('doneCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else if (out.body && out.body.error === 'name_mismatch') {
+        btn.disabled = false;
+        syncButton();
+        st.textContent = 'That name does not match your record. Type your full legal name exactly as shown at the top of this page.';
+      } else if (out.status === 401) {
+        showBad();
+      } else {
+        btn.disabled = false;
+        syncButton();
+        st.textContent = 'Your acceptance could not be recorded — please try again.';
+      }
+    }).catch(function () {
+      btn.disabled = false;
+      syncButton();
+      st.textContent = 'Something went wrong — please try again.';
+    });
+  });
+
+  if (!token) { showBad(); return; }
+  api('/api/contractors?action=agreement&token=' + encodeURIComponent(token))
+    .then(function (out) {
+      if (!out.body || !out.body.ok) { showBad(); return; }
+      render(out.body);
+    })
+    .catch(showBad);
+})();
+</script>
+</body>
+</html>

@@ -5,8 +5,8 @@
    NDA pending, source 'public-signup', every profile field stored);
    the office notification carries the full profile; the admin-list
    serialization returns every field; the sign-first activation gate
-   covers a self-registered partner identically (403 signing_required
-   before signatures, 302 after); duplicate email -> 409
+   covers a self-registered partner identically (routed to the
+   agreement page before signatures, 302 to the portal after); duplicate email -> 409
    already_registered; honeypot (company_site_hp) -> 400 rejected and
    nothing stored; the real website field does NOT trip the trap;
    bad email / missing required -> 400; a missing or unknown
@@ -205,8 +205,9 @@ console.log('sign-first gate on a self-registered partner');
   const inv = await call('POST', 'invite', { cookie: deskCookie(), body: { contractorId: anaId } });
   const token = new URL(inv.payload.activationUrl).searchParams.get('token');
   const blocked = await activate(token);
-  check('activation before signatures -> 403 signing_required',
-    blocked.statusCode === 403 && blocked.payload.error === 'signing_required', blocked.payload);
+  check('activation before signatures routes to the agreement page (302, no session)',
+    blocked.statusCode === 302 && String(blocked.headers.Location || '').startsWith('/contractors-agreement.html?t=')
+    && !blocked.headers['Set-Cookie'], blocked.headers);
   await call('POST', 'set-agreement', { cookie: deskCookie(), body: { contractorId: anaId, signed: true } });
   await call('POST', 'set-nda', { cookie: deskCookie(), body: { contractorId: anaId, signed: true } });
   const open = await activate(token);

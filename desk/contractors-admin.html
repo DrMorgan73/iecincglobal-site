@@ -205,6 +205,9 @@
         '<span><b>Status:</b> ' + esc(c.status) + '</span>' +
         '<span><b>Signed up:</b> ' + esc(String(c.createdAt || '').slice(0, 10) || '—') + '</span>' +
         '<span><b>Agreement:</b> ' + esc(c.agreementStatus || 'pending') + (c.agreementSignedAt ? ' (' + esc(String(c.agreementSignedAt).slice(0, 10)) + ')' : '') + '</span>' +
+        (c.agreementAcceptedVia === 'portal'
+          ? '<span><b>Accepted in portal:</b> ' + esc(c.agreementAcceptedName || '') + (c.agreementSignedAt ? ' · ' + esc(String(c.agreementSignedAt).slice(0, 16).replace('T', ' ')) : '') + (c.agreementAcceptedVersion ? ' · version ' + esc(c.agreementAcceptedVersion) : '') + '</span>'
+          : (c.agreementStatus === 'signed' ? '<span><b>Accepted in portal:</b> — (signed on paper, recorded by the office)</span>' : '')) +
         '<span><b>NDA:</b> ' + esc(c.ndaStatus) + '</span>' +
         '<span><b>Phone:</b> ' + fv(c.phone) + '</span>' +
         '<span><b>Address:</b> ' + fv(addr) + '</span>' +

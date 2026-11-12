@@ -163,7 +163,9 @@ let token = null;
   const req = { method: 'GET', url: `/api/contractors?action=activate&token=${encodeURIComponent(token)}`, headers: {}, body: undefined };
   const res = { statusCode: 0, payload: null, headers: {}, status(c) { this.statusCode = c; return this; }, json(o) { this.payload = o; return this; }, setHeader(k, v) { this.headers[k] = v; return this; }, end(s) { this.payload = s; } };
   await handler(req, res);
-  check('activation blocked before signing (403 signing_required)', res.statusCode === 403 && res.payload.error === 'signing_required', res.payload);
+  check('activation before signing routes to the agreement page (302, no session, link not consumed)',
+    res.statusCode === 302 && String(res.headers.Location || '').startsWith('/contractors-agreement.html?t=')
+    && !res.headers['Set-Cookie'], res.headers);
   await call('POST', 'set-agreement', { cookie: deskCookie(), body: { contractorId: karimId, signed: true } });
   await call('POST', 'set-nda', { cookie: deskCookie(), body: { contractorId: karimId, signed: true } });
   const res2 = { statusCode: 0, payload: null, headers: {}, status(c) { this.statusCode = c; return this; }, json(o) { this.payload = o; return this; }, setHeader(k, v) { this.headers[k] = v; return this; }, end(s) { this.payload = s; } };

@@ -15,6 +15,14 @@
                           business address, website, how they heard
                           about IEC, and free notes — the complete
                           record the office works from.
+                          agreement_accepted_* records an IN-PORTAL
+                          acceptance of the Referral Agreement (the
+                          partner read the full text in the portal
+                          and accepted it — typed legal name,
+                          timestamp, instrument version). An
+                          office-recorded signature leaves
+                          agreement_accepted_via empty; 'portal' is
+                          the in-portal evidence of record.
      contractor_referrals one row per registered client (id PK)
      client_claims        companies IEC itself has registered —
                           the office-maintained half of the
@@ -101,6 +109,9 @@ async function ensureTables() {
     nda_status text NOT NULL DEFAULT 'pending',
     agreement_status text NOT NULL DEFAULT 'pending',
     agreement_signed_at timestamptz,
+    agreement_accepted_name text NOT NULL DEFAULT '',
+    agreement_accepted_version text NOT NULL DEFAULT '',
+    agreement_accepted_via text NOT NULL DEFAULT '',
     activation_token_hash text NOT NULL DEFAULT '',
     source text NOT NULL DEFAULT 'office-invite',
     phone text NOT NULL DEFAULT '',
@@ -133,6 +144,9 @@ async function ensureTables() {
   for (const stmt of [
     `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS agreement_status text NOT NULL DEFAULT 'pending'`,
     `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS agreement_signed_at timestamptz`,
+    `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS agreement_accepted_name text NOT NULL DEFAULT ''`,
+    `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS agreement_accepted_version text NOT NULL DEFAULT ''`,
+    `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS agreement_accepted_via text NOT NULL DEFAULT ''`,
     `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS source text NOT NULL DEFAULT 'office-invite'`,
     `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS contractor_type text NOT NULL DEFAULT ''`,
     `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS phone text NOT NULL DEFAULT ''`,
@@ -178,6 +192,9 @@ function rowToContractor(r) {
     status: r.status, ndaStatus: r.nda_status,
     agreementStatus: r.agreement_status || 'pending',
     agreementSignedAt: r.agreement_signed_at || null,
+    agreementAcceptedName: r.agreement_accepted_name || '',
+    agreementAcceptedVersion: r.agreement_accepted_version || '',
+    agreementAcceptedVia: r.agreement_accepted_via || '',
     activatedAt: r.activated_at || null, createdAt: r.created_at || null,
     source: r.source || 'office-invite',
     contractorType: r.contractor_type || '',
@@ -268,15 +285,16 @@ export async function readActivationHash(contractorId) {
 
 /* Patch one contractor's status fields. `patch` keys: status,
    ndaStatus, agreementStatus, agreementSignedAt,
-   activationTokenHash, activatedAt. Returns false when the row
-   does not exist. Status transitions are enforced by the API
-   layer, not here. */
+   agreementAcceptedName, agreementAcceptedVersion,
+   agreementAcceptedVia, activationTokenHash, activatedAt.
+   Returns false when the row does not exist. Status transitions
+   are enforced by the API layer, not here. */
 export async function updateContractor(id, patch) {
   if (!contractorsDbConfigured()) return false;
   await ensureTables();
   const sets = [];
   const params = [];
-  const map = { status: 'status', ndaStatus: 'nda_status', agreementStatus: 'agreement_status', agreementSignedAt: 'agreement_signed_at', activationTokenHash: 'activation_token_hash', activatedAt: 'activated_at' };
+  const map = { status: 'status', ndaStatus: 'nda_status', agreementStatus: 'agreement_status', agreementSignedAt: 'agreement_signed_at', agreementAcceptedName: 'agreement_accepted_name', agreementAcceptedVersion: 'agreement_accepted_version', agreementAcceptedVia: 'agreement_accepted_via', activationTokenHash: 'activation_token_hash', activatedAt: 'activated_at' };
   for (const [k, col] of Object.entries(map)) {
     if (patch[k] !== undefined) { params.push(patch[k]); sets.push(`${col} = $${params.length}`); }
   }

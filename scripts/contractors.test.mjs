@@ -216,13 +216,15 @@ async function rawActivate(token) {
   // the NDA are recorded signed — and a blocked attempt does not
   // consume the link.
   const blocked = await rawActivate(activationToken);
-  check('activation before any signature -> 403 signing_required, link not consumed',
-    blocked.statusCode === 403 && blocked.payload.error === 'signing_required', blocked.payload);
+  check('activation before any signature -> routed to the agreement page (302, no session, link not consumed)',
+    blocked.statusCode === 302 && String(blocked.headers.Location || '').startsWith('/contractors-agreement.html?t=')
+    && !blocked.headers['Set-Cookie'], blocked.headers);
   const ag = await call('POST', 'set-agreement', { cookie: deskCookie(), body: { contractorId: ctrId, signed: true } });
   check('admin set-agreement -> signed', ag.statusCode === 200 && ag.payload.agreementStatus === 'signed', ag.payload);
   const blocked2 = await rawActivate(activationToken);
-  check('activation with agreement only (NDA pending) -> still 403',
-    blocked2.statusCode === 403 && blocked2.payload.error === 'signing_required', blocked2.payload);
+  check('activation with agreement only (NDA pending) -> still routed to the agreement page, no session issued',
+    blocked2.statusCode === 302 && String(blocked2.headers.Location || '').startsWith('/contractors-agreement.html?t=')
+    && !blocked2.headers['Set-Cookie'], blocked2.headers);
   // Successful activation is exercised after the NDA is signed in
   // the portal block below (same token — it was never consumed).
 }

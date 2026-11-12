@@ -15,9 +15,19 @@
      - ACTIVATION: the IEC office issues a one-time activation
        link (admin invite); following it sets a signed HttpOnly
        cookie scoped to that partner only. Activation is BLOCKED
-       until the office has recorded BOTH signatures
-       (agreement_status + nda_status = signed); a blocked attempt
-       does NOT consume the link.
+       until BOTH signatures stand (agreement_status + nda_status
+       = signed); a blocked attempt does NOT consume the link.
+       The Contractor Referral Agreement itself is accepted
+       IN-PORTAL, the way DataSupply's own partner agreement is:
+       the link routes an unsigned partner to the agreement page
+       (contractors-agreement.html), which presents the full text
+       (api/_agreement-content.js — generated verbatim from the
+       agreement markdown) and records the partner's acceptance —
+       typed full legal name + version id + timestamp — as the
+       signature of record. A signature the office recorded (paper
+       signed outside the portal) is equally valid and is never
+       re-asked. The NDA is still verified by the office through
+       the CNDA route.
      - PARTNER (cookie): own record, own clients ONLY (enforced
        server-side on every read and write), add-client with the
        counts-only questionnaire answers, client pipeline view,
@@ -72,6 +82,7 @@ import {
   mintActivationToken, mintSessionToken, verifyToken, hashToken,
   contractorFromRequest, sessionCookieHeader, clearSessionCookieHeader
 } from './_contractors-auth.js';
+import { AGREEMENT_HTML, agreementVersionId } from './_agreement-content.js';
 
 /* ------------------------------------------------------------------ */
 /* Desk session verification — mirrors middleware.js / api/data-assets.js
@@ -164,6 +175,9 @@ function publicContractor(c) {
     status: c.status, ndaStatus: c.ndaStatus,
     agreementStatus: c.agreementStatus || 'pending',
     agreementSignedAt: c.agreementSignedAt || null,
+    agreementAcceptedName: c.agreementAcceptedName || '',
+    agreementAcceptedVersion: c.agreementAcceptedVersion || '',
+    agreementAcceptedVia: c.agreementAcceptedVia || '',
     activatedAt: c.activatedAt,
     source: c.source || 'office-invite',
     contractorType: c.contractorType || '',
@@ -319,6 +333,43 @@ async function readBody(req) {
   catch { return {}; }
 }
 
+/* Resolve an activation token to its contractor — the token must
+   be signed, unexpired, belong to a live (not revoked) partner,
+   and match the hash currently stored for that partner (a
+   superseded or already-consumed link resolves to nothing).
+   Shared by activation itself and by the in-portal agreement
+   step, which rides the same link. Never consumes the token. */
+async function resolveActivationToken(token) {
+  const contractorId = verifyToken(token);
+  if (!contractorId) return null;
+  const c = await readContractorById(contractorId);
+  if (!c || c.status === 'revoked') return null;
+  const stored = await readActivationHash(contractorId);
+  if (!stored || stored !== hashToken(token)) return null;
+  return c;
+}
+
+/* The in-portal acceptance of record for one contractor, or null
+   when the agreement was signed on paper and recorded by the
+   office (or is not signed at all). */
+function agreementAcceptance(c) {
+  if ((c.agreementStatus || 'pending') !== 'signed') return null;
+  if ((c.agreementAcceptedVia || '') !== 'portal') return null;
+  return {
+    name: c.agreementAcceptedName || '',
+    at: c.agreementSignedAt || null,
+    version: c.agreementAcceptedVersion || '',
+    via: 'portal'
+  };
+}
+
+/* Typed legal name vs the name on the partner's record: the
+   partner types their full legal name; case and spacing are
+   forgiven, the name itself is not. */
+const nameMatches = (typed, recorded) =>
+  String(typed || '').trim().replace(/\s+/g, ' ').toLowerCase()
+  === String(recorded || '').trim().replace(/\s+/g, ' ').toLowerCase();
+
 export default async function handler(req, res) {
   const url = new URL(req.url, 'http://localhost');
   const action = String(url.searchParams.get('action') || (req.method === 'POST' ? '' : ''));
@@ -332,29 +383,26 @@ export default async function handler(req, res) {
     return json(res, { ok: false, error: 'not_configured' }, 503);
   }
 
-  /* ---- activation: one-time link -> session cookie ---- */
+  /* ---- activation: one-time link -> agreement step -> session ----
+     Following the link with either signature outstanding routes
+     the partner to the agreement page (the Referral Agreement is
+     accepted there, in-portal; the NDA step is shown there too).
+     No session is issued and the link is NOT consumed until BOTH
+     signatures stand. */
   if (req.method === 'GET' && action === 'activate') {
     const token = String(url.searchParams.get('token') || '');
-    const contractorId = verifyToken(token);
-    if (!contractorId) return json(res, { ok: false, error: 'invalid_token' }, 401);
-    const c = await readContractorById(contractorId);
-    if (!c || c.status === 'revoked') return json(res, { ok: false, error: 'invalid_token' }, 401);
-    // Sign-first gate: activation opens only once the office has
-    // recorded BOTH signatures — the Contractor Referral Agreement
-    // and the NDA. A blocked attempt does NOT consume the link:
-    // the stored hash is checked (and cleared) only after this.
+    const c = await resolveActivationToken(token);
+    if (!c) return json(res, { ok: false, error: 'invalid_token' }, 401);
     if (c.ndaStatus !== 'signed' || (c.agreementStatus || 'pending') !== 'signed') {
-      return json(res, {
-        ok: false, error: 'signing_required',
-        agreementStatus: c.agreementStatus || 'pending', ndaStatus: c.ndaStatus
-      }, 403);
+      res.status(302);
+      res.setHeader('Location', `/contractors-agreement.html?t=${encodeURIComponent(token)}`);
+      return res.end();
     }
-    // Single-use: the stored hash must match this token, then it is cleared.
-    const stored = await readActivationHash(contractorId);
-    if (!stored || stored !== hashToken(token)) return json(res, { ok: false, error: 'invalid_token' }, 401);
-    const session = mintSessionToken(contractorId);
+    // Both signatures stand: consume the link (its hash was matched
+    // by resolveActivationToken) and open the session.
+    const session = mintSessionToken(c.id);
     if (!session) return json(res, { ok: false, error: 'not_configured' }, 503);
-    await updateContractor(contractorId, {
+    await updateContractor(c.id, {
       status: c.status === 'invited' ? 'active' : c.status,
       activationTokenHash: '', activatedAt: new Date().toISOString()
     });
@@ -362,6 +410,72 @@ export default async function handler(req, res) {
     res.setHeader('Set-Cookie', sessionCookieHeader(session));
     res.setHeader('Location', '/contractors-portal.html');
     return res.end();
+  }
+
+  /* ---- the agreement step: full text + acceptance state for the
+     partner holding the activation link. The text is the
+     generated, verbatim agreement (Articles 1–18 + Exhibit A) —
+     served only to the link holder, never publicly: the public
+     website carries no fee content, and this instrument is the
+     partner's own paper. ---- */
+  if (req.method === 'GET' && action === 'agreement') {
+    const token = String(url.searchParams.get('token') || '');
+    const c = await resolveActivationToken(token);
+    if (!c) return json(res, { ok: false, error: 'invalid_token' }, 401);
+    return json(res, {
+      ok: true,
+      version: agreementVersionId(),
+      contractor: { name: c.name, company: c.company, email: c.email },
+      agreementStatus: c.agreementStatus || 'pending',
+      ndaStatus: c.ndaStatus,
+      acceptance: agreementAcceptance(c),
+      html: AGREEMENT_HTML
+    });
+  }
+
+  /* ---- accept the agreement in-portal: the typed full legal
+     name + the accept action ARE the signature of record (the
+     same way IEC accepted DataSupply's partner agreement inside
+     their portal). Records {typed name, timestamp, version id}
+     and flips agreement_status to signed. A signature already
+     standing — in-portal or office-recorded — is never re-asked
+     and never overwritten. ---- */
+  if (req.method === 'POST' && action === 'accept-agreement') {
+    const body = await readBody(req);
+    const token = String(body.token || url.searchParams.get('token') || '');
+    const c = await resolveActivationToken(token);
+    if (!c) return json(res, { ok: false, error: 'invalid_token' }, 401);
+    if ((c.agreementStatus || 'pending') === 'signed') {
+      return json(res, {
+        ok: true, alreadySigned: true, agreementStatus: 'signed',
+        ndaStatus: c.ndaStatus, acceptance: agreementAcceptance(c),
+        next: c.ndaStatus === 'signed' ? 'activate' : 'nda'
+      });
+    }
+    const typedName = str(body.typedName, 160);
+    if (body.accept !== true || !typedName) {
+      return json(res, { ok: false, error: 'invalid_fields' }, 400);
+    }
+    if (!nameMatches(typedName, c.name)) {
+      return json(res, {
+        ok: false, error: 'name_mismatch',
+        message: 'Type your full legal name exactly as it appears on your invitation record.'
+      }, 400);
+    }
+    const version = agreementVersionId();
+    const at = new Date().toISOString();
+    await updateContractor(c.id, {
+      agreementStatus: 'signed', agreementSignedAt: at,
+      agreementAcceptedName: typedName,
+      agreementAcceptedVersion: version,
+      agreementAcceptedVia: 'portal'
+    });
+    return json(res, {
+      ok: true, alreadySigned: false, agreementStatus: 'signed',
+      ndaStatus: c.ndaStatus, version,
+      acceptance: { name: typedName, at, version, via: 'portal' },
+      next: c.ndaStatus === 'signed' ? 'activate' : 'nda'
+    });
   }
 
   /* ---- public: partner registration (thin, legacy shape — kept
@@ -618,9 +732,11 @@ export default async function handler(req, res) {
     return json(res, { ok: true, ndaStatus: 'signed' });
   }
 
-  /* Mark the Contractor Referral Agreement signed (the paper is
-     executed outside the portal; the office records the status —
-     the portal never invents agreement text). Forward-only. */
+  /* Mark the Contractor Referral Agreement signed on paper
+     executed OUTSIDE the portal (the office records the status).
+     A partner may instead accept in-portal — that path records
+     its own evidence (accept-agreement) and never passes here.
+     Forward-only. */
   if (req.method === 'POST' && action === 'set-agreement') {
     const body = await readBody(req);
     const c = await readContractorById(str(body.contractorId, 64));
@@ -753,5 +869,6 @@ export default async function handler(req, res) {
 export const _internals = {
   validDeskSession, publicSchedule, publicContractor, publicClient, feeTotals,
   INDUSTRIES, REFERRAL_ORDER, CONTRACTOR_ORDER, CLIENT_PIPELINE,
-  PIPELINE_EVIDENCE, SEGMENT_BY_INDUSTRY, questionnaireUrl, formatUSD
+  PIPELINE_EVIDENCE, SEGMENT_BY_INDUSTRY, questionnaireUrl, formatUSD,
+  resolveActivationToken, agreementAcceptance, nameMatches
 };
