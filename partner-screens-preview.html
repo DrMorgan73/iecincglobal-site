@@ -66,7 +66,7 @@
 <body>
 <div class="page">
   <h1>IEC Partner Portal — <span class="gold">Screens Preview</span></h1>
-  <p class="intro">Every screen of the Partner Portal as built, with <strong>synthetic data</strong> (partner "Karim Haddad — example") and <strong>real fee math</strong> from the portal's fee engine (2.0% of the first $250,000 · 1.0% to $1,000,000 · 0.5% above · capped at $25,000 per license, schedule DRAFT). Static preview — buttons are not wired. Partner-facing screens never name any channel or show any other party's economics.</p>
+  <p class="intro">Every screen of the Partner Portal as built, with <strong>synthetic data</strong> (partner "Karim Haddad — example") and <strong>real fee math</strong> from the portal's fee engine (5% of the owner's gross on the first closed license · no cap · +2% milestone bonus at an owner gross of $10,000,000 or more, schedule adopted Nov 12, 2026). Static preview — buttons are not wired. Partner-facing screens never name any channel or show any other party's economics.</p>
 
   <!-- 1 REGISTER -->
   <div class="screen-label"><span class="tag">PUBLIC</span><h2>1 · Partner register — request access</h2></div>
@@ -115,7 +115,7 @@
       <table>
         <thead><tr><th>Business</th><th>Type</th><th>Pipeline step</th><th>Fee stage</th><th>Your fee</th></tr></thead>
         <tbody>
-          <tr><td>Harbor Dental Group</td><td>medical-practice</td><td>Registered</td><td>Fee paid</td><td>$7,500</td></tr>
+          <tr><td>Harbor Dental Group</td><td>medical-practice</td><td>Registered</td><td>Fee paid</td><td>$25,000</td></tr>
           <tr><td>Sunrise Home Care LLC</td><td>home-health</td><td>NDA signed</td><td>Client added</td><td>—</td></tr>
           <tr><td>Northgate Pharmacy</td><td>pharmacy</td><td>Questionnaire answered</td><td>Client added</td><td>—</td></tr>
           <tr><td>Summit Physical Therapy</td><td>physical-therapy</td><td>Added</td><td>Client added</td><td>—</td></tr>
@@ -123,8 +123,8 @@
       </table>
     </div>
     <div class="card">
-      <h2>Your fees <span class="pill warn">Schedule DRAFT</span></h2>
-      <div class="totals"><span>Earned: <b>$7,500</b></span><span>Paid: <b>$7,500</b></span><span>Outstanding: <b>$0</b></span></div>
+      <h2>Your fees <span class="pill ok">Schedule adopted</span></h2>
+      <div class="totals"><span>Earned: <b>$25,000</b></span><span>Paid: <b>$25,000</b></span><span>Outstanding: <b>$0</b></span></div>
     </div>
   </div>
 
@@ -188,21 +188,20 @@
   <div class="screen-label"><span class="tag">PARTNER</span><h2>5 · Fees view</h2></div>
   <div class="frame">
     <div class="card">
-      <h2>Your fees <span class="pill warn">Schedule DRAFT</span></h2>
-      <div class="totals"><span>Earned: <b>$7,500</b></span><span>Paid: <b>$7,500</b></span><span>Outstanding: <b>$0</b></span></div>
+      <h2>Your fees <span class="pill ok">Schedule adopted</span></h2>
+      <div class="totals"><span>Earned: <b>$25,000</b></span><span>Paid: <b>$25,000</b></span><span>Outstanding: <b>$0</b></span></div>
       <table>
-        <thead><tr><th>First closed license value</th><th>Your referral fee</th></tr></thead>
+        <thead><tr><th>Owner gross — first closed license</th><th>Your referral fee</th></tr></thead>
         <tbody>
-          <tr><td>$100,000</td><td>$2,000</td></tr>
-          <tr><td>$250,000</td><td>$5,000</td></tr>
-          <tr><td>$500,000</td><td>$7,500</td></tr>
-          <tr><td>$1,000,000</td><td>$12,500</td></tr>
-          <tr><td>$2,000,000</td><td>$17,500</td></tr>
-          <tr><td>$5,000,000</td><td>$25,000 (capped)</td></tr>
-          <tr><td>$14,500,000</td><td>$25,000 (capped)</td></tr>
+          <tr><td>$100,000</td><td>$5,000</td></tr>
+          <tr><td>$216,000</td><td>$10,800</td></tr>
+          <tr><td>$250,000</td><td>$12,500</td></tr>
+          <tr><td>$500,000</td><td>$25,000</td></tr>
+          <tr><td>$1,000,000</td><td>$50,000</td></tr>
+          <tr><td>$10,000,000</td><td>$700,000 (incl. 2% milestone bonus)</td></tr>
         </tbody>
       </table>
-      <p class="fine">Brackets: 2.0% of the first $250,000 · 1.0% to $1,000,000 · 0.5% above · capped at $25,000 per license · paid once per client, on their first closed license, within 15 days after IEC is paid. The cap level and renewal treatment are still being finalised. Harbor Dental Group: license $500,000 → fee $7,500 · paid.</p>
+      <p class="fine">Your fee is 5% of the owner's gross on a client's first closed license — the gross the owner receives, before IEC's fee — with no cap. At an owner gross of $10,000,000 or more, a 2% milestone bonus takes the total to 7%. Paid once per client, on their first closed license only (renewals earn no fee), within 15 days after IEC is paid, and always out of IEC's own share — never out of the owner's money. Harbor Dental Group: owner gross $500,000 → fee $25,000 · paid.</p>
     </div>
   </div>
 
@@ -222,11 +221,11 @@
     <div class="dcard">
       <h3>Clients — pipeline &amp; fees</h3>
       <table>
-        <thead><tr><th>Client</th><th>Partner</th><th>Pipeline</th><th>Fee stage</th><th>License</th><th>Fee</th><th>Actions</th></tr></thead>
+        <thead><tr><th>Client</th><th>Partner</th><th>Pipeline</th><th>Fee stage</th><th>Owner gross</th><th>Fee</th><th>Actions</th></tr></thead>
         <tbody>
           <tr><td class="who"><b>Sunrise Home Care LLC</b><span>Marta Ruiz · 3 loc · 66 FTE · 20 yrs records<br>Evidence: Countersigned copy opened and read; signature + date confirmed</span></td><td>karim@example.com</td><td><span class="chip plain">CNDA signed</span></td><td><span class="chip plain">Client added</span></td><td>—</td><td>—</td><td><span class="mini">Record: Ready to register</span></td></tr>
           <tr><td class="who"><b>Northgate Pharmacy</b><span>Sam North · submission qs-2026-1190</span></td><td>karim@example.com</td><td><span class="chip plain">Questionnaire answered</span></td><td><span class="chip plain">Client added</span></td><td>—</td><td>—</td><td><span class="mini">Record: Assessment done</span></td></tr>
-          <tr><td class="who"><b>Harbor Dental Group</b><span>Lena Ortiz</span></td><td>karim@example.com</td><td><span class="chip plain">Registered</span></td><td><span class="chip plain">Fee paid</span></td><td>$500,000</td><td>$7,500</td><td></td></tr>
+          <tr><td class="who"><b>Harbor Dental Group</b><span>Lena Ortiz</span></td><td>karim@example.com</td><td><span class="chip plain">Registered</span></td><td><span class="chip plain">Fee paid</span></td><td>$500,000</td><td>$25,000</td><td></td></tr>
         </tbody>
       </table>
     </div>

@@ -74,10 +74,10 @@
     <div id="banner"></div>
 
     <div class="card" style="margin-bottom:16px">
-      <h3>Fee schedule <span class="chip pending">Draft</span></h3>
+      <h3>Fee schedule <span class="chip">Adopted</span></h3>
       <p class="hint" id="feeLine">Loading…</p>
       <div id="feeTable"></div>
-      <p class="hint">Open rulings: per-license cap (currently $25,000) · renewals (currently unpaid — first license only). The portal always renders the live schedule from the API.</p>
+      <p class="hint">Adopted by DrMorgan, November 12, 2026 — no open rulings. Renewals are unpaid (first closed license only). The portal always renders the live schedule from the API.</p>
     </div>
 
     <div class="card" style="margin-bottom:16px">
@@ -93,7 +93,7 @@
       <h3>Clients — pipeline &amp; fees</h3>
       <p class="hint">Pipeline: Added → Questionnaire sent → Questionnaire answered → Assessment done → CNDA sent → CNDA signed → Ready to register → Registered (with DataSupply — internal label; partners never see the channel name). Evidence is required for Questionnaire answered (the submission reference from Dana's database), Assessment done (the valuation reference) and CNDA signed (the countersignature verification note). A paused or revoked partner's clients do not move.</p>
       <div class="table-wrap"><table class="matrix" id="refTable">
-        <thead><tr><th>Client</th><th>Partner</th><th>Pipeline</th><th>Fee stage</th><th>License</th><th>Fee</th><th>Actions</th></tr></thead>
+        <thead><tr><th>Client</th><th>Partner</th><th>Pipeline</th><th>Fee stage</th><th>Owner gross</th><th>Fee</th><th>Actions</th></tr></thead>
         <tbody><tr><td colspan="7">Loading…</td></tr></tbody>
       </table></div>
     </div>
@@ -158,12 +158,11 @@
       var s = out.body && out.body.schedule;
       if (!s) return;
       document.getElementById('feeLine').textContent =
-        'Brackets: 2.0% of the first $250,000 · 1.0% to $1,000,000 · 0.5% above · capped at ' + usd(s.cap) +
-        ' per license · paid within ' + s.paidWithinDays + ' days after IEC is paid.';
+        'Fee: 5% of the owner\u2019s gross on the first closed license · no cap · +2% milestone bonus at an owner gross of $10,000,000 or more (7% total) · paid within ' + s.paidWithinDays + ' days after IEC is paid · schedule ' + s.status + (s.adoptedOn ? ' ' + s.adoptedOn : '') + '.';
       document.getElementById('feeTable').innerHTML =
-        '<table class="matrix"><thead><tr><th>First closed license value</th><th>Referral fee</th></tr></thead><tbody>' +
+        '<table class="matrix"><thead><tr><th>Owner gross — first closed license</th><th>Referral fee</th></tr></thead><tbody>' +
         s.examples.map(function (e) {
-          return '<tr><td>' + usd(e.licenseValue) + '</td><td>' + usd(e.fee) + (e.capped ? ' (capped)' : '') + '</td></tr>';
+          return '<tr><td>' + usd(e.ownerGross) + '</td><td>' + usd(e.fee) + (e.bonus ? ' (incl. 2% milestone bonus)' : '') + '</td></tr>';
         }).join('') + '</tbody></table>';
     });
   }
@@ -229,7 +228,7 @@
         act += '<button class="mini" data-padvance="' + esc(r.id) + '" data-next="' + pnext + '">Record: ' + esc(PIPE_LABEL[pnext]) + '</button><br>';
       }
       if (next === 'license_closed') {
-        act += '<input class="lic-input" type="number" min="1" step="1" placeholder="License $ value" data-lic="' + esc(r.id) + '"> ' +
+        act += '<input class="lic-input" type="number" min="1" step="1" placeholder="Owner gross $" data-gross="' + esc(r.id) + '"> ' +
           '<button class="mini" data-advance="' + esc(r.id) + '" data-next="license_closed">Close license</button>';
       } else if (next) {
         act += '<button class="mini" data-advance="' + esc(r.id) + '" data-next="' + next + '">' +
@@ -241,7 +240,7 @@
         '<td>' + esc(c ? c.email : r.contractorId) + '</td>' +
         '<td><span class="chip">' + esc(PIPE_LABEL[r.pipelineStatus || 'added']) + '</span></td>' +
         '<td><span class="chip">' + esc(STATUS_LABEL[r.status] || r.status) + '</span></td>' +
-        '<td>' + (r.licenseValue === null || r.licenseValue === undefined ? '—' : usd(r.licenseValue)) + '</td>' +
+        '<td>' + (r.ownerGross !== null && r.ownerGross !== undefined ? usd(r.ownerGross) : (r.licenseValue === null || r.licenseValue === undefined ? '—' : usd(r.licenseValue))) + '</td>' +
         '<td>' + (r.feeAmount === null || r.feeAmount === undefined ? '—' : usd(r.feeAmount)) + '</td>' +
         '<td>' + act + '</td></tr>';
     }).join('') : '<tr><td colspan="7">No clients yet.</td></tr>';
@@ -308,10 +307,10 @@
     } else if (t.hasAttribute('data-advance')) {
       var body = { referralId: t.getAttribute('data-advance'), status: t.getAttribute('data-next') };
       if (body.status === 'license_closed') {
-        var inp = document.querySelector('input[data-lic="' + body.referralId + '"]');
-        var lv = inp ? Number(inp.value) : NaN;
-        if (!Number.isFinite(lv) || lv <= 0) { t.disabled = false; alert('Enter the closed license value first.'); return; }
-        body.licenseValue = lv;
+        var inp = document.querySelector('input[data-gross="' + body.referralId + '"]');
+        var og = inp ? Number(inp.value) : NaN;
+        if (!Number.isFinite(og) || og <= 0) { t.disabled = false; alert('Enter the owner\u2019s gross on the closed license first — the fee is 5% of it.'); return; }
+        body.ownerGross = og;
       }
       post('advance-referral', body).then(function (out) {
         if (out.body && out.body.ok) {

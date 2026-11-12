@@ -315,17 +315,17 @@ console.log('fee totals');
 {
   const close = await call('POST', 'advance-referral', { cookie: deskCookie(), body: { referralId: clientId, status: 'agreement_signed' } });
   check('fee pipeline: agreement_signed', close.statusCode === 200, close.payload);
-  const lic = await call('POST', 'advance-referral', { cookie: deskCookie(), body: { referralId: clientId, status: 'license_closed', licenseValue: 500000 } });
-  check('license $500,000 -> partner fee $7,500', lic.statusCode === 200 && lic.payload.referral.feeAmount === 7500, lic.payload);
+  const lic = await call('POST', 'advance-referral', { cookie: deskCookie(), body: { referralId: clientId, status: 'license_closed', licenseValue: 500000, ownerGross: 500000 } });
+  check('owner gross $500,000 -> partner fee $25,000 (5%, no cap)', lic.statusCode === 200 && lic.payload.referral.ownerGross === 500000 && lic.payload.referral.feeAmount === 25000, lic.payload);
   const me = await call('GET', 'me', { cookie: karim() });
-  check('partner fee totals: earned 7500, paid 0, outstanding 7500',
-    me.payload.feeTotals.earned === 7500 && me.payload.feeTotals.paid === 0 && me.payload.feeTotals.outstanding === 7500, me.payload.feeTotals);
+  check('partner fee totals: earned 25000, paid 0, outstanding 25000',
+    me.payload.feeTotals.earned === 25000 && me.payload.feeTotals.paid === 0 && me.payload.feeTotals.outstanding === 25000, me.payload.feeTotals);
   const pay = await call('POST', 'advance-referral', { cookie: deskCookie(), body: { referralId: clientId, status: 'fee_paid' } });
   check('fee marked paid', pay.statusCode === 200 && pay.payload.referral.status === 'fee_paid', pay.payload);
   const admin = await call('GET', 'admin-list', { cookie: deskCookie() });
   const karimRow = admin.payload.contractors.find(c => c.id === karimId);
   check('admin list carries per-partner fee totals',
-    karimRow && karimRow.feeTotals.earned === 7500 && karimRow.feeTotals.paid === 7500, karimRow && karimRow.feeTotals);
+    karimRow && karimRow.feeTotals.earned === 25000 && karimRow.feeTotals.paid === 25000, karimRow && karimRow.feeTotals);
 }
 
 /* ================= frozen partner ================= */

@@ -146,10 +146,11 @@ function json(res, obj, status = 200, extraHeaders = {}) {
 function publicSchedule() {
   return {
     status: FEE_SCHEDULE.status,
+    adoptedOn: FEE_SCHEDULE.adoptedOn,
     basis: FEE_SCHEDULE.basis,
-    brackets: FEE_SCHEDULE.brackets.map(b => ({
-      upTo: b.upTo === Infinity ? null : b.upTo, rate: b.rate
-    })),
+    baseRate: FEE_SCHEDULE.baseRate,
+    bonusThreshold: FEE_SCHEDULE.bonusThreshold,
+    bonusRate: FEE_SCHEDULE.bonusRate,
     cap: FEE_SCHEDULE.cap,
     paidWithinDays: FEE_SCHEDULE.paidWithinDays,
     openRulings: FEE_SCHEDULE.openRulings,
@@ -280,7 +281,8 @@ function publicClient(r) {
     pipelineUpdatedAt: r.pipelineUpdatedAt ?? null,
     questionnaireAnswers: r.questionnaireAnswers ?? null,
     questionnaireSubmissionId: r.questionnaireSubmissionId ?? null,
-    licenseValue: r.licenseValue, feeAmount: r.feeAmount,
+    licenseValue: r.licenseValue, ownerGross: r.ownerGross ?? null,
+    feeAmount: r.feeAmount,
     feePaidAt: r.feePaidAt, createdAt: r.createdAt
   };
 }
@@ -657,10 +659,15 @@ export default async function handler(req, res) {
     if (to < 0 || to <= from) return json(res, { ok: false, error: 'invalid_transition' }, 409);
     const patch = { status: target };
     if (target === 'license_closed') {
+      /* The adopted fee is measured on the OWNER GROSS the owner
+         receives on the closed license (recorded here); the license
+         value itself is kept as record context when supplied. */
+      const og = Number(body.ownerGross);
+      if (!Number.isFinite(og) || og <= 0) return json(res, { ok: false, error: 'invalid_fields' }, 400);
+      patch.ownerGross = og;
       const lv = Number(body.licenseValue);
-      if (!Number.isFinite(lv) || lv <= 0) return json(res, { ok: false, error: 'invalid_fields' }, 400);
-      patch.licenseValue = lv;
-      patch.feeAmount = referralFee(lv);
+      if (Number.isFinite(lv) && lv > 0) patch.licenseValue = lv;
+      patch.feeAmount = referralFee(og);
     }
     if (target === 'fee_paid') {
       if (r.status !== 'license_closed') return json(res, { ok: false, error: 'invalid_transition' }, 409);

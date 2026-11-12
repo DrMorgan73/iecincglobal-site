@@ -117,7 +117,7 @@ async function ensureTables() {
     id text PRIMARY KEY, contractor_id text NOT NULL, business_name text NOT NULL,
     business_key text NOT NULL, owner_name text NOT NULL, owner_email text NOT NULL,
     industry text NOT NULL, status text NOT NULL DEFAULT 'registered',
-    license_value numeric, fee_amount integer, fee_paid_at timestamptz,
+    license_value numeric, owner_gross numeric, fee_amount integer, fee_paid_at timestamptz,
     locations integer, employees integer, systems text, years_records integer,
     pipeline_status text NOT NULL DEFAULT 'added',
     questionnaire_answers jsonb, questionnaire_submission_id text,
@@ -143,6 +143,7 @@ async function ensureTables() {
     `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS website text NOT NULL DEFAULT ''`,
     `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS heard_about text NOT NULL DEFAULT ''`,
     `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS notes text NOT NULL DEFAULT ''`,
+    `ALTER TABLE contractor_referrals ADD COLUMN IF NOT EXISTS owner_gross numeric`,
     `ALTER TABLE contractor_referrals ADD COLUMN IF NOT EXISTS locations integer`,
     `ALTER TABLE contractor_referrals ADD COLUMN IF NOT EXISTS employees integer`,
     `ALTER TABLE contractor_referrals ADD COLUMN IF NOT EXISTS systems text`,
@@ -205,6 +206,7 @@ function rowToReferral(r) {
     ownerName: r.owner_name, ownerEmail: r.owner_email, industry: r.industry,
     status: r.status,
     licenseValue: r.license_value === null || r.license_value === undefined ? null : Number(r.license_value),
+    ownerGross: r.owner_gross === null || r.owner_gross === undefined ? null : Number(r.owner_gross),
     feeAmount: r.fee_amount === null || r.fee_amount === undefined ? null : Number(r.fee_amount),
     feePaidAt: r.fee_paid_at || null, createdAt: r.created_at || null,
     locations: r.locations === null || r.locations === undefined ? null : Number(r.locations),
@@ -361,7 +363,7 @@ export async function readReferral(id) {
 }
 
 /* Advance one referral. `patch` keys: status, licenseValue,
-   feeAmount, feePaidAt (fee pipeline); locations, employees,
+   ownerGross, feeAmount, feePaidAt (fee pipeline); locations, employees,
    systems, yearsRecords, pipelineStatus, questionnaireAnswers,
    questionnaireSubmissionId, pipelineNote, pipelineUpdatedAt
    (client profile + client pipeline). Forward-only transitions
@@ -372,7 +374,7 @@ export async function updateReferral(id, patch) {
   const sets = [];
   const params = [];
   const map = {
-    status: 'status', licenseValue: 'license_value', feeAmount: 'fee_amount', feePaidAt: 'fee_paid_at',
+    status: 'status', licenseValue: 'license_value', ownerGross: 'owner_gross', feeAmount: 'fee_amount', feePaidAt: 'fee_paid_at',
     locations: 'locations', employees: 'employees', systems: 'systems', yearsRecords: 'years_records',
     pipelineStatus: 'pipeline_status', questionnaireSubmissionId: 'questionnaire_submission_id',
     pipelineNote: 'pipeline_note', pipelineUpdatedAt: 'pipeline_updated_at'

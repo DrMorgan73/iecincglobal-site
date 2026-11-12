@@ -8,14 +8,19 @@
    Performance principle APPROVED by DrMorgan 2026-11-11 14:31 EST:
    "I will pay scalable on performance" — the fee is paid ONLY when
    a referred client's first license closes, and the amount scales
-   with that license's value.
+   with what the owner grosses on that license.
 
-   DRAFT — two rulings still open (do not hard-code around them):
-     (1) cap level — currently $25,000 per license;
-     (2) renewals — currently unpaid (first closed license only).
+   ADOPTED by DrMorgan 2026-11-12: the fee is a flat 5% of the
+   OWNER GROSS (the gross amount the referred owner receives on the
+   first closed license, before IEC's client fee), with NO CAP,
+   plus a milestone bonus of a further 2% of the Owner Gross when
+   the Owner Gross reaches $10,000,000 (7% in total at that level).
+   Renewals are unpaid (first closed license only) — an adopted
+   term, not an open ruling. No rulings remain open on this schedule.
 
-   The fee comes from IEC's share ONLY — never the owner's 80%,
-   never charged to the client, never taken from any channel.
+   The fee comes from IEC's share ONLY — the percentages are the
+   measure; the owner's money is never touched, the fee is never
+   charged to the client, and it is never taken from any channel.
    Route-independent: the same schedule whether the license closes
    direct or through a channel. Contractors are IEC contractors,
    NOT producers and NOT under any channel agreement — no channel
@@ -23,56 +28,40 @@
    ===================================================================== */
 
 export const FEE_SCHEDULE = {
-  status: 'DRAFT',
-  basis: 'first closed license value',
-  brackets: [
-    { upTo: 250000, rate: 0.02 },   // 2.0% of the first $250,000
-    { upTo: 1000000, rate: 0.01 },  // 1.0% of the next $750,000
-    { upTo: Infinity, rate: 0.005 } // 0.5% above $1,000,000
-  ],
-  cap: 25000,            // maximum referral fee on any one license
-  paidWithinDays: 15,    // due within 15 days after IEC is paid
-  openRulings: ['cap level ($25,000)', 'renewals unpaid (first license only)']
+  status: 'ADOPTED',
+  adoptedOn: '2026-11-12',
+  basis: 'Owner Gross',
+  baseRate: 0.05,          // 5% of the Owner Gross
+  bonusThreshold: 10000000, // milestone bonus from $10,000,000 Owner Gross
+  bonusRate: 0.02,          // +2% of the Owner Gross at that level
+  cap: null,                // NO CAP — adopted 2026-11-12, cap dropped entirely
+  paidWithinDays: 15,       // due within 15 days after IEC is paid
+  openRulings: []
 };
 
-/* Bracketed fee on a license value, capped. Returns integer dollars.
-   Examples (audited in scripts/contractors.test.mjs):
-     $100,000 -> $2,000 · $250,000 -> $5,000 · $500,000 -> $7,500
-     $1,000,000 -> $12,500 · $2,000,000 -> $17,500
-     $5,000,000 -> $25,000 (capped) · $14,500,000 -> $25,000 (capped) */
-export function referralFee(licenseValue) {
-  const v = Number(licenseValue);
+/* Referral fee on an Owner Gross: floor(5% x gross), plus
+   floor(2% x gross) once the gross reaches $10,000,000. Returns
+   integer dollars. Examples (audited in scripts/contractors.test.mjs):
+     $100,000 -> $5,000 · $216,000 -> $10,800 · $250,000 -> $12,500
+     $500,000 -> $25,000 · $1,000,000 -> $50,000
+     $10,000,000 -> $700,000 ($500,000 base + $200,000 bonus) */
+export function referralFee(ownerGross) {
+  const v = Number(ownerGross);
   if (!Number.isFinite(v) || v <= 0) return 0;
-  let fee = 0;
-  let prev = 0;
-  for (const b of FEE_SCHEDULE.brackets) {
-    const slice = Math.min(v, b.upTo) - prev;
-    if (slice > 0) fee += slice * b.rate;
-    prev = b.upTo;
-    if (v <= b.upTo) break;
-  }
-  return Math.min(Math.floor(fee), FEE_SCHEDULE.cap);
+  let fee = Math.floor(v * FEE_SCHEDULE.baseRate);
+  if (v >= FEE_SCHEDULE.bonusThreshold) fee += Math.floor(v * FEE_SCHEDULE.bonusRate);
+  return fee;
 }
 
 /* Worked examples for the fee-schedule display — computed, never
    hand-typed, so the page can never disagree with the math. */
 export function feeExamples() {
-  return [100000, 250000, 500000, 1000000, 2000000, 5000000, 14500000]
-    .map(v => ({ licenseValue: v, fee: referralFee(v), capped: uncappedFee(v) > FEE_SCHEDULE.cap }));
-}
-
-function uncappedFee(licenseValue) {
-  const v = Number(licenseValue);
-  if (!Number.isFinite(v) || v <= 0) return 0;
-  let fee = 0;
-  let prev = 0;
-  for (const b of FEE_SCHEDULE.brackets) {
-    const slice = Math.min(v, b.upTo) - prev;
-    if (slice > 0) fee += slice * b.rate;
-    prev = b.upTo;
-    if (v <= b.upTo) break;
-  }
-  return Math.floor(fee);
+  return [100000, 216000, 250000, 500000, 1000000, 10000000]
+    .map(v => ({
+      ownerGross: v,
+      fee: referralFee(v),
+      bonus: v >= FEE_SCHEDULE.bonusThreshold
+    }));
 }
 
 export function formatUSD(n) {

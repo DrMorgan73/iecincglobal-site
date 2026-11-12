@@ -137,17 +137,21 @@ function check(name, cond, extra) {
 
 /* ================= fee math ================= */
 console.log('fee schedule');
-check('fee $100,000 -> $2,000', feesMod.referralFee(100000) === 2000);
-check('fee $250,000 -> $5,000', feesMod.referralFee(250000) === 5000);
-check('fee $500,000 -> $7,500', feesMod.referralFee(500000) === 7500);
-check('fee $1,000,000 -> $12,500', feesMod.referralFee(1000000) === 12500);
-check('fee $2,000,000 -> $17,500', feesMod.referralFee(2000000) === 17500);
-check('fee $5,000,000 -> $25,000 (capped)', feesMod.referralFee(5000000) === 25000);
-check('fee $14,500,000 -> $25,000 (capped)', feesMod.referralFee(14500000) === 25000);
+check('fee $100,000 -> $5,000', feesMod.referralFee(100000) === 5000);
+check('fee $216,000 -> $10,800', feesMod.referralFee(216000) === 10800);
+check('fee $250,000 -> $12,500', feesMod.referralFee(250000) === 12500);
+check('fee $500,000 -> $25,000', feesMod.referralFee(500000) === 25000);
+check('fee $1,000,000 -> $50,000', feesMod.referralFee(1000000) === 50000);
+check('fee $9,999,999 -> $499,999 (no bonus below $10M)', feesMod.referralFee(9999999) === 499999);
+check('fee $10,000,000 -> $700,000 (5% + 2% bonus)', feesMod.referralFee(10000000) === 700000);
+check('fee $14,500,000 -> $1,015,000 (no cap)', feesMod.referralFee(14500000) === 1015000);
 check('fee 0 / negative / NaN -> 0', feesMod.referralFee(0) === 0 && feesMod.referralFee(-5) === 0 && feesMod.referralFee(NaN) === 0);
-check('schedule is DRAFT with open rulings', feesMod.FEE_SCHEDULE.status === 'DRAFT' && feesMod.FEE_SCHEDULE.openRulings.length === 2);
-check('examples are computed, 7 rows, $250K row $5,000',
-  feesMod.feeExamples().length === 7 && feesMod.feeExamples()[1].fee === 5000);
+check('schedule is ADOPTED, basis Owner Gross, no cap, no open rulings',
+  feesMod.FEE_SCHEDULE.status === 'ADOPTED' && feesMod.FEE_SCHEDULE.basis === 'Owner Gross'
+  && feesMod.FEE_SCHEDULE.cap === null && feesMod.FEE_SCHEDULE.openRulings.length === 0);
+check('examples are computed, 6 rows, $216K row $10,800, $10M row $700,000 flagged bonus',
+  feesMod.feeExamples().length === 6 && feesMod.feeExamples()[1].fee === 10800
+  && feesMod.feeExamples()[5].fee === 700000 && feesMod.feeExamples()[5].bonus === true);
 
 /* ================= auth ================= */
 console.log('contractor tokens');
@@ -162,8 +166,10 @@ check('hash is stable and never equals the token',
 console.log('public schedule endpoint');
 {
   const r = await call('GET', 'schedule', { cookie: null });
-  check('schedule returns 200 + DRAFT + cap 25000',
-    r.statusCode === 200 && r.payload.ok && r.payload.schedule.status === 'DRAFT' && r.payload.schedule.cap === 25000);
+  check('schedule returns 200 + ADOPTED + basis Owner Gross + no cap',
+    r.statusCode === 200 && r.payload.ok && r.payload.schedule.status === 'ADOPTED'
+    && r.payload.schedule.basis === 'Owner Gross' && r.payload.schedule.cap === null
+    && r.payload.schedule.examples.length === 6 && r.payload.schedule.examples[5].fee === 700000);
   check('schedule names no channel', JSON.stringify(r.payload).toLowerCase().includes('datasupply') === false
     && JSON.stringify(r.payload).toLowerCase().includes('janise') === false);
 }
@@ -234,7 +240,7 @@ const ck = () => contractorCookie(ctrId);
   check('me returns the contractor + empty referrals + schedule',
     r.statusCode === 200 && r.payload.ok && r.payload.contractor.email === ctrEmail
     && Array.isArray(r.payload.referrals) && r.payload.referrals.length === 0
-    && r.payload.schedule.cap === 25000, r.payload);
+    && r.payload.schedule.status === 'ADOPTED' && r.payload.schedule.cap === null, r.payload);
 }
 {
   const r = await call('GET', 'me', { cookie: null });
@@ -298,11 +304,16 @@ let refId = null;
     cookie: deskCookie(), body: { referralId: refId, status: 'agreement_signed' }
   });
   check('registered -> agreement_signed', a1.statusCode === 200 && a1.payload.referral.status === 'agreement_signed', a1.payload);
-  const a2 = await call('POST', 'advance-referral', {
+  const aBad = await call('POST', 'advance-referral', {
     cookie: deskCookie(), body: { referralId: refId, status: 'license_closed', licenseValue: 250000 }
   });
-  check('license close on $250,000 computes fee $5,000',
-    a2.statusCode === 200 && a2.payload.referral.status === 'license_closed' && a2.payload.referral.feeAmount === 5000, a2.payload);
+  check('license close without owner gross -> 400 (fee is measured on owner gross)', aBad.statusCode === 400, aBad.payload);
+  const a2 = await call('POST', 'advance-referral', {
+    cookie: deskCookie(), body: { referralId: refId, status: 'license_closed', licenseValue: 250000, ownerGross: 216000 }
+  });
+  check('license close records owner gross $216,000 and computes fee $10,800 (5%)',
+    a2.statusCode === 200 && a2.payload.referral.status === 'license_closed'
+    && a2.payload.referral.ownerGross === 216000 && a2.payload.referral.feeAmount === 10800, a2.payload);
   const a3 = await call('POST', 'advance-referral', {
     cookie: deskCookie(), body: { referralId: refId, status: 'fee_paid' }
   });
@@ -310,7 +321,8 @@ let refId = null;
     a3.statusCode === 200 && a3.payload.referral.status === 'fee_paid' && !!a3.payload.referral.feePaidAt, a3.payload);
   const me = await call('GET', 'me', { cookie: ck() });
   check('contractor sees their own referral + fee in me',
-    me.payload.referrals.length === 1 && me.payload.referrals[0].feeAmount === 5000, me.payload);
+    me.payload.referrals.length === 1 && me.payload.referrals[0].feeAmount === 10800
+    && me.payload.clients[0].ownerGross === 216000 && me.payload.clients[0].feeAmount === 10800, me.payload);
 }
 
 /* ============ activation completes once both signatures land ============ */

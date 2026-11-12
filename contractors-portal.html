@@ -161,10 +161,10 @@
     </div>
 
     <div class="ctr-card">
-      <h2>Your fees <span class="ctr-pill warn">Schedule DRAFT</span></h2>
+      <h2>Your fees <span class="ctr-pill ok">Schedule adopted</span></h2>
       <div class="ctr-totals" id="feeTotals"></div>
       <div id="feeTable"><p class="ctr-status">Loading the fee schedule…</p></div>
-      <p class="ctr-fine">Brackets: 2.0% of the first $250,000 · 1.0% to $1,000,000 · 0.5% above · capped at $25,000 per license · paid once per client, on their first closed license, within 15 days after IEC is paid. The cap level and renewal treatment are still being finalised.</p>
+      <p class="ctr-fine">Your fee is 5% of the owner's gross on a client's first closed license — the gross the owner receives, before IEC's fee — with no cap. At an owner gross of $10,000,000 or more, a 2% milestone bonus takes the total to 7%. Paid once per client, on their first closed license only (renewals earn no fee), within 15 days after IEC is paid, and always out of IEC's own share — never out of the owner's money.</p>
     </div>
 
     <div class="ctr-card">
@@ -333,10 +333,10 @@
       '<span>Earned: <b>' + usd(t.earned) + '</b></span><span>Paid: <b>' + usd(t.paid) + '</b></span><span>Outstanding: <b>' + usd(t.outstanding) + '</b></span>';
     var s = d.schedule;
     var srows = s.examples.map(function (e) {
-      return '<tr><td>' + usd(e.licenseValue) + '</td><td>' + usd(e.fee) + (e.capped ? ' (capped)' : '') + '</td></tr>';
+      return '<tr><td>' + usd(e.ownerGross) + '</td><td>' + usd(e.fee) + (e.bonus ? ' (incl. 2% milestone bonus)' : '') + '</td></tr>';
     }).join('');
     document.getElementById('feeTable').innerHTML =
-      '<table class="ctr-refs"><thead><tr><th>First closed license value</th><th>Your referral fee</th></tr></thead><tbody>' + srows + '</tbody></table>';
+      '<table class="ctr-refs"><thead><tr><th>Owner gross — first closed license</th><th>Your referral fee</th></tr></thead><tbody>' + srows + '</tbody></table>';
   }
 
   function showClient(id) {
@@ -393,7 +393,9 @@
         document.getElementById('dFee').textContent =
           r.feeAmount === null || r.feeAmount === undefined
             ? 'No fee yet — your fee is set when this client\u2019s first license closes.'
-            : 'License ' + usd(r.licenseValue) + ' · your fee ' + usd(r.feeAmount) +
+            : (r.ownerGross !== null && r.ownerGross !== undefined
+                ? 'Owner gross ' + usd(r.ownerGross)
+                : 'License ' + usd(r.licenseValue)) + ' · your fee ' + usd(r.feeAmount) +
               (r.status === 'fee_paid' ? ' · paid' + (r.feePaidAt ? ' on ' + String(r.feePaidAt).slice(0, 10) : '') : ' · due within 15 days after IEC is paid');
         card.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
