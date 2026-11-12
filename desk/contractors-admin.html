@@ -202,6 +202,7 @@
       var addr = [c.addressStreet, c.addressCity, c.addressState, c.addressZip].filter(Boolean).join(', ');
       var detailRow = '<tr id="detail-' + esc(c.id) + '" style="display:none"><td colspan="6"><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:6px 22px;font-size:13.5px;line-height:1.55">' +
         '<span><b>Source:</b> ' + esc(srcLabel) + '</span>' +
+        '<span><b>Contractor type:</b> ' + fv(c.contractorType) + '</span>' +
         '<span><b>Status:</b> ' + esc(c.status) + '</span>' +
         '<span><b>Signed up:</b> ' + esc(String(c.createdAt || '').slice(0, 10) || '—') + '</span>' +
         '<span><b>Agreement:</b> ' + esc(c.agreementStatus || 'pending') + (c.agreementSignedAt ? ' (' + esc(String(c.agreementSignedAt).slice(0, 10)) + ')' : '') + '</span>' +

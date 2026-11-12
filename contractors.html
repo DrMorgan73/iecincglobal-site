@@ -18,23 +18,28 @@
   .ctr-num{flex:0 0 28px;height:28px;border-radius:50%;background:#0E2A47;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;font-size:14px}
   .ctr-form{display:grid;gap:14px;margin-top:6px}
   .ctr-form label{display:block;font-size:13px;font-weight:700;color:#0E2A47;margin-bottom:6px}
-  .ctr-form input{width:100%;padding:11px 12px;border:1px solid #C9D3E0;border-radius:9px;font:inherit;font-size:15px;background:#fff;color:#1A1A1A}
+  .ctr-form input,.ctr-form select{width:100%;padding:11px 12px;border:1px solid #C9D3E0;border-radius:9px;font:inherit;font-size:15px;background:#fff;color:#1A1A1A}
+  .ctr-form input:focus,.ctr-form select:focus,.ctr-form textarea:focus{outline:2px solid #C9A227;outline-offset:1px;border-color:#0E2A47}
+  .ctr-btn:hover{background:#12365C}
   .ctr-btn{appearance:none;border:0;border-radius:10px;padding:13px 22px;font:inherit;font-weight:700;cursor:pointer;background:#0E2A47;color:#fff}
   .ctr-btn[disabled]{opacity:.55;cursor:wait}
   .ctr-btn.ghost{background:#fff;color:#0E2A47;border:1.5px solid #0E2A47;text-decoration:none;display:inline-block}
   .ctr-status{font-size:15px;color:#26313F;min-height:22px}
   .ctr-fine{font-size:13.5px;color:#5B6B85;line-height:1.6}
-  .ctr-draft{display:inline-block;background:#FBF6EA;border:1px solid #B98A2F;color:#5c4a12;border-radius:8px;padding:4px 10px;font-size:13px;font-weight:700}
-  table.ctr-fees{border-collapse:collapse;width:100%;margin:12px 0;font-size:15px}
-  table.ctr-fees th{background:#0E2A47;color:#fff;padding:8px 10px;text-align:left}
-  table.ctr-fees td{border:1px solid #DCE3EC;padding:8px 10px}
-  .ctr-note{border:1px solid #DCE3EC;border-left:4px solid #C9A227;border-radius:8px;background:#FFFDF6;padding:12px 14px;font-size:14.5px;color:#26313F;line-height:1.6}
   .ctr-form textarea{width:100%;padding:11px 12px;border:1px solid #C9D3E0;border-radius:9px;font:inherit;font-size:15px;background:#fff;color:#1A1A1A;resize:vertical}
   .ctr-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
   .ctr-row3{display:grid;grid-template-columns:1.2fr .8fr .6fr;gap:14px}
   @media (max-width:640px){.ctr-row,.ctr-row3{grid-template-columns:1fr}}
   .ctr-opt{font-weight:400;color:#5B6B85}
   .hp{position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;overflow:hidden}
+  .ctr-points{display:grid;grid-template-columns:1fr 1fr;gap:14px 26px;margin-top:6px}
+  @media (max-width:640px){.ctr-points{grid-template-columns:1fr}}
+  .ctr-points div b{color:#0E2A47}
+  .ctr-points div p{margin:4px 0 0}
+  .ctr-faq{display:grid;gap:18px;max-width:820px}
+  .ctr-faq h3{font-size:16.5px;margin:0 0 4px;color:#0E2A47}
+  .ctr-faq p{color:#26313F;line-height:1.65;margin:0}
+  .ctr-formwrap{max-width:820px}
 </style>
 </head>
 <body>
@@ -68,7 +73,7 @@
     <div>
       <div class="eyebrow">IEC Partner Portal</div>
       <h1>Private access for IEC partners.</h1>
-      <p class="lede">This page is the entrance to IEC's private Partner Portal — the workspace for the partners who work under IEC as IEC contractors on the referral-fee program. The portal is not a public product: there are no usernames and no passwords, and entry is by personal activation link only, after the agreements are signed.</p>
+      <p class="lede">This page is the entrance to IEC's private Partner Portal — the workspace for the partners and contractors who work under IEC, across IEC's programs. The portal is not a public product: there are no usernames and no passwords, and entry is by personal activation link only, after the agreements are signed.</p>
       <div>
         <a class="btn" href="#enter">Partners — your entrance</a>
         <a class="btn ghost" href="#register">Request partner access</a>
@@ -86,16 +91,36 @@
 <section class="section">
   <div class="wrap ctr-grid">
     <div class="ctr-card">
-      <h2>Referral fee schedule <span class="ctr-draft">DRAFT</span></h2>
-      <p>Your fee is a percentage of your client's <strong>first closed license value</strong>, worked like tax brackets — and capped per license. It is paid from IEC's share only, and never charged to the client.</p>
-      <div id="feeTable"><p class="ctr-status">Loading the fee schedule…</p></div>
-      <p class="ctr-fine" id="feeNote"></p>
-      <div class="ctr-note">Two points are still being finalised: the per-license cap (currently $25,000) and whether renewals earn a fee (currently: first license only). The schedule shown here is the draft under discussion — the portal always shows the live schedule, so what you see is what applies.</div>
+      <h2>How the program works</h2>
+      <ol class="ctr-steps">
+        <li><span class="ctr-num">1</span><span><strong>Request access</strong> — send the request form below (Door 2). IEC reviews every request by hand.</span></li>
+        <li><span class="ctr-num">2</span><span><strong>Sign first</strong> — you sign the IEC Contractor Referral Agreement and the NDA (Combined Master, already signed by IEC). Both signatures come before activation — no exceptions.</span></li>
+        <li><span class="ctr-num">3</span><span><strong>Your portal opens</strong> — once both signatures are recorded, IEC sends your personal activation link. That link is your only door in.</span></li>
+        <li><span class="ctr-num">4</span><span><strong>Add your clients</strong> — inside the portal, you register each client's business profile and its counts-only questionnaire answers. One client, one partner: first to register holds the registration.</span></li>
+        <li><span class="ctr-num">5</span><span><strong>IEC runs the process</strong> — the assessment and valuation, the client's own agreements, and registration are handled by IEC. You never handle client files, records, or data.</span></li>
+        <li><span class="ctr-num">6</span><span><strong>Follow every stage</strong> — each client's progress shows in your portal as the office records it, step by step.</span></li>
+      </ol>
     </div>
-    <div class="ctr-card" id="register">
+    <div class="ctr-card">
+      <h2>Who IEC partners are</h2>
+      <p>Partners are professionals who already know business owners — consultants, accountants, agencies, advisors, brokers — and who work under IEC as IEC contractors. There is one channel only: through IEC. The portal serves IEC contractors generally, across IEC's programs; the data-network partner program on this page is the first program running inside it, and the request form is the door for contractors of every type.</p>
+      <div class="ctr-points">
+        <div><b>Your part is the introduction</b><p>You bring the relationship and register the client. IEC handles everything after that.</p></div>
+        <div><b>Agreements before access</b><p>The signed agreement and NDA are what open the portal — for every partner, in the same order.</p></div>
+        <div><b>Counts and names only</b><p>The portal holds business profiles and counts — never client records, files, or personal data.</p></div>
+        <div><b>Your clients stay yours to see</b><p>A partner sees only his own clients, and no one else's — the same rule in both directions.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section soft">
+  <div class="wrap">
+    <div class="ctr-card ctr-formwrap" id="register">
       <h2>Door 2 — Request partner access</h2>
       <p>Applying to become an IEC partner? Send the request below. <strong>Sign-up is a request only — it creates no access.</strong> IEC reviews each request; the partner then signs the IEC Contractor Referral Agreement and the NDA (Combined Master), and IEC issues the personal activation link only once both signatures are recorded.</p>
       <form class="ctr-form" id="signupForm">
+        <p class="ctr-fine" style="margin:0">Fields marked (optional) may be left blank; every other field is required.</p>
         <div>
           <label for="suName">Your full name</label>
           <input id="suName" name="name" type="text" autocomplete="name" required maxlength="120">
@@ -113,6 +138,17 @@
             <label for="suPhone">Phone <span class="ctr-opt">(optional)</span></label>
             <input id="suPhone" name="phone" type="tel" autocomplete="tel" maxlength="40">
           </div>
+        </div>
+        <div>
+          <label for="suType">Contractor type / area of work</label>
+          <select id="suType" name="contractorType" required>
+            <option value="">Choose your area of work…</option>
+            <option>Data network introductions</option>
+            <option>Clinical services</option>
+            <option>Consulting</option>
+            <option>Business services</option>
+            <option>Other</option>
+          </select>
         </div>
         <div>
           <label for="suStreet">Business address — street <span class="ctr-opt">(optional)</span></label>
@@ -161,6 +197,38 @@
   </div>
 </section>
 
+<section class="section">
+  <div class="wrap">
+    <h2>Common partner questions</h2>
+    <div class="ctr-faq">
+      <div>
+        <h3>How do I get into the portal?</h3>
+        <p>Through your personal activation link — there are no usernames or passwords. IEC issues the link after both of your signatures are recorded, and it opens your portal on your device for 30 days. If it expires, IEC re-issues it.</p>
+      </div>
+      <div>
+        <h3>What happens after I send the request form?</h3>
+        <p>IEC reviews the request and contacts you about the agreements. You sign the IEC Contractor Referral Agreement and the NDA first; nothing is activated, and no client is added, before both signatures are on record.</p>
+      </div>
+      <div>
+        <h3>What does a partner actually do?</h3>
+        <p>You make introductions: you register the clients you know inside your portal, with each business's profile and counts-only questionnaire answers. IEC runs the assessment, the client's own agreements, and registration from there. You never handle client files, exports, records, or data.</p>
+      </div>
+      <div>
+        <h3>Can I follow my clients' progress?</h3>
+        <p>Yes. Every client's stage — questionnaire, assessment, agreements, registration — shows in your portal as IEC records it. You see your own clients only; no partner can see another partner's clients.</p>
+      </div>
+      <div>
+        <h3>Can two partners register the same client?</h3>
+        <p>No. A client can be registered by one partner only — the first registration holds, and a later one is declined without naming either side.</p>
+      </div>
+      <div>
+        <h3>Where are the program's terms set out?</h3>
+        <p>In the IEC Contractor Referral Agreement — the document you review and sign before activation. This page describes the process only; it publishes no terms, and nothing here is a promise of any outcome.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
 <footer class="site-footer">
   <div class="wrap">
     <div class="foot-grid">
@@ -200,28 +268,6 @@
 <script src="nav.js" defer></script>
 <script>
 (function () {
-  var usd = function (n) { return '$' + Number(n).toLocaleString('en-US'); };
-  /* Fee schedule — rendered from the live API so the page can never
-     disagree with the portal's math. */
-  fetch('/api/contractors?action=schedule')
-    .then(function (r) { return r.json(); })
-    .then(function (d) {
-      if (!d.ok || !d.schedule) throw new Error('schedule unavailable');
-      var s = d.schedule;
-      var rows = s.examples.map(function (e) {
-        return '<tr><td>' + usd(e.licenseValue) + '</td><td>' + usd(e.fee) + (e.capped ? ' (capped)' : '') + '</td></tr>';
-      }).join('');
-      document.getElementById('feeTable').innerHTML =
-        '<table class="ctr-fees"><thead><tr><th>First closed license value</th><th>Your referral fee</th></tr></thead><tbody>' + rows + '</tbody></table>';
-      document.getElementById('feeNote').textContent =
-        'Brackets: 2.0% of the first $250,000 · 1.0% to $1,000,000 · 0.5% above · capped at ' + usd(s.cap) +
-        ' per license · paid within ' + s.paidWithinDays + ' days after IEC is paid.';
-    })
-    .catch(function () {
-      document.getElementById('feeTable').innerHTML =
-        '<p class="ctr-status">The live fee schedule could not be loaded. The schedule is 2.0% of the first $250,000, 1.0% to $1,000,000, 0.5% above, capped at $25,000 per license — please try again or write to <a href="mailto:info@iecincglobal.com">info@iecincglobal.com</a>.</p>';
-    });
-
   /* Sign-up (request access) — POSTs the full profile to the portal
      API. A request only: access opens after both agreements are
      signed and recorded by IEC. */
@@ -240,6 +286,7 @@
         name: val('suName'),
         company: val('suCompany'),
         email: val('suEmail'),
+        contractorType: val('suType'),
         phone: val('suPhone'),
         street: val('suStreet'),
         city: val('suCity'),
@@ -263,7 +310,7 @@
         } else if (out.status === 503) {
           status.textContent = 'Sign-up is not available right now — please write to info@iecincglobal.com.';
         } else {
-          status.textContent = 'Please check the required fields (name, company, email) and try again.';
+          status.textContent = 'Please check the required fields (name, company, email, contractor type) and try again.';
         }
       })
       .catch(function () {

@@ -125,6 +125,10 @@ const CONTRACTOR_ORDER = ['invited', 'active', 'paused', 'revoked'];
    channel: the last two steps read "Ready to register" and
    "Registered" in the portal UI. */
 const CLIENT_PIPELINE = ['added', 'questionnaire_sent', 'questionnaire_answered', 'assessment_done', 'cnda_sent', 'cnda_signed', 'ready_to_register', 'registered'];
+/* Contractor types for the public sign-up — the portal serves IEC
+   contractors generally; the data-network partner program is the
+   first program inside it. */
+const CONTRACTOR_TYPES = ['Data network introductions', 'Clinical services', 'Consulting', 'Business services', 'Other'];
 /* Steps that may only be recorded with evidence of the real event:
    the reference that proves it happened. */
 const PIPELINE_EVIDENCE = {
@@ -161,6 +165,7 @@ function publicContractor(c) {
     agreementSignedAt: c.agreementSignedAt || null,
     activatedAt: c.activatedAt,
     source: c.source || 'office-invite',
+    contractorType: c.contractorType || '',
     phone: c.phone || '',
     addressStreet: c.addressStreet || '',
     addressCity: c.addressCity || '',
@@ -208,6 +213,7 @@ function signupProfileLines(p) {
   const address = [p.addressStreet, p.addressCity, p.addressState, p.addressZip].filter(Boolean).join(', ');
   return [
     ['Name', p.name], ['Company', p.company], ['Email', p.email],
+    ['Contractor type', p.contractorType || '—'],
     ['Phone', p.phone || '—'],
     ['Business address', address || '—'],
     ['Website', p.website || '—'],
@@ -300,10 +306,14 @@ function questionnaireUrl(industry) {
 }
 
 async function readBody(req) {
-  if (req.body && typeof req.body === 'object') return req.body;
+  const plain = v => (v && typeof v === 'object' && !Array.isArray(v)) ? v : {};
+  if (req.body && typeof req.body === 'object') return plain(req.body);
+  if (typeof req.body === 'string') {
+    try { return plain(JSON.parse(req.body)); } catch { return {}; }
+  }
   const chunks = [];
-  for await (const chunk of req) chunks.push(chunk);
-  try { return JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}'); }
+  try { for await (const chunk of req) chunks.push(chunk); } catch { return {}; }
+  try { return plain(JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}')); }
   catch { return {}; }
 }
 
@@ -392,11 +402,12 @@ export default async function handler(req, res) {
     const name = str(body.name, 120);
     const email = str(body.email, 120).toLowerCase();
     const company = str(body.company, 160);
-    if (!name || !emailOk(email) || !company) {
+    const contractorType = str(body.contractorType, 60);
+    if (!name || !emailOk(email) || !company || !CONTRACTOR_TYPES.includes(contractorType)) {
       return json(res, { ok: false, error: 'invalid_fields' }, 400);
     }
     const profile = {
-      name, company, email,
+      name, company, email, contractorType,
       phone: str(body.phone, 40),
       addressStreet: str(body.street, 200),
       addressCity: str(body.city, 120),

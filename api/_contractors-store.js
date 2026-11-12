@@ -97,6 +97,7 @@ async function ensureTables() {
   await neonQuery(`CREATE TABLE IF NOT EXISTS contractors (
     id text PRIMARY KEY, email text UNIQUE NOT NULL, name text NOT NULL,
     company text NOT NULL, status text NOT NULL DEFAULT 'invited',
+    contractor_type text NOT NULL DEFAULT '',
     nda_status text NOT NULL DEFAULT 'pending',
     agreement_status text NOT NULL DEFAULT 'pending',
     agreement_signed_at timestamptz,
@@ -133,6 +134,7 @@ async function ensureTables() {
     `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS agreement_status text NOT NULL DEFAULT 'pending'`,
     `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS agreement_signed_at timestamptz`,
     `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS source text NOT NULL DEFAULT 'office-invite'`,
+    `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS contractor_type text NOT NULL DEFAULT ''`,
     `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS phone text NOT NULL DEFAULT ''`,
     `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS address_street text NOT NULL DEFAULT ''`,
     `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS address_city text NOT NULL DEFAULT ''`,
@@ -177,6 +179,7 @@ function rowToContractor(r) {
     agreementSignedAt: r.agreement_signed_at || null,
     activatedAt: r.activated_at || null, createdAt: r.created_at || null,
     source: r.source || 'office-invite',
+    contractorType: r.contractor_type || '',
     phone: r.phone || '',
     addressStreet: r.address_street || '',
     addressCity: r.address_city || '',
@@ -221,11 +224,12 @@ export async function createContractor(c) {
   await ensureTables();
   await neonQuery(
     `INSERT INTO contractors (id, email, name, company, status, nda_status, activation_token_hash,
-       source, phone, address_street, address_city, address_state, address_zip, website, heard_about, notes)
-     VALUES ($1, $2, $3, $4, 'invited', 'pending', $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+       source, phone, address_street, address_city, address_state, address_zip, website, heard_about, notes, contractor_type)
+     VALUES ($1, $2, $3, $4, 'invited', 'pending', $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
     [c.id, c.email, c.name, c.company, c.activationTokenHash || '',
      c.source || 'office-invite', c.phone || '', c.addressStreet || '', c.addressCity || '',
-     c.addressState || '', c.addressZip || '', c.website || '', c.heardAbout || '', c.notes || '']);
+     c.addressState || '', c.addressZip || '', c.website || '', c.heardAbout || '', c.notes || '',
+     c.contractorType || '']);
   return true;
 }
 

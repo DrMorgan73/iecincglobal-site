@@ -9,7 +9,9 @@
    before signatures, 302 after); duplicate email -> 409
    already_registered; honeypot (company_site_hp) -> 400 rejected and
    nothing stored; the real website field does NOT trip the trap;
-   bad email / missing required -> 400; mailer failure still stores
+   bad email / missing required -> 400; a missing or unknown
+   contractor type -> 400 (the type is required — the portal serves
+   IEC contractors generally); mailer failure still stores
    (emailed:false); minimal signup (required fields only) succeeds.
 
    fetch is mocked for the Neon HTTPS SQL endpoint (in-memory tables)
@@ -143,6 +145,7 @@ function check(name, cond, extra) {
 
 const FULL = {
   name: 'Ana Ruiz', company: 'Ruiz Advisory Group LLC', email: 'Ana@RuizAdvisory.test',
+  contractorType: 'Data network introductions',
   phone: '617-555-0142', street: '44 Canal Street, Suite 9', city: 'Boston', state: 'MA', zip: '02114',
   website: 'https://ruizadvisory.example', heardAbout: 'Referred by a current IEC partner',
   notes: 'Focus on dental practices in New England.', company_site_hp: ''
@@ -162,7 +165,8 @@ let anaId = null;
   check('every profile field stored',
     row && row.phone === FULL.phone && row.addressStreet === FULL.street && row.addressCity === 'Boston'
     && row.addressState === 'MA' && row.addressZip === '02114' && row.website === FULL.website
-    && row.heardAbout === FULL.heardAbout && row.notes === FULL.notes, row);
+    && row.heardAbout === FULL.heardAbout && row.notes === FULL.notes
+    && row.contractorType === 'Data network introductions', row);
   check('the real website field did NOT trip the honeypot', !!row);
 }
 {
@@ -173,8 +177,8 @@ let anaId = null;
   check('notification goes to the office inbox',
     Array.isArray(mail.to) && mail.to.includes('info@iecincglobal.com'), mail.to);
   const body = `${mail.text || ''}\n${mail.html || ''}`;
-  check('notification carries the FULL profile (phone, address, website, heard-about, notes)',
-    body.includes(FULL.phone) && body.includes('44 Canal Street') && body.includes('02114')
+  check('notification carries the FULL profile (type, phone, address, website, heard-about, notes)',
+    body.includes('Data network introductions') && body.includes(FULL.phone) && body.includes('44 Canal Street') && body.includes('02114')
     && body.includes(FULL.website) && body.includes('Referred by a current IEC partner')
     && body.includes('dental practices'), body.slice(0, 200));
 }
@@ -188,12 +192,16 @@ console.log('admin serialization');
     row && row.source === 'public-signup' && row.phone === FULL.phone
     && row.addressStreet === FULL.street && row.addressCity === 'Boston' && row.addressState === 'MA'
     && row.addressZip === '02114' && row.website === FULL.website && row.heardAbout === FULL.heardAbout
-    && row.notes === FULL.notes && row.status === 'invited' && !!row.createdAt, row);
+    && row.notes === FULL.notes && row.status === 'invited' && !!row.createdAt
+    && row.contractorType === 'Data network introductions', row);
 }
 
 /* ================= the gate does not move ================= */
 console.log('sign-first gate on a self-registered partner');
 {
+  const me = await call('GET', 'me', { cookie: null });
+  check('no session -> me returns 401 (a self-registered partner reads nothing)',
+    me.statusCode === 401 && me.payload.error === 'unauthorized', me.payload);
   const inv = await call('POST', 'invite', { cookie: deskCookie(), body: { contractorId: anaId } });
   const token = new URL(inv.payload.activationUrl).searchParams.get('token');
   const blocked = await activate(token);
@@ -218,18 +226,43 @@ console.log('validation');
   check('honeypot submission stored NOTHING', (await storeMod.readContractorByEmail('bot@spam.test')) === null);
   const bad = await call('POST', 'signup', { cookie: null, body: { name: 'X', company: 'Y Co', email: 'not-an-email' } });
   check('bad email -> 400 invalid_fields', bad.statusCode === 400 && bad.payload.error === 'invalid_fields', bad.payload);
-  const missing = await call('POST', 'signup', { cookie: null, body: { name: 'X', email: 'x@y.test' } });
+  const missing = await call('POST', 'signup', { cookie: null, body: { name: 'X', email: 'x@y.test', contractorType: 'Consulting' } });
   check('missing company -> 400 invalid_fields', missing.statusCode === 400 && missing.payload.error === 'invalid_fields', missing.payload);
+  const noType = await call('POST', 'signup', { cookie: null, body: { name: 'X', company: 'Y Co', email: 'x2@y.test' } });
+  check('missing contractor type -> 400 invalid_fields', noType.statusCode === 400 && noType.payload.error === 'invalid_fields', noType.payload);
+  const badType = await call('POST', 'signup', { cookie: null, body: { name: 'X', company: 'Y Co', email: 'x3@y.test', contractorType: 'Wizardry' } });
+  check('unknown contractor type -> 400 invalid_fields, nothing stored',
+    badType.statusCode === 400 && badType.payload.error === 'invalid_fields'
+    && (await storeMod.readContractorByEmail('x3@y.test')) === null, badType.payload);
+}
+
+/* ================= malformed payloads: clean 400s, no internals ================= */
+console.log('malformed payloads');
+{
+  for (const [label, raw] of [['null body', 'null'], ['array body', '[1,2,3]'], ['broken JSON', '{not json'], ['scalar body', '42']]) {
+    const r = await call('POST', 'signup', { cookie: null, body: raw });
+    check(`${label} -> 400 invalid_fields, no stack or internals`,
+      r.statusCode === 400 && r.payload.error === 'invalid_fields'
+      && !JSON.stringify(r.payload).match(/Error|at\s+\w+\s+\(|node:|api\//), r.payload);
+  }
+  const big = await call('POST', 'signup', { cookie: null, body: { name: 'N'.repeat(5000), company: 'Big Co', email: 'big@bigco.test', contractorType: 'Other', notes: 'x'.repeat(20000) } });
+  const brow = await storeMod.readContractorByEmail('big@bigco.test');
+  check('oversized fields are accepted but stored truncated to the caps',
+    big.statusCode === 200 && brow && brow.name.length === 120 && brow.notes.length === 2000,
+    brow && { name: brow.name.length, notes: brow.notes.length });
+  check('no notification fired for any rejected payload (still exactly 2: Ana + Big Co)',
+    sentEmails.length === 2, sentEmails.length);
 }
 
 /* ================= optional fields may stay empty ================= */
 console.log('minimal sign-up');
 {
-  const r = await call('POST', 'signup', { cookie: null, body: { name: 'Lee Park', company: 'Park Ventures', email: 'lee@parkventures.test' } });
+  const r = await call('POST', 'signup', { cookie: null, body: { name: 'Lee Park', company: 'Park Ventures', email: 'lee@parkventures.test', contractorType: 'Consulting' } });
   check('required-only signup succeeds', r.statusCode === 200 && r.payload.ok === true, r.payload);
   const row = await storeMod.readContractorByEmail('lee@parkventures.test');
-  check('optional fields stored empty, source still public-signup',
+  check('optional fields stored empty, type stored, source still public-signup',
     row && row.phone === '' && row.addressStreet === '' && row.website === '' && row.notes === ''
+    && row.contractorType === 'Consulting'
     && row.source === 'public-signup' && row.status === 'invited', row);
 }
 
@@ -237,7 +270,7 @@ console.log('minimal sign-up');
 console.log('mailer failure');
 {
   resendMode = 'fail';
-  const r = await call('POST', 'signup', { cookie: null, body: { name: 'Marta Diaz', company: 'Diaz Group', email: 'marta@diazgroup.test', phone: '305-555-0119' } });
+  const r = await call('POST', 'signup', { cookie: null, body: { name: 'Marta Diaz', company: 'Diaz Group', email: 'marta@diazgroup.test', contractorType: 'Other', phone: '305-555-0119' } });
   check('mailer down -> signup still 200 ok, emailed:false reported honestly',
     r.statusCode === 200 && r.payload.ok === true && r.payload.emailed === false, r.payload);
   const row = await storeMod.readContractorByEmail('marta@diazgroup.test');
