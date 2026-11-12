@@ -159,8 +159,105 @@ function publicContractor(c) {
     status: c.status, ndaStatus: c.ndaStatus,
     agreementStatus: c.agreementStatus || 'pending',
     agreementSignedAt: c.agreementSignedAt || null,
-    activatedAt: c.activatedAt
+    activatedAt: c.activatedAt,
+    source: c.source || 'office-invite',
+    phone: c.phone || '',
+    addressStreet: c.addressStreet || '',
+    addressCity: c.addressCity || '',
+    addressState: c.addressState || '',
+    addressZip: c.addressZip || '',
+    website: c.website || '',
+    heardAbout: c.heardAbout || '',
+    notes: c.notes || '',
+    createdAt: c.createdAt || null
   };
+}
+
+/* ------------------------------------------------------------------ */
+/* Office notification for a PUBLIC sign-up — same Resend pattern as
+   api/questionnaire-submit.js (DEMO_ADMIN_RESEND_API_KEY, sender on
+   IEC's verified domain). Carries the FULL submitted profile. Never
+   throws: a failed notification never fails the sign-up — the
+   stored record is the system of record, and the caller reports
+   emailed true/false honestly.                                     */
+/* ------------------------------------------------------------------ */
+
+const SIGNUP_NOTIFY_TO = 'info@iecincglobal.com';
+const SIGNUP_MAIL_FROM = process.env.QUESTIONNAIRE_MAIL_FROM || 'IEC MSO Data Network <notifications@iecincglobal.com>';
+const SIGNUP_SIGNATURE_TEXT = [
+  'IEC, Inc. · IEC MSO Data Network',
+  '857-867-1767',
+  'info@iecincglobal.com'
+].join('\n');
+const SIGNUP_SIGNATURE_HTML = [
+  '<table cellpadding="0" cellspacing="0" border="0" style="margin-top:24px">',
+  '<tr><td><img src="https://iecincglobal.com/assets/iec-logo-email.png" width="140" alt="IEC, Inc." style="display:block;border:0"></td></tr>',
+  '<tr><td style="padding-top:10px;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.45;color:#1A1A1A">',
+  '<strong>IEC, Inc. · IEC MSO Data Network</strong><br>',
+  '<a href="tel:+18578671767" style="color:#1A1A1A;text-decoration:none">857-867-1767</a><br>',
+  '<a href="mailto:info@iecincglobal.com" style="color:#1A1A1A;text-decoration:none">info@iecincglobal.com</a>',
+  '</td></tr>',
+  '</table>'
+].join('');
+
+function escapeHtml(v) {
+  return String(v ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+}
+
+function signupProfileLines(p) {
+  const address = [p.addressStreet, p.addressCity, p.addressState, p.addressZip].filter(Boolean).join(', ');
+  return [
+    ['Name', p.name], ['Company', p.company], ['Email', p.email],
+    ['Phone', p.phone || '—'],
+    ['Business address', address || '—'],
+    ['Website', p.website || '—'],
+    ['How they heard about IEC', p.heardAbout || '—'],
+    ['Notes', p.notes || '—'],
+    ['Source', 'Public sign-up (contractors.html)'],
+    ['Status', 'Invited — no access until the Contractor Referral Agreement and the NDA are both recorded signed']
+  ];
+}
+
+/* { sent:true, id } | { sent:false, reason } — never throws. */
+async function sendSignupNotification(p) {
+  const key = process.env.DEMO_ADMIN_RESEND_API_KEY || '';
+  if (!key) return { sent: false, reason: 'not_configured' };
+  const rows = signupProfileLines(p);
+  const text = [
+    `New partner sign-up — ${p.company}.`,
+    '',
+    ...rows.map(([k, v]) => `${k}: ${v}`),
+    '',
+    'Next step: work it from the Desk Partners admin — send the Contractor Referral Agreement and the NDA for signature; activation opens only once both are recorded signed.',
+    '',
+    SIGNUP_SIGNATURE_TEXT
+  ].join('\n');
+  const html = [
+    `<p style="font-family:Arial,Helvetica,sans-serif;font-size:14px">New partner sign-up — <strong>${escapeHtml(p.company)}</strong>.</p>`,
+    '<table cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;max-width:640px">',
+    rows.map(([k, v]) => `<tr><td style="padding:6px 10px;border:1px solid #e4e0d6;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#5a6b7d">${escapeHtml(k)}</td><td style="padding:6px 10px;border:1px solid #e4e0d6;font-family:Arial,Helvetica,sans-serif;font-size:13px">${escapeHtml(v)}</td></tr>`).join(''),
+    '</table>',
+    '<p style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#5a6b7d">Next step: work it from the Desk Partners admin — send the Contractor Referral Agreement and the NDA for signature; activation opens only once both are recorded signed.</p>',
+    SIGNUP_SIGNATURE_HTML
+  ].join('\n');
+  try {
+    const r = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: SIGNUP_MAIL_FROM,
+        to: [SIGNUP_NOTIFY_TO],
+        reply_to: p.email,
+        subject: `New partner sign-up — ${p.company}`,
+        text, html
+      })
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) return { sent: false, reason: `resend_${r.status}` };
+    return { sent: true, id: data.id || null };
+  } catch (e) {
+    return { sent: false, reason: 'send_failed' };
+  }
 }
 
 /* The client shape a partner may see: his own client's profile,
@@ -255,7 +352,9 @@ export default async function handler(req, res) {
     return res.end();
   }
 
-  /* ---- public: contractor registration ---- */
+  /* ---- public: partner registration (thin, legacy shape — kept
+     for the original request-access flow; returns no enumeration
+     signal for an existing email) ---- */
   if (req.method === 'POST' && action === 'register') {
     const body = await readBody(req);
     const name = str(body.name, 120);
@@ -272,6 +371,55 @@ export default async function handler(req, res) {
     const id = crypto.randomUUID();
     await createContractor({ id, email, name, company, activationTokenHash: '' });
     return json(res, { ok: true, existing: false, next: '/cnda.html' });
+  }
+
+  /* ---- public: partner SIGN-UP (the full-profile request-access
+     form on contractors.html). Creates the COMPLETE partner record
+     in exactly the state an office invite creates — status
+     invited, agreement + NDA pending, source 'public-signup' —
+     and notifies the office with the full profile. Sign-up is a
+     REQUEST only: the activation gate below does not move, so a
+     self-registered partner gets no access and no activation
+     until the office records BOTH signatures. The honeypot field
+     is company_site_hp — the real website field is a genuine
+     profile field and never trips the trap. ---- */
+  if (req.method === 'POST' && action === 'signup') {
+    const body = await readBody(req);
+    /* Honeypot: a real applicant never sees this field. */
+    if (str(body.company_site_hp, 200)) {
+      return json(res, { ok: false, error: 'rejected' }, 400);
+    }
+    const name = str(body.name, 120);
+    const email = str(body.email, 120).toLowerCase();
+    const company = str(body.company, 160);
+    if (!name || !emailOk(email) || !company) {
+      return json(res, { ok: false, error: 'invalid_fields' }, 400);
+    }
+    const profile = {
+      name, company, email,
+      phone: str(body.phone, 40),
+      addressStreet: str(body.street, 200),
+      addressCity: str(body.city, 120),
+      addressState: str(body.state, 80),
+      addressZip: str(body.zip, 20),
+      website: str(body.website, 300),
+      heardAbout: str(body.heardAbout, 500),
+      notes: str(body.notes, 2000)
+    };
+    const existing = await readContractorByEmail(email);
+    if (existing) {
+      return json(res, {
+        ok: false, error: 'already_registered',
+        message: 'This email is already registered with the IEC partner program. If that is you, write to info@iecincglobal.com and we will take it from there.'
+      }, 409);
+    }
+    const id = crypto.randomUUID();
+    await createContractor({
+      id, email, name, company, activationTokenHash: '',
+      source: 'public-signup', ...profile
+    });
+    const mail = await sendSignupNotification(profile);
+    return json(res, { ok: true, emailed: mail.sent, next: '/cnda.html' });
   }
 
   /* ---- contractor session required below ---- */

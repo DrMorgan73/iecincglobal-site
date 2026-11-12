@@ -189,13 +189,30 @@
       if (c.status === 'active') acts += '<button class="mini" data-status="paused" data-id="' + esc(c.id) + '">Pause</button>';
       if (c.status === 'paused') acts += '<button class="mini" data-status="active" data-id="' + esc(c.id) + '">Resume</button>';
       if (c.status !== 'revoked') acts += '<button class="mini danger" data-status="revoked" data-id="' + esc(c.id) + '">Revoke</button>';
+      acts += '<button class="mini" data-details="' + esc(c.id) + '">Full record</button>';
       var ft = c.feeTotals || { earned: 0, paid: 0 };
-      return '<tr><td class="who"><b>' + esc(c.name) + '</b><span>' + esc(c.email) + ' · ' + esc(c.company) + '</span></td>' +
+      var srcLabel = c.source === 'public-signup' ? 'Public sign-up' : 'Office invite';
+      var mainRow = '<tr><td class="who"><b>' + esc(c.name) + '</b><span>' + esc(c.email) + ' · ' + esc(c.company) + '<br>' + esc(srcLabel) + '</span></td>' +
         '<td><span class="chip ' + esc(c.status) + '">' + esc(c.status) + '</span>' + (signedBoth ? '' : '<br><span style="font-size:12px;color:var(--dim)">activation blocked until both sign</span>') + '</td>' +
         '<td><span class="chip ' + ((c.agreementStatus || 'pending') === 'signed' ? 'signed' : 'pending') + '">' + esc(c.agreementStatus || 'pending') + '</span></td>' +
         '<td><span class="chip ' + (c.ndaStatus === 'signed' ? 'signed' : 'pending') + '">' + esc(c.ndaStatus) + '</span></td>' +
         '<td>' + usd(ft.earned) + ' / ' + usd(ft.paid) + '</td>' +
         '<td>' + acts + '</td></tr>';
+      var fv = function (v) { return v ? esc(v) : '—'; };
+      var addr = [c.addressStreet, c.addressCity, c.addressState, c.addressZip].filter(Boolean).join(', ');
+      var detailRow = '<tr id="detail-' + esc(c.id) + '" style="display:none"><td colspan="6"><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:6px 22px;font-size:13.5px;line-height:1.55">' +
+        '<span><b>Source:</b> ' + esc(srcLabel) + '</span>' +
+        '<span><b>Status:</b> ' + esc(c.status) + '</span>' +
+        '<span><b>Signed up:</b> ' + esc(String(c.createdAt || '').slice(0, 10) || '—') + '</span>' +
+        '<span><b>Agreement:</b> ' + esc(c.agreementStatus || 'pending') + (c.agreementSignedAt ? ' (' + esc(String(c.agreementSignedAt).slice(0, 10)) + ')' : '') + '</span>' +
+        '<span><b>NDA:</b> ' + esc(c.ndaStatus) + '</span>' +
+        '<span><b>Phone:</b> ' + fv(c.phone) + '</span>' +
+        '<span><b>Address:</b> ' + fv(addr) + '</span>' +
+        '<span><b>Website:</b> ' + fv(c.website) + '</span>' +
+        '<span><b>Heard about IEC:</b> ' + fv(c.heardAbout) + '</span>' +
+        '<span><b>Notes:</b> ' + fv(c.notes) + '</span>' +
+        '</div></td></tr>';
+      return mainRow + detailRow;
     }).join('') : '<tr><td colspan="6">No partners yet — registrations from /contractors.html appear here.</td></tr>';
 
     document.querySelector('#refTable tbody').innerHTML = refs.length ? refs.map(function (r) {
@@ -235,8 +252,13 @@
   }
 
   document.addEventListener('click', function (ev) {
-    var t = ev.target.closest('button[data-invite],button[data-nda],button[data-agreement],button[data-status],button[data-advance],button[data-padvance],button[data-unclaim]');
+    var t = ev.target.closest('button[data-details],button[data-invite],button[data-nda],button[data-agreement],button[data-status],button[data-advance],button[data-padvance],button[data-unclaim]');
     if (!t) return;
+    if (t.hasAttribute('data-details')) {
+      var drow = document.getElementById('detail-' + t.getAttribute('data-details'));
+      if (drow) drow.style.display = drow.style.display === 'none' ? '' : 'none';
+      return;
+    }
     t.disabled = true;
     var done = function (msg, isErr) {
       t.disabled = false;

@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Partner Portal — IEC Inc.</title>
-<meta name="description" content="IEC's partner portal: work under IEC as a partner, add your clients to IEC's data-licensing program, track each client through the pipeline, and earn a performance-based referral fee — paid only when a license your client closes.">
+<meta name="description" content="Private access for IEC partners. The IEC Partner Portal is by invitation only: partners enter through their personal activation link, and access opens only after the Contractor Referral Agreement and the NDA are signed.">
 <link rel="stylesheet" href="style.css">
 <style>
   .ctr-hero{padding:52px 0 30px}
@@ -29,6 +29,12 @@
   table.ctr-fees th{background:#0E2A47;color:#fff;padding:8px 10px;text-align:left}
   table.ctr-fees td{border:1px solid #DCE3EC;padding:8px 10px}
   .ctr-note{border:1px solid #DCE3EC;border-left:4px solid #C9A227;border-radius:8px;background:#FFFDF6;padding:12px 14px;font-size:14.5px;color:#26313F;line-height:1.6}
+  .ctr-form textarea{width:100%;padding:11px 12px;border:1px solid #C9D3E0;border-radius:9px;font:inherit;font-size:15px;background:#fff;color:#1A1A1A;resize:vertical}
+  .ctr-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .ctr-row3{display:grid;grid-template-columns:1.2fr .8fr .6fr;gap:14px}
+  @media (max-width:640px){.ctr-row,.ctr-row3{grid-template-columns:1fr}}
+  .ctr-opt{font-weight:400;color:#5B6B85}
+  .hp{position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;overflow:hidden}
 </style>
 </head>
 <body>
@@ -50,7 +56,7 @@
       <a href="strategic-partner.html">Strategic Partner</a>
       <a href="project-advisory.html">Advisory</a>
       <a href="news.html">News</a>
-      <a href="contractors.html" class="active">Partners</a>
+      <a href="contractors.html" class="active">Partner Portal</a>
       <a class="nav-suite" href="/desk/login.html">IEC Suite</a>
       <a class="nav-cta" href="https://wa.me/18578671767?text=Hello%20DrMorgan%2C%20I%27d%20like%20to%20connect%20with%20IEC%20Inc.">Contact IEC</a>
     </nav>
@@ -61,29 +67,18 @@
   <div class="wrap hero-grid">
     <div>
       <div class="eyebrow">IEC Partner Portal</div>
-      <h1>Work under IEC. Add your clients. Get paid on performance.</h1>
-      <p class="lede">Partners work under IEC as IEC contractors. You add your clients to IEC's data-licensing program from your own portal, follow each client through the pipeline, and earn a referral fee that scales with the license — paid only when a license your client closes. No license, no fee. You are an IEC contractor, not a producer, and not under any channel agreement.</p>
-      <div class="chips">
-        <span class="chip">Performance-based only</span>
-        <span class="chip">Scales with the license</span>
-        <span class="chip">Capped per license</span>
-        <span class="chip">IEC's share only</span>
-      </div>
+      <h1>Private access for IEC partners.</h1>
+      <p class="lede">This page is the entrance to IEC's private Partner Portal — the workspace for the partners who work under IEC as IEC contractors on the referral-fee program. The portal is not a public product: there are no usernames and no passwords, and entry is by personal activation link only, after the agreements are signed.</p>
       <div>
-        <a class="btn" href="#register">Request partner access</a>
-        <a class="btn ghost" href="data-network.html">How the program works</a>
+        <a class="btn" href="#enter">Partners — your entrance</a>
+        <a class="btn ghost" href="#register">Request partner access</a>
       </div>
     </div>
-    <div class="ctr-card">
-      <h2>How it works</h2>
-      <ol class="ctr-steps">
-        <li><span class="ctr-num">1</span><span><strong>Request access below</strong> — your name, email and company. IEC records your request.</span></li>
-        <li><span class="ctr-num">2</span><span><strong>Sign first</strong> — the IEC Contractor Referral Agreement and the NDA (Combined Master, already signed by IEC). Both signatures come before activation and before any client is added — no exceptions.</span></li>
-        <li><span class="ctr-num">3</span><span><strong>IEC activates your portal</strong> — once both signatures are recorded, you receive a one-time activation link by email. No shared logins, no passwords.</span></li>
-        <li><span class="ctr-num">4</span><span><strong>Add your clients</strong> — each client's business profile and counts-only questionnaire answers, in your portal. A client can be registered by one partner only: first to register wins.</span></li>
-        <li><span class="ctr-num">5</span><span><strong>Track every client</strong> — questionnaire, assessment and valuation, NDA, registration — each step shows in your portal as it happens.</span></li>
-        <li><span class="ctr-num">6</span><span><strong>Get paid on performance</strong> — when your client's first license closes, your fee is paid within 15 days after IEC is paid.</span></li>
-      </ol>
+    <div class="ctr-card" id="enter">
+      <h2>Door 1 — Partners: enter here</h2>
+      <p><strong>Use the activation link from your invitation — your portal opens there.</strong> The link is personal and one-time; it sets your access on your device for 30 days.</p>
+      <p>Lost your link, or it has expired? Write to <a href="mailto:info@iecincglobal.com?subject=Partner%20portal%20activation%20—%20IEC">info@iecincglobal.com</a> and IEC will re-issue it.</p>
+      <p class="ctr-fine">If your link answers "signing required," your access is not open yet: activation begins only once IEC has recorded both of your signatures — the Contractor Referral Agreement and the NDA. IEC completes that step with you directly.</p>
     </div>
   </div>
 </section>
@@ -98,40 +93,71 @@
       <div class="ctr-note">Two points are still being finalised: the per-license cap (currently $25,000) and whether renewals earn a fee (currently: first license only). The schedule shown here is the draft under discussion — the portal always shows the live schedule, so what you see is what applies.</div>
     </div>
     <div class="ctr-card" id="register">
-      <h2>Request partner access</h2>
-      <p>Registration is the first step. After you register, you sign the Contractor Referral Agreement and the NDA; once IEC records both signatures, IEC sends your portal activation link.</p>
-      <form class="ctr-form" id="registerForm">
+      <h2>Door 2 — Request partner access</h2>
+      <p>Applying to become an IEC partner? Send the request below. <strong>Sign-up is a request only — it creates no access.</strong> IEC reviews each request; the partner then signs the IEC Contractor Referral Agreement and the NDA (Combined Master), and IEC issues the personal activation link only once both signatures are recorded.</p>
+      <form class="ctr-form" id="signupForm">
         <div>
-          <label for="regName">Your full name</label>
-          <input id="regName" name="name" type="text" autocomplete="name" required maxlength="120">
+          <label for="suName">Your full name</label>
+          <input id="suName" name="name" type="text" autocomplete="name" required maxlength="120">
         </div>
         <div>
-          <label for="regEmail">Your email</label>
-          <input id="regEmail" name="email" type="email" autocomplete="email" required maxlength="120">
+          <label for="suCompany">Company / legal entity name</label>
+          <input id="suCompany" name="company" type="text" autocomplete="organization" required maxlength="160">
+        </div>
+        <div class="ctr-row">
+          <div>
+            <label for="suEmail">Your email</label>
+            <input id="suEmail" name="email" type="email" autocomplete="email" required maxlength="120">
+          </div>
+          <div>
+            <label for="suPhone">Phone <span class="ctr-opt">(optional)</span></label>
+            <input id="suPhone" name="phone" type="tel" autocomplete="tel" maxlength="40">
+          </div>
         </div>
         <div>
-          <label for="regCompany">Your company</label>
-          <input id="regCompany" name="company" type="text" autocomplete="organization" required maxlength="160">
+          <label for="suStreet">Business address — street <span class="ctr-opt">(optional)</span></label>
+          <input id="suStreet" name="street" type="text" autocomplete="street-address" maxlength="200">
+        </div>
+        <div class="ctr-row3">
+          <div>
+            <label for="suCity">City</label>
+            <input id="suCity" name="city" type="text" autocomplete="address-level2" maxlength="120">
+          </div>
+          <div>
+            <label for="suState">State</label>
+            <input id="suState" name="state" type="text" autocomplete="address-level1" maxlength="80">
+          </div>
+          <div>
+            <label for="suZip">ZIP</label>
+            <input id="suZip" name="zip" type="text" autocomplete="postal-code" maxlength="20">
+          </div>
         </div>
         <div>
-          <button class="ctr-btn" type="submit" id="registerBtn">Register</button>
+          <label for="suWebsite">Website <span class="ctr-opt">(optional)</span></label>
+          <input id="suWebsite" name="website" type="text" inputmode="url" placeholder="https://…" maxlength="300">
         </div>
-        <p class="ctr-status" id="registerStatus" role="status"></p>
-        <p class="ctr-fine">By registering you agree IEC may contact you about the partner program. Your details are used only for the program. Nothing here asks for any client or patient information — never send individual records.</p>
+        <div>
+          <label for="suHeard">How did you hear about IEC — or who referred you? <span class="ctr-opt">(optional)</span></label>
+          <input id="suHeard" name="heardAbout" type="text" maxlength="500">
+        </div>
+        <div>
+          <label for="suNotes">Anything you would like IEC to know <span class="ctr-opt">(optional)</span></label>
+          <textarea id="suNotes" name="notes" rows="3" maxlength="2000"></textarea>
+        </div>
+        <div class="hp" aria-hidden="true">
+          <label>Company site<input id="suHp" name="company_site_hp" type="text" tabindex="-1" autocomplete="off"></label>
+        </div>
+        <div>
+          <button class="ctr-btn" type="submit" id="signupBtn">Send the request</button>
+        </div>
+        <p class="ctr-status" id="signupStatus" role="status"></p>
+        <p class="ctr-fine">Your details go to IEC's office and are used only for the partner program. Nothing here asks for any client or patient information — never send individual records.</p>
       </form>
       <div id="ndaNext" style="display:none;margin-top:14px">
         <p><strong>Next step — sign first.</strong> The Contractor Referral Agreement and the NDA (Combined Master) are already signed by IEC. Both of your signatures come before activation and before any detailed discussion.</p>
         <a class="ctr-btn ghost" href="cnda.html">Sign the NDA — Combined Master</a>
       </div>
     </div>
-  </div>
-</section>
-
-<section class="section soft">
-  <div class="wrap">
-    <h2>Already a partner?</h2>
-    <p>If IEC already sent you an activation link, use it to open your portal — it sets your access for 30 days. Lost your link, or never received one? Write to <a href="mailto:info@iecincglobal.com?subject=Partner%20portal%20activation%20—%20IEC">info@iecincglobal.com</a> and IEC will re-issue it.</p>
-    <p><a class="btn ghost" href="contractors-portal.html">Open the partner portal</a></p>
   </div>
 </section>
 
@@ -150,7 +176,7 @@
         <a href="data-network.html">Data Network</a>
         <a href="data-faq.html">Data Network FAQ</a>
         <a href="questionnaires.html">Questionnaires</a>
-        <a href="contractors.html">Partners</a>
+        <a href="contractors.html">Partner Portal</a>
         <a href="real-estate.html">Real Estate</a>
         <a href="international.html">International</a>
         <a href="assets.html">Assets</a>
@@ -196,36 +222,48 @@
         '<p class="ctr-status">The live fee schedule could not be loaded. The schedule is 2.0% of the first $250,000, 1.0% to $1,000,000, 0.5% above, capped at $25,000 per license — please try again or write to <a href="mailto:info@iecincglobal.com">info@iecincglobal.com</a>.</p>';
     });
 
-  /* Registration — POSTs to the portal API, then points at the NDA. */
-  var form = document.getElementById('registerForm');
-  var status = document.getElementById('registerStatus');
-  var btn = document.getElementById('registerBtn');
+  /* Sign-up (request access) — POSTs the full profile to the portal
+     API. A request only: access opens after both agreements are
+     signed and recorded by IEC. */
+  var form = document.getElementById('signupForm');
+  var status = document.getElementById('signupStatus');
+  var btn = document.getElementById('signupBtn');
+  var val = function (id) { return document.getElementById(id).value; };
   form.addEventListener('submit', function (ev) {
     ev.preventDefault();
     btn.disabled = true;
-    status.textContent = 'Registering…';
-    fetch('/api/contractors?action=register', {
+    status.textContent = 'Sending your request…';
+    fetch('/api/contractors?action=signup', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        name: document.getElementById('regName').value,
-        email: document.getElementById('regEmail').value,
-        company: document.getElementById('regCompany').value
+        name: val('suName'),
+        company: val('suCompany'),
+        email: val('suEmail'),
+        phone: val('suPhone'),
+        street: val('suStreet'),
+        city: val('suCity'),
+        state: val('suState'),
+        zip: val('suZip'),
+        website: val('suWebsite'),
+        heardAbout: val('suHeard'),
+        notes: val('suNotes'),
+        company_site_hp: val('suHp')
       })
     })
       .then(function (r) { return r.json().then(function (d) { return { status: r.status, body: d }; }); })
       .then(function (out) {
         btn.disabled = false;
         if (out.body && out.body.ok) {
-          status.textContent = out.body.existing
-            ? 'You are already registered — please complete both signatures to continue.'
-            : 'Registered. Next step: sign the Contractor Referral Agreement and the NDA — IEC activates your portal once both signatures are recorded.';
+          status.textContent = 'Request received. IEC will review it and contact you about the agreements — portal access opens only after the Contractor Referral Agreement and the NDA are signed and recorded by IEC.';
           document.getElementById('ndaNext').style.display = 'block';
           form.reset();
+        } else if (out.status === 409 && out.body && out.body.message) {
+          status.textContent = out.body.message;
         } else if (out.status === 503) {
-          status.textContent = 'Registration is not available right now — please write to info@iecincglobal.com.';
+          status.textContent = 'Sign-up is not available right now — please write to info@iecincglobal.com.';
         } else {
-          status.textContent = 'Please check the three fields and try again.';
+          status.textContent = 'Please check the required fields (name, company, email) and try again.';
         }
       })
       .catch(function () {
