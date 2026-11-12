@@ -117,3 +117,31 @@ export async function findSubmissionInDb(reference) {
     receivedAt: row.submitted_at ? new Date(row.submitted_at).toISOString() : null
   };
 }
+
+/* Newest-first summary list for the Desk submissions view
+   (api/questionnaire-submissions.js). Summary fields only —
+   reference, segment, received time and the submitter's business
+   and name from the contact jsonb; the answers are NOT included
+   (the view is an arrivals board, not a record reader). Throws on
+   transport failure. */
+export async function listSubmissions(limit) {
+  const n = Math.min(Math.max(parseInt(limit, 10) || 100, 1), 500);
+  const data = await runSql(
+    `SELECT reference, segment, contact, submitted_at FROM ${TABLE}` +
+    ` ORDER BY submitted_at DESC LIMIT $1`,
+    [n]
+  );
+  return (data.rows || []).map(row => {
+    let contact = row.contact || {};
+    if (typeof contact === "string") {
+      try { contact = JSON.parse(contact); } catch (e) { contact = {}; }
+    }
+    return {
+      id: row.reference,
+      segment: row.segment,
+      business: contact.business || "",
+      name: contact.name || "",
+      receivedAt: row.submitted_at ? new Date(row.submitted_at).toISOString() : null
+    };
+  });
+}

@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Questionnaire Submissions — IEC Suite</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/desk/desk.css">
+<style>
+  .qs-table{width:100%;border-collapse:collapse;font-size:14px}
+  .qs-table th{text-align:left;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);padding:8px 10px;border-bottom:1px solid var(--line-soft)}
+  .qs-table td{padding:9px 10px;border-bottom:1px solid var(--line-soft);vertical-align:top}
+  .qs-seg{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--gold);border:1px solid rgba(240,185,66,.4);border-radius:999px;padding:2px 10px;white-space:nowrap}
+  .qs-ref{font-size:12px;color:var(--dim);white-space:nowrap}
+  .qs-empty{color:var(--dim);font-size:14px;padding:6px 2px 14px}
+  .qs-status-line{min-height:20px}
+</style>
+</head>
+<body data-page="questionnaire-submissions">
+<div class="orbs" aria-hidden="true"><span class="orb gold"></span><span class="orb teal"></span><span class="orb violet"></span></div>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="side-brand">
+      <img class="logo-img" src="/assets/iec-logo.png" alt="IEC Inc.">
+      <div><h1>IEC <span>Suite</span></h1><p>International Empire Consultants, Inc.</p></div>
+    </div>
+    <nav id="nav"></nav>
+    <div class="side-foot">
+      <div class="themes" id="themes">
+        <button data-t="iec" style="--sw1:#f0b942;--sw2:#3b82f6" title="IEC Brand"></button>
+        <button data-t="midnight" style="--sw1:#f0b942;--sw2:#2dd4bf" title="Midnight Gold"></button>
+        <button data-t="amethyst" style="--sw1:#d8b4fe;--sw2:#f0abfc" title="Royal Amethyst"></button>
+        <button data-t="ocean" style="--sw1:#7dd3fc;--sw2:#5eead4" title="Deep Ocean"></button>
+        <button data-t="ember" style="--sw1:#fdba74;--sw2:#fbbf24" title="Sunset Ember"></button>
+        <button data-t="emerald" style="--sw1:#6ee7b7;--sw2:#f0b942" title="Emerald Noir"></button>
+        <button data-t="rose" style="--sw1:#fda4af;--sw2:#f0abfc" title="Rose Noir"></button>
+        <label class="cpick" title="Accent color"><input type="color" id="pick-gold" value="#f0b942"></label>
+        <label class="cpick" title="Highlight color"><input type="color" id="pick-teal" value="#2dd4bf"></label>
+        <button class="creset" id="pick-reset" title="Reset colors">⟲</button>
+      </div>
+      <button class="signout" id="signout"><i>🚪</i>Sign out</button>
+      <a class="public-link" href="/welcome.html">← Public site</a>
+      <div class="clockbox">
+        <div id="clock">--:--</div>
+        <div id="dateline">—</div>
+      </div>
+    </div>
+  </aside>
+
+  <main>
+    <div class="office-hero card">
+      <div class="office-avatar">📝</div>
+      <div>
+        <h2>Questionnaire Submissions</h2>
+        <p class="office-role">Every data-evaluation questionnaire submitted on the public site, as it
+        lands — read straight from the database (the system of record), newest first. This board is
+        read-only: it exists so an arrival is visible here even while the notification email to
+        info@iecincglobal.com is blocked on Resend domain verification. The full answers stay in
+        the database record; this board shows segment, business and time received.</p>
+      </div>
+    </div>
+
+    <div class="org-bar">
+      <span class="org-status qs-status-line" id="qs-status">Loading submissions…</span>
+      <button class="btn small ghost" id="qs-refresh" type="button">⟲ Refresh</button>
+    </div>
+
+    <div class="card" style="margin-bottom:26px">
+      <table class="qs-table">
+        <thead>
+          <tr><th>Received</th><th>Segment</th><th>Business</th><th>Submitted by</th><th>Reference</th></tr>
+        </thead>
+        <tbody id="qs-rows"></tbody>
+      </table>
+      <div id="qs-empty" class="qs-empty" style="display:none">No submissions yet. When an owner completes a questionnaire on the public site, it appears here.</div>
+    </div>
+
+    <footer>© 2026 International Empire Consultants, Inc. · IEC Suite</footer>
+  </main>
+</div>
+
+<script src="/desk/desk.js"></script>
+<script>
+/* Questionnaire Submissions — read-only arrivals board.
+   Data: GET /api/questionnaire-submissions (Desk-session gated,
+   Neon questionnaire_submissions table). Renders summaries only. */
+function setStatus(t){ $('qs-status').textContent = t; }
+
+function fmtWhen(iso){
+  if(!iso) return '—';
+  const d = new Date(iso);
+  if(isNaN(d)) return '—';
+  return d.toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) + ' ET';
+}
+
+function rowHtml(s){
+  return '<tr>' +
+    '<td style="white-space:nowrap">' + esc(fmtWhen(s.receivedAt)) + '</td>' +
+    '<td><span class="qs-seg">' + esc(s.segmentLabel || s.segment) + '</span></td>' +
+    '<td>' + esc(s.business || '—') + '</td>' +
+    '<td>' + esc(s.name || '—') + '</td>' +
+    '<td class="qs-ref">' + esc(s.id) + '</td>' +
+  '</tr>';
+}
+
+async function load(){
+  setStatus('Loading submissions…');
+  try {
+    const r = await fetch('/api/questionnaire-submissions?limit=200');
+    if(r.status === 401){ setStatus('Session expired — sign in again.'); return; }
+    const data = await r.json();
+    if(!r.ok || !data.ok){ setStatus('Could not load submissions (' + (data.error || r.status) + ').'); return; }
+    const list = data.submissions || [];
+    $('qs-rows').innerHTML = list.map(rowHtml).join('');
+    $('qs-empty').style.display = list.length ? 'none' : 'block';
+    setStatus(list.length + ' submission' + (list.length === 1 ? '' : 's') + ' — newest first.');
+  } catch(e) {
+    setStatus('Could not load submissions (network error).');
+  }
+}
+
+$('qs-refresh').addEventListener('click', load);
+load();
+</script>
+</body>
+</html>
