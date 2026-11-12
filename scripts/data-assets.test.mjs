@@ -726,5 +726,65 @@ const KIT_BRK = {
     v.errors.length === 1 && v.errors[0].check === "row-exceeds-denominator" && /1,850/.test(v.errors[0].message), v.errors);
 }
 
+/* --- Live-walk Defect 1 (2026-11-12): a stored total EQUALS the
+   entered total, exactly. Manual saves round-trip a spread of values
+   on both tracks; the upload path stores a single confirmed total
+   exactly; two DIFFERING values mapped to the same total are refused
+   (422 total_conflict, nothing written) — never silently resolved. --- */
+{
+  const SPREAD = [400, 4979, 5000, 12000, 15000, 18000, 700000];
+  for (const [i, v] of SPREAD.entries()) {
+    const counts = core._internals.emptyCounts("medical");
+    counts.totals.totalPatients = v;
+    const save = await call("POST", { body: { action: "save-asset", asset: { codename: `ASSET-SPREAD-MED-${i}`, track: "medical", variables: {}, systems: [], counts } } });
+    check(`manual save stores totalPatients exactly (${v})`, save.statusCode === 200 && save.payload.asset.counts.totals.totalPatients === v, save.payload && save.payload.asset && save.payload.asset.counts.totals);
+    const back = await call("GET", { query: { codename: `ASSET-SPREAD-MED-${i}` } });
+    check(`read-back totalPatients equals entered (${v})`, back.payload.asset.counts.totals.totalPatients === v, back.payload.asset.counts.totals);
+    const nm = core._internals.emptyCounts("non-medical");
+    nm.totals.totalCustomers = v;
+    const saveNm = await call("POST", { body: { action: "save-asset", asset: { codename: `ASSET-SPREAD-NM-${i}`, track: "non-medical", variables: {}, systems: [], counts: nm } } });
+    check(`manual save stores totalCustomers exactly (${v})`, saveNm.statusCode === 200 && saveNm.payload.asset.counts.totals.totalCustomers === v, saveNm.payload && saveNm.payload.asset && saveNm.payload.asset.counts.totals);
+  }
+  /* comma-formatted input parses to the same integer */
+  const comma = await call("POST", { body: { action: "save-asset", asset: { codename: "ASSET-SPREAD-COMMA", track: "medical", variables: {}, systems: [], counts: { totals: { totalPatients: "15,000" } } } } });
+  check("comma-formatted '15,000' stores as 15000 exactly", comma.statusCode === 200 && comma.payload.asset.counts.totals.totalPatients === 15000, comma.payload);
+}
+{
+  await call("POST", { body: { action: "save-asset", asset: { codename: "ASSET-CONFLICT-01", track: "medical", variables: {}, systems: [{ id: "aprima" }], counts: core._internals.emptyCounts("medical") } } });
+  const csv = ["Measure,Count", "Distinct patients,15000", "Total patients,14978"].join("\n");
+  const run = await call("POST", { body: { action: "start-run", codename: "ASSET-CONFLICT-01", files: [{ name: "counts.csv", base64: b64(csv) }] } });
+  check("conflicting-totals document starts a run", run.statusCode === 200 && run.payload.run.status === "awaiting-mapping", run.payload);
+  const tp = run.payload.run.proposals.filter(p => p.target && p.target.kind === "total" && p.target.key === "totalPatients");
+  check("two differing values propose to the same total", tp.length === 2, run.payload.run.proposals);
+  const confirm = await call("POST", { body: { action: "confirm-run", runId: run.payload.run.id, mapping: run.payload.run.proposals.map(p => ({ candidateId: p.candidateId, include: !!p.target, target: p.target })) } });
+  check("confirm with conflicting totals is refused (422 total_conflict)", confirm.statusCode === 422 && confirm.payload.error === "total_conflict", confirm.payload);
+  check("the refusal names both contending values", /15000/.test(confirm.payload.message || "") && /14978/.test(confirm.payload.message || ""), confirm.payload.message);
+  const back = await call("GET", { query: { codename: "ASSET-CONFLICT-01" } });
+  check("a refused confirm writes nothing — asset totals untouched", back.payload.asset.counts.totals.totalPatients == null, back.payload.asset.counts.totals);
+  const cands = Object.fromEntries(run.payload.run.candidates.map(c => [c.id, c]));
+  const resolved = run.payload.run.proposals.map(p => ({ candidateId: p.candidateId, include: !!p.target && !/^Total patients/.test(cands[p.candidateId].label || ""), target: p.target }));
+  const confirm2 = await call("POST", { body: { action: "confirm-run", runId: run.payload.run.id, mapping: resolved } });
+  check("after the operator un-maps one contender, the chosen total stores exactly", confirm2.statusCode === 200 && confirm2.payload.asset.counts.totals.totalPatients === 15000, confirm2.payload);
+}
+{
+  await call("POST", { body: { action: "save-asset", asset: { codename: "ASSET-DUP-01", track: "medical", variables: {}, systems: [{ id: "aprima" }], counts: core._internals.emptyCounts("medical") } } });
+  const csv = ["Measure,Count", "Distinct patients,700000", "Total patients,700000"].join("\n");
+  const run = await call("POST", { body: { action: "start-run", codename: "ASSET-DUP-01", files: [{ name: "counts.csv", base64: b64(csv) }] } });
+  const confirm = await call("POST", { body: { action: "confirm-run", runId: run.payload.run.id, mapping: run.payload.run.proposals.map(p => ({ candidateId: p.candidateId, include: !!p.target, target: p.target })) } });
+  check("same-value duplicates are not a conflict and store exactly (700000)", confirm.statusCode === 200 && confirm.payload.asset.counts.totals.totalPatients === 700000, confirm.payload);
+}
+{
+  const r = core._internals.applyMapping("medical", [
+    { id: "c1", label: "Distinct patients", value: 15000, sourceKind: null },
+    { id: "c2", label: "Total patients", value: 14978, sourceKind: null }
+  ], [
+    { candidateId: "c1", target: { kind: "total", key: "totalPatients" } },
+    { candidateId: "c2", target: { kind: "total", key: "totalPatients" } }
+  ]);
+  check("applyMapping reports the total conflict with both contending values",
+    Array.isArray(r.totalConflicts) && r.totalConflicts.length === 1 && r.totalConflicts[0].key === "totalPatients" &&
+    r.totalConflicts[0].contenders.map(c => c.value).sort((a, b) => a - b).join(",") === "14978,15000", r.totalConflicts);
+}
+
 console.log(failures ? `\n${failures} FAILURE(S)` : "\nall checks passed");
 process.exit(failures ? 1 : 0);

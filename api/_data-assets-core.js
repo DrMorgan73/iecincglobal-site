@@ -1169,11 +1169,27 @@ export function proposeMapping(track, candidates, systems) {
    the operator's confirmation, at mapping time, that the target
    table's categories overlap (model §2.2). When such an entry lands
    in an overlap-kind table, the applied table carries overlap: true,
-   so an uploaded overlapping table validates on the upload path. */
+   so an uploaded overlapping table validates on the upload path.
+
+   TOTAL CONFLICTS (live-walk defect, 2026-11-12): a totals cell is
+   the asset's denominator — the one number every distribution foots
+   against. When two DIFFERING values are mapped to the same total,
+   the deterministic rule above would silently keep one and drop the
+   other into the notes, so the stored total could differ from the
+   figure the operator believed they confirmed (walk evidence:
+   15,000 entered, 14,978 stored; 18,000 → 17,978; 400 → 398;
+   5,000 → 4,979 — the deltas are exactly the gaps between two
+   total-labelled figures in one counts document). applyMapping
+   therefore also returns totalConflicts, and the API refuses to
+   store a run whose totals conflict: the operator un-maps one of
+   the contenders and re-confirms, so a stored total is always the
+   single value the operator chose. Same-value duplicates are not
+   conflicts. */
 export function applyMapping(track, candidates, mapping) {
   const counts = emptyCounts(track);
   const byId = new Map((candidates || []).map(c => [c.id, c]));
   const notes = [];
+  const totalConflicts = [];
   const entries = [];
   for (const m of mapping || []) {
     if (!m || m.include === false || !m.target) continue;
@@ -1192,12 +1208,15 @@ export function applyMapping(track, candidates, mapping) {
     return ia < ib ? -1 : ia > ib ? 1 : 0;
   });
   const seenCells = new Map();
+  const totalContenders = new Map();
   let applied = 0;
   for (const { m, c } of entries) {
     const tgt = m.target;
     const cellKey = cellKeyOf(tgt);
     if (tgt.kind === "total") {
       if (!(tgt.key in counts.totals)) continue;
+      if (!totalContenders.has(tgt.key)) totalContenders.set(tgt.key, []);
+      totalContenders.get(tgt.key).push(c);
       if (seenCells.has(cellKey)) {
         const kept = seenCells.get(cellKey);
         notes.push(`Two values were mapped to the same cell (${cellKey}); under the deterministic collision rule the first in canonical order was kept ("${kept.label}" = ${fmt(kept.value)}) and this one was NOT applied ("${c.label}" = ${fmt(c.value)}). Correct the mapping and re-confirm if the kept value is wrong.`);
@@ -1228,7 +1247,16 @@ export function applyMapping(track, candidates, mapping) {
     row[tgt.column] = c.value;
     applied++;
   }
-  return { counts, applied, notes };
+  for (const [key, contenders] of totalContenders) {
+    const values = [...new Set(contenders.map(c => c.value))];
+    if (values.length > 1) {
+      totalConflicts.push({
+        key,
+        contenders: contenders.map(c => ({ candidateId: c.id, label: c.label, value: c.value }))
+      });
+    }
+  }
+  return { counts, applied, notes, totalConflicts };
 }
 
 /* ================================================================== */

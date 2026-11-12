@@ -135,6 +135,7 @@
       <!-- ============ LEFT: asset + intake (manual path & edit path) ============ -->
       <form id="intake" class="card form-card" autocomplete="off">
         <h3>Asset</h3>
+        <p class="hint" style="margin-bottom:10px">A new asset starts <b>empty</b> — nothing is pre-filled. Greyed text inside a field is an example hint only: it is not data and is never saved.</p>
         <div class="trackpick" id="trackpick">
           <button type="button" data-track="medical" class="on">🩺 Medical</button>
           <button type="button" data-track="non-medical">🏪 Non-medical</button>
@@ -306,12 +307,12 @@ const TRACK_META = {
   medical: {
     label: 'Medical',
     variables: [
-      { key:'specialtyMix', label:'Specialty / sector mix', type:'text', placeholder:'Pain management; physical therapy' },
-      { key:'languages', label:'Documentation languages', type:'text', placeholder:'EN, ES (native)' },
-      { key:'caseTypeMixNote', label:'Case-type mix (note)', type:'text', placeholder:"Workers' comp heavy; some personal injury" },
-      { key:'historyDepthYears', label:'History depth (years of records)', type:'int', placeholder:'25' },
-      { key:'workforceFTE', label:'Workforce scale (full-time employees)', type:'int', placeholder:'40' },
-      { key:'locationsCount', label:'Locations (count)', type:'int', placeholder:'1' }
+      { key:'specialtyMix', label:'Specialty / sector mix', type:'text', placeholder:'Example: Pain management; physical therapy' },
+      { key:'languages', label:'Documentation languages', type:'text', placeholder:'Example: EN, ES (native)' },
+      { key:'caseTypeMixNote', label:'Case-type mix (note)', type:'text', placeholder:"Example: Workers' comp heavy; some personal injury" },
+      { key:'historyDepthYears', label:'History depth (years of records)', type:'int', placeholder:'Years of records' },
+      { key:'workforceFTE', label:'Workforce scale (full-time employees)', type:'int', placeholder:'Full-time employees' },
+      { key:'locationsCount', label:'Locations (count)', type:'int', placeholder:'Number of locations' }
     ],
     totals: [
       { key:'totalPatients', label:'Distinct patients (whole asset)' },
@@ -331,12 +332,12 @@ const TRACK_META = {
   'non-medical': {
     label: 'Non-medical',
     variables: [
-      { key:'specialtyMix', label:'Sector mix', type:'text', placeholder:'Gas / convenience; home services' },
-      { key:'languages', label:'Customer-facing languages', type:'text', placeholder:'EN, ES' },
-      { key:'caseTypeMixNote', label:'Transaction-type mix (note)', type:'text', placeholder:'Fuel + in-store retail; repeat service contracts' },
-      { key:'historyDepthYears', label:'History depth (years of records)', type:'int', placeholder:'12' },
-      { key:'workforceFTE', label:'Workforce scale (full-time employees)', type:'int', placeholder:'66' },
-      { key:'locationsCount', label:'Locations (count)', type:'int', placeholder:'10' }
+      { key:'specialtyMix', label:'Sector mix', type:'text', placeholder:'Example: Gas / convenience; home services' },
+      { key:'languages', label:'Customer-facing languages', type:'text', placeholder:'Example: EN, ES' },
+      { key:'caseTypeMixNote', label:'Transaction-type mix (note)', type:'text', placeholder:'Example: Fuel + in-store retail; repeat service contracts' },
+      { key:'historyDepthYears', label:'History depth (years of records)', type:'int', placeholder:'Years of records' },
+      { key:'workforceFTE', label:'Workforce scale (full-time employees)', type:'int', placeholder:'Full-time employees' },
+      { key:'locationsCount', label:'Locations (count)', type:'int', placeholder:'Number of locations' }
     ],
     totals: [
       { key:'totalCustomers', label:'Distinct customers (whole asset)' },
@@ -723,6 +724,12 @@ async function confirmMapping() {
   states[4] = { state: v.errors.length ? 'idle' : 'done', sub: v.errors.length ? 'Outputs are produced only from a passing assessment.' : 'Outputs ready below — preview or download the specimen package.' };
   setPhases(states);
   showValidation(v, $('run-findings'));
+  /* Mapping notes (collision resolutions on table cells) are part of
+     the record — always shown, never only stored on the run. */
+  const notes = (data.run && data.run.mappingNotes) || [];
+  if (notes.length) {
+    $('run-findings').innerHTML = notes.map(n => `<div class="finding warn">⚠ Mapping note: ${esc(n)}</div>`).join('') + $('run-findings').innerHTML;
+  }
   loadAsset(currentAsset.codename);
 }
 function renderRunHistory(runs) {

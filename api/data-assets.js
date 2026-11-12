@@ -454,7 +454,23 @@ export default async function handler(req, res) {
       if (!asset) return res.status(404).json({ error: "asset_not_found" });
       if (asset.frozen) return res.status(409).json({ error: "frozen", message: "This asset's assessment is frozen; the run cannot be applied." });
       const mapping = sanitizeMapping(body.mapping);
-      const { counts, applied, notes } = applyMapping(run.track, run.candidates, mapping);
+      const { counts, applied, notes, totalConflicts } = applyMapping(run.track, run.candidates, mapping);
+      if (totalConflicts && totalConflicts.length) {
+        /* A totals cell is the asset's denominator. Two differing
+           values mapped to it must never be resolved silently —
+           the stored total would differ from the figure the
+           operator confirmed (live-walk defect, 2026-11-12).
+           Nothing is written: the run stays awaiting-mapping and
+           the operator un-maps one contender and re-confirms. */
+        const detail = totalConflicts.map(tc =>
+          `${tc.key}: ${tc.contenders.map(c => `"${c.label}" = ${c.value}`).join(" vs ")}`
+        ).join("; ");
+        return res.status(422).json({
+          error: "total_conflict",
+          message: `Two different values are mapped to the same asset total — a total is never chosen silently. Un-map one value for each conflicted total and confirm again. Conflicts: ${detail}.`,
+          totalConflicts
+        });
+      }
       const validation = validateAsset(run.track, asset.variables, counts, asset.systems);
       run.mappingUsed = mapping;
       run.mappingNotes = notes;
