@@ -12,15 +12,15 @@
 
    ADOPTED by DrMorgan 2026-11-12: the fee is a flat 5% of the
    OWNER GROSS (the gross amount the referred owner receives on the
-   first closed license, before IEC's client fee), with NO CAP,
+   first closed license), with NO CAP,
    plus a milestone bonus of a further 2% of the Owner Gross when
    the Owner Gross reaches $10,000,000 (7% in total at that level).
    Renewals are unpaid (first closed license only) — an adopted
    term, not an open ruling. No rulings remain open on this schedule.
 
-   The fee comes from IEC's share ONLY — the percentages are the
-   measure; the owner's money is never touched, the fee is never
-   charged to the client, and it is never taken from any channel.
+   The fee is payable by IEC — the percentages are the measure;
+   it is never deducted from, or charged against, any amount
+   payable to the owner, and it is never taken from any channel.
    Route-independent: the same schedule whether the license closes
    direct or through a channel. Contractors are IEC contractors,
    NOT producers and NOT under any channel agreement — no channel
