@@ -31,10 +31,18 @@
          backup failure is logged but never fails the submission.
      (c) Email — a summary is sent to info@iecincglobal.com via
          Resend (DEMO_ADMIN_RESEND_API_KEY — the same key
-         demo-admin uses), From the same system sender pattern
-         demo-admin uses ("<org> <onboarding@resend.dev>"), with
-         the IEC org signature (logo, no personal name).
-         Notification behavior is unchanged.
+         demo-admin uses), From "IEC MSO Data Network
+         <notifications@iecincglobal.com>" (override with
+         QUESTIONNAIRE_MAIL_FROM), with the IEC org signature
+         (logo, no personal name). Delivery requires the
+         iecincglobal.com domain to be VERIFIED in Resend (the
+         DKIM + SPF DNS records Resend issues must exist in the
+         domain's DNS): Resend's sandbox sender
+         (onboarding@resend.dev) only ever delivers to the Resend
+         account owner's own address, so it could never reach
+         info@ — that was the pre-2026-11-11 behavior and every
+         notification failed with emailed:false while the domain
+         was unverified.
    If NO store is configured and email is unavailable the endpoint
    fails closed with 503 not_configured — a submission is never
    silently dropped. When the database is not configured the Blob
@@ -76,7 +84,14 @@ const SEGMENTS = {
 };
 
 const NOTIFY_TO = "info@iecincglobal.com";
-const MAIL_FROM = "IEC MSO Data Network <onboarding@resend.dev>";
+/* Sender on IEC's own domain. The previous sender
+   (onboarding@resend.dev — Resend's sandbox sender) only delivers
+   to the Resend account owner's own email address, so the
+   notification to info@iecincglobal.com could never land. This
+   sender delivers as soon as iecincglobal.com is verified in
+   Resend (DKIM + SPF DNS records in place). QUESTIONNAIRE_MAIL_FROM
+   overrides it without a code change. */
+const MAIL_FROM = process.env.QUESTIONNAIRE_MAIL_FROM || "IEC MSO Data Network <notifications@iecincglobal.com>";
 const MAX_BODY_BYTES = 64 * 1024;
 const MAX_ANSWERS = 80;
 const MAX_LABEL_CHARS = 300;
