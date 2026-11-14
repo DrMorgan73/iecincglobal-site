@@ -6,7 +6,7 @@
 <title>Motion Arena — Ping Pong (TV Host)</title>
 <meta name="description" content="Motion Arena Ping Pong — the TV host screen. Play solo against the computer, share the screen, or join with a phone controller. An IEC, Inc. game.">
 <link rel="icon" href="data:,">
-<meta name="pp-build" content="broadcast-1.3.0">
+<meta name="pp-build" content="relay-1.3.1">
 <style>
 /* pingpong.css — inlined by build-singlefile.py (single-file build) */
 /* Motion Arena — Ping Pong. IEC navy #0B2447 / gold #C9A227.
@@ -159,6 +159,14 @@ canvas#game {
   cursor: pointer; padding: 0;
 }
 .swatch.sel { border-color: #fff; box-shadow: 0 0 0 3px #C9A227; box-shadow: 0 0 0 3px var(--gold); }
+.gender-pick { display: flex; gap: 10px; }
+.gpick {
+  flex: 1; padding: 13px 10px; border-radius: 12px; cursor: pointer;
+  font-size: 17px; font-weight: 800; font-family: inherit;
+  border: 2px solid rgba(255,255,255,0.14); border: 2px solid var(--card-border);
+  background: #0a1c38; background: var(--navy-3); color: #ffffff; color: var(--ink);
+}
+.gpick.sel { border-color: #C9A227; border-color: var(--gold); background: #123a6b; color: #e0b93a; color: var(--gold-2); }
 .msg { min-height: 24px; font-size: 16px; line-height: 1.45; color: #e0b93a; color: var(--gold-2); text-align: center; }
 .msg.err { color: #ff9d94; }
 .scorebar {
@@ -248,11 +256,11 @@ canvas#game {
 
 </style>
 <script>
-/* Boot guard (build broadcast-1.3.0): installed before any game file loads.
+/* Boot guard (build relay-1.3.1): installed before any game file loads.
    Traps errors and, if the game has not booted within 30 s, names the
    failed stage in big on-screen text — so a TV-browser failure says
    what it is instead of sitting on a white page. ES5 on purpose. */
-window.__PP_BUILD = 'broadcast-1.3.0';
+window.__PP_BUILD = 'relay-1.3.1';
 window.__ppShowDiag = function (title, detail) {
   var tries = 0;
   var show = function () {
@@ -294,7 +302,7 @@ window.__ppBootDone = function () {
   if (l && l.parentNode) l.parentNode.removeChild(l);
 };
 
-/* Self-heal poll (build broadcast-1.3.0): check every 500 ms
+/* Self-heal poll (build relay-1.3.1): check every 500 ms
    whether the game has booted (app global defined + styles applied).
    The moment it has, stand down - clear any diagnostic and the
    loading bar - so a merely slow TV recovers on its own, with no
@@ -386,6 +394,11 @@ window.__ppWatchdog = setTimeout(function () {
           <span class="pill">🎯 First to 11 · win by 2 · best of 5</span>
           <button class="btn btn-outline" id="btnSound">🔇 Sound: <b>Off</b>&nbsp; <small>(N)</small></button>
         </div>
+        <div class="settings-row">
+          <button class="btn btn-outline" id="btnGenderYou">🧑 You: <b>♂ Male</b>&nbsp; <small>(G)</small></button>
+          <span class="pill">Player look — phones pick their own</span>
+          <button class="btn btn-outline" id="btnGenderCpu">🤖 Computer: <b>♀ Female</b>&nbsp; <small>(H)</small></button>
+        </div>
         <p id="lobbyHint">Phones: open the controller page on your phone and enter the room code above — tilt to move, swing the phone to strike.</p>
       </div>
 
@@ -437,7 +450,7 @@ window.__ppWatchdog = setTimeout(function () {
    Used by host.js (TV) and controller.js (phone). Classic script, no
    modules, so the game also runs from file:// (USB stick, offline).
 
-   Build broadcast-1.3.0: the game is now BROADCAST table tennis —
+   Build relay-1.3.1: the game is BROADCAST table tennis —
    the TV camera sits behind the near end of a 3D table. World space:
      x  across the table   (-1 .. +1 is the table surface)
      z  along the table    (-1 = near end / side 0, +1 = far end / side 1)
@@ -545,6 +558,39 @@ window.__ppWatchdog = setTimeout(function () {
     return { debug: 0 }; // PeerJS cloud defaults
   };
 
+  /* Integer URL param with a default (test hooks use these to shorten
+     the transport waits; production uses the defaults). */
+  PP.paramInt = function (name, dflt) {
+    var q = queryParams();
+    var v = parseInt(q.get(name), 10);
+    return isNaN(v) ? dflt : v;
+  };
+
+  /* Relay transport (relay.js): when a host browser can signal over
+     WebRTC but never completes a data connection (the Samsung Tizen
+     TV browser, proven 2026-11-14), the same wire protocol rides an
+     MQTT-over-secure-WebSocket relay through a public broker instead.
+     EMQX's public broker was chosen by a live two-client test from
+     the build sandbox (pub/sub + retained both verified 2026-11-14);
+     test.mosquitto.org was unreachable from there. Topics live under
+     an app-specific prefix, one subtree per room code.
+     Enable rules: ?relay=off disables; ?relay=on forces on; with the
+     local test broker (?broker=local) the relay stays out unless
+     ?relay=on asks for it, so the local suites see no outside calls. */
+  PP.RELAY_URL = 'wss://broker.emqx.io:8084/mqtt';
+  PP.RELAY_PREFIX = 'mapp/v1/';
+  PP.relayEnabled = function () {
+    var q = queryParams();
+    if (q.get('relay') === 'off') return false;
+    if (q.get('relay') === 'on') return true;
+    if (q.get('broker') === 'local') return false;
+    return true;
+  };
+  PP.relayUrl = function () {
+    var q = queryParams();
+    return q.get('relayUrl') || PP.RELAY_URL;
+  };
+
   /* Player colours (preview palette from DESIGN.md + IEC gold). */
   PP.COLORS = [
     { id: 'gold',   hex: '#C9A227', name: 'Gold' },
@@ -562,8 +608,496 @@ window.__ppWatchdog = setTimeout(function () {
 
 </script>
 <script>
+/* relay.js — inlined by build-singlefile.py */
+/* Motion Arena — Ping Pong: RELAY transport (build relay-1.3.1).
+   A minimal MQTT 3.1.1 client over secure WebSocket, plus a
+   PeerJS-shaped peer (window.RelayPeer) that carries the EXACT game
+   wire protocol (join / welcome / pad / swing / ctrl / serve / state)
+   through a public MQTT broker when the direct WebRTC data path
+   cannot complete — the Samsung Tizen TV browser signals fine over
+   WebRTC (green broker dot) but never finishes a data connection
+   (proven on the real TV, 2026-11-14), while its plain WebSocket
+   stack is the same one PeerJS signalling already uses successfully.
+
+   Broker: EMQX public broker, wss://broker.emqx.io:8084/mqtt —
+   chosen by a live two-client test (pub/sub + retained delivery)
+   from the build sandbox on 2026-11-14; test.mosquitto.org was
+   unreachable from there. QoS 0 throughout: the pad stream is
+   continuous and self-healing, and state re-broadcasts every second.
+
+   Topic scheme (app prefix + room code = per-room isolation):
+     <prefix><CODE>/up/<cid>    controller -> host messages (JSON)
+     <prefix><CODE>/down/<cid>  host -> that controller (JSON)
+     <prefix><CODE>/x/<cid>     controller presence: its MQTT Last
+                                Will lands here when it vanishes
+     <prefix><CODE>/alive       retained "host is here" flag, set by
+                                the host, cleared by its Last Will —
+                                how a controller knows the room exists
+                                before it joins (the relay equivalent
+                                of PeerJS's peer-unavailable check).
+
+   RelayPeer mirrors the slice of the PeerJS API the game uses:
+   host:    new RelayPeer(peerId) + on('open'|'connection'|
+            'disconnected'|'error'), reconnect(), destroy(), .id
+   phone:   new RelayPeer() + on('open'|'error'), connect(peerId)
+            -> conn with on('open'|'data'|'close'|'error'), .send(),
+            .close(), .open, .peer — exactly like a PeerJS conn, so
+            host.js setupConn() and controller.js drive it unchanged.
+   Classic ES5 script: parses on the oldest engines the TV runs. */
+(function (global) {
+  'use strict';
+  var S = global.PPShared;
+  if (!S) return;
+
+  /* ---------------- byte helpers ---------------- */
+  function utf8Encode(str) {
+    var s = unescape(encodeURIComponent(String(str)));
+    var out = new Uint8Array(s.length);
+    for (var i = 0; i < s.length; i++) out[i] = s.charCodeAt(i) & 0xff;
+    return out;
+  }
+  function utf8Decode(bytes) {
+    var s = '';
+    for (var i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+    try { return decodeURIComponent(escape(s)); } catch (e) { return s; }
+  }
+  function concatArrays(list) {
+    var n = 0, i;
+    for (i = 0; i < list.length; i++) n += list[i].length;
+    var out = new Uint8Array(n), off = 0;
+    for (i = 0; i < list.length; i++) { out.set(list[i], off); off += list[i].length; }
+    return out;
+  }
+  function bytesOf(arr) { return new Uint8Array(arr); }
+  function encNum(n) { return bytesOf([(n >> 8) & 0xff, n & 0xff]); }
+  function encStr(s) {
+    var b = utf8Encode(s);
+    return concatArrays([encNum(b.length), b]);
+  }
+  function encRL(n) {
+    var a = [];
+    do {
+      var d = n % 128;
+      n = Math.floor(n / 128);
+      if (n > 0) d |= 0x80;
+      a.push(d);
+    } while (n > 0);
+    return bytesOf(a);
+  }
+  function packet(header, payload) {
+    return concatArrays([bytesOf([header]), encRL(payload.length), payload]);
+  }
+
+  /* ---------------- minimal MQTT client ---------------- */
+  function MqttClient(url, opts) {
+    this.url = url;
+    this.clientId = opts.clientId;
+    this.will = opts.will || null;          // {topic, payload, retain}
+    this.keepAlive = opts.keepAlive || 30;  // seconds
+    this.onConnect = null;                  // fn()
+    this.onMessage = null;                  // fn(topic, payloadString)
+    this.onClose = null;                    // fn()
+    this.onError = null;                    // fn()
+    this.connected = false;
+    this._ws = null;
+    this._buf = new Uint8Array(0);
+    this._pktId = 0;
+    this._pingTimer = null;
+    this._dead = false;
+  }
+  MqttClient.prototype.connect = function () {
+    var self = this;
+    if (this._ws) { try { this._ws.close(); } catch (e) {} this._ws = null; }
+    this._dead = false;
+    this._buf = new Uint8Array(0);
+    var ws;
+    try {
+      ws = new global.WebSocket(this.url, 'mqtt');
+    } catch (e) {
+      if (this.onError) this.onError(e);
+      if (this.onClose) this.onClose();
+      return;
+    }
+    this._ws = ws;
+    ws.binaryType = 'arraybuffer';
+    ws.onopen = function () {
+      var flags = 0x02; // clean session
+      var payload = [encStr(self.clientId)];
+      if (self.will) {
+        flags |= 0x04 | (self.will.retain ? 0x20 : 0);
+        payload.push(encStr(self.will.topic));
+        payload.push(encStr(self.will.payload || ''));
+      }
+      var vh = concatArrays([encStr('MQTT'), bytesOf(
+        [4, flags, (self.keepAlive >> 8) & 0xff, self.keepAlive & 0xff])]);
+      try { ws.send(packet(0x10, concatArrays([vh].concat(payload)))); } catch (e) {}
+    };
+    ws.onmessage = function (ev) {
+      var data = new Uint8Array(ev.data);
+      self._buf = concatArrays([self._buf, data]);
+      self._drain();
+    };
+    ws.onerror = function () { if (self.onError) self.onError(new Error('websocket')); };
+    ws.onclose = function () {
+      var was = self.connected;
+      self.connected = false;
+      self._stopPing();
+      self._ws = null;
+      if (!self._dead && self.onClose) self.onClose(was);
+    };
+  };
+  MqttClient.prototype._drain = function () {
+    for (;;) {
+      if (this._buf.length < 2) return;
+      var mult = 1, len = 0, i = 1, b;
+      do {
+        if (i >= this._buf.length) return;
+        b = this._buf[i++];
+        len += (b & 0x7f) * mult;
+        mult *= 128;
+      } while (b & 0x80);
+      if (this._buf.length < i + len) return;
+      var header = this._buf[0];
+      var body = this._buf.subarray(i, i + len);
+      this._buf = this._buf.subarray(i + len);
+      this._handle(header >> 4, header & 0x0f, body);
+    }
+  };
+  MqttClient.prototype._handle = function (type, flags, body) {
+    if (type === 2) { // CONNACK
+      var rc = body.length >= 2 ? body[1] : 5;
+      if (rc === 0) {
+        this.connected = true;
+        this._startPing();
+        if (this.onConnect) this.onConnect();
+      } else {
+        if (this.onError) this.onError(new Error('connack ' + rc));
+        try { this._ws.close(); } catch (e) {}
+      }
+    } else if (type === 3) { // PUBLISH
+      var qos = (flags >> 1) & 0x03;
+      if (body.length < 2) return;
+      var tl = (body[0] << 8) | body[1];
+      var topic = utf8Decode(body.subarray(2, 2 + tl));
+      var off = 2 + tl + (qos > 0 ? 2 : 0);
+      var payload = utf8Decode(body.subarray(off));
+      if (this.onMessage) this.onMessage(topic, payload);
+    }
+    // SUBACK / PINGRESP / others: nothing the transport needs.
+  };
+  MqttClient.prototype._startPing = function () {
+    var self = this;
+    this._stopPing();
+    var ms = Math.max(5000, (this.keepAlive * 750) | 0);
+    this._pingTimer = setInterval(function () {
+      if (self.connected && self._ws) {
+        try { self._ws.send(packet(0xc0, new Uint8Array(0))); } catch (e) {}
+      }
+    }, ms);
+  };
+  MqttClient.prototype._stopPing = function () {
+    if (this._pingTimer) { clearInterval(this._pingTimer); this._pingTimer = null; }
+  };
+  MqttClient.prototype.publish = function (topic, payload, retain) {
+    if (!this.connected || !this._ws) return false;
+    var body = concatArrays([encStr(topic), utf8Encode(payload == null ? '' : String(payload))]);
+    try {
+      this._ws.send(packet(retain ? 0x31 : 0x30, body));
+      return true;
+    } catch (e) { return false; }
+  };
+  MqttClient.prototype.subscribe = function (topics) {
+    if (!this.connected || !this._ws) return;
+    var parts = [encNum(++this._pktId & 0xffff || 1)];
+    for (var i = 0; i < topics.length; i++) {
+      parts.push(encStr(topics[i]));
+      parts.push(bytesOf([0])); // QoS 0
+    }
+    try { this._ws.send(packet(0x82, concatArrays(parts))); } catch (e) {}
+  };
+  MqttClient.prototype.disconnect = function () {
+    this._dead = true;
+    this._stopPing();
+    if (this._ws) {
+      try { if (this.connected) this._ws.send(packet(0xe0, new Uint8Array(0))); } catch (e) {}
+      try { this._ws.close(); } catch (e) {}
+      this._ws = null;
+    }
+    this.connected = false;
+  };
+
+  /* ---------------- topics ---------------- */
+  function topicBase(code) { return S.RELAY_PREFIX + String(code).toUpperCase() + '/'; }
+  function codeFromPeerId(id) {
+    var s = String(id || '');
+    if (s.indexOf(S.PEER_PREFIX) === 0) s = s.substring(S.PEER_PREFIX.length);
+    return s.toUpperCase();
+  }
+  function randomId(prefix) {
+    return prefix + Math.random().toString(36).slice(2, 10);
+  }
+
+  /* ---------------- connection (PeerJS conn shape) ---------------- */
+  function RelayConn(peer, remoteLabel) {
+    this.peer = remoteLabel;      // PeerJS exposes the remote id here
+    this.transport = 'relay';
+    this.open = false;
+    this._peer = peer;
+    this._h = {};
+    this._closed = false;
+  }
+  RelayConn.prototype.on = function (ev, fn) { this._h[ev] = fn; };
+  RelayConn.prototype._emit = function (ev, arg) {
+    if (this._h[ev]) { try { this._h[ev](arg); } catch (e) {} }
+  };
+  RelayConn.prototype.send = function (msg) {
+    if (this._closed) return false;
+    return this._peer._sendTo(this, msg);
+  };
+  RelayConn.prototype.close = function () {
+    if (this._closed) return;
+    this._closed = true;
+    this.open = false;
+    this._peer._connClosed(this, false);
+  };
+  RelayConn.prototype._forceClose = function () {
+    if (this._closed) return;
+    this._closed = true;
+    this.open = false;
+    this._emit('close');
+  };
+
+  /* ---------------- peer (PeerJS shape) ---------------- */
+  function RelayPeer(id, opts) {
+    this._h = {};
+    this.destroyed = false;
+    this.transport = 'relay';
+    this._opts = opts || {};
+    this._conns = {};        // host role: cid -> RelayConn
+    this._conn = null;       // client role: the single conn
+    this._mqtt = null;
+    this._wasOpen = false;
+    this._connectWanted = false;
+    if (id) {
+      this.id = String(id);
+      this._role = 'host';
+      this._code = codeFromPeerId(id);
+      this._clientId = 'mapp-h-' + this._code + '-' + randomId('');
+    } else {
+      this._role = 'client';
+      this._cid = randomId('c');
+      this.id = this._cid;
+      // The room code may be given up front (opts.roomCode) so the
+      // client's Last Will can name its presence topic in the very
+      // first CONNECT packet.
+      this._code = (opts && opts.roomCode) ? String(opts.roomCode).toUpperCase() : '';
+    }
+    this._openMqtt();
+  }
+  RelayPeer.prototype.on = function (ev, fn) {
+    (this._h[ev] = this._h[ev] || []).push(fn);
+  };
+  RelayPeer.prototype._emit = function (ev, arg) {
+    var list = this._h[ev] || [];
+    for (var i = 0; i < list.length; i++) { try { list[i](arg); } catch (e) {} }
+  };
+  RelayPeer.prototype._topics = function () {
+    var base = topicBase(this._code);
+    return {
+      up: base + 'up/',         // + cid
+      down: base + 'down/',     // + cid
+      bye: base + 'x/',         // + cid
+      alive: base + 'alive'
+    };
+  };
+  RelayPeer.prototype._openMqtt = function () {
+    var self = this;
+    var will = null;
+    if (this._role === 'host') {
+      // If the host dies without a goodbye, the broker clears its
+      // retained alive flag — controllers then see the room is gone.
+      will = { topic: this._topics().alive, payload: '', retain: true };
+    } else if (this._cid && this._code) {
+      // If the phone vanishes (tab killed, battery, tunnel), the
+      // broker posts its goodbye so the host frees the slot at once.
+      will = { topic: this._topics().bye + this._cid, payload: 'bye', retain: false };
+    }
+    var mqtt = new MqttClient(S.relayUrl(), {
+      clientId: this._clientId || ('mapp-' + this._cid),
+      will: will,
+      keepAlive: 30
+    });
+    this._mqtt = mqtt;
+    mqtt.onConnect = function () { self._onMqttConnect(); };
+    mqtt.onMessage = function (topic, payload) { self._onMqttMessage(topic, payload); };
+    mqtt.onClose = function () { self._onMqttClose(); };
+    mqtt.onError = function () {
+      if (!self._wasOpen && !self.destroyed) {
+        self._emit('error', { type: 'network', message: 'relay broker unreachable' });
+      }
+    };
+    mqtt.connect();
+  };
+  RelayPeer.prototype._onMqttConnect = function () {
+    var t = this._topics();
+    if (this._role === 'host') {
+      this._mqtt.subscribe([t.up + '+', t.bye + '+']);
+      this._mqtt.publish(t.alive, '1', true);
+      this._wasOpen = true;
+      this._emit('open', this.id);
+    } else {
+      this._wasOpen = true;
+      this._emit('open', this.id);
+      if (this._connectWanted && !this._conn) this._startConn();
+      else if (this._conn && !this._conn._closed) this._subscribeConn();
+    }
+  };
+  RelayPeer.prototype._onMqttClose = function () {
+    if (this.destroyed) return;
+    if (this._role === 'host') {
+      // PeerJS parity: host treats a broker drop as 'disconnected'
+      // and the game calls reconnect().
+      var cids = Object.keys(this._conns);
+      for (var i = 0; i < cids.length; i++) this._conns[cids[i]].open = false;
+      this._emit('disconnected');
+    } else if (this._conn && this._conn.open) {
+      this._conn.open = false;
+      this._conn._emit('close');
+    }
+  };
+  RelayPeer.prototype.reconnect = function () {
+    if (this.destroyed) return;
+    if (this._mqtt && !this._mqtt.connected) this._mqtt.connect();
+  };
+  RelayPeer.prototype.destroy = function () {
+    if (this.destroyed) return;
+    this.destroyed = true;
+    if (this._role === 'host') {
+      var cids = Object.keys(this._conns);
+      for (var i = 0; i < cids.length; i++) this._conns[cids[i]]._forceClose();
+      if (this._mqtt && this._mqtt.connected) {
+        this._mqtt.publish(this._topics().alive, '', true); // clear retained
+      }
+    } else if (this._conn && !this._conn._closed) {
+      this._connClosed(this._conn, true);
+    }
+    if (this._mqtt) this._mqtt.disconnect();
+  };
+
+  /* -------- host role -------- */
+  RelayPeer.prototype._onHostMessage = function (topic, payload) {
+    var t = this._topics();
+    if (topic.indexOf(t.bye) === 0) {
+      var bcid = topic.substring(t.bye.length);
+      var bc = this._conns[bcid];
+      if (bc) { delete this._conns[bcid]; bc._forceClose(); }
+      return;
+    }
+    if (topic.indexOf(t.up) !== 0) return;
+    var cid = topic.substring(t.up.length);
+    var conn = this._conns[cid];
+    if (!conn) {
+      conn = new RelayConn(this, cid);
+      conn.open = true;
+      conn._cid = cid;
+      this._conns[cid] = conn;
+      this._emit('connection', conn);
+    }
+    var msg;
+    try { msg = JSON.parse(payload); } catch (e) { return; }
+    conn._emit('data', msg);
+  };
+  RelayPeer.prototype._sendToHostConn = function (conn, msg) {
+    if (!this._mqtt) return false;
+    return this._mqtt.publish(this._topics().down + conn._cid, JSON.stringify(msg), false);
+  };
+
+  /* -------- client role -------- */
+  RelayPeer.prototype.connect = function (targetId, opts) {
+    this._code = codeFromPeerId(targetId);
+    var conn = new RelayConn(this, String(targetId));
+    conn._cid = this._cid;
+    this._conn = conn;
+    this._connectWanted = true;
+    // Arm this client's Last Will now that the room is known, so a
+    // vanished phone frees its slot on the host immediately.
+    if (this._mqtt) {
+      this._mqtt.will = { topic: this._topics().bye + this._cid, payload: 'bye', retain: false };
+    }
+    if (this._mqtt && this._mqtt.connected) this._startConn();
+    return conn;
+  };
+  RelayPeer.prototype._startConn = function () { this._subscribeConn(); };
+  RelayPeer.prototype._subscribeConn = function () {
+    var t = this._topics();
+    this._mqtt.subscribe([t.down + this._cid, t.alive]);
+    var self = this;
+    clearTimeout(this._aliveTimer);
+    this._aliveTimer = setTimeout(function () {
+      if (self._conn && !self._conn.open && !self._conn._closed && !self.destroyed) {
+        // No retained alive flag: nobody is hosting this room on the
+        // relay — the PeerJS 'peer-unavailable' situation.
+        self._emit('error', { type: 'peer-unavailable', message: 'relay room not found' });
+      }
+    }, 4000);
+  };
+  RelayPeer.prototype._onClientMessage = function (topic, payload) {
+    var t = this._topics();
+    var conn = this._conn;
+    if (!conn) return;
+    if (topic === t.alive) {
+      if (payload) {
+        if (!conn.open && !conn._closed) {
+          conn.open = true;
+          clearTimeout(this._aliveTimer);
+          conn._emit('open');
+        }
+      } else if (conn.open) {
+        conn.open = false;
+        conn._emit('close');
+      }
+      return;
+    }
+    if (topic === t.down + this._cid && conn.open) {
+      var msg;
+      try { msg = JSON.parse(payload); } catch (e) { return; }
+      conn._emit('data', msg);
+    }
+  };
+  RelayPeer.prototype._onMqttMessage = function (topic, payload) {
+    if (this._role === 'host') this._onHostMessage(topic, payload);
+    else this._onClientMessage(topic, payload);
+  };
+  RelayPeer.prototype._sendTo = function (conn, msg) {
+    if (!this._mqtt || conn._closed) return false;
+    if (this._role === 'host') return this._sendToHostConn(conn, msg);
+    return this._mqtt.publish(this._topics().up + this._cid, JSON.stringify(msg), false);
+  };
+  RelayPeer.prototype._connClosed = function (conn, silent) {
+    if (this._role === 'client') {
+      // Say goodbye on the room's presence topic so the host frees
+      // (reserves) the slot right away, like a data-channel close.
+      if (this._mqtt && this._mqtt.connected && this._code) {
+        this._mqtt.publish(this._topics().bye + this._cid, 'bye', false);
+      }
+      if (!silent) conn._emit('close');
+    }
+  };
+
+  global.RelayPeer = RelayPeer;
+  global.PPMqtt = MqttClient; // exposed for the relay audit harness
+})(window);
+
+</script>
+<script>
 /* host.js — inlined by build-singlefile.py */
-/* Motion Arena — Ping Pong: TV host. BROADCAST build (1.3.0).
+/* Motion Arena — Ping Pong: TV host. RELAY build (1.3.1).
+   (Broadcast view + official rules as 1.3.0; 1.3.1 adds the relay
+   transport fallback for phone controllers, male/female avatar
+   variants on a keyframed animation rig, an animated crowd with
+   synthesized cheers, and the control-tuning pass: timestamped
+   swings with join-time clock sync, phone-side tilt filtering,
+   host-side bat prediction.)
    The TV camera sits behind the near end of a 3D table (Canvas 2D
    perspective projection — no WebGL, so old TV browsers keep up).
    World space: x across (-1..1 = table), z along (-1 near / +1 far),
@@ -589,9 +1123,12 @@ window.__ppWatchdog = setTimeout(function () {
      (bottom of the picture), 1 = FAR (the avatar's end). Ends switch
      per the rules; controllers follow their player. */
   var players = [
-    { name: 'You',      color: S.COLORS[0].hex, kind: 'human' },
-    { name: 'Computer', color: S.COLORS[1].hex, kind: 'ai' }
+    { name: 'You',      color: S.COLORS[0].hex, kind: 'human', gender: 'male' },
+    { name: 'Computer', color: S.COLORS[1].hex, kind: 'ai',    gender: 'female' }
   ];
+  /* Lobby avatar-variant picks for the two local seats (a phone's
+     own join choice overrides its seat's pick while it holds it). */
+  var lobbyGender = ['male', 'female'];
   var endsSwapped = false;
   function sideOfPlayer(p) { return endsSwapped ? (p === 0 ? 1 : 0) : p; }
   function playerAtSide(side) { return endsSwapped ? (side === 0 ? 1 : 0) : side; }
@@ -616,12 +1153,54 @@ window.__ppWatchdog = setTimeout(function () {
 
   var ball = { x: 0, z: -0.5, h: 0.16, vx: 0, vz: 0, vh: 0, live: false };
   var flight = null;   // {fromSide,toSide,serve,bounces,crossed,cord,tPlane}
-  var bats = [ { x: 0, target: 0 }, { x: 0, target: 0 } ];   // by physical side
+  var bats = [ { x: 0, target: 0, padVel: 0, padAt: 0 }, { x: 0, target: 0, padVel: 0, padAt: 0 } ];   // by physical side
+  var lastSwingTiming = { deltaMs: null, compensated: false };  // grading audit trail
   var pendingSwing = [null, null];   // by player: {at, power}
   var lastGrade = { player: -1, grade: '', at: 0 };
   var flash = { text: '', sub: '', color: '#ffffff', t: 0, dur: 0 };
-  var avatar = { x: 0, swingT: 0, react: '', reactT: 0 };    // far-end player figure
+  var avatar = { x: 0, vx: 0, swingT: 0, react: '', reactT: 0, reactBig: false,
+                 crouch: 0, stepPhase: 0, headT: 0 };    // far-end player figure
   var nearAnim = { swingT: 0, reactT: 0 };
+  /* The swing cycle (relay-1.3.1 "real animation"): 0.62 s through
+     keyframed poses — WIND-UP (arm loads back, elbow cocked, slight
+     crouch), CONTACT (fast sweep through the ball, weight leans in),
+     FOLLOW-THROUGH (arm crosses high, body recovers to ready).
+     Contact sits at k=0.45; cycles are triggered ~that long before
+     the ball reaches the plane when the host can anticipate (AI /
+     local bats), or at the contact instant for phone swings and
+     serves (then the visible contact + follow-through still read). */
+  var SWING_DUR = 0.62, SWING_CONTACT_K = 0.45;
+  var SWING_KEYS = [ // [k, shoulderAng, elbowBend, weightLean, crouchAdd]
+    [0.00, -0.50, 0.50,  0.00, 0.00],
+    [0.30, -2.25, 1.20, -0.22, 0.35],
+    [0.45,  0.30, 0.22,  0.34, 0.10],
+    [0.64,  1.05, 0.60,  0.18, 0.00],
+    [1.00, -0.50, 0.50,  0.00, 0.00]
+  ];
+  function swingPose(k) {
+    if (k <= 0) k = 0.0001;
+    if (k >= 1) k = 0.9999;
+    for (var i = 1; i < SWING_KEYS.length; i++) {
+      if (k <= SWING_KEYS[i][0]) {
+        var a = SWING_KEYS[i - 1], b = SWING_KEYS[i];
+        var t = (k - a[0]) / (b[0] - a[0]);
+        t = t * t * (3 - 2 * t); // smoothstep inside the segment
+        return {
+          sh: a[1] + (b[1] - a[1]) * t,
+          el: a[2] + (b[2] - a[2]) * t,
+          lean: a[3] + (b[3] - a[3]) * t,
+          crouch: a[4] + (b[4] - a[4]) * t,
+          phase: k < 0.32 ? 'windup' : (k < 0.52 ? 'contact' : 'follow')
+        };
+      }
+    }
+    return { sh: -0.5, el: 0.5, lean: 0, crouch: 0, phase: 'ready' };
+  }
+  function swingKOf(anim) { return anim.swingT > 0 ? 1 - anim.swingT / SWING_DUR : -1; }
+  function startSwing(side, atContact) {
+    var anim = side === 1 ? avatar : nearAnim;
+    anim.swingT = atContact ? SWING_DUR * (1 - SWING_CONTACT_K) : SWING_DUR;
+  }
   var aiErr = [0, 0];
   var bounceFx = 0;
   var trail = [];
@@ -726,6 +1305,96 @@ window.__ppWatchdog = setTimeout(function () {
     }
   }
 
+  /* ---------------- crowd (animated layer + generated audio) ----
+     The stands are a light dynamic layer over the baked backdrop:
+     a capped set of fans (fewer as quality steps down) that bounce
+     on a travelling ripple when a point lands — bigger after long
+     rallies — run a standing wave on game/match wins, and settle
+     (dip) on faults and lets. The sound is synthesized crowd noise
+     (filtered noise swells, no audio files) and only ever plays
+     when the sound toggle is ON (default OFF). */
+  var crowd = { excite: 0, rippleAt: -9999, waveUntil: 0, dipUntil: 0,
+                plays: 0, lastPlayAt: 0 };
+  var CROWD_SKINS = ['#d9a066', '#b87a4a', '#8a5a34', '#eec39a', '#6e4525'];
+  var CROWD_CLOTH = ['#3a6396', '#7a439e', '#a8404f', '#3f8a68', '#b08a3d', '#4a6a8a', '#8a5570', '#555770'];
+  var crowdFans = null;
+  function buildCrowdFans() {
+    var rnd = srand(20261114);
+    crowdFans = [];
+    for (var i = 0; i < 120; i++) {
+      crowdFans.push({ x: 36 + rnd() * (W - 72), y: 58 + rnd() * 215,
+        skin: CROWD_SKINS[(rnd() * CROWD_SKINS.length) | 0],
+        cloth: CROWD_CLOTH[(rnd() * CROWD_CLOTH.length) | 0],
+        ph: rnd() * Math.PI * 2, big: rnd() > 0.72 });
+    }
+  }
+  function crowdPoint(rallyLen) {
+    crowd.excite = Math.min(1, 0.38 + (rallyLen || 0) * 0.055);
+    crowd.rippleAt = performance.now();
+  }
+  function crowdWave() {
+    crowd.waveUntil = performance.now() + 2400;
+    crowd.excite = 1;
+    crowd.rippleAt = performance.now();
+  }
+  function crowdDip() { crowd.dipUntil = performance.now() + 750; }
+  function stepCrowd(dt) {
+    if (crowd.excite > 0) crowd.excite = Math.max(0, crowd.excite - dt * 0.45);
+  }
+  function crowdNoise(intensity, seconds) {
+    if (!settings.sound) return;
+    ensureAudio();
+    if (!AC) return;
+    try {
+      var dur = seconds || 0.9;
+      var len = Math.floor(AC.sampleRate * dur);
+      var buf = AC.createBuffer(1, len, AC.sampleRate);
+      var d = buf.getChannelData(0);
+      for (var i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+      var src = AC.createBufferSource(); src.buffer = buf;
+      var bp = AC.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 0.7;
+      bp.frequency.setValueAtTime(500, AC.currentTime);
+      bp.frequency.linearRampToValueAtTime(950, AC.currentTime + dur * 0.4);
+      bp.frequency.linearRampToValueAtTime(420, AC.currentTime + dur);
+      var g = AC.createGain();
+      var peak = 0.05 + 0.20 * S.clamp(intensity, 0, 1);
+      g.gain.setValueAtTime(0.0001, AC.currentTime);
+      g.gain.exponentialRampToValueAtTime(peak, AC.currentTime + dur * 0.25);
+      g.gain.exponentialRampToValueAtTime(0.0001, AC.currentTime + dur);
+      src.connect(bp); bp.connect(g); g.connect(AC.destination);
+      src.start();
+      crowd.plays++;
+      crowd.lastPlayAt = performance.now();
+    } catch (e) {}
+  }
+  function drawCrowd(now) {
+    if (!crowdFans) buildCrowdFans();
+    var n = quality === 2 ? 120 : quality === 1 ? 64 : 26;
+    var rippleAge = (now - crowd.rippleAt) / 1000;
+    var dip = now < crowd.dipUntil ? 1 : 0;
+    var waving = now < crowd.waveUntil;
+    for (var i = 0; i < n; i++) {
+      var f = crowdFans[i];
+      var amp = 0.8 + crowd.excite * 4.2;
+      var bounce = Math.abs(Math.sin(now / 210 + f.ph - rippleAge * 5 + f.x * 0.0035)) * amp;
+      var sink = dip * 4;
+      var stand = 0;
+      if (waving) {
+        var wph = (now / 240 - f.x / 130) % (Math.PI * 2);
+        stand = Math.max(0, Math.sin(wph)) * 7;
+      }
+      var y = f.y - bounce - stand + sink;
+      ctx.fillStyle = f.cloth;
+      ctx.fillRect(f.x - 4.5, y + 3, 9, 8);
+      ctx.fillStyle = f.skin;
+      ctx.beginPath(); ctx.arc(f.x, y, f.big ? 5 : 4.1, 0, Math.PI * 2); ctx.fill();
+      if ((crowd.excite > 0.45 || waving) && f.big) {
+        ctx.fillRect(f.x - 7.5, y - 6 - bounce * 0.4, 2.6, 6);
+        ctx.fillRect(f.x + 4.9, y - 6 - bounce * 0.4, 2.6, 6);
+      }
+    }
+  }
+
   /* ---------------- controllers ---------------- */
   function controllerOf(side) {
     if (rallyBot) return 'bot';
@@ -788,6 +1457,10 @@ window.__ppWatchdog = setTimeout(function () {
     startGameCommon();
   }
   function applyModeIdentities() {
+    for (var gi = 0; gi < 2; gi++) {
+      if (!net.players[gi]) players[gi].gender = lobbyGender[gi];
+      else if (net.players[gi].gender) players[gi].gender = net.players[gi].gender;
+    }
     if (mode === 'ai') {
       if (!net.players[0]) { players[0].name = 'You'; players[0].color = S.COLORS[0].hex; }
       if (!net.players[1]) { players[1].name = 'Computer'; players[1].color = S.COLORS[1].hex; }
@@ -851,7 +1524,7 @@ window.__ppWatchdog = setTimeout(function () {
                crossed: false, cord: false, tPlane: 0 };
     flight.tPlane = performance.now() + ((dir * T.planeZ - z0) / vz) * 1000;
     rollAiError(flight.toSide);
-    if (side === 1) avatar.swingT = 0.22; else nearAnim.swingT = 0.22;
+    startSwing(side, true);
     sfx('pop');
     phase = 'rally';
     sendNetState();
@@ -898,7 +1571,7 @@ window.__ppWatchdog = setTimeout(function () {
     }
     ballisticTo(tx, tz, T1);
     rallyHits++;
-    if (side === 1) avatar.swingT = 0.22; else nearAnim.swingT = 0.22;
+    startSwing(side, true);
     var bp = proj(ball.x, ball.z, ball.h);
     burst(bp.x, bp.y, '#ffffff', quality === 2 ? 5 : 3);
     sfx('pop');
@@ -927,6 +1600,8 @@ window.__ppWatchdog = setTimeout(function () {
     ball.live = false;
     flight = null;
     letReplay = true;
+    crowdDip();
+    crowdNoise(0.18, 0.5);
     showFlash('LET', 'serve clips the net and lands in — re-serve', '#e0b93a', 1.3);
     phase = 'point';
     pointTimer = 0;
@@ -1015,7 +1690,7 @@ window.__ppWatchdog = setTimeout(function () {
   }
   function onSwing(player, power, atMs) {
     var side = sideOfPlayer(player);
-    if (side === 1) avatar.swingT = 0.22; else nearAnim.swingT = 0.22;
+    startSwing(side, true);
     if (paused) return;
     if (phase === 'serve' && player === server && controllerOf(side) === 'phone-swing') {
       launchServe();
@@ -1057,11 +1732,16 @@ window.__ppWatchdog = setTimeout(function () {
     pointReason = reason || '';
     bestRally = Math.max(bestRally, rallyHits);
     matchBestRally = Math.max(matchBestRally, bestRally);
-    /* avatar reactions */
+    /* avatar reactions (~0.8 s; the game/match branch below bumps
+       them bigger) + crowd: point ripple scaled by rally length,
+       a settle-dip on faults */
     var farPlayer = playerAtSide(1);
-    if (scorer === farPlayer) { avatar.react = 'cheer'; avatar.reactT = 1.15; }
-    else { avatar.react = 'slump'; avatar.reactT = 1.15; }
-    if (scorer === playerAtSide(0)) nearAnim.reactT = 1.0;
+    if (scorer === farPlayer) { avatar.react = 'cheer'; avatar.reactT = 0.85; }
+    else { avatar.react = 'slump'; avatar.reactT = 0.85; }
+    if (scorer === playerAtSide(0)) nearAnim.reactT = 0.8;
+    crowdPoint(rallyHits);
+    if (reason && (reason.indexOf('FAULT') >= 0 || reason.indexOf('out') >= 0)) crowdDip();
+    crowdNoise(0.3 + Math.min(0.6, rallyHits * 0.05), 0.9);
     sfx('score');
     /* deciding game: ends switch when the first player reaches 5 */
     var isDeciding = (games[0] + games[1] === S.MATCH_MAX_GAMES - 1);
@@ -1077,6 +1757,13 @@ window.__ppWatchdog = setTimeout(function () {
       games[gameWinner]++;
       if (games[gameWinner] >= S.MATCH_GAMES_TO_WIN) matchWinner = gameWinner;
       phase = 'over';
+      /* the big one: larger, longer reaction + standing wave */
+      avatar.react = scorer === farPlayer ? 'cheer' : 'slump';
+      avatar.reactT = 1.5;
+      avatar.reactBig = true;
+      if (scorer === playerAtSide(0)) nearAnim.reactT = 1.3;
+      crowdWave();
+      crowdNoise(1, 1.8);
       sfx('win');
       showGameOver();
     } else {
@@ -1158,8 +1845,16 @@ window.__ppWatchdog = setTimeout(function () {
       b.x += mv;
       b.target = b.x;
     } else if (ctrl === 'phone-swing' || ctrl === 'phone-auto') {
-      var k = Math.min(1, dt * 16);
-      b.x += (b.target - b.x) * k;
+      /* prediction line: aim where the phone's stream is HEADING —
+         the last target plus its measured velocity extrapolated a
+         few tens of ms, the lead fading out as the packet ages so
+         a stopped bat settles exactly on target; a firm ease then
+         tracks that goal without the old visible trailing */
+      var age = Math.max(0, (performance.now() - (b.padAt || 0)) / 1000);
+      var lead = age * Math.max(0, 1 - age / 0.2);
+      var goal = S.clamp(b.target + (b.padVel || 0) * lead, T.batMin, T.batMax);
+      var k = Math.min(1, dt * 30);
+      b.x += (goal - b.x) * k;
     } else {
       stepLocalKeys(side, dt);
       var k2 = Math.min(1, dt * 22);
@@ -1184,9 +1879,37 @@ window.__ppWatchdog = setTimeout(function () {
   }
 
   function update(dt) {
+    /* body + crowd timers run in EVERY phase (lobby and game-over
+       included) so reactions and the crowd never freeze mid-gesture */
+    if (avatar.swingT > 0) avatar.swingT = Math.max(0, avatar.swingT - dt);
+    if (avatar.reactT > 0) { avatar.reactT = Math.max(0, avatar.reactT - dt); if (avatar.reactT === 0) { avatar.react = ''; avatar.reactBig = false; } }
+    if (nearAnim.swingT > 0) nearAnim.swingT = Math.max(0, nearAnim.swingT - dt);
+    if (nearAnim.reactT > 0) nearAnim.reactT = Math.max(0, nearAnim.reactT - dt);
+    /* far avatar body: springy lateral tracking (acceleration and
+       easing instead of a linear slide), a ready crouch while it is
+       receiving, and a head that follows the ball */
+    var aTarget = bats[1].x;
+    avatar.vx += ((aTarget - avatar.x) * 26 - avatar.vx * 9) * dt;
+    avatar.x += avatar.vx * dt;
+    avatar.stepPhase += Math.abs(avatar.vx) * dt * 7;
+    var wantCrouch = (phase === 'serve' && server !== playerAtSide(1)) ||
+                     (phase === 'rally' && flight && flight.toSide === 1) ? 1 : 0;
+    avatar.crouch += (wantCrouch - avatar.crouch) * Math.min(1, dt * 7);
+    var lookTarget = ball.live ? S.clamp((ball.x - avatar.x) * 1.6, -1, 1) : 0;
+    avatar.headT += (lookTarget - avatar.headT) * Math.min(1, dt * 10);
+    stepCrowd(dt);
     if (phase === 'lobby' || phase === 'over') { stepParticles(dt); return; }
     stepBat(0, dt);
     stepBat(1, dt);
+    /* anticipation: open the full swing cycle early enough that its
+       CONTACT keyframe lands as the ball reaches the plane */
+    if (phase === 'rally' && flight && ball.live) {
+      var lead = (flight.tPlane - performance.now()) / 1000;
+      if (lead > 0 && lead < SWING_DUR * SWING_CONTACT_K) {
+        var incAnim = flight.toSide === 1 ? avatar : nearAnim;
+        if (incAnim.swingT <= 0) startSwing(flight.toSide, false);
+      }
+    }
     if (phase === 'serve') {
       var side = sideOfPlayer(server);
       ball.x = bats[side].x;
@@ -1211,10 +1934,6 @@ window.__ppWatchdog = setTimeout(function () {
     }
     if (pointFlash > 0) pointFlash = Math.max(0, pointFlash - dt * 1.4);
     if (bounceFx > 0) bounceFx = Math.max(0, bounceFx - dt * 3.2);
-    if (avatar.swingT > 0) avatar.swingT = Math.max(0, avatar.swingT - dt);
-    if (avatar.reactT > 0) { avatar.reactT = Math.max(0, avatar.reactT - dt); if (avatar.reactT === 0) avatar.react = ''; }
-    if (nearAnim.swingT > 0) nearAnim.swingT = Math.max(0, nearAnim.swingT - dt);
-    if (nearAnim.reactT > 0) nearAnim.reactT = Math.max(0, nearAnim.reactT - dt);
     if (flash.dur > 0) { flash.t += dt; if (flash.t >= flash.dur) flash.dur = 0; }
     stepParticles(dt);
   }
@@ -1379,67 +2098,113 @@ window.__ppWatchdog = setTimeout(function () {
   }
 
   /* far-end avatar: flat IEC-original vector figure in the far
-     player's colour; clipped so the table hides its lower body. */
+     player's colour and variant (male / female silhouettes on one
+     rig); clipped so the table hides its lower body. The rig:
+     spring-tracked position with stepping feet, a crouch while
+     receiving, the keyframed swing cycle, head/eyes on the ball,
+     and point reactions that grow on game/match points. */
   function drawAvatar(now) {
     var farPlayer = playerAtSide(1);
     var color = players[farPlayer].color;
-    var target = bats[1].x;
-    avatar.x += (target - avatar.x) * 0.14;
+    var female = players[farPlayer].gender === 'female';
     var base = proj(avatar.x, 1.28, 0);
     var ax = base.x, groundY = FAR_Y + 8;
+    var pose = avatar.swingT > 0 ? swingPose(swingKOf(avatar)) : null;
+    var crouch = avatar.crouch * 16 + (pose ? pose.crouch * 12 : 0);
     var sway = Math.sin(now / 640) * 3;
-    var lean = S.clamp((target - avatar.x) * 0.35, -0.14, 0.14);
-    var bounce = avatar.react === 'cheer' ? Math.abs(Math.sin(now / 130)) * 7 : 0;
-    var slump = avatar.react === 'slump' ? 9 : 0;
+    var velLean = S.clamp(avatar.vx * 0.16, -0.16, 0.16);
+    var lean = velLean + (pose ? pose.lean * 0.30 : 0);
+    var big = avatar.reactBig ? 1.45 : 1;
+    var cheer = avatar.react === 'cheer';
+    var bounce = cheer ? Math.abs(Math.sin(now / 130)) * 7 * big : 0;
+    var slump = avatar.react === 'slump' ? 9 * big : 0;
+    var stepBob = Math.sin(avatar.stepPhase * 6) * S.clamp(Math.abs(avatar.vx) * 5, 0, 3.2);
+    var stepOff = S.clamp(Math.abs(avatar.vx) * 26, 0, 9);
+    var torsoW = female ? 100 : 116, torsoX = female ? -50 : -58;
+    var hipY = -118 + crouch * 0.55;
+    var torsoTop = -308 + slump + crouch;
+    var headR = female ? 27 : 30;
+    var headX = sway * 0.5 + avatar.headT * 7;
+    var headY = torsoTop - 36 + crouch * 0.2;
     ctx.save();
     ctx.beginPath(); ctx.rect(0, 0, W, groundY); ctx.clip();
-    ctx.translate(ax, groundY - bounce);
-    ctx.rotate(lean * 0.4);
-    /* legs */
-    ctx.fillStyle = '#101c30';
-    ctx.fillRect(-34 + sway * 0.3, -118, 26, 118);
-    ctx.fillRect(10 - sway * 0.3, -118, 26, 118);
-    /* torso (shirt) */
+    ctx.translate(ax, groundY - bounce + Math.abs(stepBob) * 0.4);
+    ctx.rotate(lean * 0.45);
+    /* legs: dark kit bottoms — shorts (male) / skirt + legs (female);
+       feet step alternately while the body is moving */
+    if (female) {
+      ctx.fillStyle = shade(color, 0.5);
+      ctx.beginPath();
+      ctx.moveTo(-40, hipY - 34); ctx.lineTo(40, hipY - 34);
+      ctx.lineTo(50, hipY + 4); ctx.lineTo(-50, hipY + 4);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#e0aa7e';
+      ctx.fillRect(-34 + stepOff * 0.7, hipY, 17, -hipY - 4);
+      ctx.fillRect(18 - stepOff * 0.7, hipY, 17, -hipY - 4);
+    } else {
+      ctx.fillStyle = '#101c30';
+      ctx.fillRect(-36 + stepOff, hipY - 6, 27, -hipY + 2);
+      ctx.fillRect(10 - stepOff, hipY - 6, 27, -hipY + 2);
+      ctx.fillStyle = '#e0aa7e';
+      ctx.fillRect(-33 + stepOff, -52, 21, 48);
+      ctx.fillRect(13 - stepOff, -52, 21, 48);
+    }
+    /* torso (kit shirt; the female kit carries a light trim band) */
     var tg2 = ctx.createLinearGradient(-60, -300, 70, -110);
     tg2.addColorStop(0, shade(color, 1.12));
     tg2.addColorStop(1, shade(color, 0.72));
     ctx.fillStyle = tg2;
-    rr(ctx, -58, -308 + slump, 116, 196, 34);
+    rr(ctx, torsoX, torsoTop, torsoW, hipY + 30 - torsoTop, 34);
     ctx.fill();
-    /* head */
+    if (female) {
+      ctx.fillStyle = 'rgba(255,255,255,0.75)';
+      ctx.fillRect(torsoX + 6, torsoTop + 26, torsoW - 12, 7);
+    }
+    /* head: skin, hair (cap for male, long sides + ponytail for
+       female), eyes that track the ball */
     ctx.fillStyle = '#e0aa7e';
-    ctx.beginPath(); ctx.arc(sway * 0.5, -344 + slump, 30, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(headX, headY, headR, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#2b1c10';
-    ctx.beginPath(); ctx.arc(sway * 0.5, -352 + slump, 30, Math.PI, Math.PI * 2); ctx.fill();
-    ctx.fillRect(sway * 0.5 - 30, -352 + slump, 60, 8);
-    /* left arm (viewer left) */
-    var cheer = avatar.react === 'cheer';
+    if (female) {
+      ctx.beginPath(); ctx.arc(headX, headY - 4, headR + 1, Math.PI * 0.95, Math.PI * 2.05); ctx.fill();
+      ctx.fillRect(headX - headR - 2, headY - 6, 8, 44);
+      ctx.fillRect(headX + headR - 6, headY - 6, 8, 44);
+      ctx.save();
+      ctx.translate(headX + headR + 3, headY - 10);
+      ctx.rotate(0.5 + Math.sin(now / 300) * 0.06 + velLean);
+      ctx.fillRect(-4, 0, 9, 52);
+      ctx.restore();
+    } else {
+      ctx.beginPath(); ctx.arc(headX, headY - 3, headR, Math.PI, Math.PI * 2); ctx.fill();
+      ctx.fillRect(headX - headR, headY - 5, headR * 2, 8);
+    }
+    var look = avatar.headT * 4.5;
+    ctx.fillStyle = '#1c1410';
+    ctx.beginPath(); ctx.arc(headX - 10 + look, headY + 3, 2.6, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(headX + 10 + look, headY + 3, 2.6, 0, Math.PI * 2); ctx.fill();
+    /* left arm (viewer left): raised in a cheer, hanging in a slump */
+    var lShX = torsoX + 6, lShY = torsoTop + 16 + slump;
     ctx.strokeStyle = shade(color, 0.9);
     ctx.lineWidth = 21; ctx.lineCap = 'round';
     ctx.beginPath();
-    ctx.moveTo(-52, -292 + slump);
-    if (cheer) { ctx.lineTo(-84, -360 + slump); ctx.lineTo(-92, -408 + slump); }
-    else { ctx.lineTo(-76, -218 + slump); ctx.lineTo(-66, -158 + slump); }
+    ctx.moveTo(lShX, lShY);
+    if (cheer) { ctx.lineTo(lShX - 32, lShY - 68); ctx.lineTo(lShX - 40, lShY - 116); }
+    else { ctx.lineTo(lShX - 24, lShY + 74 - crouch * 0.4); ctx.lineTo(lShX - 14, lShY + 134 - crouch * 0.5); }
     ctx.stroke();
     ctx.strokeStyle = '#e0aa7e';
     ctx.lineWidth = 15;
     ctx.beginPath();
-    if (cheer) { ctx.moveTo(-92, -408 + slump); ctx.lineTo(-96, -428 + slump); }
-    else { ctx.moveTo(-66, -158 + slump); ctx.lineTo(-62, -138 + slump); }
+    if (cheer) { ctx.moveTo(lShX - 40, lShY - 116); ctx.lineTo(lShX - 44, lShY - 136); }
+    else { ctx.moveTo(lShX - 14, lShY + 134 - crouch * 0.5); ctx.lineTo(lShX - 10, lShY + 154 - crouch * 0.5); }
     ctx.stroke();
-    /* bat arm (viewer right): angle by state */
-    var ang;
-    if (avatar.swingT > 0) {
-      var k = 1 - avatar.swingT / 0.22;         // 0..1 through the swing
-      ang = k < 0.35 ? -2.3 + (k / 0.35) * 0.7 : -1.6 + ((k - 0.35) / 0.65) * 2.2;
-    } else if (cheer) {
-      ang = -2.6;
-    } else {
-      ang = -0.5 + Math.sin(now / 520) * 0.08;  // ready sway
-    }
-    var shX = 50, shY = -292 + slump;
+    /* bat arm (viewer right): the keyframed swing cycle */
+    var ang, bend;
+    if (pose) { ang = pose.sh; bend = pose.el; }
+    else if (cheer) { ang = -2.6; bend = 0.4; }
+    else { ang = -0.5 + Math.sin(now / 520) * 0.08 - avatar.crouch * 0.25; bend = 0.5 + avatar.crouch * 0.3; }
+    var shX = torsoX + torsoW - 8, shY = torsoTop + 16 + slump;
     var elX = shX + Math.cos(ang) * 62, elY = shY - Math.sin(ang) * 62;
-    var handX = elX + Math.cos(ang + 0.5) * 52, handY = elY - Math.sin(ang + 0.5) * 52;
+    var handX = elX + Math.cos(ang + bend) * 52, handY = elY - Math.sin(ang + bend) * 52;
     ctx.strokeStyle = shade(color, 0.9);
     ctx.lineWidth = 21;
     ctx.beginPath(); ctx.moveTo(shX, shY); ctx.lineTo(elX, elY); ctx.stroke();
@@ -1460,15 +2225,21 @@ window.__ppWatchdog = setTimeout(function () {
     ctx.restore();
   }
 
-  /* near end: your bat + forearm at the bottom of the picture */
+  /* near end: your bat + forearm at the bottom of the picture,
+     driven by the same keyframed swing cycle as the far avatar
+     (dip back on the wind-up, sweep through contact, high
+     follow-through) and wearing the near player's kit — the
+     female kit shows its light trim band at the wrist. */
   function drawNearBat(now) {
     var nearPlayer = playerAtSide(0);
     var color = players[nearPlayer].color;
+    var female = players[nearPlayer].gender === 'female';
     var bp = proj(bats[0].x, -1.12, 0.10);
     var pump = nearAnim.reactT > 0 ? Math.sin(nearAnim.reactT * 10) * 8 : 0;
-    var swingK = nearAnim.swingT > 0 ? (1 - nearAnim.swingT / 0.22) : 0;
-    var lift = swingK > 0 ? Math.sin(Math.min(1, swingK) * Math.PI) * 46 : 0;
-    var cxp = bp.x, cyp = bp.y + 66 - lift - pump;
+    var pose = nearAnim.swingT > 0 ? swingPose(swingKOf(nearAnim)) : null;
+    var lift = pose ? pose.lean * 95 : 0;
+    var back = pose && swingKOf(nearAnim) < 0.32 ? (0.32 - swingKOf(nearAnim)) * 60 : 0;
+    var cxp = bp.x + back, cyp = bp.y + 66 - lift - pump;
     /* forearm / sleeve wedge from the bottom edge to the handle */
     ctx.fillStyle = shade(color, 0.55);
     ctx.beginPath();
@@ -1477,11 +2248,18 @@ window.__ppWatchdog = setTimeout(function () {
     ctx.lineTo(cxp + 10, cyp + 66);
     ctx.lineTo(cxp - 10, cyp + 66);
     ctx.closePath(); ctx.fill();
+    if (female) {
+      ctx.fillStyle = 'rgba(255,255,255,0.75)';
+      ctx.beginPath();
+      ctx.moveTo(cxp - 17, cyp + 92); ctx.lineTo(cxp + 17, cyp + 92);
+      ctx.lineTo(cxp + 13, cyp + 74); ctx.lineTo(cxp - 13, cyp + 74);
+      ctx.closePath(); ctx.fill();
+    }
     /* handle */
     ctx.fillStyle = '#3a2415';
     ctx.save();
     ctx.translate(cxp, cyp);
-    ctx.rotate(S.clamp((bats[0].target - bats[0].x) * 0.5, -0.3, 0.3) - lift * 0.002);
+    ctx.rotate(S.clamp((bats[0].target - bats[0].x) * 0.5, -0.3, 0.3) - lift * 0.002 - (pose ? pose.sh * 0.10 : 0));
     ctx.fillRect(-8, 30, 16, 52);
     /* bat face */
     ctx.fillStyle = color;
@@ -1590,6 +2368,7 @@ window.__ppWatchdog = setTimeout(function () {
     if (!staticLayer) buildStatic();
     if (!netLayer) buildNet();
     ctx.drawImage(staticLayer, 0, 0);
+    drawCrowd(now);
     drawAvatar(now);
     if (quality === 2 && phase === 'rally') drawTrail();
     if (phase === 'lobby') {
@@ -1648,14 +2427,20 @@ window.__ppWatchdog = setTimeout(function () {
     }
   }
 
-  /* ---------------- networking (PeerJS) ---------------- */
+  /* ---------------- networking (PeerJS + relay fallback) ----------------
+     Two transports, one protocol. WebRTC (PeerJS) is tried first;
+     ~6 s after the host is up, a relay listener joins it (MQTT over
+     secure WebSocket via relay.js) for phones whose direct data
+     connection never completes — the Samsung TV case. A phone that
+     falls back to the relay lands in the same setupConn() below. */
   var net = {
     peer: null, status: 'idle', code: '', tries: 0,
     players: [null, null],       // player -> {conn, name, color, token, mode}
     reserved: [null, null],      // player -> {token, name, color, mode, until}
     spectators: [],
     openTimer: null,
-    lastIncoming: null
+    lastIncoming: null,
+    relayPeer: null, relayStatus: 'off', relayTimer: null, relayCode: ''
   };
   function controllerUrl() {
     var base = window.location.href.split('#')[0].split('?')[0];
@@ -1676,11 +2461,12 @@ window.__ppWatchdog = setTimeout(function () {
   }
   function netOffline(reason) {
     net.status = 'offline';
-    setDot('off');
+    if (net.relayStatus !== 'online') setDot('off');
+    scheduleRelay(600);
     var b = document.getElementById('netBanner');
     b.innerHTML = '';
     var span = document.createElement('span');
-    span.textContent = '📱 Phone controllers need an internet connection (they reach this TV through the PeerJS cloud) — none was found (' +
+    span.textContent = '📱 Phone controllers need an internet connection (they reach this TV through a cloud link) — none was found (' +
       reason + '). The game still works right here: 1 Player vs Computer, or 2 Players on this screen.';
     var btn = document.createElement('button');
     btn.className = 'btn btn-outline';
@@ -1690,11 +2476,62 @@ window.__ppWatchdog = setTimeout(function () {
     b.appendChild(btn);
     b.classList.remove('hidden');
   }
+  function showLobbyLink() {
+    var link = net.status === 'online' || net.relayStatus === 'online';
+    if (!link) return;
+    var how = net.status === 'online' && net.relayStatus === 'online' ? ' (direct + relay links live)'
+      : net.relayStatus === 'online' ? ' (relay link live)' : '';
+    document.getElementById('lobbyHint').textContent =
+      'Phone controller: ' + controllerUrl() + ' — enter room code ' + net.code + '.' + how;
+  }
+  function scheduleRelay(delayMs) {
+    if (!S.relayEnabled() || typeof window.RelayPeer === 'undefined') { net.relayStatus = 'off'; return; }
+    if (net.relayPeer || net.relayTimer) return;
+    net.relayStatus = 'waiting';
+    net.relayTimer = setTimeout(function () {
+      net.relayTimer = null;
+      startRelay();
+    }, delayMs == null ? 6000 : delayMs);
+  }
+  function startRelay() {
+    if (net.relayPeer || !S.relayEnabled() || typeof window.RelayPeer === 'undefined') return;
+    net.relayStatus = 'connecting';
+    net.relayCode = net.code;
+    var rp;
+    try {
+      rp = new window.RelayPeer(S.peerIdFor(net.code));
+    } catch (e) {
+      net.relayStatus = 'error';
+      return;
+    }
+    net.relayPeer = rp;
+    rp.on('open', function () {
+      net.relayStatus = 'online';
+      setDot('on');
+      document.getElementById('netBanner').classList.add('hidden');
+      showLobbyLink();
+    });
+    rp.on('connection', setupConn);
+    rp.on('disconnected', function () {
+      if (net.relayStatus === 'online') {
+        net.relayStatus = 'connecting';
+        try { rp.reconnect(); } catch (e) {}
+      }
+    });
+    rp.on('error', function () {
+      if (net.relayStatus !== 'online') net.relayStatus = 'error';
+    });
+  }
   function initPeer() {
     // Room code FIRST: the TV must show a code even when the phone
     // library itself failed to load on an old TV browser.
     net.code = S.makeRoomCode();
     document.getElementById('roomCode').textContent = net.code;
+    if (net.relayPeer && net.relayCode !== net.code) {
+      try { net.relayPeer.destroy(); } catch (e) {}
+      net.relayPeer = null;
+      net.relayStatus = 'off';
+    }
     if (typeof window.Peer === 'undefined') { netOffline('controller library unavailable'); return; }
     net.status = 'connecting';
     setDot('');
@@ -1716,8 +2553,8 @@ window.__ppWatchdog = setTimeout(function () {
       clearTimeout(net.openTimer);
       setDot('on');
       document.getElementById('netBanner').classList.add('hidden');
-      document.getElementById('lobbyHint').textContent =
-        'Phone controller: ' + controllerUrl() + ' — enter room code ' + net.code + '.';
+      showLobbyLink();
+      scheduleRelay(S.paramInt('relayWait', 6000));
     });
     peer.on('connection', setupConn);
     peer.on('disconnected', function () { if (net.status === 'online') { try { peer.reconnect(); } catch (e) {} } });
@@ -1734,7 +2571,8 @@ window.__ppWatchdog = setTimeout(function () {
   }
   function setupConn(conn) {
     net.lastIncoming = conn.peer || null;
-    var entry = { conn: conn, player: -1, name: '', color: '', token: '', mode: 'touch' };
+    var entry = { conn: conn, player: -1, name: '', color: '', token: '', mode: 'touch',
+                  transport: conn.transport || 'webrtc', gender: '' };
     conn.on('data', function (data) {
       if (!data || typeof data !== 'object') return;
       if (data.t === 'join') {
@@ -1742,6 +2580,7 @@ window.__ppWatchdog = setTimeout(function () {
         entry.color = String(data.color || S.COLORS[0].hex);
         entry.token = String(data.token || '');
         if (data.mode === 'swing' || data.mode === 'touch') entry.mode = data.mode;
+        if (data.gender === 'male' || data.gender === 'female') entry.gender = data.gender;
         var p = -1, i;
         if (entry.token) {           // reclaim a reserved player slot
           for (i = 0; i < 2; i++) {
@@ -1756,23 +2595,50 @@ window.__ppWatchdog = setTimeout(function () {
           net.players[p] = entry;
           players[p].name = entry.name;
           players[p].color = entry.color;
+          if (entry.gender) players[p].gender = entry.gender;
           players[p].kind = 'phone';
           if (phase === 'lobby') mode = 'phone';
-          conn.send({ t: 'welcome', player: p, side: p, name: entry.name, color: entry.color });
+          conn.send({ t: 'welcome', player: p, side: p, name: entry.name, color: entry.color,
+                      gender: players[p].gender, transport: entry.transport });
         } else {
           net.spectators.push(entry);
           conn.send({ t: 'full' });
         }
         refreshJoined();
         sendNetState();
+      } else if (data.t === 'ping') {
+        /* clock sync: answer with the host wall clock; the phone
+           derives its offset from the round trip's midpoint */
+        try { conn.send({ t: 'pong', id: data.id, t0: data.t0, th: Date.now() }); } catch (e) {}
       } else if (data.t === 'pad' && entry.player >= 0) {
         var v = parseFloat(data.x != null ? data.x : data.y);
-        if (!isNaN(v)) bats[sideOfPlayer(entry.player)].target = T.batMin + S.clamp(v, 0, 1) * (T.batMax - T.batMin);
+        if (!isNaN(v)) {
+          var pb = bats[sideOfPlayer(entry.player)];
+          var newTarget = T.batMin + S.clamp(v, 0, 1) * (T.batMax - T.batMin);
+          var pNow = performance.now();
+          if (pb.padAt > 0 && pNow > pb.padAt) {
+            var instVel = (newTarget - pb.target) / ((pNow - pb.padAt) / 1000);
+            pb.padVel = S.clamp(pb.padVel * 0.5 + instVel * 0.5, -3, 3);
+          }
+          pb.target = newTarget;
+          pb.padAt = pNow;
+        }
       } else if (data.t === 'ctrl' && entry.player >= 0) {
         if (data.mode === 'swing' || data.mode === 'touch') entry.mode = data.mode;
       } else if (data.t === 'swing' && entry.player >= 0) {
         var pw = parseFloat(data.power);
-        onSwing(entry.player, isNaN(pw) ? 0.7 : S.clamp(pw, 0, 1), performance.now());
+        var atMs = performance.now();
+        var compensated = false;
+        if (typeof data.ts === 'number' && isFinite(data.ts)) {
+          /* the phone stamped the swing's true moment in host wall
+             time; convert onto this page's performance timeline —
+             transit and detection lag stop eating the grade window */
+          var conv = data.ts - (Date.now() - performance.now());
+          if (Math.abs(conv - atMs) < 2500) { atMs = conv; compensated = true; }
+        }
+        lastSwingTiming = { deltaMs: flight ? Math.round(atMs - flight.tPlane) : null,
+                            compensated: compensated };
+        onSwing(entry.player, isNaN(pw) ? 0.7 : S.clamp(pw, 0, 1), atMs);
       } else if (data.t === 'serve' && entry.player >= 0) {
         if (phase === 'serve' && entry.player === server) launchServe();
         else if (phase === 'lobby') startMatch('phone');
@@ -1785,7 +2651,8 @@ window.__ppWatchdog = setTimeout(function () {
         /* hold the player's slot for 60 s so a dropped phone reclaims
            ITS player (and its end) on reconnect — no reload, no steal */
         net.reserved[entry.player] = { token: entry.token, name: entry.name, color: entry.color,
-                                       mode: entry.mode, until: performance.now() + 60000 };
+                                       mode: entry.mode, gender: entry.gender,
+                                       until: performance.now() + 60000 };
         players[entry.player].kind = mode === 'local' || entry.player === 0 ? 'human' : 'ai';
         applyModeIdentities();
       }
@@ -1801,6 +2668,7 @@ window.__ppWatchdog = setTimeout(function () {
   function sendNetState() {
     var base = { t: 'state', phase: phase, mode: mode, scores: scores.slice(),
       names: [players[0].name, players[1].name], colors: [players[0].color, players[1].color],
+      genders: [players[0].gender, players[1].gender],
       games: games.slice(), server: server, paused: paused,
       grade: lastGrade.player >= 0 && performance.now() - lastGrade.at < 2500
         ? { player: lastGrade.player, grade: lastGrade.grade } : null };
@@ -1827,7 +2695,8 @@ window.__ppWatchdog = setTimeout(function () {
       var chip = document.createElement('span');
       chip.className = 'player-chip';
       chip.style.background = e.color;
-      chip.textContent = '📱 ' + e.name + ' — P' + (i + 1) + (e.mode === 'swing' ? ' · SWING' : '');
+      chip.textContent = '📱 ' + e.name + ' — P' + (i + 1) + (e.mode === 'swing' ? ' · SWING' : '') +
+        (e.transport === 'relay' ? ' · RELAY' : ' · DIRECT');
       list.appendChild(chip);
     }
     if (!any) {
@@ -1862,6 +2731,22 @@ window.__ppWatchdog = setTimeout(function () {
       '🎚 Difficulty: <b>' + diff().label + '</b>&nbsp; <small>(D)</small>';
     document.getElementById('btnSound').innerHTML =
       settings.sound ? '🔊 Sound: <b>On</b>&nbsp; <small>(N)</small>' : '🔇 Sound: <b>Off</b>&nbsp; <small>(N)</small>';
+    refreshGenderButtons();
+  }
+  function genderLabel(p) {
+    return players[p].gender === 'female' ? '♀ Female' : '♂ Male';
+  }
+  function refreshGenderButtons() {
+    var you = document.getElementById('btnGenderYou');
+    var cpu = document.getElementById('btnGenderCpu');
+    if (you) you.innerHTML = '🧑 You: <b>' + genderLabel(0) + '</b>&nbsp; <small>(G)</small>';
+    if (cpu) cpu.innerHTML = '🤖 Computer: <b>' + genderLabel(1) + '</b>&nbsp; <small>(H)</small>';
+  }
+  function cycleGender(p) {
+    lobbyGender[p] = lobbyGender[p] === 'male' ? 'female' : 'male';
+    if (!net.players[p]) players[p].gender = lobbyGender[p];
+    refreshGenderButtons();
+    sendNetState();
   }
   function cycleDifficulty() {
     var idx = S.DIFFICULTY_ORDER.indexOf(settings.difficulty);
@@ -1880,6 +2765,8 @@ window.__ppWatchdog = setTimeout(function () {
   document.getElementById('btnLobby').addEventListener('click', toLobby);
   document.getElementById('btnDiff').addEventListener('click', cycleDifficulty);
   document.getElementById('btnSound').addEventListener('click', toggleSound);
+  document.getElementById('btnGenderYou').addEventListener('click', function () { cycleGender(0); });
+  document.getElementById('btnGenderCpu').addEventListener('click', function () { cycleGender(1); });
   document.getElementById('btnResume').addEventListener('click', hidePause);
   document.getElementById('btnRestartGame').addEventListener('click', function () { hidePause(); startMatch(mode); });
   document.getElementById('btnPauseLobby').addEventListener('click', function () { hidePause(); toLobby(); });
@@ -1907,6 +2794,8 @@ window.__ppWatchdog = setTimeout(function () {
       if (e.code === 'Digit3') { startMatch('phone'); return; }
       if (e.code === 'KeyD') { cycleDifficulty(); return; }
       if (e.code === 'KeyN') { toggleSound(); return; }
+      if (e.code === 'KeyG') { cycleGender(0); return; }
+      if (e.code === 'KeyH') { cycleGender(1); return; }
     }
     if (e.code === 'Enter' || e.code === 'Space') {
       if (onButton) return; // focused button handles it natively
@@ -1949,7 +2838,7 @@ window.__ppWatchdog = setTimeout(function () {
   /* ---------------- debug / test hooks (used by the check scripts) ---- */
   function bat01(side) { return (bats[side].x - T.batMin) / (T.batMax - T.batMin); }
   window.PP = {
-    version: '1.3.0',
+    version: '1.3.1',
     getState: function () {
       return {
         phase: phase, mode: mode, paused: paused,
@@ -1962,8 +2851,8 @@ window.__ppWatchdog = setTimeout(function () {
         quality: quality, rallyHits: rallyHits, bestRally: bestRally,
         pointReason: pointReason,
         players: [
-          { name: players[0].name, color: players[0].color, kind: players[0].kind },
-          { name: players[1].name, color: players[1].color, kind: players[1].kind }
+          { name: players[0].name, color: players[0].color, kind: players[0].kind, gender: players[0].gender },
+          { name: players[1].name, color: players[1].color, kind: players[1].kind, gender: players[1].gender }
         ],
         ball3: { x: +ball.x.toFixed(3), z: +ball.z.toFixed(3), h: +ball.h.toFixed(3),
                  vx: +ball.vx.toFixed(2), vz: +ball.vz.toFixed(2), vh: +ball.vh.toFixed(2),
@@ -1975,12 +2864,27 @@ window.__ppWatchdog = setTimeout(function () {
         bats: [Math.round(bats[0].x * 100) / 100, Math.round(bats[1].x * 100) / 100],
         bats01: [Math.round(bat01(0) * 1000) / 1000, Math.round(bat01(1) * 1000) / 1000],
         paddles: [Math.round(bat01(0) * 1000) / 1000, Math.round(bat01(1) * 1000) / 1000],
-        avatar: { x01: Math.round(bat01(1) * 1000) / 1000, swing: avatar.swingT > 0, react: avatar.react },
+        avatar: { x01: Math.round(bat01(1) * 1000) / 1000, swing: avatar.swingT > 0, react: avatar.react,
+                  gender: players[playerAtSide(1)].gender,
+                  swingK: avatar.swingT > 0 ? Math.round(swingKOf(avatar) * 1000) / 1000 : -1,
+                  swingPhase: avatar.swingT > 0 ? swingPose(swingKOf(avatar)).phase : 'ready',
+                  crouch: Math.round(avatar.crouch * 100) / 100,
+                  headT: Math.round(avatar.headT * 100) / 100,
+                  reactBig: avatar.reactBig },
+        crowd: { excite: Math.round(crowd.excite * 100) / 100,
+                 wave: performance.now() < crowd.waveUntil,
+                 dip: performance.now() < crowd.dipUntil,
+                 plays: crowd.plays },
+        audio: { on: settings.sound, ctxLive: !!AC, crowdPlays: crowd.plays },
+        swingTiming: lastSwingTiming,
         lastGrade: { player: lastGrade.player, grade: lastGrade.grade },
         render: renderInfo,
         net: { status: net.status, code: net.code, sawIncoming: net.lastIncoming,
                sides: [!!net.players[0], !!net.players[1]],
-               players: [!!net.players[0], !!net.players[1]] }
+               players: [!!net.players[0], !!net.players[1]],
+               relayStatus: net.relayStatus,
+               transports: [net.players[0] ? net.players[0].transport : null,
+                            net.players[1] ? net.players[1].transport : null] }
       };
     },
     start: function (m) { startMatch(m || 'ai'); },
@@ -2044,8 +2948,21 @@ window.__ppWatchdog = setTimeout(function () {
     setQuality: function (q) { quality = q | 0; staticLayer = null; netLayer = null; },
     setRallyBot: function (on) { rallyBot = !!on; },
     debugAvatar: function (what) {
-      if (what === 'swing') avatar.swingT = 0.22;
-      else if (what === 'cheer' || what === 'slump') { avatar.react = what; avatar.reactT = 1.15; }
+      if (what === 'swing') startSwing(1, false);
+      else if (what === 'cheer' || what === 'slump') { avatar.react = what; avatar.reactT = 0.85; }
+    },
+    setGender: function (p, g) {
+      if ((g === 'male' || g === 'female') && players[p | 0]) {
+        lobbyGender[p | 0] = g;
+        if (!net.players[p | 0]) players[p | 0].gender = g;
+        refreshGenderButtons();
+        sendNetState();
+      }
+    },
+    debugCrowd: function (what) {
+      if (what === 'point') { crowdPoint(12); crowdNoise(0.8, 0.9); }
+      else if (what === 'wave') { crowdWave(); crowdNoise(1, 1.8); }
+      else if (what === 'dip') crowdDip();
     },
     controllerUrl: function () { return controllerUrl(); },
     /* Simulated-peer hooks: run join/pad/swing/serve messages through
@@ -2053,14 +2970,17 @@ window.__ppWatchdog = setTimeout(function () {
        with a stub transport. (The sandbox blocks WebRTC's UDP data
        plane, so the checks verify the wire at signaling level and the
        protocol through these hooks.) */
-    simJoin: function (name, mode) {
+    simJoin: function (name, mode, opts) {
+      opts = opts || {};
       var stub = { open: true, peer: 'simulated-peer', sent: [], _h: {},
+        transport: opts.transport || 'webrtc',
         on: function (ev, fn) { this._h[ev] = fn; },
         send: function (m) { this.sent.push(m); },
         emit: function (ev, arg) { if (this._h[ev]) this._h[ev](arg); } };
       setupConn(stub);
       stub.emit('data', { t: 'join', name: name || 'Sim Player', color: S.COLORS[1].hex,
-                          token: 'sim-token', mode: mode || 'touch' });
+                          token: opts.token || 'sim-token', mode: mode || 'touch',
+                          gender: opts.gender || undefined });
       var p = -1;
       for (var i = 0; i < stub.sent.length; i++) if (stub.sent[i].t === 'welcome') p = stub.sent[i].player;
       if (p >= 0) simStubs[p] = stub;

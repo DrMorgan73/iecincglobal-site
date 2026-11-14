@@ -6,7 +6,7 @@
 <title>Motion Arena — Ping Pong Controller</title>
 <meta name="description" content="Phone controller for Motion Arena Ping Pong. Enter the room code shown on the TV. An IEC, Inc. game.">
 <link rel="icon" href="data:,">
-<meta name="pp-build" content="broadcast-1.3.0">
+<meta name="pp-build" content="relay-1.3.1">
 <meta name="robots" content="noindex,nofollow">
 <style>
 /* pingpong.css — inlined by build-singlefile.py (single-file build) */
@@ -160,6 +160,14 @@ canvas#game {
   cursor: pointer; padding: 0;
 }
 .swatch.sel { border-color: #fff; box-shadow: 0 0 0 3px #C9A227; box-shadow: 0 0 0 3px var(--gold); }
+.gender-pick { display: flex; gap: 10px; }
+.gpick {
+  flex: 1; padding: 13px 10px; border-radius: 12px; cursor: pointer;
+  font-size: 17px; font-weight: 800; font-family: inherit;
+  border: 2px solid rgba(255,255,255,0.14); border: 2px solid var(--card-border);
+  background: #0a1c38; background: var(--navy-3); color: #ffffff; color: var(--ink);
+}
+.gpick.sel { border-color: #C9A227; border-color: var(--gold); background: #123a6b; color: #e0b93a; color: var(--gold-2); }
 .msg { min-height: 24px; font-size: 16px; line-height: 1.45; color: #e0b93a; color: var(--gold-2); text-align: center; }
 .msg.err { color: #ff9d94; }
 .scorebar {
@@ -249,11 +257,11 @@ canvas#game {
 
 </style>
 <script>
-/* Boot guard (build broadcast-1.3.0): installed before any game file loads.
+/* Boot guard (build relay-1.3.1): installed before any game file loads.
    Traps errors and, if the controller has not booted within 30 s, names
    the failed stage in big on-screen text instead of a blank page.
    ES5 on purpose. */
-window.__PP_BUILD = 'broadcast-1.3.0';
+window.__PP_BUILD = 'relay-1.3.1';
 window.__ppShowDiag = function (title, detail) {
   var tries = 0;
   var show = function () {
@@ -295,7 +303,7 @@ window.__ppBootDone = function () {
   if (l && l.parentNode) l.parentNode.removeChild(l);
 };
 
-/* Self-heal poll (build broadcast-1.3.0): check every 500 ms
+/* Self-heal poll (build relay-1.3.1): check every 500 ms
    whether the game has booted (app global defined + styles applied).
    The moment it has, stand down - clear any diagnostic and the
    loading bar - so a merely slow TV recovers on its own, with no
@@ -374,6 +382,13 @@ window.__ppWatchdog = setTimeout(function () {
       <label>YOUR COLOUR</label>
       <div class="swatches" id="swatches"></div>
     </div>
+    <div class="field">
+      <label>YOUR PLAYER</label>
+      <div class="gender-pick">
+        <button type="button" class="gpick" id="btnGenderMale">♂ Male</button>
+        <button type="button" class="gpick" id="btnGenderFemale">♀ Female</button>
+      </div>
+    </div>
     <button class="btn btn-gold btn-big" id="btnJoin" style="max-width:none">Join game</button>
     <div class="msg" id="joinMsg" style="margin-top:14px"></div>
     <p class="status-line">Hold the phone in your hand. After joining, SWING MODE lets you tilt to move and swing the phone to strike the ball — TOUCH MODE (drag) always works too.</p>
@@ -448,7 +463,7 @@ window.__ppWatchdog = setTimeout(function () {
    Used by host.js (TV) and controller.js (phone). Classic script, no
    modules, so the game also runs from file:// (USB stick, offline).
 
-   Build broadcast-1.3.0: the game is now BROADCAST table tennis —
+   Build relay-1.3.1: the game is BROADCAST table tennis —
    the TV camera sits behind the near end of a 3D table. World space:
      x  across the table   (-1 .. +1 is the table surface)
      z  along the table    (-1 = near end / side 0, +1 = far end / side 1)
@@ -556,6 +571,39 @@ window.__ppWatchdog = setTimeout(function () {
     return { debug: 0 }; // PeerJS cloud defaults
   };
 
+  /* Integer URL param with a default (test hooks use these to shorten
+     the transport waits; production uses the defaults). */
+  PP.paramInt = function (name, dflt) {
+    var q = queryParams();
+    var v = parseInt(q.get(name), 10);
+    return isNaN(v) ? dflt : v;
+  };
+
+  /* Relay transport (relay.js): when a host browser can signal over
+     WebRTC but never completes a data connection (the Samsung Tizen
+     TV browser, proven 2026-11-14), the same wire protocol rides an
+     MQTT-over-secure-WebSocket relay through a public broker instead.
+     EMQX's public broker was chosen by a live two-client test from
+     the build sandbox (pub/sub + retained both verified 2026-11-14);
+     test.mosquitto.org was unreachable from there. Topics live under
+     an app-specific prefix, one subtree per room code.
+     Enable rules: ?relay=off disables; ?relay=on forces on; with the
+     local test broker (?broker=local) the relay stays out unless
+     ?relay=on asks for it, so the local suites see no outside calls. */
+  PP.RELAY_URL = 'wss://broker.emqx.io:8084/mqtt';
+  PP.RELAY_PREFIX = 'mapp/v1/';
+  PP.relayEnabled = function () {
+    var q = queryParams();
+    if (q.get('relay') === 'off') return false;
+    if (q.get('relay') === 'on') return true;
+    if (q.get('broker') === 'local') return false;
+    return true;
+  };
+  PP.relayUrl = function () {
+    var q = queryParams();
+    return q.get('relayUrl') || PP.RELAY_URL;
+  };
+
   /* Player colours (preview palette from DESIGN.md + IEC gold). */
   PP.COLORS = [
     { id: 'gold',   hex: '#C9A227', name: 'Gold' },
@@ -573,16 +621,506 @@ window.__ppWatchdog = setTimeout(function () {
 
 </script>
 <script>
+/* relay.js — inlined by build-singlefile.py */
+/* Motion Arena — Ping Pong: RELAY transport (build relay-1.3.1).
+   A minimal MQTT 3.1.1 client over secure WebSocket, plus a
+   PeerJS-shaped peer (window.RelayPeer) that carries the EXACT game
+   wire protocol (join / welcome / pad / swing / ctrl / serve / state)
+   through a public MQTT broker when the direct WebRTC data path
+   cannot complete — the Samsung Tizen TV browser signals fine over
+   WebRTC (green broker dot) but never finishes a data connection
+   (proven on the real TV, 2026-11-14), while its plain WebSocket
+   stack is the same one PeerJS signalling already uses successfully.
+
+   Broker: EMQX public broker, wss://broker.emqx.io:8084/mqtt —
+   chosen by a live two-client test (pub/sub + retained delivery)
+   from the build sandbox on 2026-11-14; test.mosquitto.org was
+   unreachable from there. QoS 0 throughout: the pad stream is
+   continuous and self-healing, and state re-broadcasts every second.
+
+   Topic scheme (app prefix + room code = per-room isolation):
+     <prefix><CODE>/up/<cid>    controller -> host messages (JSON)
+     <prefix><CODE>/down/<cid>  host -> that controller (JSON)
+     <prefix><CODE>/x/<cid>     controller presence: its MQTT Last
+                                Will lands here when it vanishes
+     <prefix><CODE>/alive       retained "host is here" flag, set by
+                                the host, cleared by its Last Will —
+                                how a controller knows the room exists
+                                before it joins (the relay equivalent
+                                of PeerJS's peer-unavailable check).
+
+   RelayPeer mirrors the slice of the PeerJS API the game uses:
+   host:    new RelayPeer(peerId) + on('open'|'connection'|
+            'disconnected'|'error'), reconnect(), destroy(), .id
+   phone:   new RelayPeer() + on('open'|'error'), connect(peerId)
+            -> conn with on('open'|'data'|'close'|'error'), .send(),
+            .close(), .open, .peer — exactly like a PeerJS conn, so
+            host.js setupConn() and controller.js drive it unchanged.
+   Classic ES5 script: parses on the oldest engines the TV runs. */
+(function (global) {
+  'use strict';
+  var S = global.PPShared;
+  if (!S) return;
+
+  /* ---------------- byte helpers ---------------- */
+  function utf8Encode(str) {
+    var s = unescape(encodeURIComponent(String(str)));
+    var out = new Uint8Array(s.length);
+    for (var i = 0; i < s.length; i++) out[i] = s.charCodeAt(i) & 0xff;
+    return out;
+  }
+  function utf8Decode(bytes) {
+    var s = '';
+    for (var i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+    try { return decodeURIComponent(escape(s)); } catch (e) { return s; }
+  }
+  function concatArrays(list) {
+    var n = 0, i;
+    for (i = 0; i < list.length; i++) n += list[i].length;
+    var out = new Uint8Array(n), off = 0;
+    for (i = 0; i < list.length; i++) { out.set(list[i], off); off += list[i].length; }
+    return out;
+  }
+  function bytesOf(arr) { return new Uint8Array(arr); }
+  function encNum(n) { return bytesOf([(n >> 8) & 0xff, n & 0xff]); }
+  function encStr(s) {
+    var b = utf8Encode(s);
+    return concatArrays([encNum(b.length), b]);
+  }
+  function encRL(n) {
+    var a = [];
+    do {
+      var d = n % 128;
+      n = Math.floor(n / 128);
+      if (n > 0) d |= 0x80;
+      a.push(d);
+    } while (n > 0);
+    return bytesOf(a);
+  }
+  function packet(header, payload) {
+    return concatArrays([bytesOf([header]), encRL(payload.length), payload]);
+  }
+
+  /* ---------------- minimal MQTT client ---------------- */
+  function MqttClient(url, opts) {
+    this.url = url;
+    this.clientId = opts.clientId;
+    this.will = opts.will || null;          // {topic, payload, retain}
+    this.keepAlive = opts.keepAlive || 30;  // seconds
+    this.onConnect = null;                  // fn()
+    this.onMessage = null;                  // fn(topic, payloadString)
+    this.onClose = null;                    // fn()
+    this.onError = null;                    // fn()
+    this.connected = false;
+    this._ws = null;
+    this._buf = new Uint8Array(0);
+    this._pktId = 0;
+    this._pingTimer = null;
+    this._dead = false;
+  }
+  MqttClient.prototype.connect = function () {
+    var self = this;
+    if (this._ws) { try { this._ws.close(); } catch (e) {} this._ws = null; }
+    this._dead = false;
+    this._buf = new Uint8Array(0);
+    var ws;
+    try {
+      ws = new global.WebSocket(this.url, 'mqtt');
+    } catch (e) {
+      if (this.onError) this.onError(e);
+      if (this.onClose) this.onClose();
+      return;
+    }
+    this._ws = ws;
+    ws.binaryType = 'arraybuffer';
+    ws.onopen = function () {
+      var flags = 0x02; // clean session
+      var payload = [encStr(self.clientId)];
+      if (self.will) {
+        flags |= 0x04 | (self.will.retain ? 0x20 : 0);
+        payload.push(encStr(self.will.topic));
+        payload.push(encStr(self.will.payload || ''));
+      }
+      var vh = concatArrays([encStr('MQTT'), bytesOf(
+        [4, flags, (self.keepAlive >> 8) & 0xff, self.keepAlive & 0xff])]);
+      try { ws.send(packet(0x10, concatArrays([vh].concat(payload)))); } catch (e) {}
+    };
+    ws.onmessage = function (ev) {
+      var data = new Uint8Array(ev.data);
+      self._buf = concatArrays([self._buf, data]);
+      self._drain();
+    };
+    ws.onerror = function () { if (self.onError) self.onError(new Error('websocket')); };
+    ws.onclose = function () {
+      var was = self.connected;
+      self.connected = false;
+      self._stopPing();
+      self._ws = null;
+      if (!self._dead && self.onClose) self.onClose(was);
+    };
+  };
+  MqttClient.prototype._drain = function () {
+    for (;;) {
+      if (this._buf.length < 2) return;
+      var mult = 1, len = 0, i = 1, b;
+      do {
+        if (i >= this._buf.length) return;
+        b = this._buf[i++];
+        len += (b & 0x7f) * mult;
+        mult *= 128;
+      } while (b & 0x80);
+      if (this._buf.length < i + len) return;
+      var header = this._buf[0];
+      var body = this._buf.subarray(i, i + len);
+      this._buf = this._buf.subarray(i + len);
+      this._handle(header >> 4, header & 0x0f, body);
+    }
+  };
+  MqttClient.prototype._handle = function (type, flags, body) {
+    if (type === 2) { // CONNACK
+      var rc = body.length >= 2 ? body[1] : 5;
+      if (rc === 0) {
+        this.connected = true;
+        this._startPing();
+        if (this.onConnect) this.onConnect();
+      } else {
+        if (this.onError) this.onError(new Error('connack ' + rc));
+        try { this._ws.close(); } catch (e) {}
+      }
+    } else if (type === 3) { // PUBLISH
+      var qos = (flags >> 1) & 0x03;
+      if (body.length < 2) return;
+      var tl = (body[0] << 8) | body[1];
+      var topic = utf8Decode(body.subarray(2, 2 + tl));
+      var off = 2 + tl + (qos > 0 ? 2 : 0);
+      var payload = utf8Decode(body.subarray(off));
+      if (this.onMessage) this.onMessage(topic, payload);
+    }
+    // SUBACK / PINGRESP / others: nothing the transport needs.
+  };
+  MqttClient.prototype._startPing = function () {
+    var self = this;
+    this._stopPing();
+    var ms = Math.max(5000, (this.keepAlive * 750) | 0);
+    this._pingTimer = setInterval(function () {
+      if (self.connected && self._ws) {
+        try { self._ws.send(packet(0xc0, new Uint8Array(0))); } catch (e) {}
+      }
+    }, ms);
+  };
+  MqttClient.prototype._stopPing = function () {
+    if (this._pingTimer) { clearInterval(this._pingTimer); this._pingTimer = null; }
+  };
+  MqttClient.prototype.publish = function (topic, payload, retain) {
+    if (!this.connected || !this._ws) return false;
+    var body = concatArrays([encStr(topic), utf8Encode(payload == null ? '' : String(payload))]);
+    try {
+      this._ws.send(packet(retain ? 0x31 : 0x30, body));
+      return true;
+    } catch (e) { return false; }
+  };
+  MqttClient.prototype.subscribe = function (topics) {
+    if (!this.connected || !this._ws) return;
+    var parts = [encNum(++this._pktId & 0xffff || 1)];
+    for (var i = 0; i < topics.length; i++) {
+      parts.push(encStr(topics[i]));
+      parts.push(bytesOf([0])); // QoS 0
+    }
+    try { this._ws.send(packet(0x82, concatArrays(parts))); } catch (e) {}
+  };
+  MqttClient.prototype.disconnect = function () {
+    this._dead = true;
+    this._stopPing();
+    if (this._ws) {
+      try { if (this.connected) this._ws.send(packet(0xe0, new Uint8Array(0))); } catch (e) {}
+      try { this._ws.close(); } catch (e) {}
+      this._ws = null;
+    }
+    this.connected = false;
+  };
+
+  /* ---------------- topics ---------------- */
+  function topicBase(code) { return S.RELAY_PREFIX + String(code).toUpperCase() + '/'; }
+  function codeFromPeerId(id) {
+    var s = String(id || '');
+    if (s.indexOf(S.PEER_PREFIX) === 0) s = s.substring(S.PEER_PREFIX.length);
+    return s.toUpperCase();
+  }
+  function randomId(prefix) {
+    return prefix + Math.random().toString(36).slice(2, 10);
+  }
+
+  /* ---------------- connection (PeerJS conn shape) ---------------- */
+  function RelayConn(peer, remoteLabel) {
+    this.peer = remoteLabel;      // PeerJS exposes the remote id here
+    this.transport = 'relay';
+    this.open = false;
+    this._peer = peer;
+    this._h = {};
+    this._closed = false;
+  }
+  RelayConn.prototype.on = function (ev, fn) { this._h[ev] = fn; };
+  RelayConn.prototype._emit = function (ev, arg) {
+    if (this._h[ev]) { try { this._h[ev](arg); } catch (e) {} }
+  };
+  RelayConn.prototype.send = function (msg) {
+    if (this._closed) return false;
+    return this._peer._sendTo(this, msg);
+  };
+  RelayConn.prototype.close = function () {
+    if (this._closed) return;
+    this._closed = true;
+    this.open = false;
+    this._peer._connClosed(this, false);
+  };
+  RelayConn.prototype._forceClose = function () {
+    if (this._closed) return;
+    this._closed = true;
+    this.open = false;
+    this._emit('close');
+  };
+
+  /* ---------------- peer (PeerJS shape) ---------------- */
+  function RelayPeer(id, opts) {
+    this._h = {};
+    this.destroyed = false;
+    this.transport = 'relay';
+    this._opts = opts || {};
+    this._conns = {};        // host role: cid -> RelayConn
+    this._conn = null;       // client role: the single conn
+    this._mqtt = null;
+    this._wasOpen = false;
+    this._connectWanted = false;
+    if (id) {
+      this.id = String(id);
+      this._role = 'host';
+      this._code = codeFromPeerId(id);
+      this._clientId = 'mapp-h-' + this._code + '-' + randomId('');
+    } else {
+      this._role = 'client';
+      this._cid = randomId('c');
+      this.id = this._cid;
+      // The room code may be given up front (opts.roomCode) so the
+      // client's Last Will can name its presence topic in the very
+      // first CONNECT packet.
+      this._code = (opts && opts.roomCode) ? String(opts.roomCode).toUpperCase() : '';
+    }
+    this._openMqtt();
+  }
+  RelayPeer.prototype.on = function (ev, fn) {
+    (this._h[ev] = this._h[ev] || []).push(fn);
+  };
+  RelayPeer.prototype._emit = function (ev, arg) {
+    var list = this._h[ev] || [];
+    for (var i = 0; i < list.length; i++) { try { list[i](arg); } catch (e) {} }
+  };
+  RelayPeer.prototype._topics = function () {
+    var base = topicBase(this._code);
+    return {
+      up: base + 'up/',         // + cid
+      down: base + 'down/',     // + cid
+      bye: base + 'x/',         // + cid
+      alive: base + 'alive'
+    };
+  };
+  RelayPeer.prototype._openMqtt = function () {
+    var self = this;
+    var will = null;
+    if (this._role === 'host') {
+      // If the host dies without a goodbye, the broker clears its
+      // retained alive flag — controllers then see the room is gone.
+      will = { topic: this._topics().alive, payload: '', retain: true };
+    } else if (this._cid && this._code) {
+      // If the phone vanishes (tab killed, battery, tunnel), the
+      // broker posts its goodbye so the host frees the slot at once.
+      will = { topic: this._topics().bye + this._cid, payload: 'bye', retain: false };
+    }
+    var mqtt = new MqttClient(S.relayUrl(), {
+      clientId: this._clientId || ('mapp-' + this._cid),
+      will: will,
+      keepAlive: 30
+    });
+    this._mqtt = mqtt;
+    mqtt.onConnect = function () { self._onMqttConnect(); };
+    mqtt.onMessage = function (topic, payload) { self._onMqttMessage(topic, payload); };
+    mqtt.onClose = function () { self._onMqttClose(); };
+    mqtt.onError = function () {
+      if (!self._wasOpen && !self.destroyed) {
+        self._emit('error', { type: 'network', message: 'relay broker unreachable' });
+      }
+    };
+    mqtt.connect();
+  };
+  RelayPeer.prototype._onMqttConnect = function () {
+    var t = this._topics();
+    if (this._role === 'host') {
+      this._mqtt.subscribe([t.up + '+', t.bye + '+']);
+      this._mqtt.publish(t.alive, '1', true);
+      this._wasOpen = true;
+      this._emit('open', this.id);
+    } else {
+      this._wasOpen = true;
+      this._emit('open', this.id);
+      if (this._connectWanted && !this._conn) this._startConn();
+      else if (this._conn && !this._conn._closed) this._subscribeConn();
+    }
+  };
+  RelayPeer.prototype._onMqttClose = function () {
+    if (this.destroyed) return;
+    if (this._role === 'host') {
+      // PeerJS parity: host treats a broker drop as 'disconnected'
+      // and the game calls reconnect().
+      var cids = Object.keys(this._conns);
+      for (var i = 0; i < cids.length; i++) this._conns[cids[i]].open = false;
+      this._emit('disconnected');
+    } else if (this._conn && this._conn.open) {
+      this._conn.open = false;
+      this._conn._emit('close');
+    }
+  };
+  RelayPeer.prototype.reconnect = function () {
+    if (this.destroyed) return;
+    if (this._mqtt && !this._mqtt.connected) this._mqtt.connect();
+  };
+  RelayPeer.prototype.destroy = function () {
+    if (this.destroyed) return;
+    this.destroyed = true;
+    if (this._role === 'host') {
+      var cids = Object.keys(this._conns);
+      for (var i = 0; i < cids.length; i++) this._conns[cids[i]]._forceClose();
+      if (this._mqtt && this._mqtt.connected) {
+        this._mqtt.publish(this._topics().alive, '', true); // clear retained
+      }
+    } else if (this._conn && !this._conn._closed) {
+      this._connClosed(this._conn, true);
+    }
+    if (this._mqtt) this._mqtt.disconnect();
+  };
+
+  /* -------- host role -------- */
+  RelayPeer.prototype._onHostMessage = function (topic, payload) {
+    var t = this._topics();
+    if (topic.indexOf(t.bye) === 0) {
+      var bcid = topic.substring(t.bye.length);
+      var bc = this._conns[bcid];
+      if (bc) { delete this._conns[bcid]; bc._forceClose(); }
+      return;
+    }
+    if (topic.indexOf(t.up) !== 0) return;
+    var cid = topic.substring(t.up.length);
+    var conn = this._conns[cid];
+    if (!conn) {
+      conn = new RelayConn(this, cid);
+      conn.open = true;
+      conn._cid = cid;
+      this._conns[cid] = conn;
+      this._emit('connection', conn);
+    }
+    var msg;
+    try { msg = JSON.parse(payload); } catch (e) { return; }
+    conn._emit('data', msg);
+  };
+  RelayPeer.prototype._sendToHostConn = function (conn, msg) {
+    if (!this._mqtt) return false;
+    return this._mqtt.publish(this._topics().down + conn._cid, JSON.stringify(msg), false);
+  };
+
+  /* -------- client role -------- */
+  RelayPeer.prototype.connect = function (targetId, opts) {
+    this._code = codeFromPeerId(targetId);
+    var conn = new RelayConn(this, String(targetId));
+    conn._cid = this._cid;
+    this._conn = conn;
+    this._connectWanted = true;
+    // Arm this client's Last Will now that the room is known, so a
+    // vanished phone frees its slot on the host immediately.
+    if (this._mqtt) {
+      this._mqtt.will = { topic: this._topics().bye + this._cid, payload: 'bye', retain: false };
+    }
+    if (this._mqtt && this._mqtt.connected) this._startConn();
+    return conn;
+  };
+  RelayPeer.prototype._startConn = function () { this._subscribeConn(); };
+  RelayPeer.prototype._subscribeConn = function () {
+    var t = this._topics();
+    this._mqtt.subscribe([t.down + this._cid, t.alive]);
+    var self = this;
+    clearTimeout(this._aliveTimer);
+    this._aliveTimer = setTimeout(function () {
+      if (self._conn && !self._conn.open && !self._conn._closed && !self.destroyed) {
+        // No retained alive flag: nobody is hosting this room on the
+        // relay — the PeerJS 'peer-unavailable' situation.
+        self._emit('error', { type: 'peer-unavailable', message: 'relay room not found' });
+      }
+    }, 4000);
+  };
+  RelayPeer.prototype._onClientMessage = function (topic, payload) {
+    var t = this._topics();
+    var conn = this._conn;
+    if (!conn) return;
+    if (topic === t.alive) {
+      if (payload) {
+        if (!conn.open && !conn._closed) {
+          conn.open = true;
+          clearTimeout(this._aliveTimer);
+          conn._emit('open');
+        }
+      } else if (conn.open) {
+        conn.open = false;
+        conn._emit('close');
+      }
+      return;
+    }
+    if (topic === t.down + this._cid && conn.open) {
+      var msg;
+      try { msg = JSON.parse(payload); } catch (e) { return; }
+      conn._emit('data', msg);
+    }
+  };
+  RelayPeer.prototype._onMqttMessage = function (topic, payload) {
+    if (this._role === 'host') this._onHostMessage(topic, payload);
+    else this._onClientMessage(topic, payload);
+  };
+  RelayPeer.prototype._sendTo = function (conn, msg) {
+    if (!this._mqtt || conn._closed) return false;
+    if (this._role === 'host') return this._sendToHostConn(conn, msg);
+    return this._mqtt.publish(this._topics().up + this._cid, JSON.stringify(msg), false);
+  };
+  RelayPeer.prototype._connClosed = function (conn, silent) {
+    if (this._role === 'client') {
+      // Say goodbye on the room's presence topic so the host frees
+      // (reserves) the slot right away, like a data-channel close.
+      if (this._mqtt && this._mqtt.connected && this._code) {
+        this._mqtt.publish(this._topics().bye + this._cid, 'bye', false);
+      }
+      if (!silent) conn._emit('close');
+    }
+  };
+
+  global.RelayPeer = RelayPeer;
+  global.PPMqtt = MqttClient; // exposed for the relay audit harness
+})(window);
+
+</script>
+<script>
 /* controller.js — inlined by build-singlefile.py */
-/* Motion Arena — Ping Pong: phone controller (broadcast build 1.3.0).
-   Joins the TV host by room code (PeerJS cloud). Two control modes:
-   SWING MODE — tilt (deviceorientation gamma) moves the bat, a
-   physical swing (devicemotion resultant-acceleration peak, DESIGN.md
-   threshold ~22 m/s² at 1.0×, 300 ms refractory) strikes the ball and
-   is graded by the host; TOUCH MODE — horizontal drag moves the bat,
-   the host auto-contacts (always available, and the automatic
-   fallback when no motion sensor answers within 1.5 s). Streams bat
-   position at 15 Hz; swing/serve travel as immediate events.
+/* Motion Arena — Ping Pong: phone controller (relay build 1.3.1).
+   Joins the TV host by room code over TWO transports carrying the
+   same protocol: WebRTC (PeerJS cloud) first with a bounded ~6 s
+   wait, then a relay fallback (MQTT over secure WebSocket, relay.js)
+   for hosts whose browser never completes a WebRTC data connection
+   (the Samsung TV case). Two control modes: SWING MODE — tilt
+   (deviceorientation gamma, low-pass filtered, ±1.5° dead-zone,
+   ±24° span) moves the bat, a physical swing (devicemotion peak)
+   strikes the ball; TOUCH MODE — horizontal drag moves the bat and
+   the host auto-contacts (automatic fallback when no motion sensor
+   answers within 1.5 s). Bat position streams at ~30 Hz while it is
+   changing. Swings are TIMESTAMPED: the phone measures its clock
+   offset against the host at join (ping/pong, median of samples)
+   and stamps each swing with its true host-time moment, so the
+   host's grade windows judge the swing itself, not the transit.
+   Tilt centre is a deliberate capture (average over ~0.5 s after
+   the "Set upright centre" tap) — never a silent first sample.
    Reconnect reclaims the same player slot by token (the host holds
    it ~60 s) — no reload, no side steal. */
 (function () {
@@ -591,6 +1129,7 @@ window.__ppWatchdog = setTimeout(function () {
   var $ = function (id) { return document.getElementById(id); };
 
   var chosenColor = S.COLORS[0].hex;
+  var chosenGender = 'male';
   var token = '';
   try { token = window.localStorage.getItem('pp-token') || ''; } catch (e) {}
   if (!token) {
@@ -604,7 +1143,24 @@ window.__ppWatchdog = setTimeout(function () {
     if (savedColor) chosenColor = savedColor;
     var savedCode = window.localStorage.getItem('pp-code');
     if (savedCode) $('codeInput').value = savedCode;
+    var savedGender = window.localStorage.getItem('pp-gender');
+    if (savedGender === 'male' || savedGender === 'female') chosenGender = savedGender;
   } catch (e) {}
+
+  /* avatar variant choice (Male / Female), next to name + colour */
+  function refreshGenderPick() {
+    var gm = $('btnGenderMale'), gf = $('btnGenderFemale');
+    if (gm) gm.classList.toggle('sel', chosenGender === 'male');
+    if (gf) gf.classList.toggle('sel', chosenGender === 'female');
+  }
+  function pickGender(g) {
+    chosenGender = g;
+    try { window.localStorage.setItem('pp-gender', g); } catch (e) {}
+    refreshGenderPick();
+  }
+  if ($('btnGenderMale')) $('btnGenderMale').addEventListener('click', function () { pickGender('male'); });
+  if ($('btnGenderFemale')) $('btnGenderFemale').addEventListener('click', function () { pickGender('female'); });
+  refreshGenderPick();
 
   /* colour swatches */
   var sw = $('swatches');
@@ -624,13 +1180,18 @@ window.__ppWatchdog = setTimeout(function () {
     sw.appendChild(b);
   });
 
-  var peer = null, conn = null, joined = false;
+  var peer = null, relayPeerObj = null, conn = null, joined = false;
+  var transport = '';                    // 'webrtc' | 'relay' once a link is live
+  var linkStage = '';                    // 'rtc' | 'relay' while connecting
+  var stageTimer = null;
   var player = -1;                       // 0 or 1 (identity, follows ends switches)
   var myName = 'Player', myColor = chosenColor;
   var controlMode = 'touch';             // 'touch' | 'swing'
   var pos01 = 0.5, lastSent = -1;
   var sens = 1.0;
   var gammaCenter = null, lastGamma = null, sensorSeenAt = 0, sensorsLive = false;
+  var tiltSmooth = null, calibrated = false, calCapture = null;
+  var clockOffset = null, pingT0 = {}, syncSamples = [];
   var motionPeak = 0, lastSwingAt = 0, lastPower = 0;
   var lastCode = '', lastGradeKey = '';
   var connectDeadline = null, reconnectTimer = null, reconnectTries = 0;
@@ -643,8 +1204,37 @@ window.__ppWatchdog = setTimeout(function () {
   }
   function fail(msg) {
     clearTimeout(connectDeadline);
+    clearTimeout(stageTimer);
     $('errMsg').textContent = msg;
     show('errPanel');
+  }
+
+  /* ---------------- clock sync (swing timing honesty) ----------
+     A few ping/pong exchanges against the host; each pong carries
+     the host's wall-clock stamp, and the offset sample assumes the
+     stamp sits at the round-trip midpoint. The MEDIAN sample is
+     the offset (host − phone). Swings are then stamped in host
+     time at detection, so the host grades the swing's true moment
+     against the ball's plane crossing — detection lag and transit
+     no longer eat the PERFECT window. */
+  function startClockSync() {
+    syncSamples = [];
+    pingT0 = {};
+    var i = 0;
+    var step = function () {
+      if (!joined || i >= 5) {
+        if (syncSamples.length) {
+          var sorted = syncSamples.slice().sort(function (a, b) { return a - b; });
+          clockOffset = sorted[Math.floor(sorted.length / 2)];
+        }
+        return;
+      }
+      var id = i++;
+      pingT0[id] = Date.now();
+      send({ t: 'ping', id: id, t0: pingT0[id] });
+      setTimeout(step, 120);
+    };
+    step();
   }
   function joinMsg(txt, isErr) {
     var m = $('joinMsg');
@@ -657,7 +1247,13 @@ window.__ppWatchdog = setTimeout(function () {
     return false;
   }
 
-  /* ---------------- connection ---------------- */
+  /* ---------------- connection: WebRTC first, relay fallback ----
+     Phase 1 tries the direct WebRTC link for a bounded wait
+     (?rtcWait, default 6 s; 3.5 s on reconnect). Any failure —
+     timeout, broker error, a room the cloud cannot see — moves to
+     phase 2, the relay, under the same protocol. A room missing on
+     BOTH clouds is the "not found" error; a room that never answers
+     on either is the "could not reach in time" error. */
   function join() {
     var code = $('codeInput').value.trim().toUpperCase();
     if (code.length !== 4) { joinMsg('Enter the 4-letter room code from the TV.', true); return; }
@@ -674,47 +1270,109 @@ window.__ppWatchdog = setTimeout(function () {
   }
   function openConnection(code, isReconnect) {
     joinMsg(isReconnect ? 'Reconnecting…' : 'Connecting…');
-    if (typeof window.Peer === 'undefined') {
-      fail('The controller library could not load, so phone play is unavailable. You can still play on the TV screen.');
-      return;
-    }
+    connectingReconnect = !!isReconnect;
     teardown(false);
+    transport = '';
+    startWebRTC(code, isReconnect);
+  }
+  function armStage(ms, fn) {
+    clearTimeout(stageTimer);
+    stageTimer = setTimeout(function () { stageTimer = null; fn(); }, ms);
+  }
+  var connectingReconnect = false;
+  function failConnect(kind, code, detail) {
+    clearTimeout(stageTimer);
+    if (connectingReconnect && reconnectTries < 6) { scheduleReconnect(); return; }
+    if (kind === 'notfound') {
+      fail('Room "' + code + '" was not found. Check the code on the TV — the TV must be on the Ping Pong screen.');
+    } else if (kind === 'lib') {
+      fail('The controller library could not load, so phone play is unavailable. You can still play on the TV screen.');
+    } else if (kind === 'problem') {
+      fail('Connection problem (' + (detail || 'unknown') + '). Phone play needs internet — check Wi-Fi or mobile data, then try again.');
+    } else {
+      fail('Could not reach the room in time. Phone play needs an internet connection (the phone and TV meet through a cloud link). Check your connection and the room code, then try again.');
+    }
+    teardown(true);
+  }
+  function wireConn(c, code, isReconnect) {
+    conn = c;
+    c.on('open', function () {
+      clearTimeout(stageTimer);
+      transport = c.transport || (linkStage === 'relay' ? 'relay' : 'webrtc');
+      c.send({ t: 'join', name: myName, color: myColor, token: token, mode: controlMode, gender: chosenGender });
+    });
+    c.on('data', onHostData);
+    c.on('close', function () { onConnLost(); });
+    c.on('error', function (err) {
+      if (joined) return;
+      if (err && err.type === 'peer-unavailable') {
+        if (linkStage === 'relay') failConnect('notfound', code);
+        else startRelay(code, isReconnect);
+      }
+      /* anything else surfaces via the stage timeout / close */
+    });
+  }
+  function startWebRTC(code, isReconnect) {
+    linkStage = 'rtc';
+    if (typeof window.Peer === 'undefined') { startRelay(code, isReconnect); return; }
     var myPeer;
     try {
       myPeer = new window.Peer(undefined, S.brokerOptions());
     } catch (e) {
-      fail('Could not start the connection. Phone play needs internet — check Wi-Fi or mobile data, then try again.');
+      startRelay(code, isReconnect);
       return;
     }
     peer = myPeer;
-    clearTimeout(connectDeadline);
-    connectDeadline = setTimeout(function () {
-      if (!joined) {
-        if (isReconnect && reconnectTries < 6) { scheduleReconnect(); return; }
-        fail('Could not reach the room in time. Phone play needs an internet connection (the phone and TV meet through the PeerJS cloud). Check your connection and the room code, then try again.');
-        teardown(true);
-      }
-    }, 12000);
+    var wait = isReconnect ? Math.min(3500, S.paramInt('rtcWait', 6000)) : S.paramInt('rtcWait', 6000);
+    armStage(wait, function () { startRelay(code, isReconnect); });
     myPeer.on('open', function () {
+      if (peer !== myPeer) return;
       var c = myPeer.connect(S.peerIdFor(code), { reliable: true });
-      conn = c;
-      c.on('open', function () {
-        c.send({ t: 'join', name: myName, color: myColor, token: token, mode: controlMode });
-      });
-      c.on('data', onHostData);
-      c.on('close', function () { onConnLost(); });
-      c.on('error', function () { /* surfaced via timeout / close */ });
+      wireConn(c, code, isReconnect);
     });
     myPeer.on('error', function (err) {
+      if (peer !== myPeer || joined) return;
+      /* the direct cloud cannot see / reach this room — the relay
+         gets its chance (it has its own presence check) */
+      startRelay(code, isReconnect);
+    });
+  }
+  function startRelay(code, isReconnect) {
+    if (linkStage === 'relay' && relayPeerObj) return;
+    linkStage = 'relay';
+    clearTimeout(stageTimer);
+    try { if (conn) conn.close(); } catch (e) {}
+    try { if (peer) peer.destroy(); } catch (e) {}
+    conn = null; peer = null;
+    if (!S.relayEnabled()) {
+      /* relay deliberately disabled (test config): the direct
+         path was the only route, and it did not complete */
+      failConnect('timeout', code);
+      return;
+    }
+    if (typeof window.RelayPeer === 'undefined') {
+      failConnect('lib', code);
+      return;
+    }
+    var rp;
+    try {
+      rp = new window.RelayPeer(undefined, { roomCode: code });
+    } catch (e) {
+      failConnect('problem', code, 'relay-start');
+      return;
+    }
+    relayPeerObj = rp;
+    armStage(S.paramInt('relayWait', 15000), function () { failConnect('timeout', code); });
+    rp.on('open', function () {
+      if (relayPeerObj !== rp) return;
+      var c = rp.connect(S.peerIdFor(code));
+      wireConn(c, code, isReconnect);
+    });
+    rp.on('error', function (err) {
+      if (relayPeerObj !== rp || joined) return;
       var type = err && err.type ? err.type : '';
-      if (joined) return;
-      if (isReconnect && reconnectTries < 6) { scheduleReconnect(); return; }
-      if (type === 'peer-unavailable') {
-        fail('Room "' + code + '" was not found. Check the code on the TV — the TV must be on the Ping Pong screen.');
-      } else {
-        fail('Connection problem (' + (type || 'unknown') + '). Phone play needs internet — check Wi-Fi or mobile data, then try again.');
-      }
-      teardown(true);
+      if (type === 'peer-unavailable') failConnect('notfound', code);
+      else failConnect('problem', code, type || 'relay');
     });
   }
   function scheduleReconnect() {
@@ -734,11 +1392,14 @@ window.__ppWatchdog = setTimeout(function () {
   }
   function teardown(full) {
     clearTimeout(connectDeadline);
+    clearTimeout(stageTimer);
     if (full) clearTimeout(reconnectTimer);
     try { if (conn) conn.close(); } catch (e) {}
     try { if (peer) peer.destroy(); } catch (e) {}
-    conn = null; peer = null;
-    if (full) { player = -1; }
+    try { if (relayPeerObj) relayPeerObj.destroy(); } catch (e) {}
+    conn = null; peer = null; relayPeerObj = null;
+    linkStage = '';
+    if (full) { player = -1; transport = ''; }
   }
 
   /* ---------------- host state -> screen ---------------- */
@@ -748,13 +1409,23 @@ window.__ppWatchdog = setTimeout(function () {
       joined = true;
       reconnectTries = 0;
       clearTimeout(connectDeadline);
+      clearTimeout(stageTimer);
       clearTimeout(reconnectTimer);
       player = (data.player != null ? data.player : data.side);
+      if (data.transport) transport = data.transport;
       $('trackBat').style.background = myColor;
       show('padPanel');
       applyMode(controlMode, false);
       requestWake();
-      padStatus('Connected — you are P' + (player + 1) + '.');
+      startClockSync();
+      padStatus('Connected — you are P' + (player + 1) +
+        (transport === 'relay' ? ' · via relay link' : ' · via direct link') + '.');
+    } else if (data.t === 'pong') {
+      var t1 = Date.now();
+      var pt0 = pingT0[data.id];
+      if (pt0 != null && typeof data.th === 'number') {
+        syncSamples.push(data.th - (pt0 + t1) / 2);
+      }
     } else if (data.t === 'full') {
       joined = true;
       clearTimeout(connectDeadline);
@@ -796,13 +1467,16 @@ window.__ppWatchdog = setTimeout(function () {
     }
   }
 
-  /* ---------------- 15 Hz bat stream (DESIGN.md) ---------------- */
+  /* ------------- bat stream: ~30 Hz while changing -------------
+     Send-on-change still applies (a still bat sends nothing), but
+     the tick is 33 ms so a moving bat streams at ~30 Hz; the host
+     interpolates/extrapolates between packets from the last two. */
   setInterval(function () {
     if (!joined || !conn || !conn.open || player < 0) return;
-    if (Math.abs(pos01 - lastSent) < 0.0015 && lastSent >= 0) return;
+    if (Math.abs(pos01 - lastSent) < 0.0012 && lastSent >= 0) return;
     lastSent = pos01;
     send({ t: 'pad', x: Math.round(pos01 * 1000) / 1000 });
-  }, 66);
+  }, 33);
   function setPos(v) {
     pos01 = S.clamp(v, 0, 1);
     $('trackBat').style.left = (pos01 * 100) + '%';
@@ -819,16 +1493,48 @@ window.__ppWatchdog = setTimeout(function () {
   track.addEventListener('mousedown', function (e) { trackMove(e.clientX); });
   track.addEventListener('mousemove', function (e) { if (e.buttons) trackMove(e.clientX); });
 
-  /* ---------------- swing mode ---------------- */
+  /* ---------------- swing mode ----------------
+     Tilt path: raw gamma → exponential low-pass (α 0.35) → minus
+     the deliberately captured centre → ±1.5° dead-zone → ±24°
+     span. Hand tremor is smoothed instead of amplified, and the
+     centre is an average over ~0.5 s after the player's tap —
+     never a silent first sample. */
+  function finishCalCapture() {
+    if (!calCapture) return;
+    var cap = calCapture;
+    calCapture = null;
+    if (cap.n > 0) {
+      gammaCenter = cap.sum / cap.n;
+      calibrated = true;
+      $('calReadout').textContent = 'Centre set at ' + Math.round(gammaCenter) +
+        '° (averaged over ' + cap.n + ' readings). Tilt to move; your swing is armed.';
+      padStatus('Centre set — swing armed. Tilt to move your bat.');
+    } else {
+      $('calReadout').textContent = 'No tilt readings arrived — hold the phone upright, move it slightly, then tap again.';
+    }
+  }
   function onOrient(e) {
     if (e.gamma === null || e.gamma === undefined) return;
     sensorSeenAt = performance.now();
     sensorsLive = true;
     lastGamma = e.gamma;
+    if (tiltSmooth === null) tiltSmooth = e.gamma;
+    else tiltSmooth += (e.gamma - tiltSmooth) * 0.35;
+    if (calCapture) {
+      calCapture.sum += e.gamma;
+      calCapture.n++;
+      if (performance.now() >= calCapture.until) finishCalCapture();
+      return;
+    }
     if (controlMode !== 'swing') return;
-    if (gammaCenter === null) gammaCenter = e.gamma;
-    setPos(0.5 + (e.gamma - gammaCenter) / 38);
-    $('calReadout').textContent = 'Tilt ' + Math.round(e.gamma - gammaCenter) + '° · bat ' +
+    if (gammaCenter === null) {
+      $('calReadout').textContent = 'Hold the phone upright and tap "Set upright centre" — your swing arms once the centre is set.';
+      return;
+    }
+    var d = tiltSmooth - gammaCenter;
+    if (Math.abs(d) < 1.5) d = 0;
+    setPos(0.5 + d / 48);
+    $('calReadout').textContent = 'Tilt ' + Math.round(d) + '° · bat ' +
       (pos01 < 0.4 ? 'left' : pos01 > 0.6 ? 'right' : 'centre') +
       (lastPower > 0 ? ' · last swing power ' + Math.round(lastPower * 100) + '%' : '');
   }
@@ -845,15 +1551,26 @@ window.__ppWatchdog = setTimeout(function () {
     if (motionPeak >= threshold && now - lastSwingAt > S.SWING_REFRACTORY_MS) {
       var power = S.clamp((motionPeak - 9.8) / 26, 0.15, 1);
       motionPeak = 0;
-      doSwing(power);
+      doSwing(power, true);
     }
     if (motionPeak > 0 && now - lastSwingAt > 700) motionPeak = Math.max(0, motionPeak - 3);
   }
-  function doSwing(power) {
+  function doSwing(power, viaSensor) {
+    /* physical swings stay disarmed until the player deliberately
+       sets the upright centre (manual/test taps are deliberate by
+       definition and always send) */
+    if (viaSensor && controlMode === 'swing' && !calibrated) {
+      lastSwingAt = performance.now();
+      padStatus('Swing not armed yet — hold the phone upright and tap "Set upright centre" first.');
+      return;
+    }
     lastSwingAt = performance.now();
     lastPower = power;
     if (navigator.vibrate) { try { navigator.vibrate(25); } catch (e) {} }
-    send({ t: 'swing', power: Math.round(power * 100) / 100 });
+    /* stamped at DETECTION in host time (measured offset applied):
+       the host grades this moment, not the message's arrival */
+    var tsHost = Date.now() + (clockOffset || 0);
+    send({ t: 'swing', power: Math.round(power * 100) / 100, ts: tsHost });
     $('calReadout').textContent = 'Swing sent — power ' + Math.round(power * 100) + '%. Watch the TV for your grade.';
   }
   function applyMode(m, notify) {
@@ -877,12 +1594,17 @@ window.__ppWatchdog = setTimeout(function () {
       window.addEventListener('deviceorientation', onOrient);
       window.addEventListener('devicemotion', onMotion);
       gammaCenter = null;
+      calibrated = false;
+      calCapture = null;
+      tiltSmooth = null;
       applyMode('swing', true);
       padStatus('Swing mode: checking your motion sensors…');
       setTimeout(function () {
         if (controlMode === 'swing' && !sensorsLive) {
           applyMode('touch', true);
           padStatus('No motion sensor answered — Touch Mode instead (drag works). Tilt can be retried from SWING MODE.');
+        } else if (controlMode === 'swing' && !calibrated) {
+          padStatus('Swing mode on — hold the phone upright and tap "Set upright centre" to arm your swing.');
         }
       }, 1500);
     };
@@ -924,10 +1646,15 @@ window.__ppWatchdog = setTimeout(function () {
     $('sensVal').textContent = sens.toFixed(1) + '×';
   });
   $('btnCalibrate').addEventListener('click', function () {
-    gammaCenter = lastGamma;
-    $('calReadout').textContent = lastGamma === null
-      ? 'No tilt reading yet — hold the phone upright and move it slightly, then tap again.'
-      : 'Centre set at ' + Math.round(lastGamma) + '°. Tilt left/right from here; swing once to test.';
+    if (lastGamma === null) {
+      $('calReadout').textContent = 'No tilt reading yet — hold the phone upright and move it slightly, then tap again.';
+      return;
+    }
+    /* deliberate capture: average the tilt over the next ~0.5 s
+       while the player holds the phone still and upright */
+    calCapture = { sum: 0, n: 0, until: performance.now() + 500 };
+    $('calReadout').textContent = 'Hold the phone upright and still — capturing your centre…';
+    setTimeout(finishCalCapture, 650);
   });
   $('serveBtn').addEventListener('click', function () { send({ t: 'serve' }); });
   $('btnJoin').addEventListener('click', join);
@@ -950,26 +1677,35 @@ window.__ppWatchdog = setTimeout(function () {
 
   /* debug / test hooks (used by the check scripts) */
   window.PPC = {
-    version: '1.3.0',
+    version: '1.3.1',
     getState: function () {
       return { joined: joined, player: player, side: player, pos01: pos01,
                targetY: pos01, mode: controlMode, sens: sens,
                sensorsLive: sensorsLive, lastPower: lastPower,
                reconnectTries: reconnectTries,
+               transport: transport, gender: chosenGender,
+               clockOffset: clockOffset, calibrated: calibrated,
+               gammaCenter: gammaCenter, tiltSmooth: tiltSmooth,
                panel: !$('padPanel').classList.contains('hidden') ? 'pad'
                     : !$('joinPanel').classList.contains('hidden') ? 'join' : 'err',
                phaseLine: $('phaseLine').textContent,
                youLine: $('youLine').textContent,
+               statusLine: $('padStatus').textContent,
                serveVisible: !$('serveBtn').classList.contains('hidden') };
     },
     join: join,
     setPos: function (v) { setPos(v); },
     setTarget: function (v) { setPos(v); },
     setMode: function (m) { applyMode(m === 'swing' ? 'swing' : 'touch', false); },
-    swing: function (power) { doSwing(power == null ? 0.7 : power); },
+    swing: function (power) { doSwing(power == null ? 0.7 : power, false); },
     debugDrop: function () { onConnLost(); },
     peerId: function () { return peer ? peer.id : null; },
-    injectData: function (msg) { onHostData(msg); }
+    injectData: function (msg) { onHostData(msg); },
+    debugOrient: function (g) { onOrient({ gamma: g }); },
+    debugCalibrate: function () {
+      if (lastGamma !== null) { gammaCenter = tiltSmooth !== null ? tiltSmooth : lastGamma; calibrated = true; }
+    },
+    debugSetClockOffset: function (ms) { clockOffset = ms; }
   };
   if (typeof window.__ppBootDone === 'function') window.__ppBootDone();
 })();

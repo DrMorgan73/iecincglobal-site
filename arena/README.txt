@@ -2,13 +2,38 @@ MOTION ARENA — PING PONG
 An IEC, Inc. game. Broadcast table tennis: the TV watches the table
 from behind your end, with the other player standing at the far end.
 Official rules: game to 11, win by 2, match best of 5.
-Build broadcast-1.3.0 — the TV pages are SINGLE FILES:
+Build relay-1.3.1 — the TV pages are SINGLE FILES:
 everything the game needs (design + all code) is inside the one page
 itself, so there is nothing separate left for a TV browser to fail
 to load. The page also heals itself: if the TV is merely slow, it
 recovers on its own within 30 seconds, no reload needed. If you
 still see a red box after 30 seconds, note its words exactly (or
 photograph it) — it names the exact stage that failed.
+
+WHAT'S NEW IN 1.3.1
+  - TWO WAYS FOR PHONES TO REACH THE TV: the phone first tries the
+    direct link (WebRTC). If the TV's browser cannot complete that
+    kind of connection (Samsung TV browsers do exactly this — the
+    TV shows a healthy green light yet phones time out), the phone
+    and the TV automatically meet through a relay link instead.
+    Nothing to choose and nothing to set: watch the small print —
+    the TV's player chip and the phone's status line both say
+    DIRECT or RELAY. Both ends just need internet.
+  - PLAYER LOOK: every player is a Male or Female figure. Pick
+    yours on the phone's join form (next to name and colour), or
+    for the TV seats in the lobby (G = you, H = the Computer).
+  - LIVELIER PLAYERS AND CROWD: the far player now swings with a
+    real wind-up, strike and follow-through, leans and steps as it
+    tracks the ball, crouches to receive serve, and reacts to
+    points. The crowd ripples after rallies, stands in a wave on
+    game wins, and settles on faults and lets — with a generated
+    crowd swell if you turn the sound on (it stays off by itself).
+  - SHARPER CONTROLS: swings are timed on the phone and stamped
+    with their true moment (the phone and TV sync clocks when you
+    join), so connection delay no longer eats your PERFECT window;
+    tilt is smoothed with a small dead-zone over a wider range, so
+    hand tremor stops shaking the bat; and the bat on the TV now
+    predicts your stream instead of trailing it.
 
 THE RULES (official table tennis, as the game plays them)
   - Serve: the ball bounces first on the SERVER's half, then on the
@@ -44,20 +69,25 @@ its web address, in the TV's built-in Internet browser:
   Phone controller (needs internet):
   5. On your phone's browser, open:
      https://iecincglobal.com/arena/controller.html
-  6. Type the 4-letter room code shown on the TV and tap Join.
+  6. Type the 4-letter room code shown on the TV, your name, your
+     colour and your player (Male / Female), and tap Join.
   7. SWING MODE (the fun way): tap SWING MODE, allow motion access
      if the phone asks, hold the phone upright and tap
-     "Set upright centre". Tilt the phone left/right to move your
-     bat — and SWING the phone forward as the ball reaches you to
-     strike it. The TV grades your timing: PERFECT / GOOD / GRAZE.
+     "Set upright centre" — keep the phone still for half a second
+     while it learns your centre (your swing arms once it is set).
+     Tilt the phone left/right to move your bat — and SWING the
+     phone forward as the ball reaches you to strike it. The TV
+     grades your timing: PERFECT / GOOD / GRAZE.
      TOUCH MODE always works too: drag left/right on the track.
   8. Tap SERVE when the phone says it is your serve (or swing).
      If the connection drops, the phone rejoins by itself and the
      TV holds your player for a minute — no need to restart.
 
   Note: phone-controller play needs an internet connection on both
-  the TV and the phone (they meet through the PeerJS cloud).
-  Single-player on the TV works from the page alone.
+  the TV and the phone — they meet through a cloud link (direct
+  when the TV's browser allows it, relay when it does not; the
+  game picks by itself). Single-player on the TV works from the
+  page alone.
 
 ====================================================================
 SAMSUNG TV TEST — do this once at the real TV (about 5 minutes)
@@ -94,6 +124,10 @@ screen showed instead. Every step has its PASS line.
     PASS: the TV shows your phone's name as a player, tilting
     the phone moves your bat, and swinging strikes the ball with
     a grade (PERFECT / GOOD / GRAZE) flashing on the TV.
+    On this TV the phone will most likely join "via relay link"
+    (its status line says so, and the TV's player chip says
+    RELAY) — that is the expected path here, and joining may
+    take a few extra seconds while the relay takes over.
     If it fails: note the phone's message word for word — TV and
     phone browsers vary; this is the step we most need reported.
  7. Optional: a second phone joins with the same code.
@@ -141,8 +175,9 @@ CONTROLS SUMMARY
 TV / keyboard : LEFT/RIGHT (or UP/DOWN) move your bat — Enter
                 start/serve/restart — P pause — M menu — in the
                 lobby: 1/2/3 pick the game type, D difficulty,
-                N sound on/off. 2 Players: Player 1 A/D, Player 2
-                arrow keys.
+                N sound on/off, G your player's look (Male/Female),
+                H the Computer's look. 2 Players: Player 1 A/D,
+                Player 2 arrow keys.
 Mouse / touch : move over the table to move your bat, tap to serve.
 Phone         : SWING MODE — tilt to move, swing to strike (timing
                 is graded); TOUCH MODE — drag on the track, the TV
