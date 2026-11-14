@@ -6,8 +6,7 @@
 <title>Motion Arena — Ping Pong (TV Host)</title>
 <meta name="description" content="Motion Arena Ping Pong — the TV host screen. Play solo against the computer, share the screen, or join with a phone controller. An IEC, Inc. game.">
 <link rel="icon" href="data:,">
-<meta name="pp-build" content="tvfix-1.2.0-singlefile">
-<meta name="robots" content="noindex,nofollow">
+<meta name="pp-build" content="broadcast-1.3.0">
 <style>
 /* pingpong.css — inlined by build-singlefile.py (single-file build) */
 /* Motion Arena — Ping Pong. IEC navy #0B2447 / gold #C9A227.
@@ -71,7 +70,7 @@ footer {
 #hostApp { min-height: 100vh; display: flex; flex-direction: column; }
 .host-topbar {
   display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
-  padding: 14px 22px 4px;
+  padding: 8px 22px 0;
 }
 .host-title { font-size: 30px; font-size: clamp(20px, 2.6vw, 34px); font-weight: 800; letter-spacing: .06em; }
 .host-title .gold { color: #C9A227; color: var(--gold); }
@@ -94,10 +93,12 @@ footer {
   font-size: 18px; font-size: clamp(15px, 1.6vw, 20px); line-height: 1.45;
 }
 #netBanner .btn { margin-left: 12px; padding: 8px 16px; font-size: 15px; }
-.stage { flex: 1; display: flex; align-items: center; justify-content: center; padding: 10px 14px; position: relative; }
-/* tvfix: width fallbacks that old TV browsers understand (no min()),
-   aspect comes from the canvas width/height attributes + height:auto. */
-.canvas-wrap { position: relative; width: 100%; max-width: calc((100vh - 190px) * 1.7778); width: min(100%, calc((100vh - 190px) * 16 / 9)); }
+.stage { flex: 1; display: flex; align-items: center; justify-content: center; padding: 6px 8px; position: relative; }
+/* broadcast: the stage fills the TV — slim topbar/footer leave ~120px,
+   so the 16:9 court takes nearly the whole screen. Width fallbacks
+   that old TV browsers understand (no min()); aspect comes from the
+   canvas width/height attributes + height:auto. */
+.canvas-wrap { position: relative; width: 100%; max-width: calc((100vh - 120px) * 1.7778); width: min(100%, calc((100vh - 120px) * 16 / 9)); }
 canvas#game {
   width: 100%; height: auto; aspect-ratio: 16 / 9; display: block;
   background: #0a1c38; background: var(--navy-3); border-radius: 18px;
@@ -114,6 +115,8 @@ canvas#game {
 .panel h2 .gold { color: #C9A227; color: var(--gold); }
 .panel p { color: #b8c4d6; color: var(--muted); font-size: 19px; font-size: clamp(15px, 1.7vw, 21px); line-height: 1.5; max-width: 900px; }
 .panel .modes { display: flex; flex-direction: column; gap: 12px; align-items: center; width: 100%; }
+.panel .settings-row { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; align-items: center; }
+.panel .settings-row .btn { padding: 12px 20px; font-size: 17px; }
 #joinedList { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; min-height: 38px; }
 .player-chip { border-radius: 999px; padding: 8px 18px; font-weight: 800; font-size: 17px; color: #0a1c38; }
 .winner-name { color: #e0b93a; color: var(--gold-2); }
@@ -187,6 +190,34 @@ canvas#game {
 .ctl-row { display: flex; gap: 10px; margin-top: 12px; }
 .ctl-row .btn { flex: 1; }
 .status-line { text-align: center; color: #b8c4d6; color: var(--muted); font-size: 14px; margin-top: 12px; min-height: 20px; }
+/* broadcast controller: identity / phase / grade lines */
+#youLine { text-align: center; font-weight: 900; font-size: 19px; margin-bottom: 4px; }
+#phaseLine { text-align: center; font-weight: 700; font-size: 17px; color: #e0b93a; color: var(--gold-2); min-height: 24px; margin-bottom: 2px; }
+#gradeLine { text-align: center; font-weight: 900; font-size: 30px; min-height: 38px; letter-spacing: .04em; }
+.ctl-modes { display: flex; gap: 10px; margin: 8px 0 12px; }
+.ctl-modes .btn { flex: 1; padding: 14px 10px; font-size: 17px; }
+/* swing panel */
+#swingPanel { margin-bottom: 12px; }
+.sens-row { display: flex; align-items: center; gap: 12px; margin-top: 12px; font-weight: 700; font-size: 15px; }
+.sens-row input[type="range"] { flex: 1; accent-color: #C9A227; accent-color: var(--gold); height: 34px; }
+.sens-row #sensVal { min-width: 44px; text-align: right; color: #e0b93a; color: var(--gold-2); }
+/* horizontal bat track (replaces the vertical pad) */
+#track {
+  margin-top: 12px; height: 118px; border-radius: 18px; position: relative;
+  background: linear-gradient(180deg, #123a6b, #0a1c38);
+  background: linear-gradient(180deg, var(--navy-2), var(--navy-3));
+  border: 2px dashed rgba(255,255,255,.28);
+  touch-action: none; overflow: hidden;
+}
+#track .hint {
+  position: absolute; left: 0; right: 0; bottom: 8px; text-align: center; color: #b8c4d6; color: var(--muted);
+  font-size: 14px; pointer-events: none; padding: 0 12px;
+}
+#trackBat {
+  position: absolute; left: 50%; top: 42%; width: 26px; height: 78px; border-radius: 10px;
+  transform: translate(-50%, -50%); background: #C9A227; background: var(--gold);
+  box-shadow: 0 0 18px rgba(201,162,39,.7); pointer-events: none;
+}
 
 /* ---------- tvfix: boot diagnostics + old-browser fallbacks ---------- */
 /* Probe element: the boot watchdog reads its computed position to prove
@@ -208,15 +239,20 @@ canvas#game {
   .swatches .swatch { margin-right: 10px; }
   .ctl-row .btn { margin-right: 10px; }
   .ctl-row .btn:last-child { margin-right: 0; }
+  .panel .settings-row > * { margin: 0 6px 8px; }
+  .ctl-modes .btn { margin-right: 10px; }
+  .ctl-modes .btn:last-child { margin-right: 0; }
+  .sens-row > * { margin-right: 12px; }
+  .sens-row > *:last-child { margin-right: 0; }
 }
 
 </style>
 <script>
-/* Boot guard (build tvfix-1.2.0-singlefile): installed before any game file loads.
+/* Boot guard (build broadcast-1.3.0): installed before any game file loads.
    Traps errors and, if the game has not booted within 30 s, names the
    failed stage in big on-screen text — so a TV-browser failure says
    what it is instead of sitting on a white page. ES5 on purpose. */
-window.__PP_BUILD = 'tvfix-1.2.0-singlefile';
+window.__PP_BUILD = 'broadcast-1.3.0';
 window.__ppShowDiag = function (title, detail) {
   var tries = 0;
   var show = function () {
@@ -258,7 +294,7 @@ window.__ppBootDone = function () {
   if (l && l.parentNode) l.parentNode.removeChild(l);
 };
 
-/* Self-heal poll (build tvfix-1.2.0-singlefile): check every 500 ms
+/* Self-heal poll (build broadcast-1.3.0): check every 500 ms
    whether the game has booted (app global defined + styles applied).
    The moment it has, stand down - clear any diagnostic and the
    loading bar - so a merely slow TV recovers on its own, with no
@@ -337,15 +373,30 @@ window.__ppWatchdog = setTimeout(function () {
 
       <div class="panel" id="lobbyPanel">
         <h2>PING <span class="gold">PONG</span></h2>
-        <p id="lobbyText">First to 11, win by 2. On the TV remote or keyboard: <b>↑ ↓</b> move, <b>Enter</b> starts and serves.<br>
-        Phones: open the controller page on your phone and enter the room code above.</p>
+        <p id="lobbyText">Broadcast view — you play from behind your end of the table. Official rules: the serve bounces on the server's half first; a net-cord serve that lands in is a let; no volleying.<br>
+        Game to 11, win by 2 · match best of 5. TV remote / keyboard: <b>← →</b> move, <b>Enter</b> starts and serves.</p>
         <div id="joinedList"></div>
         <div class="modes">
           <button class="btn btn-gold btn-big" id="btnModeAI">▶&nbsp; 1 Player vs Computer&nbsp; <small>(Enter)</small></button>
           <button class="btn btn-outline btn-big" id="btnModeLocal">👥&nbsp; 2 Players — Same Screen&nbsp; <small>(2)</small></button>
           <button class="btn btn-outline btn-big" id="btnModePhone">📱&nbsp; Phone Controller Game&nbsp; <small>(3)</small></button>
         </div>
-        <p id="lobbyHint">W/S or ↑/↓ = left paddle · Arrow keys = right paddle in 2-player mode.</p>
+        <div class="settings-row">
+          <button class="btn btn-outline" id="btnDiff">🎚 Difficulty: <b>Normal</b>&nbsp; <small>(D)</small></button>
+          <span class="pill">🎯 First to 11 · win by 2 · best of 5</span>
+          <button class="btn btn-outline" id="btnSound">🔇 Sound: <b>Off</b>&nbsp; <small>(N)</small></button>
+        </div>
+        <p id="lobbyHint">Phones: open the controller page on your phone and enter the room code above — tilt to move, swing the phone to strike.</p>
+      </div>
+
+      <div class="panel hidden" id="pausePanel">
+        <h2>⏸ <span class="gold">PAUSED</span></h2>
+        <p>The match is frozen. Resume when you are ready.</p>
+        <div class="modes">
+          <button class="btn btn-gold btn-big" id="btnResume">▶&nbsp; Resume&nbsp; <small>(P)</small></button>
+          <button class="btn btn-outline btn-big" id="btnRestartGame">↻&nbsp; Restart Match</button>
+          <button class="btn btn-outline btn-big" id="btnPauseLobby">🏠&nbsp; Lobby</button>
+        </div>
       </div>
 
       <div class="panel hidden" id="overPanel">
@@ -360,7 +411,7 @@ window.__ppWatchdog = setTimeout(function () {
     </div>
   </div>
 
-  <footer>Motion Arena · Ping Pong — an IEC, Inc. game · ↑/↓ move · Enter start / serve / restart · M mid-game menu</footer>
+  <footer>Motion Arena · Ping Pong — an IEC, Inc. game · ←/→ move · Enter start / serve / restart · P pause · M menu</footer>
 </div>
 
 <script>
@@ -384,24 +435,63 @@ window.__ppWatchdog = setTimeout(function () {
 /* game.js — inlined by build-singlefile.py */
 /* Motion Arena — Ping Pong: shared constants + wire protocol.
    Used by host.js (TV) and controller.js (phone). Classic script, no
-   modules, so the game also runs from file:// (USB stick, offline). */
+   modules, so the game also runs from file:// (USB stick, offline).
+
+   Build broadcast-1.3.0: the game is now BROADCAST table tennis —
+   the TV camera sits behind the near end of a 3D table. World space:
+     x  across the table   (-1 .. +1 is the table surface)
+     z  along the table    (-1 = near end / side 0, +1 = far end / side 1)
+     h  height above the table surface (the ball arcs under gravity)
+   Side 0 plays the near end (bottom of the TV picture), side 1 the
+   far end (the avatar the TV draws standing at the far end). */
 (function (global) {
   'use strict';
 
   var PP = {};
 
-  /* Canvas / court geometry (internal resolution, per DESIGN.md). */
+  /* Canvas (internal resolution, per DESIGN.md). */
   PP.W = 1920;
   PP.H = 1080;
-  PP.COURT = { x: 110, y: 140, w: 1700, h: 800 };   // table surface
-  PP.PADDLE_W = 26;
-  PP.PADDLE_H = 170;
-  PP.PADDLE_X = [146, 1920 - 146 - 26];             // left, right paddle x
-  PP.BALL_R = 14;
 
-  /* Rules: first to 11, win by 2 (table-tennis scoring). */
+  /* Broadcast table-tennis world constants. */
+  PP.TABLE = {
+    halfW: 1.0,          // table half-width in world units (x)
+    halfL: 1.0,          // table half-length (z): ends at z = -1 / +1
+    netH: 0.17,          // net height above the surface
+    planeZ: 1.07,        // hitting plane just behind each end line
+    gravity: 3.4,        // world units / s^2 on the ball's arc
+    rest: 0.82,          // bounce restitution off the table
+    reach: 0.37,         // bat contact reach (world x units)
+    batMin: -1.18,       // bat travel limits (slightly past the edges)
+    batMax: 1.18,
+    batSpeed: 2.7        // local bat speed, world units / s
+  };
+
+  /* Official table-tennis rules (ITTF shape): a game to 11, win by
+     2; serves change every 2 points, every 1 at deuce (10-10); ends
+     switch after each game and at 5 points in the deciding game;
+     a match is best of 5 games (first to 3). */
   PP.WIN_SCORE = 11;
   PP.WIN_LEAD = 2;
+  PP.MATCH_GAMES_TO_WIN = 3;
+  PP.MATCH_MAX_GAMES = 5;
+
+  /* Computer difficulty (broadcast buildout). pace = flight time of
+     the Computer's returns (lower = faster ball), err = bat aim error
+     when tracking the ball, aimErr = spread on its return targets. */
+  PP.DIFFICULTY = {
+    easy:   { label: 'Easy',   speed: 1.15, err: 0.30, pace: 1.04, aimErr: 0.30 },
+    normal: { label: 'Normal', speed: 1.70, err: 0.17, pace: 0.88, aimErr: 0.18 },
+    pro:    { label: 'Pro',    speed: 2.35, err: 0.08, pace: 0.72, aimErr: 0.09 }
+  };
+  PP.DIFFICULTY_ORDER = ['easy', 'normal', 'pro'];
+
+  /* Swing grades (DESIGN.md Swing windows, ms vs ideal contact). */
+  PP.GRADE_WINDOWS = { perfect: 90, good: 200, graze: 320 };
+  /* Swing detection on the phone (DESIGN.md): resultant-acceleration
+     peak at 1.0x sensitivity, 300 ms refractory. */
+  PP.SWING_THRESHOLD = 22;
+  PP.SWING_REFRACTORY_MS = 300;
 
   /* PeerJS: room peer id = prefix + 4-char code. Default broker is the
      PeerJS cloud (per DESIGN.md). A different broker can be selected with
@@ -473,178 +563,157 @@ window.__ppWatchdog = setTimeout(function () {
 </script>
 <script>
 /* host.js — inlined by build-singlefile.py */
-/* Motion Arena — Ping Pong: TV host.
-   Owns all game state and scoring (per DESIGN.md). Canvas 1920x1080.
-   Modes: 'ai' (1P vs computer, host keyboard/mouse/touch), 'local'
-   (2P same screen), 'phone' (PeerJS phone controllers, local fallback).
-   Sound-free by design. Runs from https, localhost, or file:// (USB). */
+/* Motion Arena — Ping Pong: TV host. BROADCAST build (1.3.0).
+   The TV camera sits behind the near end of a 3D table (Canvas 2D
+   perspective projection — no WebGL, so old TV browsers keep up).
+   World space: x across (-1..1 = table), z along (-1 near / +1 far),
+   h = height above the surface. Official table-tennis rules (ITTF
+   shape): serve bounces on the server's half first, then the
+   receiver's; a corded serve that lands in is a LET; volleying is a
+   fault; rally net-cords that land in play on; edge balls are in;
+   game to 11 win by 2; serves change every 2 (every 1 at deuce);
+   ends switch after each game and at 5 in the deciding game;
+   match = best of 5. Owns all state and scoring (per DESIGN.md).
+   Modes: 'ai' (1P vs Computer), 'local' (2P same screen), 'phone'
+   (PeerJS controllers, swing or drag). Runs from https, localhost,
+   or file:// (USB). */
 (function () {
   'use strict';
   var S = window.PPShared;
-  var W = S.W, H = S.H, COURT = S.COURT;
+  var W = S.W, H = S.H, T = S.TABLE;
   var canvas = document.getElementById('game');
   var ctx = canvas.getContext('2d');
+
+  /* ---------------- players & ends ----------------
+     players[] are IDENTITIES (0 and 1). Physical sides: 0 = NEAR
+     (bottom of the picture), 1 = FAR (the avatar's end). Ends switch
+     per the rules; controllers follow their player. */
+  var players = [
+    { name: 'You',      color: S.COLORS[0].hex, kind: 'human' },
+    { name: 'Computer', color: S.COLORS[1].hex, kind: 'ai' }
+  ];
+  var endsSwapped = false;
+  function sideOfPlayer(p) { return endsSwapped ? (p === 0 ? 1 : 0) : p; }
+  function playerAtSide(side) { return endsSwapped ? (side === 0 ? 1 : 0) : side; }
 
   /* ---------------- state ---------------- */
   var phase = 'lobby';           // lobby | serve | rally | point | over
   var mode = 'ai';               // ai | local | phone
-  var scores = [0, 0];
-  var server = 0;
+  var paused = false;
+  var scores = [0, 0];           // by player
+  var games = [0, 0];            // by player (the match score)
+  var gameNumber = 1;
+  var firstServer = 0;           // player serving first this game
+  var server = 0;                // current server (player)
+  var switchedThisGame = false;
+  var gameWinner = -1, matchWinner = -1;
+  var settings = { difficulty: 'normal', sound: false };
+  var rallyBot = false;          // test hook: both bats auto (soak tests)
   var pointTimer = 0, serveTimer = 0;
-  var lastScorer = -1, pointFlash = 0;
-  var rallyHits = 0, bestRally = 0;
-  var winner = -1;
-  var names = ['You', 'Computer'];
-  var colors = [S.COLORS[0].hex, S.COLORS[1].hex];
-  var gamesWon = [0, 0];
+  var lastScorer = -1, pointFlash = 0, pointReason = '';
+  var rallyHits = 0, bestRally = 0, matchBestRally = 0;
+  var letReplay = false;
 
-  var ball = { x: W / 2, y: H / 2, vx: 0, vy: 0, speed: 0 };
+  var ball = { x: 0, z: -0.5, h: 0.16, vx: 0, vz: 0, vh: 0, live: false };
+  var flight = null;   // {fromSide,toSide,serve,bounces,crossed,cord,tPlane}
+  var bats = [ { x: 0, target: 0 }, { x: 0, target: 0 } ];   // by physical side
+  var pendingSwing = [null, null];   // by player: {at, power}
+  var lastGrade = { player: -1, grade: '', at: 0 };
+  var flash = { text: '', sub: '', color: '#ffffff', t: 0, dur: 0 };
+  var avatar = { x: 0, swingT: 0, react: '', reactT: 0 };    // far-end player figure
+  var nearAnim = { swingT: 0, reactT: 0 };
+  var aiErr = [0, 0];
+  var bounceFx = 0;
   var trail = [];
   var particles = [];
-  var paddles = [
-    { y: H / 2, target: H / 2 },
-    { y: H / 2, target: H / 2 }
-  ];
   var keys = {};
-  var aiError = [0, 0];
+  var renderInfo = { ballPx: { x: 0, y: 0, r: 0 }, shadowPx: { x: 0, y: 0 }, surfaceY: 0 };
 
-  var BASE_SPEED = 660, MAX_SPEED = 1560, SPEED_UP = 1.05;
-  var HUMAN_SPEED = 1120;        // keyboard paddle speed px/s
-  var AI_SPEED = 605;            // computer paddle max speed px/s
-
-  function courtTop() { return COURT.y; }
-  function courtBottom() { return COURT.y + COURT.h; }
-  function clampPaddleY(y) {
-    return S.clamp(y, courtTop() + S.PADDLE_H / 2, courtBottom() - S.PADDLE_H / 2);
+  /* ---------------- projection ----------------
+     Trapezoid broadcast view: near edge y=1005 half-width 855,
+     far edge y=415 half-width 385, rational depth falloff. */
+  var NEAR_Y = 1005, FAR_Y = 415, NEAR_HW = 855;
+  var W_FAR = 1 / (1 + 1.22);    // depth scale at the far edge (~0.4505)
+  function proj(x, z, h) {
+    var u = (z + 1) / 2;
+    var w = 1 / (1 + 1.22 * u);
+    var g = (1 - w) / (1 - W_FAR);
+    var yBase = NEAR_Y - (NEAR_Y - FAR_Y) * g;
+    return {
+      x: W / 2 + x * NEAR_HW * w,
+      y: yBase - (h || 0) * 470 * w,
+      w: w,
+      r: 30 * (0.35 + 0.65 * w)
+    };
   }
-  function y01ToPx(v) { return courtTop() + S.clamp(v, 0, 1) * COURT.h; }
-  function pxToY01(y) { return (y - courtTop()) / COURT.h; }
+  function tablePath(c, grow) {
+    var g = grow || 0;
+    var a = proj(-1 - g, -1 - g, 0), b = proj(1 + g, -1 - g, 0),
+        d = proj(1 + g, 1 + g, 0), e = proj(-1 - g, 1 + g, 0);
+    c.beginPath();
+    c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.lineTo(d.x, d.y); c.lineTo(e.x, e.y);
+    c.closePath();
+  }
+  function x01OfBat(side) { return (bats[side].x - T.batMin) / (T.batMax - T.batMin); }
 
   /* ---------------- quality manager ----------------
-     Full effects at level 2; slow frames step down: 1 (no ball trail,
-     fewer particles, no soft shadows), 0 (flat fills). Never steps up
-     mid-match, so a modest TV GPU can only make it smoother. */
+     Full effects at level 2; slow frames step down: 1 (no trail,
+     fewer particles), 0 (flat crowd, no particles). Never steps up
+     mid-match. Faster shed than the old build (the TV trail-smear
+     finding): ~0.6 s of slow frames drops a level. */
   var quality = 2, frameAvg = 16.7, slowFrames = 0;
   function noteFrame(dtMs) {
     frameAvg = frameAvg * 0.92 + dtMs * 0.08;
-    if (frameAvg > 20 && quality > 0) {
-      if (++slowFrames > 45) { quality--; slowFrames = 0; frameAvg = 16.7; staticLayer = null; }
+    if (frameAvg > 26 && quality > 0) {
+      if (++slowFrames > 18) { quality--; slowFrames = 0; staticLayer = null; netLayer = null; }
     } else if (slowFrames > 0) slowFrames--;
   }
 
-  /* ---------------- flow ---------------- */
-  function setServe() {
-    phase = 'serve';
-    serveTimer = 0;
-    ball.speed = 0; ball.vx = 0; ball.vy = 0;
-    var total = scores[0] + scores[1];
-    var per = (scores[0] >= 10 && scores[1] >= 10) ? 1 : 2;
-    server = (Math.floor(total / per) % 2 === 0) ? 0 : 1;
-    positionServeBall();
-    sendNetState();
+  /* ---------------- sound (WebAudio synth, lobby toggle, default OFF) ---- */
+  var AC = null;
+  function ensureAudio() {
+    if (AC) { if (AC.resume) AC.resume(); return true; }
+    try {
+      var Ctor = window.AudioContext || window.webkitAudioContext;
+      if (!Ctor) return false;
+      AC = new Ctor();
+      return true;
+    } catch (e) { return false; }
   }
-  function positionServeBall() {
-    var px = server === 0
-      ? S.PADDLE_X[0] + S.PADDLE_W + S.BALL_R + 6
-      : S.PADDLE_X[1] - S.BALL_R - 6;
-    ball.x = px;
-    ball.y = paddles[server].y;
+  function tone(freq, dur, type, vol, delay, slideTo) {
+    if (!AC) return;
+    try {
+      var t0 = AC.currentTime + (delay || 0);
+      var o = AC.createOscillator(), g = AC.createGain();
+      o.type = type || 'sine';
+      o.frequency.setValueAtTime(freq, t0);
+      if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t0 + dur);
+      g.gain.setValueAtTime(vol, t0);
+      g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+      o.connect(g); g.connect(AC.destination);
+      o.start(t0); o.stop(t0 + dur + 0.02);
+    } catch (e) {}
   }
-  function launchServe() {
-    if (phase !== 'serve') return;
-    var dir = server === 0 ? 1 : -1;
-    var ang = (Math.random() * 0.42 - 0.21); // ±~24 degrees
-    ball.speed = 620;
-    ball.vx = Math.cos(ang) * ball.speed * dir;
-    ball.vy = Math.sin(ang) * ball.speed;
-    phase = 'rally';
-    rallyHits = 0;
-    trail.length = 0;
-    sendNetState();
-  }
-  function startGame(m) {
-    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
-    mode = m;
-    scores = [0, 0];
-    bestRally = 0;
-    winner = -1;
-    paddles[0].y = paddles[0].target = H / 2;
-    paddles[1].y = paddles[1].target = H / 2;
-    applyModeNames();
-    document.getElementById('lobbyPanel').classList.add('hidden');
-    document.getElementById('overPanel').classList.add('hidden');
-    setServe();
-  }
-  function applyModeNames() {
-    if (mode === 'ai') { names = ['You', 'Computer']; colors = [S.COLORS[0].hex, S.COLORS[1].hex]; }
-    else if (mode === 'local') { names = ['Player 1', 'Player 2']; colors = [S.COLORS[0].hex, S.COLORS[2].hex]; }
-    else { // phone: joined players override in net code
-      if (!net.sides[0]) { names[0] = 'Guest (TV)'; colors[0] = S.COLORS[0].hex; }
-      if (!net.sides[1]) { names[1] = 'Computer'; colors[1] = S.COLORS[1].hex; }
-    }
-  }
-  function scorePoint(scorer) {
-    scores[scorer]++;
-    lastScorer = scorer;
-    pointFlash = 1;
-    bestRally = Math.max(bestRally, rallyHits);
-    burst(ball.x, ball.y, colors[scorer], quality === 2 ? 26 : 12);
-    var lead = Math.abs(scores[0] - scores[1]);
-    var top = Math.max(scores[0], scores[1]);
-    if (top >= S.WIN_SCORE && lead >= S.WIN_LEAD) {
-      winner = scores[0] > scores[1] ? 0 : 1;
-      gamesWon[winner]++;
-      phase = 'over';
-      winBurst();
-      showGameOver();
-    } else {
-      phase = 'point';
-      pointTimer = 0;
-    }
-    sendNetState();
-  }
-  function showGameOver() {
-    document.getElementById('overTitle').innerHTML =
-      '<span class="winner-name">' + escapeHtml(names[winner]) + '</span> WINS';
-    document.getElementById('overScore').textContent = scores[0] + ' — ' + scores[1];
-    document.getElementById('overSub').textContent =
-      'Best rally: ' + bestRally + ' hits · Games: ' + names[0] + ' ' + gamesWon[0] +
-      ' · ' + names[1] + ' ' + gamesWon[1];
-    var p = document.getElementById('overPanel');
-    p.classList.remove('hidden');
-    document.getElementById('btnAgain').focus();
-  }
-  function toLobby() {
-    phase = 'lobby';
-    document.getElementById('overPanel').classList.add('hidden');
-    var p = document.getElementById('lobbyPanel');
-    p.classList.remove('hidden');
-    document.getElementById('btnModeAI').focus();
-    sendNetState();
-  }
-  function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, function (c) {
-      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
-    });
+  function sfx(name) {
+    if (!settings.sound || !AC) return;
+    if (name === 'pop') { tone(210, 0.07, 'square', 0.20, 0, 80); tone(1200, 0.03, 'sine', 0.10); }
+    else if (name === 'bounce') { tone(340, 0.045, 'sine', 0.13, 0, 240); }
+    else if (name === 'net') { tone(95, 0.16, 'sawtooth', 0.10, 0, 60); }
+    else if (name === 'score') { tone(660, 0.09, 'sine', 0.16); tone(880, 0.12, 'sine', 0.16, 0.09); }
+    else if (name === 'win') { tone(523, 0.12, 'sine', 0.18); tone(659, 0.12, 'sine', 0.18, 0.11); tone(784, 0.12, 'sine', 0.18, 0.22); tone(1046, 0.22, 'sine', 0.18, 0.33); }
   }
 
-  /* ---------------- particles ---------------- */
-  function burst(x, y, color, n) {
+  /* ---------------- flashes & particles ---------------- */
+  function showFlash(text, sub, color, dur) {
+    flash.text = text; flash.sub = sub || ''; flash.color = color || '#ffffff';
+    flash.t = 0; flash.dur = dur || 1.15;
+  }
+  function burst(sx, sy, color, n) {
     if (quality === 0) return;
     for (var i = 0; i < n; i++) {
       var a = Math.random() * Math.PI * 2, sp = 120 + Math.random() * 420;
-      particles.push({ x: x, y: y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 60,
+      particles.push({ x: sx, y: sy, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 60,
         life: 0.7 + Math.random() * 0.5, t: 0, color: color, r: 3 + Math.random() * 5 });
-    }
-  }
-  function winBurst() {
-    if (quality === 0) return;
-    var cx = winner === 0 ? W * 0.28 : W * 0.72;
-    for (var i = 0; i < (quality === 2 ? 90 : 40); i++) {
-      var a = Math.random() * Math.PI * 2, sp = 200 + Math.random() * 640;
-      particles.push({ x: cx, y: H * 0.42, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 220,
-        life: 1.1 + Math.random() * 0.9, t: 0,
-        color: [colors[winner], '#ffffff', S.COLORS[0].hex][i % 3], r: 3 + Math.random() * 6 });
     }
   }
   function stepParticles(dt) {
@@ -657,128 +726,508 @@ window.__ppWatchdog = setTimeout(function () {
     }
   }
 
-  /* ---------------- input ---------------- */
-  function localControlled(side) {
-    if (net.sides[side]) return false;               // a phone owns this side
-    if (mode === 'local') return true;
-    if (mode === 'ai') return side === 0;
-    return side === 0;                                // phone mode: TV side is local fallback
+  /* ---------------- controllers ---------------- */
+  function controllerOf(side) {
+    if (rallyBot) return 'bot';
+    var p = playerAtSide(side);
+    var e = net.players[p];
+    if (e) return e.mode === 'swing' ? 'phone-swing' : 'phone-auto';
+    return players[p].kind === 'ai' ? 'ai' : 'local';
   }
-  function aiControlled(side) {
-    if (net.sides[side]) return false;
-    if (mode === 'local') return false;
-    return side === 1;                                // right side is the computer in ai/phone modes
+  function diff() { return S.DIFFICULTY[settings.difficulty]; }
+
+  /* ---------------- flow ---------------- */
+  function updateServer() {
+    var total = scores[0] + scores[1];
+    var per = (scores[0] >= 10 && scores[1] >= 10) ? 1 : 2;
+    server = (Math.floor(total / per) % 2 === 0) ? firstServer : 1 - firstServer;
   }
-  function stepLocalInput(side, dt) {
-    var p = paddles[side];
-    var up = false, down = false;
-    if (side === 0) {
-      up = keys['KeyW'] || (mode !== 'local' && keys['ArrowUp']);
-      down = keys['KeyS'] || (mode !== 'local' && keys['ArrowDown']);
-    } else {
-      up = keys['ArrowUp']; down = keys['ArrowDown'];
+  function setServe() {
+    phase = 'serve';
+    serveTimer = 0;
+    flight = null;
+    ball.live = false;
+    pendingSwing = [null, null];
+    var side = sideOfPlayer(server);
+    ball.x = bats[side].x;
+    ball.z = side === 0 ? -1.04 : 1.04;
+    ball.h = 0.30;
+    ball.vx = 0; ball.vz = 0; ball.vh = 0;
+    sendNetState();
+  }
+  function startGameCommon() {
+    scores = [0, 0];
+    bestRally = 0;
+    gameWinner = -1;
+    switchedThisGame = false;
+    paused = false;
+    bats[0].x = bats[0].target = 0;
+    bats[1].x = bats[1].target = 0;
+    document.getElementById('lobbyPanel').classList.add('hidden');
+    document.getElementById('overPanel').classList.add('hidden');
+    hidePause();
+    updateServer();
+    setServe();
+  }
+  function startMatch(m) {
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    mode = m;
+    games = [0, 0];
+    gameNumber = 1;
+    firstServer = 0;
+    matchWinner = -1;
+    matchBestRally = 0;
+    endsSwapped = false;
+    applyModeIdentities();
+    startGameCommon();
+  }
+  function nextGame() {
+    gameNumber++;
+    firstServer = (gameNumber - 1) % 2;
+    endsSwapped = !endsSwapped;      // ends switch after each game
+    startGameCommon();
+  }
+  function applyModeIdentities() {
+    if (mode === 'ai') {
+      if (!net.players[0]) { players[0].name = 'You'; players[0].color = S.COLORS[0].hex; }
+      if (!net.players[1]) { players[1].name = 'Computer'; players[1].color = S.COLORS[1].hex; }
+      players[0].kind = net.players[0] ? 'phone' : 'human';
+      players[1].kind = net.players[1] ? 'phone' : 'ai';
+    } else if (mode === 'local') {
+      if (!net.players[0]) { players[0].name = 'Player 1'; players[0].color = S.COLORS[0].hex; }
+      if (!net.players[1]) { players[1].name = 'Player 2'; players[1].color = S.COLORS[2].hex; }
+      players[0].kind = net.players[0] ? 'phone' : 'human';
+      players[1].kind = net.players[1] ? 'phone' : 'human';
+    } else { // phone
+      players[0].kind = net.players[0] ? 'phone' : 'human';
+      players[1].kind = net.players[1] ? 'phone' : 'ai';
+      if (!net.players[0]) { players[0].name = 'Guest (TV)'; players[0].color = S.COLORS[0].hex; }
+      if (!net.players[1]) { players[1].name = 'Computer'; players[1].color = S.COLORS[1].hex; }
     }
-    if (up) p.target -= HUMAN_SPEED * dt;
-    if (down) p.target += HUMAN_SPEED * dt;
-    p.target = clampPaddleY(p.target);
   }
-  function stepAI(side, dt) {
-    var p = paddles[side];
-    var toward = (side === 1 && ball.vx > 0) || (side === 0 && ball.vx < 0);
-    var target;
-    if (phase === 'rally' && toward) target = ball.y + aiError[side];
-    else if (phase === 'serve') target = H / 2 + Math.sin(performance.now() / 700) * 60;
-    else target = H / 2;
-    var d = target - p.y;
-    var maxStep = AI_SPEED * dt;
-    p.y += S.clamp(d, -maxStep, maxStep);
-    p.y = clampPaddleY(p.y);
-    p.target = p.y;
+  function toLobby() {
+    phase = 'lobby';
+    paused = false;
+    ball.live = false;
+    flight = null;
+    document.getElementById('overPanel').classList.add('hidden');
+    hidePause();
+    var p = document.getElementById('lobbyPanel');
+    p.classList.remove('hidden');
+    document.getElementById('btnModeAI').focus();
+    sendNetState();
   }
-  function stepPhonePaddle(side, dt) {
-    var p = paddles[side];
-    var k = Math.min(1, dt * 16);
-    p.y += (p.target - p.y) * k;
-    p.y = clampPaddleY(p.y);
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
   }
-  function stepLocalPaddle(side, dt) {
-    var p = paddles[side];
-    var k = Math.min(1, dt * 22);
-    p.y += (p.target - p.y) * k;
-    p.y = clampPaddleY(p.y);
+
+  /* ---------------- the serve ----------------
+     Official shape: toss at the server's end, first bounce on the
+     SERVER's half, second on the receiver's. Ballistics: contact
+     height 0.30, first-bounce time T1 = 0.44 s; the restitution
+     bounce sets the second flight, and vz is solved so the first
+     bounce lands on the server's half — the second then lands on
+     the receiver's (net clearance ~0.20 > 0.17, verified in tests). */
+  function launchServe() {
+    if (phase !== 'serve') return;
+    var side = sideOfPlayer(server);
+    var dir = side === 0 ? 1 : -1;
+    var z0 = side === 0 ? -1.04 : 1.04;
+    var z1 = z0 + dir * (0.49 + Math.random() * 0.17);       // own-half bounce
+    var T1 = 0.44, h0 = 0.30;
+    var vz = (z1 - z0) / T1;
+    var vh = (0.5 * T.gravity * T1 * T1 - h0) / T1;
+    var tx = (Math.random() * 2 - 1) * 0.5;
+    var T2 = 2 * ((T.gravity * T1 - vh) * T.rest) / T.gravity;
+    ball.x = bats[side].x; ball.z = z0; ball.h = h0;
+    ball.vx = (tx - ball.x) / (T1 + T2);
+    ball.vz = vz; ball.vh = vh;
+    ball.live = true;
+    rallyHits = 0;
+    trail.length = 0;
+    flight = { fromSide: side, toSide: 1 - side, serve: true, bounces: 0,
+               crossed: false, cord: false, tPlane: 0 };
+    flight.tPlane = performance.now() + ((dir * T.planeZ - z0) / vz) * 1000;
+    rollAiError(flight.toSide);
+    if (side === 1) avatar.swingT = 0.22; else nearAnim.swingT = 0.22;
+    sfx('pop');
+    phase = 'rally';
+    sendNetState();
+  }
+
+  /* ---------------- returns ---------------- */
+  function ballisticTo(tx, tz, T1) {
+    var x0 = ball.x, z0 = ball.z, h0 = ball.h;
+    var vx = (tx - x0) / T1;
+    var vz = (tz - z0) / T1;
+    var vh = (0.5 * T.gravity * T1 * T1 - h0) / T1;
+    /* aimed returns must clear the net: raise the arc if the natural
+       line would clip it (test flights bypass this on purpose) */
+    var tNet = (0 - z0) / vz;
+    if (tNet > 0) {
+      var hNet = h0 + vh * tNet - 0.5 * T.gravity * tNet * tNet;
+      if (hNet < T.netH + 0.02) vh += (T.netH + 0.045 - hNet) / tNet;
+    }
+    ball.vx = vx; ball.vz = vz; ball.vh = vh;
+  }
+  function doHit(side, grade) {
+    var ctrl = controllerOf(side);
+    var dir = side === 0 ? 1 : -1;
+    var oppBatX = bats[1 - side].x;
+    var T1, tx, tz;
+    if (grade === 'PERFECT') {
+      T1 = 0.60;
+      tx = oppBatX >= ball.x ? -0.86 : 0.86;
+      tz = dir * (0.84 + Math.random() * 0.10);
+    } else if (grade === 'GRAZE') {
+      T1 = 1.06;
+      tx = S.clamp(ball.x + (Math.random() * 0.3 - 0.15), -0.7, 0.7);
+      tz = dir * (0.36 + Math.random() * 0.18);
+    } else if (ctrl === 'ai' || ctrl === 'bot') {
+      var d = diff();
+      T1 = (ctrl === 'bot' ? 0.9 : d.pace) * (0.92 + Math.random() * 0.16);
+      tx = S.clamp(-oppBatX * 0.6 + (Math.random() * 2 - 1) * d.aimErr * 2.2, -0.9, 0.9);
+      tz = dir * (0.60 + Math.random() * 0.30);
+    } else {
+      var off = S.clamp((ball.x - bats[side].x) / T.reach, -1, 1);
+      T1 = grade === 'GOOD' ? 0.78 : 0.84 * (0.95 + Math.random() * 0.1);
+      tx = S.clamp(ball.x + off * 0.8 + (Math.random() * 0.24 - 0.12), -0.92, 0.92);
+      tz = dir * (0.60 + Math.random() * 0.30);
+    }
+    ballisticTo(tx, tz, T1);
+    rallyHits++;
+    if (side === 1) avatar.swingT = 0.22; else nearAnim.swingT = 0.22;
+    var bp = proj(ball.x, ball.z, ball.h);
+    burst(bp.x, bp.y, '#ffffff', quality === 2 ? 5 : 3);
+    sfx('pop');
+    flight = { fromSide: side, toSide: 1 - side, serve: false, bounces: 0,
+               crossed: false, cord: false, tPlane: 0 };
+    flight.tPlane = performance.now() + (((1 - side) === 1 ? T.planeZ : -T.planeZ) - ball.z) / ball.vz * 1000;
+    rollAiError(flight.toSide);
+    sendNetState();
+  }
+  function rollAiError(side) {
+    if (controllerOf(side) === 'ai') {
+      aiErr[side] = (Math.random() * 2 - 1) * diff().err;
+    } else {
+      aiErr[side] = 0;
+    }
+  }
+
+  /* ---------------- point resolution (official rules) ---------------- */
+  function endFlightPoint(winnerPlayer, reason) {
+    ball.live = false;
+    flight = null;
+    if (reason === 'NET') sfx('net');
+    scorePoint(winnerPlayer, reason);
+  }
+  function letServe() {
+    ball.live = false;
+    flight = null;
+    letReplay = true;
+    showFlash('LET', 'serve clips the net and lands in — re-serve', '#e0b93a', 1.3);
+    phase = 'point';
+    pointTimer = 0;
+    sendNetState();
+  }
+  function bounce() {
+    ball.h = 0;
+    bounceFx = 1;
+    sfx('bounce');
+    var inX = Math.abs(ball.x) <= T.halfW + 0.02;
+    var inZ = Math.abs(ball.z) <= T.halfL + 0.02;
+    if (!inX || !inZ) {           // descended outside the table
+      if (!flight) return;
+      if (flight.serve || flight.bounces === 0) {
+        endFlightPoint(playerAtSide(flight.toSide), flight.serve ? 'SERVE — off the table' : 'OUT — off the table');
+      } else {
+        endFlightPoint(playerAtSide(flight.fromSide), '');
+      }
+      return;
+    }
+    if (!flight) { ball.vh = -ball.vh * T.rest; return; }
+    var side = ball.z < 0 ? 0 : 1;
+    flight.bounces++;
+    if (flight.serve) {
+      if (flight.bounces === 1) {
+        if (side !== flight.fromSide) { endFlightPoint(playerAtSide(flight.toSide), 'SERVE FAULT — no bounce on own half'); return; }
+        ball.vh = -ball.vh * T.rest;
+      } else if (flight.bounces === 2) {
+        if (side !== flight.toSide) { endFlightPoint(playerAtSide(flight.toSide), 'SERVE FAULT'); return; }
+        if (flight.cord) { letServe(); return; }
+        ball.vh = -ball.vh * T.rest;
+      } else {
+        endFlightPoint(playerAtSide(flight.fromSide), '');   // bounced twice: receiver too slow
+      }
+    } else {
+      if (flight.bounces === 1) {
+        if (side !== flight.toSide) { endFlightPoint(playerAtSide(flight.toSide), 'INTO OWN HALF'); return; }
+        if (flight.cord) showFlash('NET CORD', 'play on', '#b8c4d6', 0.9);
+        ball.vh = -ball.vh * T.rest;
+      } else {
+        endFlightPoint(playerAtSide(flight.fromSide), '');
+      }
+    }
+  }
+  function crossedNet() {
+    if (!flight || flight.crossed) return;
+    flight.crossed = true;
+    var pen = T.netH - ball.h;
+    if (pen > 0.05) {             // deep into the net: the flight dies
+      endFlightPoint(playerAtSide(flight.toSide), 'INTO THE NET');
+    } else if (pen > -0.02) {     // net cord: pops over, play (or let) decides at the bounce
+      flight.cord = true;
+      ball.vz *= 0.55;
+      ball.vh = Math.max(ball.vh, 0.35);
+    }
+  }
+  function contactLegal() {
+    return flight.serve ? flight.bounces >= 2 : flight.bounces >= 1;
+  }
+  function contactCheck() {
+    var side = flight.toSide;
+    if (!contactLegal()) return;              // volley territory: no contact allowed
+    var ctrl = controllerOf(side);
+    if (ctrl === 'phone-swing') {
+      var player = playerAtSide(side);
+      var ps = pendingSwing[player];
+      if (ps) {
+        var dt = ps.at - flight.tPlane;
+        pendingSwing[player] = null;
+        if (Math.abs(dt) <= S.GRADE_WINDOWS.graze) { gradeHit(side, ps, dt); return; }
+      }
+      flight.awaitSwing = true;               // a swing inside the grace window can still save it
+      flight.graceUntil = performance.now() + 130;
+      return;
+    }
+    if (Math.abs(ball.x - bats[side].x) <= T.reach) doHit(side, null);
+  }
+  function gradeHit(side, ps, dtMs) {
+    var adt = Math.abs(dtMs);
+    var grade = adt <= S.GRADE_WINDOWS.perfect && ps.power >= 0.5 ? 'PERFECT'
+              : adt <= S.GRADE_WINDOWS.good ? 'GOOD' : 'GRAZE';
+    var player = playerAtSide(side);
+    lastGrade = { player: player, grade: grade, at: performance.now() };
+    showFlash(grade + '!', '', grade === 'PERFECT' ? '#2ecc71' : grade === 'GOOD' ? '#e0b93a' : '#e67e22', 0.85);
+    doHit(side, grade);
+  }
+  function onSwing(player, power, atMs) {
+    var side = sideOfPlayer(player);
+    if (side === 1) avatar.swingT = 0.22; else nearAnim.swingT = 0.22;
+    if (paused) return;
+    if (phase === 'serve' && player === server && controllerOf(side) === 'phone-swing') {
+      launchServe();
+      return;
+    }
+    if (phase !== 'rally' || !flight || flight.toSide !== side) return;
+    if (!contactLegal()) {
+      /* volley: a swing that connects before the bounce is a fault */
+      var plane = side === 0 ? -T.planeZ : T.planeZ;
+      if (Math.abs(ball.x - bats[side].x) <= T.reach + 0.05 &&
+          Math.abs(ball.z - plane) < 0.55) {
+        showFlash('VOLLEY', 'contact before the bounce — fault', '#e74c3c', 1.2);
+        endFlightPoint(1 - player, 'VOLLEY — fault');
+      }
+      return;
+    }
+    pendingSwing[player] = { at: atMs, power: power };
+    if (flight.awaitSwing) {                  // late swing inside the grace window
+      var dt = atMs - flight.tPlane;
+      pendingSwing[player] = null;
+      flight.awaitSwing = false;
+      if (Math.abs(dt) <= S.GRADE_WINDOWS.graze) gradeHit(side, { power: power }, dt);
+    }
+  }
+  function resolveOut() {
+    if (!flight) return;
+    if (flight.serve && flight.bounces < 2) {
+      endFlightPoint(playerAtSide(flight.toSide), 'SERVE — out');
+    } else if (!flight.serve && flight.bounces === 0) {
+      endFlightPoint(playerAtSide(flight.toSide), 'OUT');
+    } else {
+      endFlightPoint(playerAtSide(flight.fromSide), '');
+    }
+  }
+  function scorePoint(scorer, reason) {
+    scores[scorer]++;
+    lastScorer = scorer;
+    pointFlash = 1;
+    pointReason = reason || '';
+    bestRally = Math.max(bestRally, rallyHits);
+    matchBestRally = Math.max(matchBestRally, bestRally);
+    /* avatar reactions */
+    var farPlayer = playerAtSide(1);
+    if (scorer === farPlayer) { avatar.react = 'cheer'; avatar.reactT = 1.15; }
+    else { avatar.react = 'slump'; avatar.reactT = 1.15; }
+    if (scorer === playerAtSide(0)) nearAnim.reactT = 1.0;
+    sfx('score');
+    /* deciding game: ends switch when the first player reaches 5 */
+    var isDeciding = (games[0] + games[1] === S.MATCH_MAX_GAMES - 1);
+    if (isDeciding && !switchedThisGame && (scores[0] === 5 || scores[1] === 5)) {
+      endsSwapped = !endsSwapped;
+      switchedThisGame = true;
+      showFlash('CHANGE OF ENDS', 'deciding game — players switch ends', '#e0b93a', 1.4);
+    }
+    var top = Math.max(scores[0], scores[1]);
+    var lead = Math.abs(scores[0] - scores[1]);
+    if (top >= S.WIN_SCORE && lead >= S.WIN_LEAD) {
+      gameWinner = scores[0] > scores[1] ? 0 : 1;
+      games[gameWinner]++;
+      if (games[gameWinner] >= S.MATCH_GAMES_TO_WIN) matchWinner = gameWinner;
+      phase = 'over';
+      sfx('win');
+      showGameOver();
+    } else {
+      phase = 'point';
+      pointTimer = 0;
+      updateServer();
+    }
+    sendNetState();
+  }
+  function showGameOver() {
+    var isMatch = matchWinner >= 0;
+    var w = isMatch ? matchWinner : gameWinner;
+    document.getElementById('overTitle').innerHTML =
+      '<span class="winner-name">' + escapeHtml(players[w].name) + '</span> WINS ' + (isMatch ? 'THE MATCH' : 'THE GAME');
+    document.getElementById('overScore').textContent = scores[0] + ' — ' + scores[1];
+    document.getElementById('overSub').textContent =
+      'Games: ' + players[0].name + ' ' + games[0] + ' — ' + games[1] + ' ' + players[1].name +
+      ' · Best rally: ' + bestRally + ' hits (match best ' + matchBestRally + ')' +
+      (isMatch ? '' : ' · First to ' + S.MATCH_GAMES_TO_WIN + ' games takes the match');
+    document.getElementById('btnAgain').innerHTML = isMatch
+      ? '↻&nbsp; New Match&nbsp; <small>(Enter)</small>'
+      : '↻&nbsp; Next Game&nbsp; <small>(Enter)</small>';
+    var p = document.getElementById('overPanel');
+    p.classList.remove('hidden');
+    document.getElementById('btnAgain').focus();
   }
 
   /* ---------------- physics ---------------- */
+  function integrate(sdt) {
+    var pz = ball.z, ph = ball.h;
+    ball.x += ball.vx * sdt;
+    ball.z += ball.vz * sdt;
+    ball.h += ball.vh * sdt;
+    ball.vh -= T.gravity * sdt;
+    if (flight && ((pz < 0 && ball.z >= 0) || (pz > 0 && ball.z <= 0))) crossedNet();
+    if (!flight) return;
+    if (ph > 0 && ball.h <= 0 && ball.vh < 0) { bounce(); return; }
+    if (!flight) return;
+    var plane = flight.toSide === 1 ? T.planeZ : -T.planeZ;
+    if ((flight.toSide === 1 && pz < plane && ball.z >= plane) ||
+        (flight.toSide === 0 && pz > plane && ball.z <= plane)) {
+      contactCheck();
+      if (!flight) return;
+    }
+    if (flight.awaitSwing && pendingSwing[playerAtSide(flight.toSide)]) {
+      contactCheck();
+      if (!flight) return;
+    }
+    if (flight.awaitSwing && performance.now() > flight.graceUntil) flight.awaitSwing = false;
+    if (Math.abs(ball.z) > T.planeZ + 0.5 &&
+        ((flight.toSide === 1 && ball.z > 0) || (flight.toSide === 0 && ball.z < 0))) {
+      resolveOut();
+    }
+    if (ball.h < -0.6) resolveOut();
+  }
   function stepBall(dt) {
-    ball.x += ball.vx * dt;
-    ball.y += ball.vy * dt;
-    if (quality === 2) {
-      trail.push({ x: ball.x, y: ball.y });
-      if (trail.length > 14) trail.shift();
+    if (quality === 2 && phase === 'rally') {
+      trail.push({ x: ball.x, z: ball.z, h: ball.h });
+      if (trail.length > 9) trail.shift();
     }
-    if (ball.y - S.BALL_R < courtTop()) { ball.y = courtTop() + S.BALL_R; ball.vy = Math.abs(ball.vy); }
-    if (ball.y + S.BALL_R > courtBottom()) { ball.y = courtBottom() - S.BALL_R; ball.vy = -Math.abs(ball.vy); }
-    for (var side = 0; side < 2; side++) {
-      var px = S.PADDLE_X[side];
-      var p = paddles[side];
-      var moving = side === 0 ? ball.vx < 0 : ball.vx > 0;
-      if (!moving) continue;
-      var inX = side === 0
-        ? (ball.x - S.BALL_R <= px + S.PADDLE_W && ball.x - S.BALL_R >= px - 90)
-        : (ball.x + S.BALL_R >= px && ball.x + S.BALL_R <= px + S.PADDLE_W + 90);
-      var inY = Math.abs(ball.y - p.y) <= S.PADDLE_H / 2 + S.BALL_R;
-      if (inX && inY) {
-        var off = S.clamp((ball.y - p.y) / (S.PADDLE_H / 2), -1, 1);
-        var ang = off * 1.08; // up to ~62 degrees
-        ball.speed = Math.min(MAX_SPEED, ball.speed * SPEED_UP);
-        var dir = side === 0 ? 1 : -1;
-        ball.vx = Math.cos(ang) * ball.speed * dir;
-        ball.vy = Math.sin(ang) * ball.speed;
-        ball.x = side === 0 ? px + S.PADDLE_W + S.BALL_R + 1 : px - S.BALL_R - 1;
-        rallyHits++;
-        aiError[1 - side] = (Math.random() * 2 - 1) * (46 + rallyHits * 3);
-        if (quality === 2) burst(ball.x, ball.y, '#ffffff', 4);
-      }
+    var n = 3, sdt = dt / n;
+    for (var i = 0; i < n; i++) {
+      if (!ball.live || !flight) break;
+      integrate(sdt);
     }
-    if (ball.x < COURT.x - 60) scorePoint(1);
-    else if (ball.x > COURT.x + COURT.w + 60) scorePoint(0);
+    if (!ball.live) trail.length = 0;
+  }
+
+  /* ---------------- bat movement ---------------- */
+  function stepBat(side, dt) {
+    var b = bats[side];
+    var ctrl = controllerOf(side);
+    if (ctrl === 'ai' || ctrl === 'bot') {
+      var d = ctrl === 'bot' ? S.DIFFICULTY.normal : diff();
+      var target = 0;
+      if (flight && flight.toSide === side && ball.live) target = ball.x + aiErr[side];
+      else if (ball.live) target = ball.x * 0.25;
+      var mv = S.clamp(target - b.x, -d.speed * dt, d.speed * dt);
+      b.x += mv;
+      b.target = b.x;
+    } else if (ctrl === 'phone-swing' || ctrl === 'phone-auto') {
+      var k = Math.min(1, dt * 16);
+      b.x += (b.target - b.x) * k;
+    } else {
+      stepLocalKeys(side, dt);
+      var k2 = Math.min(1, dt * 22);
+      b.x += (b.target - b.x) * k2;
+    }
+    b.x = S.clamp(b.x, T.batMin, T.batMax);
+    b.target = S.clamp(b.target, T.batMin, T.batMax);
+  }
+  function stepLocalKeys(side, dt) {
+    var player = playerAtSide(side);
+    var b = bats[side];
+    var left = false, right = false;
+    if (player === 0) {
+      left = keys['KeyA'] || (mode !== 'local' && (keys['ArrowLeft'] || keys['ArrowUp']));
+      right = keys['KeyD'] || (mode !== 'local' && (keys['ArrowRight'] || keys['ArrowDown']));
+    } else {
+      left = keys['ArrowLeft'] || keys['ArrowUp'];
+      right = keys['ArrowRight'] || keys['ArrowDown'];
+    }
+    if (left) b.target -= T.batSpeed * dt;
+    if (right) b.target += T.batSpeed * dt;
   }
 
   function update(dt) {
     if (phase === 'lobby' || phase === 'over') { stepParticles(dt); return; }
-    for (var side = 0; side < 2; side++) {
-      if (net.sides[side]) stepPhonePaddle(side, dt);
-      else if (aiControlled(side)) stepAI(side, dt);
-      else { stepLocalInput(side, dt); stepLocalPaddle(side, dt); }
-    }
+    stepBat(0, dt);
+    stepBat(1, dt);
     if (phase === 'serve') {
-      positionServeBall();
+      var side = sideOfPlayer(server);
+      ball.x = bats[side].x;
+      ball.z = side === 0 ? -1.04 : 1.04;
       serveTimer += dt;
-      var serverIsAI = aiControlled(server);
-      var serverIsPhone = !!net.sides[server];
-      if (serveTimer > 1.15 && !serverIsPhone) launchServe();
-      else if (serveTimer > 6 && serverIsPhone) launchServe(); // never stall a phone game
-      else if (serverIsAI && serveTimer > 0.9) launchServe();
+      var ctrl = controllerOf(side);
+      if (ctrl === 'phone-swing' || ctrl === 'phone-auto') {
+        if (serveTimer > 6) launchServe();               // never stall a phone game
+      } else if (ctrl === 'ai' || ctrl === 'bot') {
+        if (serveTimer > 0.9) launchServe();
+      } else if (serveTimer > 1.6) {
+        launchServe();
+      }
     } else if (phase === 'rally') {
       stepBall(dt);
     } else if (phase === 'point') {
       pointTimer += dt;
-      stepParticles(dt);
-      if (pointTimer > 1.15) setServe();
+      if (pointTimer > (letReplay ? 1.5 : 1.25)) {
+        letReplay = false;
+        if (phase === 'point') setServe();
+      }
     }
     if (pointFlash > 0) pointFlash = Math.max(0, pointFlash - dt * 1.4);
+    if (bounceFx > 0) bounceFx = Math.max(0, bounceFx - dt * 3.2);
+    if (avatar.swingT > 0) avatar.swingT = Math.max(0, avatar.swingT - dt);
+    if (avatar.reactT > 0) { avatar.reactT = Math.max(0, avatar.reactT - dt); if (avatar.reactT === 0) avatar.react = ''; }
+    if (nearAnim.swingT > 0) nearAnim.swingT = Math.max(0, nearAnim.swingT - dt);
+    if (nearAnim.reactT > 0) nearAnim.reactT = Math.max(0, nearAnim.reactT - dt);
+    if (flash.dur > 0) { flash.t += dt; if (flash.t >= flash.dur) flash.dur = 0; }
     stepParticles(dt);
   }
 
   /* ---------------- rendering ---------------- */
-  function rr(x, y, w, h, r) {
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.arcTo(x + w, y, x + w, y + h, r);
-    ctx.arcTo(x + w, y + h, x, y + h, r);
-    ctx.arcTo(x, y + h, x, y, r);
-    ctx.arcTo(x, y, x + w, y, r);
-    ctx.closePath();
+  function rr(c, x, y, w, h, r) {
+    c.beginPath();
+    c.moveTo(x + r, y);
+    c.arcTo(x + w, y, x + w, y + h, r);
+    c.arcTo(x + w, y + h, x, y + h, r);
+    c.arcTo(x, y + h, x, y, r);
+    c.arcTo(x, y, x + w, y, r);
+    c.closePath();
   }
   function shade(hex, f) {
     var n = parseInt(hex.slice(1), 16);
@@ -787,200 +1236,438 @@ window.__ppWatchdog = setTimeout(function () {
     var b = Math.min(255, Math.max(0, (n & 255) * f));
     return 'rgb(' + (r | 0) + ',' + (g | 0) + ',' + (b | 0) + ')';
   }
-  function drawStaticScene() {
-    /* arena background: deep navy with a soft spotlight pool */
-    ctx.fillStyle = '#081831';
-    ctx.fillRect(0, 0, W, H);
-    var glow = ctx.createRadialGradient(W / 2, H / 2, 120, W / 2, H / 2, 1050);
-    glow.addColorStop(0, 'rgba(46,96,160,0.55)');
-    glow.addColorStop(0.55, 'rgba(23,54,102,0.28)');
-    glow.addColorStop(1, 'rgba(4,10,24,0)');
-    ctx.fillStyle = glow;
-    ctx.fillRect(0, 0, W, H);
+  /* deterministic pseudo-random for the crowd (same every frame) */
+  function srand(seed) { var s = seed; return function () { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; }; }
 
-    /* table shadow + surface */
-    if (quality === 2) { ctx.shadowColor = 'rgba(0,0,0,0.55)'; ctx.shadowBlur = 46; ctx.shadowOffsetY = 26; }
-    var tg = ctx.createLinearGradient(COURT.x, COURT.y, COURT.x + COURT.w, COURT.y + COURT.h);
-    tg.addColorStop(0, '#17507f');
-    tg.addColorStop(0.5, '#123f6b');
-    tg.addColorStop(1, '#0d2c52');
-    ctx.fillStyle = tg;
-    rr(COURT.x, COURT.y, COURT.w, COURT.h, 14);
-    ctx.fill();
-    ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
-    /* gloss sheen */
-    if (quality > 0) {
-      var sheen = ctx.createLinearGradient(COURT.x, COURT.y, COURT.x + COURT.w * 0.7, COURT.y + COURT.h);
-      sheen.addColorStop(0, 'rgba(255,255,255,0.10)');
-      sheen.addColorStop(0.35, 'rgba(255,255,255,0.02)');
-      sheen.addColorStop(0.6, 'rgba(255,255,255,0)');
-      ctx.fillStyle = sheen;
-      rr(COURT.x, COURT.y, COURT.w, COURT.h, 14);
-      ctx.fill();
-    }
-    /* table edge lines */
-    ctx.strokeStyle = 'rgba(255,255,255,0.92)';
-    ctx.lineWidth = 5;
-    rr(COURT.x + 8, COURT.y + 8, COURT.w - 16, COURT.h - 16, 10);
-    ctx.stroke();
-    ctx.strokeStyle = 'rgba(201,162,39,0.5)';
-    ctx.lineWidth = 2;
-    rr(COURT.x - 6, COURT.y - 6, COURT.w + 12, COURT.h + 12, 18);
-    ctx.stroke();
-
-    /* net: posts, mesh, white top tape */
-    var nx = W / 2;
-    if (quality === 2) { ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 16; ctx.shadowOffsetX = 8; }
-    ctx.fillStyle = 'rgba(6,16,34,0.88)';
-    ctx.fillRect(nx - 7, COURT.y - 30, 14, COURT.h + 60);
-    ctx.shadowBlur = 0; ctx.shadowOffsetX = 0;
-    if (quality > 0) {
-      ctx.strokeStyle = 'rgba(255,255,255,0.20)';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      for (var gy = COURT.y - 24; gy < COURT.y + COURT.h + 24; gy += 17) { ctx.moveTo(nx - 7, gy); ctx.lineTo(nx + 7, gy); }
-      for (var gx = nx - 6; gx <= nx + 6; gx += 6) { ctx.moveTo(gx, COURT.y - 28); ctx.lineTo(gx, COURT.y + COURT.h + 28); }
-      ctx.stroke();
-    }
-    ctx.fillStyle = '#f4f6f8';
-    ctx.fillRect(nx - 8, COURT.y - 32, 16, 9);
-    ctx.fillStyle = '#0a1c38';
-    ctx.fillRect(nx - 13, COURT.y - 44, 26, 14);
-    ctx.fillRect(nx - 13, COURT.y + COURT.h + 30, 26, 14);
-  }
-
-  /* The arena, gloss table and net never move, so they are rendered
-     once per quality level into an offscreen layer and blitted each
-     frame; only score, paddles, ball and particles draw per frame.
-     That is what keeps the premium finish at 60 fps on a TV GPU. */
   var staticLayer = null;
   function buildStatic() {
     var layer = document.createElement('canvas');
     layer.width = W; layer.height = H;
-    var keep = ctx;
-    ctx = layer.getContext('2d');
-    drawStaticScene();
-    ctx = keep;
-    staticLayer = layer;
-  }
+    var c = layer.getContext('2d');
+    /* arena darkness + floodlight pools */
+    c.fillStyle = '#060f22';
+    c.fillRect(0, 0, W, H);
+    var glow = c.createRadialGradient(W / 2, 470, 120, W / 2, 470, 1150);
+    glow.addColorStop(0, 'rgba(52,104,168,0.50)');
+    glow.addColorStop(0.55, 'rgba(24,56,104,0.25)');
+    glow.addColorStop(1, 'rgba(3,8,18,0)');
+    c.fillStyle = glow;
+    c.fillRect(0, 0, W, H);
+    var fl = c.createRadialGradient(240, 30, 10, 240, 30, 420);
+    fl.addColorStop(0, 'rgba(255,244,200,0.20)'); fl.addColorStop(1, 'rgba(255,244,200,0)');
+    c.fillStyle = fl; c.fillRect(0, 0, 700, 460);
+    var fr = c.createRadialGradient(1680, 30, 10, 1680, 30, 420);
+    fr.addColorStop(0, 'rgba(255,244,200,0.20)'); fr.addColorStop(1, 'rgba(255,244,200,0)');
+    c.fillStyle = fr; c.fillRect(1220, 0, 700, 460);
 
-  function draw(now) {
-    if (!staticLayer) buildStatic();
-    ctx.drawImage(staticLayer, 0, 0);
-
-    /* scoreboard */
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.font = '800 34px -apple-system, "Segoe UI", Roboto, sans-serif';
-    ctx.fillStyle = colors[0];
-    ctx.fillText(names[0].toUpperCase(), W * 0.30, 66);
-    ctx.fillStyle = colors[1];
-    ctx.fillText(names[1].toUpperCase(), W * 0.70, 66);
-    var pulse = 1 + pointFlash * 0.25;
-    ctx.font = '900 ' + Math.round(96 * pulse) + 'px -apple-system, "Segoe UI", Roboto, sans-serif';
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText(scores[0] + '  :  ' + scores[1], W / 2, 70);
-    ctx.font = '700 24px -apple-system, "Segoe UI", Roboto, sans-serif';
-    ctx.fillStyle = 'rgba(184,196,214,0.9)';
-    if (gamesWon[0] || gamesWon[1]) ctx.fillText('games  ' + gamesWon[0] + ' — ' + gamesWon[1], W / 2, 128);
-
-    /* serve indicator */
-    if (phase === 'serve') {
-      var sx = server === 0 ? S.PADDLE_X[0] + 60 : S.PADDLE_X[1] + S.PADDLE_W - 60;
-      ctx.beginPath();
-      ctx.arc(sx, paddles[server].y - S.PADDLE_H / 2 - 36, 11 + Math.sin(now / 220) * 2.5, 0, Math.PI * 2);
-      ctx.fillStyle = S.COLORS[0].hex;
-      ctx.fill();
-      ctx.font = '800 25px -apple-system, "Segoe UI", Roboto, sans-serif';
-      ctx.fillStyle = 'rgba(255,255,255,0.95)';
-      ctx.fillText(names[server] + ' to serve', W / 2, COURT.y + COURT.h + 62);
-    }
-
-    /* paddles */
-    for (var i = 0; i < 2; i++) {
-      var px = S.PADDLE_X[i], py = paddles[i].y - S.PADDLE_H / 2;
-      if (quality === 2) { ctx.shadowColor = 'rgba(0,0,0,0.55)'; ctx.shadowBlur = 20; ctx.shadowOffsetY = 10; }
-      var pg = ctx.createLinearGradient(px, py, px + S.PADDLE_W, py);
-      pg.addColorStop(0, shade(colors[i], 1.18));
-      pg.addColorStop(0.5, colors[i]);
-      pg.addColorStop(1, shade(colors[i], 0.62));
-      ctx.fillStyle = pg;
-      rr(px, py, S.PADDLE_W, S.PADDLE_H, 13);
-      ctx.fill();
-      ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
-      ctx.fillStyle = 'rgba(0,0,0,0.35)';
-      var inset = i === 0 ? 5 : 11;
-      rr(px + inset - 5 + (i === 0 ? 5 : 0), py + 10, 10, S.PADDLE_H - 20, 5);
-      ctx.fill();
-    }
-
-    /* ball trail + ball */
-    var bx = ball.x, by = ball.y;
-    if (phase === 'lobby') { by = H / 2 + Math.sin(now / 620) * 46; bx = W / 2; }
-    if (quality === 2 && phase === 'rally') {
-      for (var t = 0; t < trail.length; t++) {
-        var a = (t / trail.length) * 0.20;
-        ctx.beginPath();
-        ctx.arc(trail[t].x, trail[t].y, S.BALL_R * (0.4 + 0.6 * t / trail.length), 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255,255,255,' + a.toFixed(3) + ')';
-        ctx.fill();
+    /* crowd: dense dots + a silhouette heads row (density by quality) */
+    var rnd = srand(20261113);
+    var rows = quality === 2 ? 9 : quality === 1 ? 6 : 3;
+    var cols = quality === 2 ? 118 : quality === 1 ? 84 : 44;
+    var skin = ['#d9a066', '#b87a4a', '#8a5a34', '#eec39a', '#6e4525'];
+    var cloth = ['#274b73', '#5b2d8e', '#8e2d3c', '#2d6e4f', '#94702d', '#33506e', '#703d57', '#446'];
+    for (var ry = 0; ry < rows; ry++) {
+      var yy = 52 + ry * 27 + (rnd() * 8 - 4);
+      for (var rx = 0; rx < cols; rx++) {
+        var xx = 30 + rx * ((W - 60) / cols) + (rnd() * 10 - 5);
+        c.fillStyle = cloth[(rnd() * cloth.length) | 0];
+        c.fillRect(xx - 5, yy + 5, 10, 9);
+        c.fillStyle = skin[(rnd() * skin.length) | 0];
+        c.beginPath(); c.arc(xx, yy, 4.6, 0, Math.PI * 2); c.fill();
       }
     }
-    if (phase !== 'point') {
+    if (quality > 0) {
+      c.fillStyle = 'rgba(4,8,16,0.55)';
+      for (var hx = 16; hx < W; hx += 34) {
+        c.beginPath(); c.arc(hx + (hx % 3) * 4, 306, 13, 0, Math.PI * 2); c.fill();
+        c.fillRect(hx - 13, 306, 26, 16);
+      }
+    }
+    /* arena boards */
+    var bg = c.createLinearGradient(0, 322, 0, 402);
+    bg.addColorStop(0, '#123a6b'); bg.addColorStop(1, '#0a2247');
+    c.fillStyle = bg;
+    c.fillRect(0, 322, W, 82);
+    c.fillStyle = 'rgba(201,162,39,0.85)';
+    c.fillRect(0, 322, W, 3);
+    c.fillRect(0, 401, W, 3);
+    c.fillStyle = '#ffffff';
+    c.font = '900 44px -apple-system, "Segoe UI", Roboto, sans-serif';
+    c.textAlign = 'left'; c.textBaseline = 'middle';
+    c.fillText('MOTION ARENA', 46, 364);
+    c.fillStyle = '#C9A227';
+    c.font = '800 30px -apple-system, "Segoe UI", Roboto, sans-serif';
+    c.fillText('· TABLE TENNIS', 452, 366);
+    c.textAlign = 'right';
+    c.fillStyle = 'rgba(255,255,255,0.75)';
+    c.font = '700 25px -apple-system, "Segoe UI", Roboto, sans-serif';
+    c.fillText('IEC · INC', 1874, 364);
+    /* paddle glyph on the left board */
+    c.save();
+    c.translate(24, 364);
+    c.fillStyle = '#e8edf4';
+    c.beginPath(); c.arc(0, -6, 11, 0, Math.PI * 2); c.fill();
+    c.fillRect(-2.5, 2, 5, 13);
+    c.restore();
+
+    /* floor around the table */
+    var fg = c.createLinearGradient(0, 404, 0, H);
+    fg.addColorStop(0, '#0a1c38'); fg.addColorStop(1, '#050d1d');
+    c.fillStyle = fg;
+    c.fillRect(0, 404, W, H - 404);
+
+    /* table: apron then trapezoid surface */
+    var n1 = proj(-1, -1, 0), n2 = proj(1, -1, 0), f2 = proj(1, 1, 0), f1 = proj(-1, 1, 0);
+    c.fillStyle = '#071426';
+    c.beginPath();
+    c.moveTo(n1.x, n1.y); c.lineTo(n2.x, n2.y); c.lineTo(n2.x, n2.y + 30); c.lineTo(n1.x, n1.y + 30);
+    c.closePath(); c.fill();
+    var tg = c.createLinearGradient(0, f1.y, 0, n1.y);
+    tg.addColorStop(0, '#14508c');
+    tg.addColorStop(0.55, '#17507f');
+    tg.addColorStop(1, '#1d5c96');
+    c.fillStyle = tg;
+    c.beginPath();
+    c.moveTo(n1.x, n1.y); c.lineTo(n2.x, n2.y); c.lineTo(f2.x, f2.y); c.lineTo(f1.x, f1.y);
+    c.closePath(); c.fill();
+    /* gloss sheen toward the near end */
+    if (quality > 0) {
+      var sheen = c.createLinearGradient(0, n1.y, 0, 560);
+      sheen.addColorStop(0, 'rgba(255,255,255,0.10)');
+      sheen.addColorStop(1, 'rgba(255,255,255,0)');
+      c.fillStyle = sheen;
+      c.beginPath();
+      c.moveTo(n1.x, n1.y); c.lineTo(n2.x, n2.y); c.lineTo(f2.x, f2.y); c.lineTo(f1.x, f1.y);
+      c.closePath(); c.fill();
+    }
+    /* lines: outline + centre line */
+    c.strokeStyle = 'rgba(255,255,255,0.95)';
+    c.lineWidth = 5;
+    c.beginPath();
+    c.moveTo(n1.x, n1.y); c.lineTo(n2.x, n2.y); c.lineTo(f2.x, f2.y); c.lineTo(f1.x, f1.y);
+    c.closePath(); c.stroke();
+    c.lineWidth = 3;
+    c.beginPath();
+    c.moveTo(W / 2, n1.y); c.lineTo(W / 2, f1.y);
+    c.stroke();
+    staticLayer = layer;
+  }
+  var netLayer = null;
+  function buildNet() {
+    var layer = document.createElement('canvas');
+    layer.width = W; layer.height = H;
+    var c = layer.getContext('2d');
+    var mid = proj(0, 0, 0);
+    var hw = NEAR_HW * mid.w + 26;
+    var topY = mid.y - T.netH * 470 * mid.w;
+    c.fillStyle = 'rgba(5,10,20,0.88)';
+    c.fillRect(W / 2 - hw - 7, topY - 8, 14, mid.y - topY + 30);
+    c.fillRect(W / 2 + hw - 7, topY - 8, 14, mid.y - topY + 30);
+    c.fillStyle = 'rgba(8,18,36,0.55)';
+    c.fillRect(W / 2 - hw, topY, hw * 2, mid.y - topY);
+    if (quality > 0) {
+      c.strokeStyle = 'rgba(255,255,255,0.22)';
+      c.lineWidth = 1.2;
+      c.beginPath();
+      for (var gy = topY + 6; gy < mid.y; gy += 11) { c.moveTo(W / 2 - hw, gy); c.lineTo(W / 2 + hw, gy); }
+      for (var gx = W / 2 - hw + 6; gx < W / 2 + hw; gx += 11) { c.moveTo(gx, topY); c.lineTo(gx, mid.y); }
+      c.stroke();
+    }
+    c.fillStyle = '#f4f6f8';
+    c.fillRect(W / 2 - hw - 2, topY - 5, hw * 2 + 4, 8);
+    netLayer = layer;
+  }
+
+  /* far-end avatar: flat IEC-original vector figure in the far
+     player's colour; clipped so the table hides its lower body. */
+  function drawAvatar(now) {
+    var farPlayer = playerAtSide(1);
+    var color = players[farPlayer].color;
+    var target = bats[1].x;
+    avatar.x += (target - avatar.x) * 0.14;
+    var base = proj(avatar.x, 1.28, 0);
+    var ax = base.x, groundY = FAR_Y + 8;
+    var sway = Math.sin(now / 640) * 3;
+    var lean = S.clamp((target - avatar.x) * 0.35, -0.14, 0.14);
+    var bounce = avatar.react === 'cheer' ? Math.abs(Math.sin(now / 130)) * 7 : 0;
+    var slump = avatar.react === 'slump' ? 9 : 0;
+    ctx.save();
+    ctx.beginPath(); ctx.rect(0, 0, W, groundY); ctx.clip();
+    ctx.translate(ax, groundY - bounce);
+    ctx.rotate(lean * 0.4);
+    /* legs */
+    ctx.fillStyle = '#101c30';
+    ctx.fillRect(-34 + sway * 0.3, -118, 26, 118);
+    ctx.fillRect(10 - sway * 0.3, -118, 26, 118);
+    /* torso (shirt) */
+    var tg2 = ctx.createLinearGradient(-60, -300, 70, -110);
+    tg2.addColorStop(0, shade(color, 1.12));
+    tg2.addColorStop(1, shade(color, 0.72));
+    ctx.fillStyle = tg2;
+    rr(ctx, -58, -308 + slump, 116, 196, 34);
+    ctx.fill();
+    /* head */
+    ctx.fillStyle = '#e0aa7e';
+    ctx.beginPath(); ctx.arc(sway * 0.5, -344 + slump, 30, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#2b1c10';
+    ctx.beginPath(); ctx.arc(sway * 0.5, -352 + slump, 30, Math.PI, Math.PI * 2); ctx.fill();
+    ctx.fillRect(sway * 0.5 - 30, -352 + slump, 60, 8);
+    /* left arm (viewer left) */
+    var cheer = avatar.react === 'cheer';
+    ctx.strokeStyle = shade(color, 0.9);
+    ctx.lineWidth = 21; ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(-52, -292 + slump);
+    if (cheer) { ctx.lineTo(-84, -360 + slump); ctx.lineTo(-92, -408 + slump); }
+    else { ctx.lineTo(-76, -218 + slump); ctx.lineTo(-66, -158 + slump); }
+    ctx.stroke();
+    ctx.strokeStyle = '#e0aa7e';
+    ctx.lineWidth = 15;
+    ctx.beginPath();
+    if (cheer) { ctx.moveTo(-92, -408 + slump); ctx.lineTo(-96, -428 + slump); }
+    else { ctx.moveTo(-66, -158 + slump); ctx.lineTo(-62, -138 + slump); }
+    ctx.stroke();
+    /* bat arm (viewer right): angle by state */
+    var ang;
+    if (avatar.swingT > 0) {
+      var k = 1 - avatar.swingT / 0.22;         // 0..1 through the swing
+      ang = k < 0.35 ? -2.3 + (k / 0.35) * 0.7 : -1.6 + ((k - 0.35) / 0.65) * 2.2;
+    } else if (cheer) {
+      ang = -2.6;
+    } else {
+      ang = -0.5 + Math.sin(now / 520) * 0.08;  // ready sway
+    }
+    var shX = 50, shY = -292 + slump;
+    var elX = shX + Math.cos(ang) * 62, elY = shY - Math.sin(ang) * 62;
+    var handX = elX + Math.cos(ang + 0.5) * 52, handY = elY - Math.sin(ang + 0.5) * 52;
+    ctx.strokeStyle = shade(color, 0.9);
+    ctx.lineWidth = 21;
+    ctx.beginPath(); ctx.moveTo(shX, shY); ctx.lineTo(elX, elY); ctx.stroke();
+    ctx.strokeStyle = '#e0aa7e';
+    ctx.lineWidth = 15;
+    ctx.beginPath(); ctx.moveTo(elX, elY); ctx.lineTo(handX, handY); ctx.stroke();
+    /* bat */
+    ctx.save();
+    ctx.translate(handX, handY);
+    ctx.rotate(-ang * 0.6);
+    ctx.fillStyle = '#3a2415';
+    ctx.fillRect(-4, 0, 8, 26);
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.ellipse(0, -14, 25, 31, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(10,16,28,0.85)';
+    ctx.beginPath(); ctx.ellipse(0, -14, 19, 25, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    ctx.restore();
+  }
+
+  /* near end: your bat + forearm at the bottom of the picture */
+  function drawNearBat(now) {
+    var nearPlayer = playerAtSide(0);
+    var color = players[nearPlayer].color;
+    var bp = proj(bats[0].x, -1.12, 0.10);
+    var pump = nearAnim.reactT > 0 ? Math.sin(nearAnim.reactT * 10) * 8 : 0;
+    var swingK = nearAnim.swingT > 0 ? (1 - nearAnim.swingT / 0.22) : 0;
+    var lift = swingK > 0 ? Math.sin(Math.min(1, swingK) * Math.PI) * 46 : 0;
+    var cxp = bp.x, cyp = bp.y + 66 - lift - pump;
+    /* forearm / sleeve wedge from the bottom edge to the handle */
+    ctx.fillStyle = shade(color, 0.55);
+    ctx.beginPath();
+    ctx.moveTo(cxp - 30, H);
+    ctx.lineTo(cxp + 30, H);
+    ctx.lineTo(cxp + 10, cyp + 66);
+    ctx.lineTo(cxp - 10, cyp + 66);
+    ctx.closePath(); ctx.fill();
+    /* handle */
+    ctx.fillStyle = '#3a2415';
+    ctx.save();
+    ctx.translate(cxp, cyp);
+    ctx.rotate(S.clamp((bats[0].target - bats[0].x) * 0.5, -0.3, 0.3) - lift * 0.002);
+    ctx.fillRect(-8, 30, 16, 52);
+    /* bat face */
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.ellipse(0, 0, 56, 68, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(10,16,28,0.88)';
+    ctx.beginPath(); ctx.ellipse(0, 0, 45, 57, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.20)';
+    ctx.beginPath(); ctx.ellipse(-14, -20, 16, 22, -0.4, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
+  function drawBall() {
+    var sp = proj(ball.x, ball.z, 0);
+    var bp = proj(ball.x, ball.z, ball.h);
+    renderInfo.shadowPx = { x: Math.round(sp.x), y: Math.round(sp.y) };
+    renderInfo.surfaceY = Math.round(sp.y);
+    renderInfo.ballPx = { x: Math.round(bp.x), y: Math.round(bp.y), r: Math.round(bp.r) };
+    /* shadow: separates, shrinks and fades as the ball rises; pinches at the bounce */
+    var pinch = 1 + bounceFx * 0.5;
+    var alpha = S.clamp(0.46 - ball.h * 0.42, 0.10, 0.46);
+    ctx.beginPath();
+    ctx.ellipse(sp.x, sp.y, bp.r * 1.2 * pinch * (1 - Math.min(ball.h, 1) * 0.25), bp.r * 0.42 * pinch, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(2,6,14,' + alpha.toFixed(3) + ')';
+    ctx.fill();
+    /* ball */
+    var bg = ctx.createRadialGradient(bp.x - bp.r * 0.35, bp.y - bp.r * 0.4, 2, bp.x, bp.y, bp.r + 2);
+    bg.addColorStop(0, '#ffffff');
+    bg.addColorStop(0.65, '#eef1f6');
+    bg.addColorStop(1, '#a7b6c9');
+    ctx.beginPath();
+    ctx.arc(bp.x, bp.y, bp.r, 0, Math.PI * 2);
+    ctx.fillStyle = bg;
+    ctx.fill();
+  }
+  function drawTrail() {
+    ctx.save();
+    tablePath(ctx, 0.02);
+    ctx.clip();
+    for (var i = 0; i < trail.length; i++) {
+      var p = proj(trail[i].x, trail[i].z, trail[i].h);
+      var a = (i / trail.length) * 0.16;
       ctx.beginPath();
-      ctx.ellipse(bx + 8, by + 16, S.BALL_R * 1.05, S.BALL_R * 0.45, 0, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(0,0,0,0.35)';
-      ctx.fill();
-      var bg = ctx.createRadialGradient(bx - 5, by - 6, 2, bx, by, S.BALL_R + 2);
-      bg.addColorStop(0, '#ffffff');
-      bg.addColorStop(0.65, '#e8edf4');
-      bg.addColorStop(1, '#9fb0c4');
-      ctx.beginPath();
-      ctx.arc(bx, by, S.BALL_R, 0, Math.PI * 2);
-      ctx.fillStyle = bg;
+      ctx.arc(p.x, p.y, p.r * (0.35 + 0.5 * i / trail.length), 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,255,255,' + a.toFixed(3) + ')';
       ctx.fill();
     }
-
-    /* particles */
-    for (var j = 0; j < particles.length; j++) {
-      var p = particles[j];
+    ctx.restore();
+  }
+  function drawParticles() {
+    if (!particles.length) return;
+    ctx.save();
+    tablePath(ctx, 0.05);          /* effects never leave the table bounds */
+    ctx.clip();
+    for (var i = 0; i < particles.length; i++) {
+      var p = particles[i];
       ctx.globalAlpha = Math.max(0, 1 - p.t / p.life);
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
       ctx.fillStyle = p.color;
       ctx.fill();
     }
+    ctx.restore();
     ctx.globalAlpha = 1;
-
-    /* point banner */
-    if (phase === 'point' && lastScorer >= 0) {
-      var sc = 0.7 + pointFlash * 0.5;
-      ctx.font = '900 ' + Math.round(92 * sc) + 'px -apple-system, "Segoe UI", Roboto, sans-serif';
-      ctx.fillStyle = colors[lastScorer];
-      ctx.fillText('POINT — ' + names[lastScorer].toUpperCase(), W / 2, H / 2 - 40);
-      ctx.font = '700 30px -apple-system, "Segoe UI", Roboto, sans-serif';
-      ctx.fillStyle = 'rgba(255,255,255,0.9)';
-      ctx.fillText('rally: ' + rallyHits + ' hits', W / 2, H / 2 + 34);
+  }
+  function drawChips() {
+    /* stacked corner score boxes, broadcast style (top-right) */
+    var x0 = W - 316, wChip = 292;
+    for (var i = 0; i < 2; i++) {
+      var y0 = 22 + i * 76;
+      ctx.fillStyle = 'rgba(5,12,26,0.82)';
+      rr(ctx, x0, y0, wChip, 64, 12); ctx.fill();
+      ctx.fillStyle = players[i].color;
+      ctx.fillRect(x0, y0 + 8, 10, 48);
+      ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.font = '800 25px -apple-system, "Segoe UI", Roboto, sans-serif';
+      ctx.fillStyle = '#ffffff';
+      var nm = players[i].name.toUpperCase();
+      if (nm.length > 10) nm = nm.slice(0, 10);
+      ctx.fillText('P' + (i + 1) + '  ' + nm, x0 + 24, y0 + 33);
+      var sc = scores[i];
+      var pulse = (lastScorer === i && pointFlash > 0) ? 1 + pointFlash * 0.3 : 1;
+      ctx.font = '900 ' + Math.round(40 * pulse) + 'px -apple-system, "Segoe UI", Roboto, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillStyle = players[i].color;
+      ctx.fillText(String(sc), x0 + wChip - 18, y0 + 33);
+      if (server === i && phase !== 'over' && phase !== 'lobby') {
+        ctx.beginPath();
+        ctx.arc(x0 + wChip - 52, y0 + 33, 7, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+      }
     }
+    ctx.textAlign = 'right';
+    ctx.font = '700 22px -apple-system, "Segoe UI", Roboto, sans-serif';
+    ctx.fillStyle = 'rgba(184,196,214,0.92)';
+    ctx.fillText('GAMES  ' + games[0] + ' — ' + games[1], x0 + wChip, 22 + 2 * 76 + 8);
+    ctx.textAlign = 'left';
+    ctx.font = '800 24px -apple-system, "Segoe UI", Roboto, sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.fillText('MOTION ARENA', 24, 46);
+  }
+  function draw(now) {
+    /* FULL repaint every frame, sized from the runtime backing
+       store — never assumed (TV trail-persistence finding). */
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (!staticLayer) buildStatic();
+    if (!netLayer) buildNet();
+    ctx.drawImage(staticLayer, 0, 0);
+    drawAvatar(now);
+    if (quality === 2 && phase === 'rally') drawTrail();
+    if (phase === 'lobby') {
+      ball.x = 0; ball.z = 0; ball.h = 0.16 + Math.sin(now / 620) * 0.03;
+      drawBall();
+    } else if (phase !== 'point' || ball.live) {
+      if (phase === 'serve' || ball.live) drawBall();
+    }
+    ctx.drawImage(netLayer, 0, 0);
+    drawParticles();
+    drawNearBat(now);
+    drawChips();
+    /* centre flashes: grades, LET, net cord, change of ends */
+    if (flash.dur > 0) {
+      var fa = flash.t < 0.12 ? flash.t / 0.12 : Math.max(0, 1 - (flash.t - flash.dur * 0.6) / (flash.dur * 0.4));
+      ctx.globalAlpha = S.clamp(fa, 0, 1);
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.font = '900 84px -apple-system, "Segoe UI", Roboto, sans-serif';
+      ctx.fillStyle = flash.color;
+      ctx.fillText(flash.text, W / 2, 218);
+      if (flash.sub) {
+        ctx.font = '700 30px -apple-system, "Segoe UI", Roboto, sans-serif';
+        ctx.fillStyle = 'rgba(255,255,255,0.92)';
+        ctx.fillText(flash.sub, W / 2, 276);
+      }
+      ctx.globalAlpha = 1;
+    }
+    /* point banner */
+    if (phase === 'point' && lastScorer >= 0 && !letReplay) {
+      var sc2 = 0.75 + pointFlash * 0.4;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.font = '900 ' + Math.round(88 * sc2) + 'px -apple-system, "Segoe UI", Roboto, sans-serif';
+      ctx.fillStyle = players[lastScorer].color;
+      ctx.fillText('POINT — ' + players[lastScorer].name.toUpperCase(), W / 2, H / 2 - 30);
+      ctx.font = '700 30px -apple-system, "Segoe UI", Roboto, sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.92)';
+      ctx.fillText((pointReason ? pointReason + ' · ' : '') + 'rally: ' + rallyHits + ' hits', W / 2, H / 2 + 36);
+    }
+    /* serve hint */
     if (phase === 'serve') {
-      ctx.font = '700 27px -apple-system, "Segoe UI", Roboto, sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.font = '800 27px -apple-system, "Segoe UI", Roboto, sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.95)';
+      ctx.fillText(players[server].name + ' to serve', W / 2, H - 118);
+      ctx.font = '700 24px -apple-system, "Segoe UI", Roboto, sans-serif';
       ctx.fillStyle = 'rgba(184,196,214,0.95)';
-      var hint = net.sides[server] ? 'Waiting for ' + names[server] + ' to serve from the phone…'
-        : (aiControlled(server) ? 'Computer serves…' : 'Press ENTER or tap to serve');
-      ctx.fillText(hint, W / 2, COURT.y + COURT.h + 104);
+      var sc3 = controllerOf(sideOfPlayer(server));
+      var hint = sc3 === 'phone-swing' || sc3 === 'phone-auto' ? 'Serve from the phone — or it serves itself'
+        : sc3 === 'ai' || sc3 === 'bot' ? 'Computer serves…'
+        : 'Press ENTER or tap to serve';
+      ctx.fillText(hint, W / 2, H - 82);
+    }
+    if (paused) {
+      ctx.fillStyle = 'rgba(4,9,20,0.45)';
+      ctx.fillRect(0, 0, W, H);
     }
   }
 
   /* ---------------- networking (PeerJS) ---------------- */
   var net = {
     peer: null, status: 'idle', code: '', tries: 0,
-    sides: [null, null],        // side -> {conn, name, color, token}
+    players: [null, null],       // player -> {conn, name, color, token, mode}
+    reserved: [null, null],      // player -> {token, name, color, mode, until}
     spectators: [],
     openTimer: null,
-    lastIncoming: null          // peer id of the most recent real incoming connection
+    lastIncoming: null
   };
   function controllerUrl() {
     var base = window.location.href.split('#')[0].split('?')[0];
+    var last = base.substring(base.lastIndexOf('/') + 1);
+    /* Folder loaded WITHOUT a trailing slash (e.g. /arena, which
+       Vercel serves 200 without redirecting): the final segment has
+       no file extension, so it names the folder itself and the
+       controller lives INSIDE it. A segment with an extension is a
+       file (host.html / index.html) and the controller is its
+       sibling. Either way the result is the controller.html of the
+       folder the host page actually lives in. */
+    if (last && last.indexOf('.') === -1) base += '/';
     return base.substring(0, base.lastIndexOf('/') + 1) + 'controller.html';
   }
   function setDot(cls) {
@@ -1047,45 +1734,60 @@ window.__ppWatchdog = setTimeout(function () {
   }
   function setupConn(conn) {
     net.lastIncoming = conn.peer || null;
-    var entry = { conn: conn, side: -1, name: '', color: '', token: '' };
+    var entry = { conn: conn, player: -1, name: '', color: '', token: '', mode: 'touch' };
     conn.on('data', function (data) {
       if (!data || typeof data !== 'object') return;
       if (data.t === 'join') {
         entry.name = String(data.name || 'Player').slice(0, 14);
         entry.color = String(data.color || S.COLORS[0].hex);
         entry.token = String(data.token || '');
-        var side = -1;
-        if (entry.token) {
-          for (var i = 0; i < 2; i++) {
-            if (net.sides[i] && net.sides[i].token === entry.token) side = i;
+        if (data.mode === 'swing' || data.mode === 'touch') entry.mode = data.mode;
+        var p = -1, i;
+        if (entry.token) {           // reclaim a reserved player slot
+          for (i = 0; i < 2; i++) {
+            if (net.reserved[i] && net.reserved[i].token === entry.token &&
+                net.reserved[i].until > performance.now()) { p = i; break; }
           }
+          if (p >= 0) net.reserved[p] = null;
         }
-        if (side === -1) { for (var j = 0; j < 2; j++) { if (!net.sides[j]) { side = j; break; } } }
-        entry.side = side;
-        if (side >= 0) {
-          net.sides[side] = entry;
-          names[side] = entry.name;
-          colors[side] = entry.color;
+        if (p === -1) { for (i = 0; i < 2; i++) { if (!net.players[i] && !liveReservation(i)) { p = i; break; } } }
+        entry.player = p;
+        if (p >= 0) {
+          net.players[p] = entry;
+          players[p].name = entry.name;
+          players[p].color = entry.color;
+          players[p].kind = 'phone';
           if (phase === 'lobby') mode = 'phone';
-          conn.send({ t: 'welcome', side: side, name: entry.name, color: entry.color });
+          conn.send({ t: 'welcome', player: p, side: p, name: entry.name, color: entry.color });
         } else {
           net.spectators.push(entry);
           conn.send({ t: 'full' });
         }
         refreshJoined();
         sendNetState();
-      } else if (data.t === 'pad' && entry.side >= 0) {
-        paddles[entry.side].target = y01ToPx(parseFloat(data.y) || 0.5);
-      } else if (data.t === 'serve' && entry.side >= 0) {
-        if (phase === 'serve' && entry.side === server) launchServe();
-        else if (phase === 'lobby') startGame('phone');
-        else if (phase === 'over') startGame(mode);
+      } else if (data.t === 'pad' && entry.player >= 0) {
+        var v = parseFloat(data.x != null ? data.x : data.y);
+        if (!isNaN(v)) bats[sideOfPlayer(entry.player)].target = T.batMin + S.clamp(v, 0, 1) * (T.batMax - T.batMin);
+      } else if (data.t === 'ctrl' && entry.player >= 0) {
+        if (data.mode === 'swing' || data.mode === 'touch') entry.mode = data.mode;
+      } else if (data.t === 'swing' && entry.player >= 0) {
+        var pw = parseFloat(data.power);
+        onSwing(entry.player, isNaN(pw) ? 0.7 : S.clamp(pw, 0, 1), performance.now());
+      } else if (data.t === 'serve' && entry.player >= 0) {
+        if (phase === 'serve' && entry.player === server) launchServe();
+        else if (phase === 'lobby') startMatch('phone');
+        else if (phase === 'over') playAgain();
       }
     });
     conn.on('close', function () {
-      if (entry.side >= 0 && net.sides[entry.side] === entry) {
-        net.sides[entry.side] = null;
-        if (mode === 'phone') applyModeNames();
+      if (entry.player >= 0 && net.players[entry.player] === entry) {
+        net.players[entry.player] = null;
+        /* hold the player's slot for 60 s so a dropped phone reclaims
+           ITS player (and its end) on reconnect — no reload, no steal */
+        net.reserved[entry.player] = { token: entry.token, name: entry.name, color: entry.color,
+                                       mode: entry.mode, until: performance.now() + 60000 };
+        players[entry.player].kind = mode === 'local' || entry.player === 0 ? 'human' : 'ai';
+        applyModeIdentities();
       }
       var si = net.spectators.indexOf(entry);
       if (si >= 0) net.spectators.splice(si, 1);
@@ -1093,16 +1795,23 @@ window.__ppWatchdog = setTimeout(function () {
       sendNetState();
     });
   }
+  function liveReservation(p) {
+    return net.reserved[p] && net.reserved[p].until > performance.now();
+  }
   function sendNetState() {
     var base = { t: 'state', phase: phase, mode: mode, scores: scores.slice(),
-      names: names.slice(), colors: colors.slice(), server: server };
-    var all = net.sides.concat(net.spectators);
+      names: [players[0].name, players[1].name], colors: [players[0].color, players[1].color],
+      games: games.slice(), server: server, paused: paused,
+      grade: lastGrade.player >= 0 && performance.now() - lastGrade.at < 2500
+        ? { player: lastGrade.player, grade: lastGrade.grade } : null };
+    var all = net.players.concat(net.spectators);
     for (var i = 0; i < all.length; i++) {
       var e = all[i];
       if (!e || !e.conn || !e.conn.open) continue;
       var msg = {}; for (var k in base) msg[k] = base[k];
-      msg.you = e.side;
-      msg.yourServe = e.side === server && phase === 'serve';
+      msg.you = e.player;
+      msg.yourServe = e.player === server && phase === 'serve';
+      msg.yourEnd = e.player >= 0 ? (sideOfPlayer(e.player) === 0 ? 'NEAR' : 'FAR') : '';
       try { e.conn.send(msg); } catch (err) {}
     }
   }
@@ -1112,13 +1821,13 @@ window.__ppWatchdog = setTimeout(function () {
     list.innerHTML = '';
     var any = false;
     for (var i = 0; i < 2; i++) {
-      var e = net.sides[i];
+      var e = net.players[i];
       if (!e) continue;
       any = true;
       var chip = document.createElement('span');
       chip.className = 'player-chip';
       chip.style.background = e.color;
-      chip.textContent = '📱 ' + e.name + ' — ' + (i === 0 ? 'LEFT' : 'RIGHT');
+      chip.textContent = '📱 ' + e.name + ' — P' + (i + 1) + (e.mode === 'swing' ? ' · SWING' : '');
       list.appendChild(chip);
     }
     if (!any) {
@@ -1129,113 +1838,247 @@ window.__ppWatchdog = setTimeout(function () {
     }
   }
 
+  /* ---------------- pause ---------------- */
+  function showPause() {
+    if (phase !== 'serve' && phase !== 'rally' && phase !== 'point') return;
+    paused = true;
+    document.getElementById('pausePanel').classList.remove('hidden');
+    document.getElementById('btnResume').focus();
+    sendNetState();
+  }
+  function hidePause() {
+    paused = false;
+    var p = document.getElementById('pausePanel');
+    if (p) p.classList.add('hidden');
+    sendNetState();
+  }
+  function playAgain() {
+    if (matchWinner >= 0) startMatch(mode); else nextGame();
+  }
+
   /* ---------------- UI + input wiring ---------------- */
-  document.getElementById('btnModeAI').addEventListener('click', function () { startGame('ai'); });
-  document.getElementById('btnModeLocal').addEventListener('click', function () { startGame('local'); });
-  document.getElementById('btnModePhone').addEventListener('click', function () { startGame('phone'); });
-  document.getElementById('btnAgain').addEventListener('click', function () { startGame(mode); });
-  document.getElementById('btnLobby').addEventListener('click', function () { toLobby(); });
+  function refreshSettings() {
+    document.getElementById('btnDiff').innerHTML =
+      '🎚 Difficulty: <b>' + diff().label + '</b>&nbsp; <small>(D)</small>';
+    document.getElementById('btnSound').innerHTML =
+      settings.sound ? '🔊 Sound: <b>On</b>&nbsp; <small>(N)</small>' : '🔇 Sound: <b>Off</b>&nbsp; <small>(N)</small>';
+  }
+  function cycleDifficulty() {
+    var idx = S.DIFFICULTY_ORDER.indexOf(settings.difficulty);
+    settings.difficulty = S.DIFFICULTY_ORDER[(idx + 1) % S.DIFFICULTY_ORDER.length];
+    refreshSettings();
+  }
+  function toggleSound() {
+    settings.sound = !settings.sound;
+    if (settings.sound) ensureAudio();
+    refreshSettings();
+  }
+  document.getElementById('btnModeAI').addEventListener('click', function () { startMatch('ai'); });
+  document.getElementById('btnModeLocal').addEventListener('click', function () { startMatch('local'); });
+  document.getElementById('btnModePhone').addEventListener('click', function () { startMatch('phone'); });
+  document.getElementById('btnAgain').addEventListener('click', playAgain);
+  document.getElementById('btnLobby').addEventListener('click', toLobby);
+  document.getElementById('btnDiff').addEventListener('click', cycleDifficulty);
+  document.getElementById('btnSound').addEventListener('click', toggleSound);
+  document.getElementById('btnResume').addEventListener('click', hidePause);
+  document.getElementById('btnRestartGame').addEventListener('click', function () { hidePause(); startMatch(mode); });
+  document.getElementById('btnPauseLobby').addEventListener('click', function () { hidePause(); toLobby(); });
 
   document.addEventListener('keydown', function (e) {
     keys[e.code] = true;
-    if (e.code === 'ArrowUp' || e.code === 'ArrowDown' || e.code === 'Space') e.preventDefault();
+    if (e.code === 'ArrowUp' || e.code === 'ArrowDown' || e.code === 'ArrowLeft' || e.code === 'ArrowRight' || e.code === 'Space') e.preventDefault();
     var onButton = document.activeElement && document.activeElement.tagName === 'BUTTON';
+    if (e.code === 'KeyP') {
+      if (paused) hidePause(); else showPause();
+      return;
+    }
+    if (e.code === 'Escape') {
+      if (paused) { hidePause(); return; }
+      if (phase === 'over') { toLobby(); return; }
+      if (phase !== 'lobby') { showPause(); return; }
+    }
+    if (paused) return;
+    /* lobby shortcuts work even while a mode button holds focus —
+       on a TV the focus starts on a button, and D/N/1/2/3 are not
+       button-activation keys */
+    if (phase === 'lobby') {
+      if (e.code === 'Digit1') { startMatch('ai'); return; }
+      if (e.code === 'Digit2') { startMatch('local'); return; }
+      if (e.code === 'Digit3') { startMatch('phone'); return; }
+      if (e.code === 'KeyD') { cycleDifficulty(); return; }
+      if (e.code === 'KeyN') { toggleSound(); return; }
+    }
     if (e.code === 'Enter' || e.code === 'Space') {
       if (onButton) return; // focused button handles it natively
-      if (phase === 'lobby') startGame('ai');
-      else if (phase === 'serve' && !net.sides[server]) launchServe();
-      else if (phase === 'over') startGame(mode);
+      if (phase === 'lobby') startMatch('ai');
+      else if (phase === 'serve' && controllerOf(sideOfPlayer(server)) === 'local') launchServe();
+      else if (phase === 'over') playAgain();
     }
-    if (phase === 'lobby' && !onButton) {
-      if (e.code === 'Digit1') startGame('ai');
-      else if (e.code === 'Digit2') startGame('local');
-      else if (e.code === 'Digit3') startGame('phone');
-    }
-    if (e.code === 'KeyM' && phase !== 'lobby') toLobby();
-    if (e.code === 'Escape' && phase === 'over') toLobby();
+    if (e.code === 'KeyM' && phase !== 'lobby' && !paused) toLobby();
   });
   document.addEventListener('keyup', function (e) { keys[e.code] = false; });
-  window.addEventListener('blur', function () { keys = {}; });
+  window.addEventListener('blur', function () {
+    keys = {};
+    if (!paused && (phase === 'serve' || phase === 'rally' || phase === 'point')) showPause();
+  });
 
-  function canvasPosY(e) {
+  function canvasPosX(e) {
     var r = canvas.getBoundingClientRect();
-    var clientY = (e.touches && e.touches[0]) ? e.touches[0].clientY : e.clientY;
-    return S.clamp((clientY - r.top) / r.height, 0, 1) * H;
+    var clientX = (e.touches && e.touches[0]) ? e.touches[0].clientX : e.clientX;
+    return T.batMin + S.clamp((clientX - r.left) / r.width, 0, 1) * (T.batMax - T.batMin);
   }
   canvas.addEventListener('mousemove', function (e) {
-    if (localControlled(0) && !net.sides[0] && mode !== 'local') paddles[0].target = clampPaddleY(canvasPosY(e));
+    if (players[0].kind === 'human' && !net.players[0]) {
+      bats[sideOfPlayer(0)].target = canvasPosX(e);
+    }
   });
   canvas.addEventListener('touchstart', function (e) {
     e.preventDefault();
-    if (phase === 'serve' && !net.sides[server]) launchServe();
+    if (phase === 'serve' && controllerOf(sideOfPlayer(server)) === 'local') launchServe();
   }, { passive: false });
   canvas.addEventListener('touchmove', function (e) {
     e.preventDefault();
-    if (localControlled(0) && !net.sides[0] && mode !== 'local') paddles[0].target = clampPaddleY(canvasPosY(e));
+    if (players[0].kind === 'human' && !net.players[0]) {
+      bats[sideOfPlayer(0)].target = canvasPosX(e);
+    }
   }, { passive: false });
   canvas.addEventListener('click', function () {
-    if (phase === 'serve' && !net.sides[server]) launchServe();
+    if (phase === 'serve' && controllerOf(sideOfPlayer(server)) === 'local') launchServe();
   });
 
-  /* ---------------- debug / test hooks (used by check-pingpong.py) ---------------- */
+  /* ---------------- debug / test hooks (used by the check scripts) ---- */
+  function bat01(side) { return (bats[side].x - T.batMin) / (T.batMax - T.batMin); }
   window.PP = {
-    version: '1.2.0',
+    version: '1.3.0',
     getState: function () {
       return {
-        phase: phase, mode: mode, scores: scores.slice(), server: server,
-        winner: winner, quality: quality, rallyHits: rallyHits, bestRally: bestRally,
-        ball: { x: Math.round(ball.x), y: Math.round(ball.y), vx: Math.round(ball.vx), vy: Math.round(ball.vy) },
-        paddles: [Math.round(paddles[0].y), Math.round(paddles[1].y)],
+        phase: phase, mode: mode, paused: paused,
+        scores: scores.slice(), games: games.slice(), gameNumber: gameNumber,
+        server: server, firstServer: firstServer,
+        endsSwapped: endsSwapped, switchedThisGame: switchedThisGame,
+        gameWinner: gameWinner, matchWinner: matchWinner,
+        winner: matchWinner >= 0 ? matchWinner : gameWinner,
+        settings: { difficulty: settings.difficulty, sound: settings.sound },
+        quality: quality, rallyHits: rallyHits, bestRally: bestRally,
+        pointReason: pointReason,
+        players: [
+          { name: players[0].name, color: players[0].color, kind: players[0].kind },
+          { name: players[1].name, color: players[1].color, kind: players[1].kind }
+        ],
+        ball3: { x: +ball.x.toFixed(3), z: +ball.z.toFixed(3), h: +ball.h.toFixed(3),
+                 vx: +ball.vx.toFixed(2), vz: +ball.vz.toFixed(2), vh: +ball.vh.toFixed(2),
+                 live: ball.live,
+                 toSide: flight ? flight.toSide : -1, fromSide: flight ? flight.fromSide : -1,
+                 serve: flight ? flight.serve : false, bounces: flight ? flight.bounces : 0,
+                 cord: flight ? flight.cord : false,
+                 tPlaneInMs: flight ? Math.max(0, Math.round(flight.tPlane - performance.now())) : -1 },
+        bats: [Math.round(bats[0].x * 100) / 100, Math.round(bats[1].x * 100) / 100],
+        bats01: [Math.round(bat01(0) * 1000) / 1000, Math.round(bat01(1) * 1000) / 1000],
+        paddles: [Math.round(bat01(0) * 1000) / 1000, Math.round(bat01(1) * 1000) / 1000],
+        avatar: { x01: Math.round(bat01(1) * 1000) / 1000, swing: avatar.swingT > 0, react: avatar.react },
+        lastGrade: { player: lastGrade.player, grade: lastGrade.grade },
+        render: renderInfo,
         net: { status: net.status, code: net.code, sawIncoming: net.lastIncoming,
-               sides: [!!net.sides[0], !!net.sides[1]] }
+               sides: [!!net.players[0], !!net.players[1]],
+               players: [!!net.players[0], !!net.players[1]] }
       };
     },
-    start: function (m) { startGame(m || 'ai'); },
+    start: function (m) { startMatch(m || 'ai'); },
     serve: function () { launchServe(); },
     toLobby: function () { toLobby(); },
+    playAgain: function () { playAgain(); },
     setScore: function (a, b) {
       scores = [a | 0, b | 0];
       var lead = Math.abs(scores[0] - scores[1]);
       if (Math.max(scores[0], scores[1]) >= S.WIN_SCORE && lead >= S.WIN_LEAD) {
-        winner = scores[0] > scores[1] ? 0 : 1;
+        gameWinner = scores[0] > scores[1] ? 0 : 1;
+        games[gameWinner]++;
+        if (games[gameWinner] >= S.MATCH_GAMES_TO_WIN) matchWinner = gameWinner;
         phase = 'over';
         showGameOver();
-      } else setServe();
+      } else { updateServer(); setServe(); }
       sendNetState();
     },
-    setPaddle: function (side, y01) {
-      paddles[side].y = paddles[side].target = y01ToPx(y01);
+    setGames: function (a, b) {
+      games = [a | 0, b | 0];
+      gameNumber = games[0] + games[1] + 1;
+      sendNetState();
     },
-    setBall: function (x, y, vx, vy) {
-      ball.x = x; ball.y = y; ball.vx = vx; ball.vy = vy;
-      if (phase === 'serve') phase = 'rally';
+    debugPoint: function (p) { scorePoint(p | 0, ''); },
+    setPaddle: function (side, v01) {
+      bats[side].x = bats[side].target = T.batMin + S.clamp(v01, 0, 1) * (T.batMax - T.batMin);
     },
-    /* Simulated-peer hooks: run join/pad/serve messages through the
-       exact setupConn data handler a live PeerJS connection uses, with
-       a stub transport. (The sandbox blocks WebRTC's UDP data plane,
-       so check-pingpong.py verifies the wire at signaling level and
-       the protocol through these hooks.) */
-    simJoin: function (name) {
+    setPlayerBat: function (p, v01) {
+      var side = sideOfPlayer(p);
+      bats[side].x = bats[side].target = T.batMin + S.clamp(v01, 0, 1) * (T.batMax - T.batMin);
+    },
+    /* Construct a ball flight directly (rules + motion audits).
+       opts: {serve, bounces, cord} preset the flight record. */
+    testFlight: function (o) {
+      var vz = o.vz || 0;
+      var toSide = vz > 0 ? 1 : 0;
+      ball.x = o.x; ball.z = o.z; ball.h = o.h;
+      ball.vx = o.vx || 0; ball.vz = vz; ball.vh = o.vh || 0;
+      ball.live = true;
+      phase = 'rally';
+      flight = { fromSide: 1 - toSide, toSide: toSide, serve: !!(o && o.serve),
+                 bounces: (o && o.bounces != null) ? o.bounces : 0,
+                 crossed: (toSide === 1 && ball.z > 0) || (toSide === 0 && ball.z < 0),
+                 cord: !!(o && o.cord), tPlane: 0 };
+      flight.tPlane = performance.now() + (((toSide === 1 ? T.planeZ : -T.planeZ) - ball.z) / vz) * 1000;
+      trail.length = 0;
+      sendNetState();
+    },
+    simSwing: function (player, power, deltaMs) {
+      var at;
+      if (flight && flight.toSide === sideOfPlayer(player)) at = flight.tPlane + (deltaMs || 0);
+      else at = performance.now() + (deltaMs || 0);
+      onSwing(player, power, at);
+    },
+    setDifficulty: function (d) {
+      if (S.DIFFICULTY[d]) { settings.difficulty = d; refreshSettings(); }
+    },
+    setSound: function (on) { settings.sound = !!on; if (settings.sound) ensureAudio(); refreshSettings(); },
+    pauseGame: function () { showPause(); },
+    resumeGame: function () { hidePause(); },
+    setQuality: function (q) { quality = q | 0; staticLayer = null; netLayer = null; },
+    setRallyBot: function (on) { rallyBot = !!on; },
+    debugAvatar: function (what) {
+      if (what === 'swing') avatar.swingT = 0.22;
+      else if (what === 'cheer' || what === 'slump') { avatar.react = what; avatar.reactT = 1.15; }
+    },
+    controllerUrl: function () { return controllerUrl(); },
+    /* Simulated-peer hooks: run join/pad/swing/serve messages through
+       the exact setupConn data handler a live PeerJS connection uses,
+       with a stub transport. (The sandbox blocks WebRTC's UDP data
+       plane, so the checks verify the wire at signaling level and the
+       protocol through these hooks.) */
+    simJoin: function (name, mode) {
       var stub = { open: true, peer: 'simulated-peer', sent: [], _h: {},
         on: function (ev, fn) { this._h[ev] = fn; },
         send: function (m) { this.sent.push(m); },
         emit: function (ev, arg) { if (this._h[ev]) this._h[ev](arg); } };
       setupConn(stub);
-      stub.emit('data', { t: 'join', name: name || 'Sim Player', color: S.COLORS[1].hex, token: 'sim-token' });
-      var side = -1;
-      for (var i = 0; i < stub.sent.length; i++) if (stub.sent[i].t === 'welcome') side = stub.sent[i].side;
-      if (side >= 0) simStubs[side] = stub;
-      return { side: side, sent: stub.sent };
+      stub.emit('data', { t: 'join', name: name || 'Sim Player', color: S.COLORS[1].hex,
+                          token: 'sim-token', mode: mode || 'touch' });
+      var p = -1;
+      for (var i = 0; i < stub.sent.length; i++) if (stub.sent[i].t === 'welcome') p = stub.sent[i].player;
+      if (p >= 0) simStubs[p] = stub;
+      return { side: p, player: p, sent: stub.sent };
     },
-    simData: function (side, msg) {
-      var stub = simStubs[side];
+    simData: function (player, msg) {
+      var stub = simStubs[player];
       if (stub) stub.emit('data', msg);
     },
-    simState: function (side) {
-      var stub = simStubs[side];
+    simState: function (player) {
+      var stub = simStubs[player];
       if (!stub) return null;
       for (var i = stub.sent.length - 1; i >= 0; i--) if (stub.sent[i].t === 'state') return stub.sent[i];
       return null;
+    },
+    simClose: function (player) {
+      var stub = simStubs[player];
+      if (stub && stub._h.close) stub._h.close();
     }
   };
   var simStubs = [null, null];
@@ -1247,12 +2090,13 @@ window.__ppWatchdog = setTimeout(function () {
     last = now;
     var dt = Math.min(0.033, dtMs / 1000);
     noteFrame(dtMs);
-    if (phase !== 'lobby') update(dt);
-    else stepParticles(dt);
+    if (!paused) update(dt);
+    else { if (avatar.reactT > 0) { avatar.reactT = Math.max(0, avatar.reactT - dt); } stepParticles(dt); }
     draw(now);
     requestAnimationFrame(tick);
   }
   refreshJoined();
+  refreshSettings();
   initPeer();
   document.getElementById('btnModeAI').focus();
   requestAnimationFrame(tick);

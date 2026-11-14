@@ -1,12 +1,27 @@
 MOTION ARENA — PING PONG
-An IEC, Inc. game. First to 11, win by 2.
-Build tvfix-1.2.0-singlefile — the TV pages are now SINGLE FILES:
+An IEC, Inc. game. Broadcast table tennis: the TV watches the table
+from behind your end, with the other player standing at the far end.
+Official rules: game to 11, win by 2, match best of 5.
+Build broadcast-1.3.0 — the TV pages are SINGLE FILES:
 everything the game needs (design + all code) is inside the one page
 itself, so there is nothing separate left for a TV browser to fail
 to load. The page also heals itself: if the TV is merely slow, it
 recovers on its own within 30 seconds, no reload needed. If you
 still see a red box after 30 seconds, note its words exactly (or
 photograph it) — it names the exact stage that failed.
+
+THE RULES (official table tennis, as the game plays them)
+  - Serve: the ball bounces first on the SERVER's half, then on the
+    receiver's half. A serve that clips the net and still lands in
+    is a LET — re-serve, no point. A serve into the net or off the
+    table gives the point to the receiver.
+  - Rally: returns must bounce on the opponent's half. Edge balls
+    count as in. Hitting the ball before it bounces (a volley) is
+    a fault. A net-cord ball that goes over and lands in plays on.
+  - Scoring: every rally scores. Serves change every 2 points
+    (every point at 10-10). Players switch ends after each game,
+    and at 5 points in the deciding game. First to 3 games wins
+    the match.
 
 ====================================================================
 1) PLAY ON THE SAMSUNG TV  (the main way)
@@ -20,17 +35,25 @@ its web address, in the TV's built-in Internet browser:
      The TV Host opens by itself — no sign-in, nothing to choose.
   3. If a red box appears, give it 30 seconds: a slow TV clears it
      by itself. If it stays, note its words (see the note above).
-  4. Play with the TV remote: UP / DOWN arrows move your paddle,
-     Enter starts the game, serves, and restarts. That is all you
-     need for 1 Player vs Computer.
+  4. Play with the TV remote: LEFT / RIGHT arrows move your bat
+     (at the bottom of the screen), Enter starts the game, serves,
+     and restarts. That is all you need for 1 Player vs Computer.
+     In the lobby you can also pick the Computer's difficulty
+     (D key) and turn sound on (N key). P pauses.
 
-  Phone controller (2-player, needs internet):
+  Phone controller (needs internet):
   5. On your phone's browser, open:
      https://iecincglobal.com/arena/controller.html
   6. Type the 4-letter room code shown on the TV and tap Join.
-  7. Drag on the phone pad to move your paddle — or tap
-     "Enable tilt control" and tip the phone. Tap SERVE when the
-     game says it is your serve.
+  7. SWING MODE (the fun way): tap SWING MODE, allow motion access
+     if the phone asks, hold the phone upright and tap
+     "Set upright centre". Tilt the phone left/right to move your
+     bat — and SWING the phone forward as the ball reaches you to
+     strike it. The TV grades your timing: PERFECT / GOOD / GRAZE.
+     TOUCH MODE always works too: drag left/right on the track.
+  8. Tap SERVE when the phone says it is your serve (or swing).
+     If the connection drops, the phone rejoins by itself and the
+     TV holds your player for a minute — no need to restart.
 
   Note: phone-controller play needs an internet connection on both
   the TV and the phone (they meet through the PeerJS cloud).
@@ -45,34 +68,37 @@ screen showed instead. Every step has its PASS line.
 
  1. On the TV, open the "Internet" browser and go to
     https://iecincglobal.com/arena/
-    PASS: the game lobby appears on the navy arena page.
+    PASS: the game lobby appears over the broadcast table view.
     If a red box appears instead, wait 30 seconds — a slow TV
     clears it by itself. If it stays, note its words exactly.
- 2. Look at the top-right of the screen.
-    PASS: the table fills the screen and a 4-letter room code
-    shows at the top. If the code area says phones need internet,
-    that is fine — keep going.
+ 2. Look at the screen.
+    PASS: the table fills the screen (trapezoid view), the other
+    player stands at the far end, and a 4-letter room code shows
+    at the top right.
  3. Press Enter on the remote (the "1 Player vs Computer" button
     is already selected).
-    PASS: the game starts and waits for a serve.
- 4. Press Enter again to serve, then use the UP / DOWN arrows.
-    PASS: the ball launches and your paddle (left, gold) follows
-    the arrows smoothly, with no stutter.
+    PASS: the game starts and waits for a serve, your bat at the
+    bottom of the screen.
+ 4. Press Enter again to serve, then use LEFT / RIGHT arrows.
+    PASS: the ball launches, bounces on your half then the far
+    half, and your bat follows the arrows smoothly.
  5. Play one full game against the computer to 11 points
     (win by 2). Use Enter to serve each time.
-    PASS: the score climbs, the game ends with a winner screen,
-    and Enter ("Play Again") starts a fresh game at 0 : 0.
- 6. Go back to the lobby (press M, or choose Back to Lobby).
-    On the phone, open https://iecincglobal.com/arena/controller.html
-    type the room code from the TV, tap Join.
-    PASS: the TV shows your phone's name as the LEFT player and
-    dragging on the phone pad moves the TV paddle.
-    If it fails: note the phone's message word for word (room not
-    found / timed out / other) — TV browsers vary, this is the
-    step we most need your report on.
+    PASS: the corner score boxes climb, the game ends with a
+    winner screen, and "Next Game" starts game 2 at 0 : 0 with
+    the players at switched ends.
+ 6. Go back to the lobby (press M). On the phone, open
+    https://iecincglobal.com/arena/controller.html
+    type the room code from the TV, tap Join, then tap
+    SWING MODE and allow motion access.
+    PASS: the TV shows your phone's name as a player, tilting
+    the phone moves your bat, and swinging strikes the ball with
+    a grade (PERFECT / GOOD / GRAZE) flashing on the TV.
+    If it fails: note the phone's message word for word — TV and
+    phone browsers vary; this is the step we most need reported.
  7. Optional: a second phone joins with the same code.
-    PASS: it takes the RIGHT paddle automatically and both
-    paddles answer to their own phone.
+    PASS: it becomes the other player automatically and both
+    phones play their own ends.
 
 Send back: "TV test passed" or the failing step numbers.
 
@@ -89,8 +115,9 @@ for the on-screen game itself.
      can open "controller.html" for phone play (internet needed
      for that part).
   4. With NO internet at all, these still work fully:
-       - 1 Player vs Computer (keyboard arrows / mouse / touch)
-       - 2 Players sharing one screen (W/S and arrow keys)
+       - 1 Player vs Computer (arrow keys / mouse / touch)
+       - 2 Players sharing one screen (Player 1: A/D, Player 2:
+         arrow keys)
      Phone-controller mode will simply show a message explaining it
      needs internet — nothing breaks or hangs.
 
@@ -111,11 +138,17 @@ controller mode needs internet as above).
 ====================================================================
 CONTROLS SUMMARY
 ====================================================================
-TV / keyboard : UP/DOWN or W/S move - Enter start/serve/restart -
-                M = back to menu - Esc on the game-over screen = lobby
-Mouse / touch : move over the table to move the left paddle, tap to serve
-Phone         : drag on the pad, or enable tilt; SERVE button on your serve
-Scoring       : first to 11 points, must win by 2. Serve changes
-                every 2 points (every point at 10-10).
+TV / keyboard : LEFT/RIGHT (or UP/DOWN) move your bat — Enter
+                start/serve/restart — P pause — M menu — in the
+                lobby: 1/2/3 pick the game type, D difficulty,
+                N sound on/off. 2 Players: Player 1 A/D, Player 2
+                arrow keys.
+Mouse / touch : move over the table to move your bat, tap to serve.
+Phone         : SWING MODE — tilt to move, swing to strike (timing
+                is graded); TOUCH MODE — drag on the track, the TV
+                bats for you at contact; SERVE button on your serve.
+Scoring       : game to 11, win by 2; serves change every 2 points
+                (every point at 10-10); ends switch after each game
+                and at 5 in the deciding game; match = best of 5.
 
 Developed by IEC, Inc.

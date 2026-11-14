@@ -6,7 +6,7 @@
 <title>Motion Arena — Ping Pong Controller</title>
 <meta name="description" content="Phone controller for Motion Arena Ping Pong. Enter the room code shown on the TV. An IEC, Inc. game.">
 <link rel="icon" href="data:,">
-<meta name="pp-build" content="tvfix-1.2.0-singlefile">
+<meta name="pp-build" content="broadcast-1.3.0">
 <style>
 /* pingpong.css — inlined by build-singlefile.py (single-file build) */
 /* Motion Arena — Ping Pong. IEC navy #0B2447 / gold #C9A227.
@@ -70,7 +70,7 @@ footer {
 #hostApp { min-height: 100vh; display: flex; flex-direction: column; }
 .host-topbar {
   display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
-  padding: 14px 22px 4px;
+  padding: 8px 22px 0;
 }
 .host-title { font-size: 30px; font-size: clamp(20px, 2.6vw, 34px); font-weight: 800; letter-spacing: .06em; }
 .host-title .gold { color: #C9A227; color: var(--gold); }
@@ -93,10 +93,12 @@ footer {
   font-size: 18px; font-size: clamp(15px, 1.6vw, 20px); line-height: 1.45;
 }
 #netBanner .btn { margin-left: 12px; padding: 8px 16px; font-size: 15px; }
-.stage { flex: 1; display: flex; align-items: center; justify-content: center; padding: 10px 14px; position: relative; }
-/* tvfix: width fallbacks that old TV browsers understand (no min()),
-   aspect comes from the canvas width/height attributes + height:auto. */
-.canvas-wrap { position: relative; width: 100%; max-width: calc((100vh - 190px) * 1.7778); width: min(100%, calc((100vh - 190px) * 16 / 9)); }
+.stage { flex: 1; display: flex; align-items: center; justify-content: center; padding: 6px 8px; position: relative; }
+/* broadcast: the stage fills the TV — slim topbar/footer leave ~120px,
+   so the 16:9 court takes nearly the whole screen. Width fallbacks
+   that old TV browsers understand (no min()); aspect comes from the
+   canvas width/height attributes + height:auto. */
+.canvas-wrap { position: relative; width: 100%; max-width: calc((100vh - 120px) * 1.7778); width: min(100%, calc((100vh - 120px) * 16 / 9)); }
 canvas#game {
   width: 100%; height: auto; aspect-ratio: 16 / 9; display: block;
   background: #0a1c38; background: var(--navy-3); border-radius: 18px;
@@ -113,6 +115,8 @@ canvas#game {
 .panel h2 .gold { color: #C9A227; color: var(--gold); }
 .panel p { color: #b8c4d6; color: var(--muted); font-size: 19px; font-size: clamp(15px, 1.7vw, 21px); line-height: 1.5; max-width: 900px; }
 .panel .modes { display: flex; flex-direction: column; gap: 12px; align-items: center; width: 100%; }
+.panel .settings-row { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; align-items: center; }
+.panel .settings-row .btn { padding: 12px 20px; font-size: 17px; }
 #joinedList { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; min-height: 38px; }
 .player-chip { border-radius: 999px; padding: 8px 18px; font-weight: 800; font-size: 17px; color: #0a1c38; }
 .winner-name { color: #e0b93a; color: var(--gold-2); }
@@ -186,6 +190,34 @@ canvas#game {
 .ctl-row { display: flex; gap: 10px; margin-top: 12px; }
 .ctl-row .btn { flex: 1; }
 .status-line { text-align: center; color: #b8c4d6; color: var(--muted); font-size: 14px; margin-top: 12px; min-height: 20px; }
+/* broadcast controller: identity / phase / grade lines */
+#youLine { text-align: center; font-weight: 900; font-size: 19px; margin-bottom: 4px; }
+#phaseLine { text-align: center; font-weight: 700; font-size: 17px; color: #e0b93a; color: var(--gold-2); min-height: 24px; margin-bottom: 2px; }
+#gradeLine { text-align: center; font-weight: 900; font-size: 30px; min-height: 38px; letter-spacing: .04em; }
+.ctl-modes { display: flex; gap: 10px; margin: 8px 0 12px; }
+.ctl-modes .btn { flex: 1; padding: 14px 10px; font-size: 17px; }
+/* swing panel */
+#swingPanel { margin-bottom: 12px; }
+.sens-row { display: flex; align-items: center; gap: 12px; margin-top: 12px; font-weight: 700; font-size: 15px; }
+.sens-row input[type="range"] { flex: 1; accent-color: #C9A227; accent-color: var(--gold); height: 34px; }
+.sens-row #sensVal { min-width: 44px; text-align: right; color: #e0b93a; color: var(--gold-2); }
+/* horizontal bat track (replaces the vertical pad) */
+#track {
+  margin-top: 12px; height: 118px; border-radius: 18px; position: relative;
+  background: linear-gradient(180deg, #123a6b, #0a1c38);
+  background: linear-gradient(180deg, var(--navy-2), var(--navy-3));
+  border: 2px dashed rgba(255,255,255,.28);
+  touch-action: none; overflow: hidden;
+}
+#track .hint {
+  position: absolute; left: 0; right: 0; bottom: 8px; text-align: center; color: #b8c4d6; color: var(--muted);
+  font-size: 14px; pointer-events: none; padding: 0 12px;
+}
+#trackBat {
+  position: absolute; left: 50%; top: 42%; width: 26px; height: 78px; border-radius: 10px;
+  transform: translate(-50%, -50%); background: #C9A227; background: var(--gold);
+  box-shadow: 0 0 18px rgba(201,162,39,.7); pointer-events: none;
+}
 
 /* ---------- tvfix: boot diagnostics + old-browser fallbacks ---------- */
 /* Probe element: the boot watchdog reads its computed position to prove
@@ -207,15 +239,20 @@ canvas#game {
   .swatches .swatch { margin-right: 10px; }
   .ctl-row .btn { margin-right: 10px; }
   .ctl-row .btn:last-child { margin-right: 0; }
+  .panel .settings-row > * { margin: 0 6px 8px; }
+  .ctl-modes .btn { margin-right: 10px; }
+  .ctl-modes .btn:last-child { margin-right: 0; }
+  .sens-row > * { margin-right: 12px; }
+  .sens-row > *:last-child { margin-right: 0; }
 }
 
 </style>
 <script>
-/* Boot guard (build tvfix-1.2.0-singlefile): installed before any game file loads.
+/* Boot guard (build broadcast-1.3.0): installed before any game file loads.
    Traps errors and, if the controller has not booted within 30 s, names
    the failed stage in big on-screen text instead of a blank page.
    ES5 on purpose. */
-window.__PP_BUILD = 'tvfix-1.2.0-singlefile';
+window.__PP_BUILD = 'broadcast-1.3.0';
 window.__ppShowDiag = function (title, detail) {
   var tries = 0;
   var show = function () {
@@ -257,7 +294,7 @@ window.__ppBootDone = function () {
   if (l && l.parentNode) l.parentNode.removeChild(l);
 };
 
-/* Self-heal poll (build tvfix-1.2.0-singlefile): check every 500 ms
+/* Self-heal poll (build broadcast-1.3.0): check every 500 ms
    whether the game has booted (app global defined + styles applied).
    The moment it has, stand down - clear any diagnostic and the
    loading bar - so a merely slow TV recovers on its own, with no
@@ -338,7 +375,7 @@ window.__ppWatchdog = setTimeout(function () {
     </div>
     <button class="btn btn-gold btn-big" id="btnJoin" style="max-width:none">Join game</button>
     <div class="msg" id="joinMsg" style="margin-top:14px"></div>
-    <p class="status-line">Hold the phone in your hand or an armband. After joining you can turn on tilt control, or just drag on the pad — touch always works.</p>
+    <p class="status-line">Hold the phone in your hand. After joining, SWING MODE lets you tilt to move and swing the phone to strike the ball — TOUCH MODE (drag) always works too.</p>
   </div>
 
   <!-- pad -->
@@ -348,13 +385,32 @@ window.__ppWatchdog = setTimeout(function () {
       <span class="sc" id="sbScore">0 : 0</span>
       <span id="sbRight">—</span>
     </div>
-    <div id="pad">
-      <div id="padPaddle"></div>
-      <div class="hint">Drag here to move your paddle.<br>Tip: it follows your finger height on the pad.</div>
+    <div id="youLine">—</div>
+    <div id="phaseLine">Connected.</div>
+    <div id="gradeLine"></div>
+    <div class="ctl-modes">
+      <button class="btn btn-outline" id="btnModeSwing">🤾 SWING MODE</button>
+      <button class="btn btn-outline" id="btnModeTouch">👆 TOUCH MODE</button>
+    </div>
+    <div id="swingPanel" class="hidden">
+      <button class="btn btn-gold btn-big" id="btnSwingNow" style="max-width:none">🏓 SWING!</button>
+      <p class="status-line">Tilt the phone left / right to move your bat. Swing it forward as the ball reaches you — timing grades your return.</p>
+      <div class="sens-row">
+        <label for="sensRange">Sensitivity</label>
+        <input type="range" id="sensRange" min="0.5" max="1.5" step="0.1" value="1">
+        <span id="sensVal">1.0×</span>
+      </div>
+      <div class="ctl-row">
+        <button class="btn btn-outline" id="btnCalibrate">🎯 Set upright centre</button>
+      </div>
+      <div class="status-line" id="calReadout">Calibration: hold the phone upright and still, tap “Set upright centre”, then swing once to test.</div>
+    </div>
+    <div id="track">
+      <div id="trackBat"></div>
+      <div class="hint" id="trackHint">Drag left / right to move your bat.</div>
     </div>
     <button class="btn btn-gold btn-big hidden" id="serveBtn" style="max-width:none">🏓 SERVE</button>
     <div class="ctl-row">
-      <button class="btn btn-outline" id="btnTilt">Enable tilt control</button>
       <button class="btn btn-outline" id="btnLeave">Leave</button>
     </div>
     <div class="status-line" id="padStatus">Connected.</div>
@@ -389,24 +445,63 @@ window.__ppWatchdog = setTimeout(function () {
 /* game.js — inlined by build-singlefile.py */
 /* Motion Arena — Ping Pong: shared constants + wire protocol.
    Used by host.js (TV) and controller.js (phone). Classic script, no
-   modules, so the game also runs from file:// (USB stick, offline). */
+   modules, so the game also runs from file:// (USB stick, offline).
+
+   Build broadcast-1.3.0: the game is now BROADCAST table tennis —
+   the TV camera sits behind the near end of a 3D table. World space:
+     x  across the table   (-1 .. +1 is the table surface)
+     z  along the table    (-1 = near end / side 0, +1 = far end / side 1)
+     h  height above the table surface (the ball arcs under gravity)
+   Side 0 plays the near end (bottom of the TV picture), side 1 the
+   far end (the avatar the TV draws standing at the far end). */
 (function (global) {
   'use strict';
 
   var PP = {};
 
-  /* Canvas / court geometry (internal resolution, per DESIGN.md). */
+  /* Canvas (internal resolution, per DESIGN.md). */
   PP.W = 1920;
   PP.H = 1080;
-  PP.COURT = { x: 110, y: 140, w: 1700, h: 800 };   // table surface
-  PP.PADDLE_W = 26;
-  PP.PADDLE_H = 170;
-  PP.PADDLE_X = [146, 1920 - 146 - 26];             // left, right paddle x
-  PP.BALL_R = 14;
 
-  /* Rules: first to 11, win by 2 (table-tennis scoring). */
+  /* Broadcast table-tennis world constants. */
+  PP.TABLE = {
+    halfW: 1.0,          // table half-width in world units (x)
+    halfL: 1.0,          // table half-length (z): ends at z = -1 / +1
+    netH: 0.17,          // net height above the surface
+    planeZ: 1.07,        // hitting plane just behind each end line
+    gravity: 3.4,        // world units / s^2 on the ball's arc
+    rest: 0.82,          // bounce restitution off the table
+    reach: 0.37,         // bat contact reach (world x units)
+    batMin: -1.18,       // bat travel limits (slightly past the edges)
+    batMax: 1.18,
+    batSpeed: 2.7        // local bat speed, world units / s
+  };
+
+  /* Official table-tennis rules (ITTF shape): a game to 11, win by
+     2; serves change every 2 points, every 1 at deuce (10-10); ends
+     switch after each game and at 5 points in the deciding game;
+     a match is best of 5 games (first to 3). */
   PP.WIN_SCORE = 11;
   PP.WIN_LEAD = 2;
+  PP.MATCH_GAMES_TO_WIN = 3;
+  PP.MATCH_MAX_GAMES = 5;
+
+  /* Computer difficulty (broadcast buildout). pace = flight time of
+     the Computer's returns (lower = faster ball), err = bat aim error
+     when tracking the ball, aimErr = spread on its return targets. */
+  PP.DIFFICULTY = {
+    easy:   { label: 'Easy',   speed: 1.15, err: 0.30, pace: 1.04, aimErr: 0.30 },
+    normal: { label: 'Normal', speed: 1.70, err: 0.17, pace: 0.88, aimErr: 0.18 },
+    pro:    { label: 'Pro',    speed: 2.35, err: 0.08, pace: 0.72, aimErr: 0.09 }
+  };
+  PP.DIFFICULTY_ORDER = ['easy', 'normal', 'pro'];
+
+  /* Swing grades (DESIGN.md Swing windows, ms vs ideal contact). */
+  PP.GRADE_WINDOWS = { perfect: 90, good: 200, graze: 320 };
+  /* Swing detection on the phone (DESIGN.md): resultant-acceleration
+     peak at 1.0x sensitivity, 300 ms refractory. */
+  PP.SWING_THRESHOLD = 22;
+  PP.SWING_REFRACTORY_MS = 300;
 
   /* PeerJS: room peer id = prefix + 4-char code. Default broker is the
      PeerJS cloud (per DESIGN.md). A different broker can be selected with
@@ -478,11 +573,17 @@ window.__ppWatchdog = setTimeout(function () {
 </script>
 <script>
 /* controller.js — inlined by build-singlefile.py */
-/* Motion Arena — Ping Pong: phone controller.
-   Joins the TV host by room code (PeerJS cloud by default), then streams
-   paddle position at 15 Hz (per DESIGN.md). Control: touch-drag on the
-   pad (always available) + optional tilt (deviceorientation, with the
-   iOS permission ask on a user tap). Phones never report scores. */
+/* Motion Arena — Ping Pong: phone controller (broadcast build 1.3.0).
+   Joins the TV host by room code (PeerJS cloud). Two control modes:
+   SWING MODE — tilt (deviceorientation gamma) moves the bat, a
+   physical swing (devicemotion resultant-acceleration peak, DESIGN.md
+   threshold ~22 m/s² at 1.0×, 300 ms refractory) strikes the ball and
+   is graded by the host; TOUCH MODE — horizontal drag moves the bat,
+   the host auto-contacts (always available, and the automatic
+   fallback when no motion sensor answers within 1.5 s). Streams bat
+   position at 15 Hz; swing/serve travel as immediate events.
+   Reconnect reclaims the same player slot by token (the host holds
+   it ~60 s) — no reload, no side steal. */
 (function () {
   'use strict';
   var S = window.PPShared;
@@ -500,6 +601,8 @@ window.__ppWatchdog = setTimeout(function () {
     if (savedName) $('nameInput').value = savedName;
     var savedColor = window.localStorage.getItem('pp-color');
     if (savedColor) chosenColor = savedColor;
+    var savedCode = window.localStorage.getItem('pp-code');
+    if (savedCode) $('codeInput').value = savedCode;
   } catch (e) {}
 
   /* colour swatches */
@@ -520,15 +623,17 @@ window.__ppWatchdog = setTimeout(function () {
     sw.appendChild(b);
   });
 
-  /* saved room code (typing convenience) */
-  try {
-    var savedCode = window.localStorage.getItem('pp-code');
-    if (savedCode) $('codeInput').value = savedCode;
-  } catch (e) {}
-
-  var peer = null, conn = null, side = -1, joined = false;
-  var targetY = 0.5, tiltOn = false, tiltCenter = null, lastSent = -1;
-  var connectDeadline = null;
+  var peer = null, conn = null, joined = false;
+  var player = -1;                       // 0 or 1 (identity, follows ends switches)
+  var myName = 'Player', myColor = chosenColor;
+  var controlMode = 'touch';             // 'touch' | 'swing'
+  var pos01 = 0.5, lastSent = -1;
+  var sens = 1.0;
+  var gammaCenter = null, lastGamma = null, sensorSeenAt = 0, sensorsLive = false;
+  var motionPeak = 0, lastSwingAt = 0, lastPower = 0;
+  var lastCode = '', lastGradeKey = '';
+  var connectDeadline = null, reconnectTimer = null, reconnectTries = 0;
+  var hostState = null;
 
   function show(id) {
     ['joinPanel', 'padPanel', 'errPanel'].forEach(function (p) {
@@ -545,21 +650,34 @@ window.__ppWatchdog = setTimeout(function () {
     m.textContent = txt;
     m.className = 'msg' + (isErr ? ' err' : '');
   }
+  function padStatus(txt) { $('padStatus').textContent = txt; }
+  function send(msg) {
+    if (conn && conn.open) { try { conn.send(msg); return true; } catch (e) {} }
+    return false;
+  }
 
+  /* ---------------- connection ---------------- */
   function join() {
     var code = $('codeInput').value.trim().toUpperCase();
     if (code.length !== 4) { joinMsg('Enter the 4-letter room code from the TV.', true); return; }
     var name = $('nameInput').value.trim() || 'Player';
+    myName = name;
+    myColor = chosenColor;
+    lastCode = code;
+    reconnectTries = 0;
     try {
       window.localStorage.setItem('pp-name', name);
       window.localStorage.setItem('pp-code', code);
     } catch (e) {}
-    joinMsg('Connecting…');
+    openConnection(code, false);
+  }
+  function openConnection(code, isReconnect) {
+    joinMsg(isReconnect ? 'Reconnecting…' : 'Connecting…');
     if (typeof window.Peer === 'undefined') {
       fail('The controller library could not load, so phone play is unavailable. You can still play on the TV screen.');
       return;
     }
-    teardown();
+    teardown(false);
     var myPeer;
     try {
       myPeer = new window.Peer(undefined, S.brokerOptions());
@@ -568,125 +686,253 @@ window.__ppWatchdog = setTimeout(function () {
       return;
     }
     peer = myPeer;
+    clearTimeout(connectDeadline);
     connectDeadline = setTimeout(function () {
       if (!joined) {
+        if (isReconnect && reconnectTries < 6) { scheduleReconnect(); return; }
         fail('Could not reach the room in time. Phone play needs an internet connection (the phone and TV meet through the PeerJS cloud). Check your connection and the room code, then try again.');
-        teardown();
+        teardown(true);
       }
     }, 12000);
     myPeer.on('open', function () {
       var c = myPeer.connect(S.peerIdFor(code), { reliable: true });
       conn = c;
       c.on('open', function () {
-        c.send({ t: 'join', name: name, color: chosenColor, token: token });
+        c.send({ t: 'join', name: myName, color: myColor, token: token, mode: controlMode });
       });
       c.on('data', onHostData);
-      c.on('close', function () {
-        if (joined) { joined = false; fail('The connection to the TV was lost. Rejoin with the same room code to reclaim your side.'); }
-      });
+      c.on('close', function () { onConnLost(); });
       c.on('error', function () { /* surfaced via timeout / close */ });
     });
     myPeer.on('error', function (err) {
       var type = err && err.type ? err.type : '';
       if (joined) return;
+      if (isReconnect && reconnectTries < 6) { scheduleReconnect(); return; }
       if (type === 'peer-unavailable') {
-        fail('Room "' + code + '" was not found. Check the code on the TV — the TV must be on the Ping Pong lobby screen.');
+        fail('Room "' + code + '" was not found. Check the code on the TV — the TV must be on the Ping Pong screen.');
       } else {
         fail('Connection problem (' + (type || 'unknown') + '). Phone play needs internet — check Wi-Fi or mobile data, then try again.');
       }
-      teardown();
+      teardown(true);
     });
   }
-  function teardown() {
+  function scheduleReconnect() {
+    reconnectTries++;
+    padStatus('Connection lost — reconnecting (try ' + reconnectTries + ' of 6)… your player is held for you.');
+    $('phaseLine').textContent = '🔄 Reconnecting…';
+    clearTimeout(reconnectTimer);
+    reconnectTimer = setTimeout(function () {
+      if (!joined && lastCode) openConnection(lastCode, true);
+    }, 1200 * reconnectTries);
+  }
+  function onConnLost() {
+    if (!joined) return;
+    joined = false;
+    conn = null;
+    scheduleReconnect();
+  }
+  function teardown(full) {
     clearTimeout(connectDeadline);
+    if (full) clearTimeout(reconnectTimer);
     try { if (conn) conn.close(); } catch (e) {}
     try { if (peer) peer.destroy(); } catch (e) {}
-    conn = null; peer = null; side = -1;
+    conn = null; peer = null;
+    if (full) { player = -1; }
   }
 
+  /* ---------------- host state -> screen ---------------- */
   function onHostData(data) {
     if (!data || typeof data !== 'object') return;
     if (data.t === 'welcome') {
       joined = true;
-      side = data.side;
+      reconnectTries = 0;
       clearTimeout(connectDeadline);
-      $('padPaddle').style.background = chosenColor;
-      $('padStatus').textContent = 'You are the ' + (side === 0 ? 'LEFT' : 'RIGHT') + ' paddle. Drag on the pad, or enable tilt.';
+      clearTimeout(reconnectTimer);
+      player = (data.player != null ? data.player : data.side);
+      $('trackBat').style.background = myColor;
       show('padPanel');
+      applyMode(controlMode, false);
       requestWake();
+      padStatus('Connected — you are P' + (player + 1) + '.');
     } else if (data.t === 'full') {
       joined = true;
       clearTimeout(connectDeadline);
       fail('That room already has two players. You can watch on the TV, or start a game on the TV screen.');
     } else if (data.t === 'state') {
-      $('sbLeft').textContent = data.names[0] || '—';
-      $('sbRight').textContent = data.names[1] || '—';
-      $('sbScore').textContent = data.scores[0] + ' : ' + data.scores[1];
-      var serve = $('serveBtn');
-      if (data.yourServe) serve.classList.remove('hidden'); else serve.classList.add('hidden');
-      if (data.phase === 'serve') tiltCenter = null; // recalibrate tilt each serve
+      hostState = data;
+      renderState(data);
+    }
+  }
+  function renderState(d) {
+    $('sbLeft').textContent = 'P1 ' + (d.names[0] || '—');
+    $('sbRight').textContent = 'P2 ' + (d.names[1] || '—');
+    $('sbScore').textContent = d.scores[0] + ' : ' + d.scores[1];
+    if (player >= 0) {
+      $('youLine').textContent = 'You are P' + (player + 1) + ' · ' + (d.names[player] || myName) +
+        (d.yourEnd ? ' · ' + d.yourEnd + ' end' : '') + ' · games ' + d.games[0] + '—' + d.games[1];
+      $('youLine').style.color = d.colors[player] || myColor;
+    }
+    var phase = d.paused ? 'paused' : d.phase;
+    var txt = '';
+    if (phase === 'paused') txt = '⏸ Paused on the TV';
+    else if (phase === 'lobby') txt = 'In the lobby — the game starts from the TV';
+    else if (phase === 'serve') txt = d.yourServe ? '🏓 YOUR SERVE — swing the phone, or tap SERVE' : (d.names[d.server] || 'The other player') + ' to serve';
+    else if (phase === 'rally') txt = '🏓 Rally — get ready…';
+    else if (phase === 'point') txt = 'Point!';
+    else if (phase === 'over') txt = 'Game over — see the TV';
+    $('phaseLine').textContent = txt;
+    var serve = $('serveBtn');
+    if (d.yourServe) serve.classList.remove('hidden'); else serve.classList.add('hidden');
+    if (d.grade && d.grade.player === player) {
+      var key = d.grade.grade + ':' + d.scores[0] + ':' + d.scores[1];
+      if (key !== lastGradeKey) {
+        lastGradeKey = key;
+        var gl = $('gradeLine');
+        gl.textContent = d.grade.grade + '!';
+        gl.style.color = d.grade.grade === 'PERFECT' ? '#2ecc71' : d.grade.grade === 'GOOD' ? '#e0b93a' : '#e67e22';
+        setTimeout(function () { if (gl.textContent === d.grade.grade + '!') gl.textContent = ''; }, 1600);
+      }
     }
   }
 
-  /* 15 Hz paddle stream (DESIGN.md motion pipeline) */
+  /* ---------------- 15 Hz bat stream (DESIGN.md) ---------------- */
   setInterval(function () {
-    if (!joined || !conn || !conn.open || side < 0) return;
-    if (Math.abs(targetY - lastSent) < 0.0015 && lastSent >= 0) return;
-    lastSent = targetY;
-    try { conn.send({ t: 'pad', y: Math.round(targetY * 1000) / 1000 }); } catch (e) {}
+    if (!joined || !conn || !conn.open || player < 0) return;
+    if (Math.abs(pos01 - lastSent) < 0.0015 && lastSent >= 0) return;
+    lastSent = pos01;
+    send({ t: 'pad', x: Math.round(pos01 * 1000) / 1000 });
   }, 66);
-
-  /* touch / mouse drag on the pad */
-  var pad = $('pad'), padPaddle = $('padPaddle');
-  function padMove(clientY) {
-    var r = pad.getBoundingClientRect();
-    targetY = S.clamp((clientY - r.top) / r.height, 0, 1);
-    padPaddle.style.top = (targetY * 100) + '%';
-    tiltOn = tiltOn; // touch and tilt share one target; last writer wins
+  function setPos(v) {
+    pos01 = S.clamp(v, 0, 1);
+    $('trackBat').style.left = (pos01 * 100) + '%';
   }
-  pad.addEventListener('touchstart', function (e) { e.preventDefault(); padMove(e.touches[0].clientY); }, { passive: false });
-  pad.addEventListener('touchmove', function (e) { e.preventDefault(); padMove(e.touches[0].clientY); }, { passive: false });
-  pad.addEventListener('mousemove', function (e) { if (e.buttons) padMove(e.clientY); });
-  pad.addEventListener('mousedown', function (e) { padMove(e.clientY); });
 
-  /* tilt control: deviceorientation beta, centred per serve */
-  function onTilt(e) {
-    if (!tiltOn || e.beta === null || e.beta === undefined) return;
-    if (tiltCenter === null) tiltCenter = e.beta;
-    var d = (e.beta - tiltCenter); // tipping the top of the phone away raises beta
-    targetY = S.clamp(0.5 + d / 55, 0, 1);
-    padPaddle.style.top = (targetY * 100) + '%';
+  /* ---------------- touch drag (horizontal track) ---------------- */
+  var track = $('track');
+  function trackMove(clientX) {
+    var r = track.getBoundingClientRect();
+    setPos((clientX - r.left) / r.width);
   }
-  $('btnTilt').addEventListener('click', function () {
-    function enable() {
-      tiltOn = true;
-      tiltCenter = null;
-      window.addEventListener('deviceorientation', onTilt);
-      $('btnTilt').textContent = 'Tilt control ON';
-      $('padStatus').textContent = 'Tilt is on: tip the phone toward or away from you to move. Touch still works too.';
-    }
-    if (typeof window.DeviceOrientationEvent !== 'undefined' &&
-        typeof window.DeviceOrientationEvent.requestPermission === 'function') {
-      window.DeviceOrientationEvent.requestPermission().then(function (res) {
-        if (res === 'granted') enable();
-        else $('padStatus').textContent = 'Motion permission was not granted — touch drag still works.';
-      }).catch(function () {
-        $('padStatus').textContent = 'Motion is unavailable on this phone — touch drag still works.';
-      });
-    } else if ('DeviceOrientationEvent' in window) {
-      enable();
-    } else {
-      $('padStatus').textContent = 'This phone has no tilt sensor available — touch drag still works.';
-    }
-  });
+  track.addEventListener('touchstart', function (e) { e.preventDefault(); trackMove(e.touches[0].clientX); }, { passive: false });
+  track.addEventListener('touchmove', function (e) { e.preventDefault(); trackMove(e.touches[0].clientX); }, { passive: false });
+  track.addEventListener('mousedown', function (e) { trackMove(e.clientX); });
+  track.addEventListener('mousemove', function (e) { if (e.buttons) trackMove(e.clientX); });
 
-  $('serveBtn').addEventListener('click', function () {
-    if (conn && conn.open) { try { conn.send({ t: 'serve' }); } catch (e) {} }
+  /* ---------------- swing mode ---------------- */
+  function onOrient(e) {
+    if (e.gamma === null || e.gamma === undefined) return;
+    sensorSeenAt = performance.now();
+    sensorsLive = true;
+    lastGamma = e.gamma;
+    if (controlMode !== 'swing') return;
+    if (gammaCenter === null) gammaCenter = e.gamma;
+    setPos(0.5 + (e.gamma - gammaCenter) / 38);
+    $('calReadout').textContent = 'Tilt ' + Math.round(e.gamma - gammaCenter) + '° · bat ' +
+      (pos01 < 0.4 ? 'left' : pos01 > 0.6 ? 'right' : 'centre') +
+      (lastPower > 0 ? ' · last swing power ' + Math.round(lastPower * 100) + '%' : '');
+  }
+  function onMotion(e) {
+    var a = e.accelerationIncludingGravity;
+    if (!a || a.x === null) return;
+    sensorSeenAt = performance.now();
+    sensorsLive = true;
+    if (controlMode !== 'swing') return;
+    var r = Math.sqrt(a.x * a.x + a.y * a.y + a.z * a.z);
+    if (r > motionPeak) motionPeak = r;
+    var now = performance.now();
+    var threshold = S.SWING_THRESHOLD / sens;
+    if (motionPeak >= threshold && now - lastSwingAt > S.SWING_REFRACTORY_MS) {
+      var power = S.clamp((motionPeak - 9.8) / 26, 0.15, 1);
+      motionPeak = 0;
+      doSwing(power);
+    }
+    if (motionPeak > 0 && now - lastSwingAt > 700) motionPeak = Math.max(0, motionPeak - 3);
+  }
+  function doSwing(power) {
+    lastSwingAt = performance.now();
+    lastPower = power;
+    if (navigator.vibrate) { try { navigator.vibrate(25); } catch (e) {} }
+    send({ t: 'swing', power: Math.round(power * 100) / 100 });
+    $('calReadout').textContent = 'Swing sent — power ' + Math.round(power * 100) + '%. Watch the TV for your grade.';
+  }
+  function applyMode(m, notify) {
+    controlMode = m;
+    $('btnModeSwing').classList.toggle('btn-gold', m === 'swing');
+    $('btnModeSwing').classList.toggle('btn-outline', m !== 'swing');
+    $('btnModeTouch').classList.toggle('btn-gold', m === 'touch');
+    $('btnModeTouch').classList.toggle('btn-outline', m !== 'touch');
+    $('swingPanel').classList.toggle('hidden', m !== 'swing');
+    $('trackHint').textContent = m === 'swing'
+      ? 'Touch fallback: drag here any time — last input wins.'
+      : 'Drag left / right to move your bat.';
+    if (notify !== false) send({ t: 'ctrl', mode: m });
+  }
+  function enableSwing() {
+    /* iOS: motion permission must be asked from a user tap, for both
+       event families; then attach and wait for the sensors to answer. */
+    sensorsLive = false;
+    sensorSeenAt = 0;
+    var attach = function () {
+      window.addEventListener('deviceorientation', onOrient);
+      window.addEventListener('devicemotion', onMotion);
+      gammaCenter = null;
+      applyMode('swing', true);
+      padStatus('Swing mode: checking your motion sensors…');
+      setTimeout(function () {
+        if (controlMode === 'swing' && !sensorsLive) {
+          applyMode('touch', true);
+          padStatus('No motion sensor answered — Touch Mode instead (drag works). Tilt can be retried from SWING MODE.');
+        }
+      }, 1500);
+    };
+    var askMotion = function () {
+      if (typeof window.DeviceMotionEvent !== 'undefined' &&
+          typeof window.DeviceMotionEvent.requestPermission === 'function') {
+        window.DeviceMotionEvent.requestPermission().then(function (res) {
+          if (res === 'granted') askOrient();
+          else padStatus('Motion permission was not granted — Touch Mode (drag) still works.');
+        }).catch(function () {
+          padStatus('Motion is unavailable on this phone — Touch Mode (drag) still works.');
+        });
+      } else {
+        askOrient();
+      }
+    };
+    var askOrient = function () {
+      if (typeof window.DeviceOrientationEvent !== 'undefined' &&
+          typeof window.DeviceOrientationEvent.requestPermission === 'function') {
+        window.DeviceOrientationEvent.requestPermission().then(function (res) {
+          if (res === 'granted') attach();
+          else padStatus('Tilt permission was not granted — Touch Mode (drag) still works.');
+        }).catch(function () { attach(); });
+      } else {
+        attach();
+      }
+    };
+    if (!('DeviceMotionEvent' in window) && !('DeviceOrientationEvent' in window)) {
+      padStatus('This phone exposes no motion sensors — Touch Mode (drag) it is.');
+      return;
+    }
+    askMotion();
+  }
+  $('btnModeSwing').addEventListener('click', enableSwing);
+  $('btnModeTouch').addEventListener('click', function () { applyMode('touch', true); padStatus('Touch Mode: drag on the track — the TV bats for you at contact.'); });
+  $('btnSwingNow').addEventListener('click', function () { doSwing(0.7); });
+  $('sensRange').addEventListener('input', function () {
+    sens = parseFloat($('sensRange').value) || 1;
+    $('sensVal').textContent = sens.toFixed(1) + '×';
   });
+  $('btnCalibrate').addEventListener('click', function () {
+    gammaCenter = lastGamma;
+    $('calReadout').textContent = lastGamma === null
+      ? 'No tilt reading yet — hold the phone upright and move it slightly, then tap again.'
+      : 'Centre set at ' + Math.round(lastGamma) + '°. Tilt left/right from here; swing once to test.';
+  });
+  $('serveBtn').addEventListener('click', function () { send({ t: 'serve' }); });
   $('btnJoin').addEventListener('click', join);
-  $('btnRetry').addEventListener('click', function () { show('joinPanel'); });
+  $('btnRetry').addEventListener('click', function () { teardown(true); show('joinPanel'); });
   $('btnLeave').addEventListener('click', function () {
-    teardown();
+    teardown(true);
     joined = false;
     show('joinPanel');
     joinMsg('');
@@ -701,17 +947,26 @@ window.__ppWatchdog = setTimeout(function () {
     } catch (e) {}
   }
 
-  /* debug / test hooks (used by check-pingpong.py) */
+  /* debug / test hooks (used by the check scripts) */
   window.PPC = {
-    version: '1.2.0',
+    version: '1.3.0',
     getState: function () {
-      return { joined: joined, side: side, targetY: targetY, tiltOn: tiltOn,
-               panel: $('padPanel').classList.contains('hidden') ? 'not-pad' : 'pad' };
+      return { joined: joined, player: player, side: player, pos01: pos01,
+               targetY: pos01, mode: controlMode, sens: sens,
+               sensorsLive: sensorsLive, lastPower: lastPower,
+               reconnectTries: reconnectTries,
+               panel: !$('padPanel').classList.contains('hidden') ? 'pad'
+                    : !$('joinPanel').classList.contains('hidden') ? 'join' : 'err',
+               phaseLine: $('phaseLine').textContent,
+               youLine: $('youLine').textContent,
+               serveVisible: !$('serveBtn').classList.contains('hidden') };
     },
     join: join,
-    setTarget: function (y) { targetY = S.clamp(y, 0, 1); },
-    /* test hooks: peerId proves the signaling path; injectData runs a
-       host message through the real onHostData handler */
+    setPos: function (v) { setPos(v); },
+    setTarget: function (v) { setPos(v); },
+    setMode: function (m) { applyMode(m === 'swing' ? 'swing' : 'touch', false); },
+    swing: function (power) { doSwing(power == null ? 0.7 : power); },
+    debugDrop: function () { onConnLost(); },
     peerId: function () { return peer ? peer.id : null; },
     injectData: function (msg) { onHostData(msg); }
   };
