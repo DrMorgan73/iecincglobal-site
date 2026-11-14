@@ -6,7 +6,7 @@
 <title>Motion Arena — Ping Pong Controller</title>
 <meta name="description" content="Phone controller for Motion Arena Ping Pong. Enter the room code shown on the TV. An IEC, Inc. game.">
 <link rel="icon" href="data:,">
-<meta name="pp-build" content="relay-1.3.1">
+<meta name="pp-build" content="relay-1.3.2">
 <meta name="robots" content="noindex,nofollow">
 <style>
 /* pingpong.css — inlined by build-singlefile.py (single-file build) */
@@ -212,7 +212,7 @@ canvas#game {
 .sens-row #sensVal { min-width: 44px; text-align: right; color: #e0b93a; color: var(--gold-2); }
 /* horizontal bat track (replaces the vertical pad) */
 #track {
-  margin-top: 12px; height: 118px; border-radius: 18px; position: relative;
+  margin-top: 12px; height: 150px; border-radius: 18px; position: relative;
   background: linear-gradient(180deg, #123a6b, #0a1c38);
   background: linear-gradient(180deg, var(--navy-2), var(--navy-3));
   border: 2px dashed rgba(255,255,255,.28);
@@ -223,7 +223,7 @@ canvas#game {
   font-size: 14px; pointer-events: none; padding: 0 12px;
 }
 #trackBat {
-  position: absolute; left: 50%; top: 42%; width: 26px; height: 78px; border-radius: 10px;
+  position: absolute; left: 50%; top: 74%; width: 26px; height: 78px; border-radius: 10px;
   transform: translate(-50%, -50%); background: #C9A227; background: var(--gold);
   box-shadow: 0 0 18px rgba(201,162,39,.7); pointer-events: none;
 }
@@ -257,11 +257,11 @@ canvas#game {
 
 </style>
 <script>
-/* Boot guard (build relay-1.3.1): installed before any game file loads.
+/* Boot guard (build relay-1.3.2): installed before any game file loads.
    Traps errors and, if the controller has not booted within 30 s, names
    the failed stage in big on-screen text instead of a blank page.
    ES5 on purpose. */
-window.__PP_BUILD = 'relay-1.3.1';
+window.__PP_BUILD = 'relay-1.3.2';
 window.__ppShowDiag = function (title, detail) {
   var tries = 0;
   var show = function () {
@@ -303,7 +303,7 @@ window.__ppBootDone = function () {
   if (l && l.parentNode) l.parentNode.removeChild(l);
 };
 
-/* Self-heal poll (build relay-1.3.1): check every 500 ms
+/* Self-heal poll (build relay-1.3.2): check every 500 ms
    whether the game has booted (app global defined + styles applied).
    The moment it has, stand down - clear any diagnostic and the
    loading bar - so a merely slow TV recovers on its own, with no
@@ -410,7 +410,7 @@ window.__ppWatchdog = setTimeout(function () {
     </div>
     <div id="swingPanel" class="hidden">
       <button class="btn btn-gold btn-big" id="btnSwingNow" style="max-width:none">🏓 SWING!</button>
-      <p class="status-line">Tilt the phone left / right to move your bat. Swing it forward as the ball reaches you — timing grades your return.</p>
+      <p class="status-line">Tilt the phone left / right to move your bat, tilt FORWARD to step in over the table. Swing it forward as the ball reaches you — timing grades your return.</p>
       <div class="sens-row">
         <label for="sensRange">Sensitivity</label>
         <input type="range" id="sensRange" min="0.5" max="1.5" step="0.1" value="1">
@@ -423,9 +423,11 @@ window.__ppWatchdog = setTimeout(function () {
     </div>
     <div id="track">
       <div id="trackBat"></div>
-      <div class="hint" id="trackHint">Drag left / right to move your bat.</div>
+      <div class="hint" id="trackHint">Drag: sideways moves the bat · UP steps in over the table · flick up = SMASH.</div>
     </div>
     <button class="btn btn-gold btn-big hidden" id="serveBtn" style="max-width:none">🏓 SERVE</button>
+    <button class="btn btn-big" id="btnSmash" style="max-width:none;background:#e74c3c;color:#fff;margin-top:12px">💥 SMASH</button>
+    <p class="status-line">SMASH puts away a HIGH ball: tap it (or flick up on the track) just before the ball reaches you. In SWING MODE, tilt forward to step in and use SMASH for a full-power swing.</p>
     <div class="ctl-row">
       <button class="btn btn-outline" id="btnLeave">Leave</button>
     </div>
@@ -463,7 +465,7 @@ window.__ppWatchdog = setTimeout(function () {
    Used by host.js (TV) and controller.js (phone). Classic script, no
    modules, so the game also runs from file:// (USB stick, offline).
 
-   Build relay-1.3.1: the game is BROADCAST table tennis —
+   Build relay-1.3.2: the game is BROADCAST table tennis —
    the TV camera sits behind the near end of a 3D table. World space:
      x  across the table   (-1 .. +1 is the table surface)
      z  along the table    (-1 = near end / side 0, +1 = far end / side 1)
@@ -484,10 +486,13 @@ window.__ppWatchdog = setTimeout(function () {
     halfW: 1.0,          // table half-width in world units (x)
     halfL: 1.0,          // table half-length (z): ends at z = -1 / +1
     netH: 0.17,          // net height above the surface
-    planeZ: 1.07,        // hitting plane just behind each end line
+    planeZ: 1.07,        // hitting plane just behind each end line (a bat's home depth)
+    netReach: 0.14,      // a bat may step IN over the table to |z| >= 0.14 (1.3.2)
     gravity: 3.4,        // world units / s^2 on the ball's arc
     rest: 0.82,          // bounce restitution off the table
     reach: 0.37,         // bat contact reach (world x units)
+    smashH: 0.34,        // ball height at/above which a smash can connect (1.3.2)
+    smashT: 0.34,        // smash flight time to target — the fast put-away (1.3.2)
     batMin: -1.18,       // bat travel limits (slightly past the edges)
     batMax: 1.18,
     batSpeed: 2.7        // local bat speed, world units / s
@@ -622,7 +627,7 @@ window.__ppWatchdog = setTimeout(function () {
 </script>
 <script>
 /* relay.js — inlined by build-singlefile.py */
-/* Motion Arena — Ping Pong: RELAY transport (build relay-1.3.1).
+/* Motion Arena — Ping Pong: RELAY transport (build relay-1.3.2).
    A minimal MQTT 3.1.1 client over secure WebSocket, plus a
    PeerJS-shaped peer (window.RelayPeer) that carries the EXACT game
    wire protocol (join / welcome / pad / swing / ctrl / serve / state)
@@ -648,6 +653,13 @@ window.__ppWatchdog = setTimeout(function () {
                                 how a controller knows the room exists
                                 before it joins (the relay equivalent
                                 of PeerJS's peer-unavailable check).
+                                The host also RE-PUBLISHES it every
+                                1.5 s: retained delivery on the public
+                                broker proved unreliable (a raw-client
+                                probe on 2026-11-14 received live
+                                pub/sub but never the retained copy),
+                                and the re-publication makes the flag
+                                arrive as ordinary live traffic too.
 
    RelayPeer mirrors the slice of the PeerJS API the game uses:
    host:    new RelayPeer(peerId) + on('open'|'connection'|
@@ -891,6 +903,7 @@ window.__ppWatchdog = setTimeout(function () {
     this._mqtt = null;
     this._wasOpen = false;
     this._connectWanted = false;
+    this._alivePub = null;       // host role: alive re-publication timer
     if (id) {
       this.id = String(id);
       this._role = 'host';
@@ -951,11 +964,24 @@ window.__ppWatchdog = setTimeout(function () {
     };
     mqtt.connect();
   };
+  RelayPeer.prototype._startAlivePub = function () {
+    var self = this;
+    this._stopAlivePub();
+    this._alivePub = setInterval(function () {
+      if (!self.destroyed && self._mqtt && self._mqtt.connected) {
+        self._mqtt.publish(self._topics().alive, '1', true);
+      }
+    }, 1500);
+  };
+  RelayPeer.prototype._stopAlivePub = function () {
+    if (this._alivePub) { clearInterval(this._alivePub); this._alivePub = null; }
+  };
   RelayPeer.prototype._onMqttConnect = function () {
     var t = this._topics();
     if (this._role === 'host') {
       this._mqtt.subscribe([t.up + '+', t.bye + '+']);
       this._mqtt.publish(t.alive, '1', true);
+      this._startAlivePub();
       this._wasOpen = true;
       this._emit('open', this.id);
     } else {
@@ -967,6 +993,7 @@ window.__ppWatchdog = setTimeout(function () {
   };
   RelayPeer.prototype._onMqttClose = function () {
     if (this.destroyed) return;
+    this._stopAlivePub();
     if (this._role === 'host') {
       // PeerJS parity: host treats a broker drop as 'disconnected'
       // and the game calls reconnect().
@@ -985,6 +1012,7 @@ window.__ppWatchdog = setTimeout(function () {
   RelayPeer.prototype.destroy = function () {
     if (this.destroyed) return;
     this.destroyed = true;
+    this._stopAlivePub();
     if (this._role === 'host') {
       var cids = Object.keys(this._conns);
       for (var i = 0; i < cids.length; i++) this._conns[cids[i]]._forceClose();
@@ -1104,7 +1132,15 @@ window.__ppWatchdog = setTimeout(function () {
 </script>
 <script>
 /* controller.js — inlined by build-singlefile.py */
-/* Motion Arena — Ping Pong: phone controller (relay build 1.3.1).
+/* Motion Arena — Ping Pong: phone controller (relay build 1.3.2).
+   1.3.2: FULL bat control from the phone — the pad stream carries
+   DEPTH (z) as well as x: in TOUCH MODE the track is a 2-axis pad
+   (sideways = across the table, up = step in over the table toward
+   the net); in SWING MODE a forward tilt (deviceorientation beta,
+   measured against the same deliberate centre capture) steps in.
+   A SMASH button (touch mode: arms the host-side smash; swing
+   mode: a full-power swing) and a quick up-flick on the track put
+   away high balls.
    Joins the TV host by room code over TWO transports carrying the
    same protocol: WebRTC (PeerJS cloud) first with a bounded ~6 s
    wait, then a relay fallback (MQTT over secure WebSocket, relay.js)
@@ -1188,8 +1224,10 @@ window.__ppWatchdog = setTimeout(function () {
   var myName = 'Player', myColor = chosenColor;
   var controlMode = 'touch';             // 'touch' | 'swing'
   var pos01 = 0.5, lastSent = -1;
+  var depth01 = 0, lastSentZ = -1;       // bat depth: 0 = home plane, 1 = at the net (1.3.2)
   var sens = 1.0;
   var gammaCenter = null, lastGamma = null, sensorSeenAt = 0, sensorsLive = false;
+  var betaCenter = null, betaSmooth = null;
   var tiltSmooth = null, calibrated = false, calCapture = null;
   var clockOffset = null, pingT0 = {}, syncSamples = [];
   var motionPeak = 0, lastSwingAt = 0, lastPower = 0;
@@ -1461,7 +1499,7 @@ window.__ppWatchdog = setTimeout(function () {
         lastGradeKey = key;
         var gl = $('gradeLine');
         gl.textContent = d.grade.grade + '!';
-        gl.style.color = d.grade.grade === 'PERFECT' ? '#2ecc71' : d.grade.grade === 'GOOD' ? '#e0b93a' : '#e67e22';
+        gl.style.color = d.grade.grade === 'SMASH' ? '#e74c3c' : d.grade.grade === 'PERFECT' ? '#2ecc71' : d.grade.grade === 'GOOD' ? '#e0b93a' : '#e67e22';
         setTimeout(function () { if (gl.textContent === d.grade.grade + '!') gl.textContent = ''; }, 1600);
       }
     }
@@ -1473,25 +1511,56 @@ window.__ppWatchdog = setTimeout(function () {
      interpolates/extrapolates between packets from the last two. */
   setInterval(function () {
     if (!joined || !conn || !conn.open || player < 0) return;
-    if (Math.abs(pos01 - lastSent) < 0.0012 && lastSent >= 0) return;
+    var xCh = Math.abs(pos01 - lastSent) >= 0.0012 || lastSent < 0;
+    var zCh = Math.abs(depth01 - lastSentZ) >= 0.01 || lastSentZ < 0;
+    if (!xCh && !zCh) return;
     lastSent = pos01;
-    send({ t: 'pad', x: Math.round(pos01 * 1000) / 1000 });
+    lastSentZ = depth01;
+    send({ t: 'pad', x: Math.round(pos01 * 1000) / 1000, z: Math.round(depth01 * 1000) / 1000 });
   }, 33);
   function setPos(v) {
     pos01 = S.clamp(v, 0, 1);
     $('trackBat').style.left = (pos01 * 100) + '%';
   }
+  function setDepth(v) {
+    depth01 = S.clamp(v, 0, 1);
+    $('trackBat').style.top = (74 - depth01 * 48) + '%';
+  }
+  /* SMASH: in touch mode arm the host-side smash (connect while a
+     ball sits high); in swing mode fire a full-power swing, which
+     the host grades as a smash on a high ball. */
+  function sendSmash() {
+    if (controlMode === 'swing') { doSwing(1); return; }
+    if (send({ t: 'smash' })) padStatus('💥 SMASH armed — meet a high ball!');
+  }
 
-  /* ---------------- touch drag (horizontal track) ---------------- */
+  /* ---------------- touch drag (2-axis track, 1.3.2) ----------------
+     The track is a 2-axis pad: sideways moves the bat across the
+     table; vertical moves its DEPTH — drag up to step in over the
+     table toward the net, down to retreat. A quick up-flick arms
+     the smash. */
   var track = $('track');
-  function trackMove(clientX) {
+  function trackMove(clientX, clientY) {
     var r = track.getBoundingClientRect();
     setPos((clientX - r.left) / r.width);
+    if (clientY !== null && clientY !== undefined) setDepth(1 - (clientY - r.top) / r.height);
   }
-  track.addEventListener('touchstart', function (e) { e.preventDefault(); trackMove(e.touches[0].clientX); }, { passive: false });
-  track.addEventListener('touchmove', function (e) { e.preventDefault(); trackMove(e.touches[0].clientX); }, { passive: false });
-  track.addEventListener('mousedown', function (e) { trackMove(e.clientX); });
-  track.addEventListener('mousemove', function (e) { if (e.buttons) trackMove(e.clientX); });
+  var trackTouch = { y: 0, t: 0 };
+  track.addEventListener('touchstart', function (e) {
+    e.preventDefault();
+    trackTouch = { y: e.touches[0].clientY, t: performance.now() };
+    trackMove(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: false });
+  track.addEventListener('touchmove', function (e) {
+    e.preventDefault();
+    var nowT = performance.now();
+    var vy = (trackTouch.y - e.touches[0].clientY) / Math.max(1, nowT - trackTouch.t);
+    if (vy > 1.3) sendSmash();                 // quick up-flick = smash
+    trackTouch = { y: e.touches[0].clientY, t: nowT };
+    trackMove(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: false });
+  track.addEventListener('mousedown', function (e) { trackMove(e.clientX, e.clientY); });
+  track.addEventListener('mousemove', function (e) { if (e.buttons) trackMove(e.clientX, e.clientY); });
 
   /* ---------------- swing mode ----------------
      Tilt path: raw gamma → exponential low-pass (α 0.35) → minus
@@ -1505,6 +1574,7 @@ window.__ppWatchdog = setTimeout(function () {
     calCapture = null;
     if (cap.n > 0) {
       gammaCenter = cap.sum / cap.n;
+      if (cap.nB > 0) betaCenter = cap.sumB / cap.nB;
       calibrated = true;
       $('calReadout').textContent = 'Centre set at ' + Math.round(gammaCenter) +
         '° (averaged over ' + cap.n + ' readings). Tilt to move; your swing is armed.';
@@ -1520,9 +1590,15 @@ window.__ppWatchdog = setTimeout(function () {
     lastGamma = e.gamma;
     if (tiltSmooth === null) tiltSmooth = e.gamma;
     else tiltSmooth += (e.gamma - tiltSmooth) * 0.35;
+    var hasBeta = typeof e.beta === 'number';
+    if (hasBeta) {
+      if (betaSmooth === null) betaSmooth = e.beta;
+      else betaSmooth += (e.beta - betaSmooth) * 0.3;
+    }
     if (calCapture) {
       calCapture.sum += e.gamma;
       calCapture.n++;
+      if (hasBeta) { calCapture.sumB += e.beta; calCapture.nB++; }
       if (performance.now() >= calCapture.until) finishCalCapture();
       return;
     }
@@ -1534,6 +1610,13 @@ window.__ppWatchdog = setTimeout(function () {
     var d = tiltSmooth - gammaCenter;
     if (Math.abs(d) < 1.5) d = 0;
     setPos(0.5 + d / 48);
+    /* depth (1.3.2): lean the phone FORWARD from the upright centre
+       (beta falls) to step in over the table; lean back to retreat */
+    if (betaCenter !== null && betaSmooth !== null) {
+      var bd = betaCenter - betaSmooth;
+      if (Math.abs(bd) < 3) bd = 0;
+      setDepth(S.clamp(bd / 30, 0, 1));
+    }
     $('calReadout').textContent = 'Tilt ' + Math.round(d) + '° · bat ' +
       (pos01 < 0.4 ? 'left' : pos01 > 0.6 ? 'right' : 'centre') +
       (lastPower > 0 ? ' · last swing power ' + Math.round(lastPower * 100) + '%' : '');
@@ -1581,8 +1664,8 @@ window.__ppWatchdog = setTimeout(function () {
     $('btnModeTouch').classList.toggle('btn-outline', m !== 'touch');
     $('swingPanel').classList.toggle('hidden', m !== 'swing');
     $('trackHint').textContent = m === 'swing'
-      ? 'Touch fallback: drag here any time — last input wins.'
-      : 'Drag left / right to move your bat.';
+      ? 'Touch fallback: drag here any time — up = step in over the table.'
+      : 'Drag: sideways moves the bat · UP steps in over the table · flick up = SMASH.';
     if (notify !== false) send({ t: 'ctrl', mode: m });
   }
   function enableSwing() {
@@ -1597,6 +1680,8 @@ window.__ppWatchdog = setTimeout(function () {
       calibrated = false;
       calCapture = null;
       tiltSmooth = null;
+      betaCenter = null;
+      betaSmooth = null;
       applyMode('swing', true);
       padStatus('Swing mode: checking your motion sensors…');
       setTimeout(function () {
@@ -1639,7 +1724,7 @@ window.__ppWatchdog = setTimeout(function () {
     askMotion();
   }
   $('btnModeSwing').addEventListener('click', enableSwing);
-  $('btnModeTouch').addEventListener('click', function () { applyMode('touch', true); padStatus('Touch Mode: drag on the track — the TV bats for you at contact.'); });
+  $('btnModeTouch').addEventListener('click', function () { applyMode('touch', true); padStatus('Touch Mode: drag on the track — sideways + up/down for depth; the TV bats for you at contact.'); });
   $('btnSwingNow').addEventListener('click', function () { doSwing(0.7); });
   $('sensRange').addEventListener('input', function () {
     sens = parseFloat($('sensRange').value) || 1;
@@ -1652,11 +1737,12 @@ window.__ppWatchdog = setTimeout(function () {
     }
     /* deliberate capture: average the tilt over the next ~0.5 s
        while the player holds the phone still and upright */
-    calCapture = { sum: 0, n: 0, until: performance.now() + 500 };
+    calCapture = { sum: 0, n: 0, sumB: 0, nB: 0, until: performance.now() + 500 };
     $('calReadout').textContent = 'Hold the phone upright and still — capturing your centre…';
     setTimeout(finishCalCapture, 650);
   });
   $('serveBtn').addEventListener('click', function () { send({ t: 'serve' }); });
+  $('btnSmash').addEventListener('click', function () { sendSmash(); });
   $('btnJoin').addEventListener('click', join);
   $('btnRetry').addEventListener('click', function () { teardown(true); show('joinPanel'); });
   $('btnLeave').addEventListener('click', function () {
@@ -1677,9 +1763,9 @@ window.__ppWatchdog = setTimeout(function () {
 
   /* debug / test hooks (used by the check scripts) */
   window.PPC = {
-    version: '1.3.1',
+    version: '1.3.2',
     getState: function () {
-      return { joined: joined, player: player, side: player, pos01: pos01,
+      return { joined: joined, player: player, side: player, pos01: pos01, depth01: depth01,
                targetY: pos01, mode: controlMode, sens: sens,
                sensorsLive: sensorsLive, lastPower: lastPower,
                reconnectTries: reconnectTries,
@@ -1695,6 +1781,8 @@ window.__ppWatchdog = setTimeout(function () {
     },
     join: join,
     setPos: function (v) { setPos(v); },
+    setDepth: function (v) { setDepth(v); },
+    smash: function () { sendSmash(); },
     setTarget: function (v) { setPos(v); },
     setMode: function (m) { applyMode(m === 'swing' ? 'swing' : 'touch', false); },
     swing: function (power) { doSwing(power == null ? 0.7 : power, false); },
@@ -1704,6 +1792,7 @@ window.__ppWatchdog = setTimeout(function () {
     debugOrient: function (g) { onOrient({ gamma: g }); },
     debugCalibrate: function () {
       if (lastGamma !== null) { gammaCenter = tiltSmooth !== null ? tiltSmooth : lastGamma; calibrated = true; }
+      betaCenter = betaSmooth;
     },
     debugSetClockOffset: function (ms) { clockOffset = ms; }
   };

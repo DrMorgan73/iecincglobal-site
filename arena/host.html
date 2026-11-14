@@ -6,7 +6,7 @@
 <title>Motion Arena — Ping Pong (TV Host)</title>
 <meta name="description" content="Motion Arena Ping Pong — the TV host screen. Play solo against the computer, share the screen, or join with a phone controller. An IEC, Inc. game.">
 <link rel="icon" href="data:,">
-<meta name="pp-build" content="relay-1.3.1">
+<meta name="pp-build" content="relay-1.3.2">
 <meta name="robots" content="noindex,nofollow">
 <style>
 /* pingpong.css — inlined by build-singlefile.py (single-file build) */
@@ -212,7 +212,7 @@ canvas#game {
 .sens-row #sensVal { min-width: 44px; text-align: right; color: #e0b93a; color: var(--gold-2); }
 /* horizontal bat track (replaces the vertical pad) */
 #track {
-  margin-top: 12px; height: 118px; border-radius: 18px; position: relative;
+  margin-top: 12px; height: 150px; border-radius: 18px; position: relative;
   background: linear-gradient(180deg, #123a6b, #0a1c38);
   background: linear-gradient(180deg, var(--navy-2), var(--navy-3));
   border: 2px dashed rgba(255,255,255,.28);
@@ -223,7 +223,7 @@ canvas#game {
   font-size: 14px; pointer-events: none; padding: 0 12px;
 }
 #trackBat {
-  position: absolute; left: 50%; top: 42%; width: 26px; height: 78px; border-radius: 10px;
+  position: absolute; left: 50%; top: 74%; width: 26px; height: 78px; border-radius: 10px;
   transform: translate(-50%, -50%); background: #C9A227; background: var(--gold);
   box-shadow: 0 0 18px rgba(201,162,39,.7); pointer-events: none;
 }
@@ -257,11 +257,11 @@ canvas#game {
 
 </style>
 <script>
-/* Boot guard (build relay-1.3.1): installed before any game file loads.
+/* Boot guard (build relay-1.3.2): installed before any game file loads.
    Traps errors and, if the game has not booted within 30 s, names the
    failed stage in big on-screen text — so a TV-browser failure says
    what it is instead of sitting on a white page. ES5 on purpose. */
-window.__PP_BUILD = 'relay-1.3.1';
+window.__PP_BUILD = 'relay-1.3.2';
 window.__ppShowDiag = function (title, detail) {
   var tries = 0;
   var show = function () {
@@ -303,7 +303,7 @@ window.__ppBootDone = function () {
   if (l && l.parentNode) l.parentNode.removeChild(l);
 };
 
-/* Self-heal poll (build relay-1.3.1): check every 500 ms
+/* Self-heal poll (build relay-1.3.2): check every 500 ms
    whether the game has booted (app global defined + styles applied).
    The moment it has, stand down - clear any diagnostic and the
    loading bar - so a merely slow TV recovers on its own, with no
@@ -383,7 +383,7 @@ window.__ppWatchdog = setTimeout(function () {
       <div class="panel" id="lobbyPanel">
         <h2>PING <span class="gold">PONG</span></h2>
         <p id="lobbyText">Broadcast view — you play from behind your end of the table. Official rules: the serve bounces on the server's half first; a net-cord serve that lands in is a let; no volleying.<br>
-        Game to 11, win by 2 · match best of 5. TV remote / keyboard: <b>← →</b> move, <b>Enter</b> starts and serves.</p>
+        Game to 11, win by 2 · match best of 5. TV remote / keyboard: <b>← →</b> move, <b>W / S</b> step in over the table &amp; back, <b>Space</b> smash a high ball, <b>Enter</b> starts and serves.</p>
         <div id="joinedList"></div>
         <div class="modes">
           <button class="btn btn-gold btn-big" id="btnModeAI">▶&nbsp; 1 Player vs Computer&nbsp; <small>(Enter)</small></button>
@@ -451,7 +451,7 @@ window.__ppWatchdog = setTimeout(function () {
    Used by host.js (TV) and controller.js (phone). Classic script, no
    modules, so the game also runs from file:// (USB stick, offline).
 
-   Build relay-1.3.1: the game is BROADCAST table tennis —
+   Build relay-1.3.2: the game is BROADCAST table tennis —
    the TV camera sits behind the near end of a 3D table. World space:
      x  across the table   (-1 .. +1 is the table surface)
      z  along the table    (-1 = near end / side 0, +1 = far end / side 1)
@@ -472,10 +472,13 @@ window.__ppWatchdog = setTimeout(function () {
     halfW: 1.0,          // table half-width in world units (x)
     halfL: 1.0,          // table half-length (z): ends at z = -1 / +1
     netH: 0.17,          // net height above the surface
-    planeZ: 1.07,        // hitting plane just behind each end line
+    planeZ: 1.07,        // hitting plane just behind each end line (a bat's home depth)
+    netReach: 0.14,      // a bat may step IN over the table to |z| >= 0.14 (1.3.2)
     gravity: 3.4,        // world units / s^2 on the ball's arc
     rest: 0.82,          // bounce restitution off the table
     reach: 0.37,         // bat contact reach (world x units)
+    smashH: 0.34,        // ball height at/above which a smash can connect (1.3.2)
+    smashT: 0.34,        // smash flight time to target — the fast put-away (1.3.2)
     batMin: -1.18,       // bat travel limits (slightly past the edges)
     batMax: 1.18,
     batSpeed: 2.7        // local bat speed, world units / s
@@ -610,7 +613,7 @@ window.__ppWatchdog = setTimeout(function () {
 </script>
 <script>
 /* relay.js — inlined by build-singlefile.py */
-/* Motion Arena — Ping Pong: RELAY transport (build relay-1.3.1).
+/* Motion Arena — Ping Pong: RELAY transport (build relay-1.3.2).
    A minimal MQTT 3.1.1 client over secure WebSocket, plus a
    PeerJS-shaped peer (window.RelayPeer) that carries the EXACT game
    wire protocol (join / welcome / pad / swing / ctrl / serve / state)
@@ -636,6 +639,13 @@ window.__ppWatchdog = setTimeout(function () {
                                 how a controller knows the room exists
                                 before it joins (the relay equivalent
                                 of PeerJS's peer-unavailable check).
+                                The host also RE-PUBLISHES it every
+                                1.5 s: retained delivery on the public
+                                broker proved unreliable (a raw-client
+                                probe on 2026-11-14 received live
+                                pub/sub but never the retained copy),
+                                and the re-publication makes the flag
+                                arrive as ordinary live traffic too.
 
    RelayPeer mirrors the slice of the PeerJS API the game uses:
    host:    new RelayPeer(peerId) + on('open'|'connection'|
@@ -879,6 +889,7 @@ window.__ppWatchdog = setTimeout(function () {
     this._mqtt = null;
     this._wasOpen = false;
     this._connectWanted = false;
+    this._alivePub = null;       // host role: alive re-publication timer
     if (id) {
       this.id = String(id);
       this._role = 'host';
@@ -939,11 +950,24 @@ window.__ppWatchdog = setTimeout(function () {
     };
     mqtt.connect();
   };
+  RelayPeer.prototype._startAlivePub = function () {
+    var self = this;
+    this._stopAlivePub();
+    this._alivePub = setInterval(function () {
+      if (!self.destroyed && self._mqtt && self._mqtt.connected) {
+        self._mqtt.publish(self._topics().alive, '1', true);
+      }
+    }, 1500);
+  };
+  RelayPeer.prototype._stopAlivePub = function () {
+    if (this._alivePub) { clearInterval(this._alivePub); this._alivePub = null; }
+  };
   RelayPeer.prototype._onMqttConnect = function () {
     var t = this._topics();
     if (this._role === 'host') {
       this._mqtt.subscribe([t.up + '+', t.bye + '+']);
       this._mqtt.publish(t.alive, '1', true);
+      this._startAlivePub();
       this._wasOpen = true;
       this._emit('open', this.id);
     } else {
@@ -955,6 +979,7 @@ window.__ppWatchdog = setTimeout(function () {
   };
   RelayPeer.prototype._onMqttClose = function () {
     if (this.destroyed) return;
+    this._stopAlivePub();
     if (this._role === 'host') {
       // PeerJS parity: host treats a broker drop as 'disconnected'
       // and the game calls reconnect().
@@ -973,6 +998,7 @@ window.__ppWatchdog = setTimeout(function () {
   RelayPeer.prototype.destroy = function () {
     if (this.destroyed) return;
     this.destroyed = true;
+    this._stopAlivePub();
     if (this._role === 'host') {
       var cids = Object.keys(this._conns);
       for (var i = 0; i < cids.length; i++) this._conns[cids[i]]._forceClose();
@@ -1092,13 +1118,20 @@ window.__ppWatchdog = setTimeout(function () {
 </script>
 <script>
 /* host.js — inlined by build-singlefile.py */
-/* Motion Arena — Ping Pong: TV host. RELAY build (1.3.1).
+/* Motion Arena — Ping Pong: TV host. RELAY build (1.3.2).
    (Broadcast view + official rules as 1.3.0; 1.3.1 adds the relay
    transport fallback for phone controllers, male/female avatar
    variants on a keyframed animation rig, an animated crowd with
    synthesized cheers, and the control-tuning pass: timestamped
    swings with join-time clock sync, phone-side tilt filtering,
-   host-side bat prediction.)
+   host-side bat prediction. 1.3.2 adds FULL bat depth control:
+   the near bat renders raised above the table's near edge (never
+   clipped), every bat can step IN over the table toward the net
+   (short balls are catchable), and a high ball can be SMASHED —
+   a fast put-away the receiver can genuinely miss. Depth inputs:
+   phone pad carries z (2-axis track drag / forward tilt), host
+   canvas drag is 2-axis, W/S keys step in and back, Space or a
+   quick up-flick or the phone SMASH button arms the smash.)
    The TV camera sits behind the near end of a 3D table (Canvas 2D
    perspective projection — no WebGL, so old TV browsers keep up).
    World space: x across (-1..1 = table), z along (-1 near / +1 far),
@@ -1154,9 +1187,11 @@ window.__ppWatchdog = setTimeout(function () {
 
   var ball = { x: 0, z: -0.5, h: 0.16, vx: 0, vz: 0, vh: 0, live: false };
   var flight = null;   // {fromSide,toSide,serve,bounces,crossed,cord,tPlane}
-  var bats = [ { x: 0, target: 0, padVel: 0, padAt: 0 }, { x: 0, target: 0, padVel: 0, padAt: 0 } ];   // by physical side
+  var bats = [ { x: 0, target: 0, z: -T.planeZ, tz: -T.planeZ, padVel: 0, padAt: 0 },
+               { x: 0, target: 0, z: T.planeZ, tz: T.planeZ, padVel: 0, padAt: 0 } ];   // by physical side; z/tz = depth (1.3.2)
   var lastSwingTiming = { deltaMs: null, compensated: false };  // grading audit trail
   var pendingSwing = [null, null];   // by player: {at, power}
+  var smashArm = [0, 0];             // by side: performance.now() deadline of an armed smash (1.3.2)
   var lastGrade = { player: -1, grade: '', at: 0 };
   var flash = { text: '', sub: '', color: '#ffffff', t: 0, dur: 0 };
   var avatar = { x: 0, vx: 0, swingT: 0, react: '', reactT: 0, reactBig: false,
@@ -1207,7 +1242,8 @@ window.__ppWatchdog = setTimeout(function () {
   var trail = [];
   var particles = [];
   var keys = {};
-  var renderInfo = { ballPx: { x: 0, y: 0, r: 0 }, shadowPx: { x: 0, y: 0 }, surfaceY: 0 };
+  var renderInfo = { ballPx: { x: 0, y: 0, r: 0 }, shadowPx: { x: 0, y: 0 }, surfaceY: 0,
+                     nearBatPx: { x: 0, y: 0, top: 0, bottom: 0 } };
 
   /* ---------------- projection ----------------
      Trapezoid broadcast view: near edge y=1005 half-width 855,
@@ -1277,6 +1313,7 @@ window.__ppWatchdog = setTimeout(function () {
   function sfx(name) {
     if (!settings.sound || !AC) return;
     if (name === 'pop') { tone(210, 0.07, 'square', 0.20, 0, 80); tone(1200, 0.03, 'sine', 0.10); }
+    else if (name === 'smash') { tone(150, 0.14, 'square', 0.24, 0, 55); tone(1150, 0.05, 'sine', 0.12); }
     else if (name === 'bounce') { tone(340, 0.045, 'sine', 0.13, 0, 240); }
     else if (name === 'net') { tone(95, 0.16, 'sawtooth', 0.10, 0, 60); }
     else if (name === 'score') { tone(660, 0.09, 'sine', 0.16); tone(880, 0.12, 'sine', 0.16, 0.09); }
@@ -1406,6 +1443,38 @@ window.__ppWatchdog = setTimeout(function () {
   }
   function diff() { return S.DIFFICULTY[settings.difficulty]; }
 
+  /* ---------------- bat depth (1.3.2) ----------------
+     A bat's depth z lives on its own half: |z| from the home plane
+     (T.planeZ, behind the end line) in to T.netReach (just short
+     of the net). Contact happens when the ball crosses the BAT's
+     plane, so stepping in genuinely reaches short balls. */
+  function batSign(side) { return side === 0 ? -1 : 1; }
+  function clampBatZ(side, z) {
+    var a = S.clamp(Math.abs(z), T.netReach, T.planeZ);
+    return batSign(side) * a;
+  }
+  function depth01Of(side) {
+    return (T.planeZ - Math.abs(bats[side].z)) / (T.planeZ - T.netReach);
+  }
+  /* The moment the incoming ball reaches the RECEIVING bat's
+     current plane — swing grading and swing anticipation judge
+     against this, so a stepped-in bat's early contact is graded
+     as on-time. Equals flight.tPlane when the bat is home. */
+  function contactTimeMs() {
+    if (!flight || !ball.vz) return flight ? flight.tPlane : 0;
+    var dz = T.planeZ - Math.abs(bats[flight.toSide].z);
+    return flight.tPlane - (dz / Math.abs(ball.vz)) * 1000;
+  }
+  function armSmash(side) { smashArm[side] = performance.now() + 700; }
+  function smashArmedFor(side) {
+    var ctrl = controllerOf(side);
+    if (ctrl !== 'local' && ctrl !== 'phone-auto') return false;
+    if (ball.h < T.smashH) return false;
+    if (performance.now() > (smashArm[side] || 0)) return false;
+    smashArm[side] = 0;
+    return true;
+  }
+
   /* ---------------- flow ---------------- */
   function updateServer() {
     var total = scores[0] + scores[1];
@@ -1433,6 +1502,8 @@ window.__ppWatchdog = setTimeout(function () {
     paused = false;
     bats[0].x = bats[0].target = 0;
     bats[1].x = bats[1].target = 0;
+    bats[0].z = bats[0].tz = -T.planeZ;
+    bats[1].z = bats[1].tz = T.planeZ;
     document.getElementById('lobbyPanel').classList.add('hidden');
     document.getElementById('overPanel').classList.add('hidden');
     hidePause();
@@ -1522,7 +1593,7 @@ window.__ppWatchdog = setTimeout(function () {
     rallyHits = 0;
     trail.length = 0;
     flight = { fromSide: side, toSide: 1 - side, serve: true, bounces: 0,
-               crossed: false, cord: false, tPlane: 0 };
+               crossed: false, cord: false, tPlane: 0, smash: false };
     flight.tPlane = performance.now() + ((dir * T.planeZ - z0) / vz) * 1000;
     rollAiError(flight.toSide);
     startSwing(side, true);
@@ -1551,7 +1622,13 @@ window.__ppWatchdog = setTimeout(function () {
     var dir = side === 0 ? 1 : -1;
     var oppBatX = bats[1 - side].x;
     var T1, tx, tz;
-    if (grade === 'PERFECT') {
+    if (grade === 'SMASH') {
+      /* the put-away: much faster and flatter than any graded
+         return, driven at the far corner away from the receiver */
+      T1 = T.smashT;
+      tx = oppBatX >= ball.x ? -0.88 : 0.88;
+      tz = dir * (0.90 + Math.random() * 0.06);
+    } else if (grade === 'PERFECT') {
       T1 = 0.60;
       tx = oppBatX >= ball.x ? -0.86 : 0.86;
       tz = dir * (0.84 + Math.random() * 0.10);
@@ -1577,9 +1654,20 @@ window.__ppWatchdog = setTimeout(function () {
     burst(bp.x, bp.y, '#ffffff', quality === 2 ? 5 : 3);
     sfx('pop');
     flight = { fromSide: side, toSide: 1 - side, serve: false, bounces: 0,
-               crossed: false, cord: false, tPlane: 0 };
+               crossed: false, cord: false, tPlane: 0, smash: grade === 'SMASH' };
     flight.tPlane = performance.now() + (((1 - side) === 1 ? T.planeZ : -T.planeZ) - ball.z) / ball.vz * 1000;
     rollAiError(flight.toSide);
+    if (grade === 'SMASH') {
+      /* a well-timed smash is a real put-away: the receiver gets a
+         big fresh aim error and tracks it at halved speed (stepBat),
+         so the computer — like a human — can simply miss it */
+      aiErr[flight.toSide] = (Math.random() < 0.5 ? -1 : 1) * (0.34 + Math.random() * 0.22);
+      lastGrade = { player: playerAtSide(side), grade: 'SMASH', at: performance.now() };
+      showFlash('SMASH!', '', '#e74c3c', 0.9);
+      var bp2 = proj(ball.x, ball.z, ball.h);
+      burst(bp2.x, bp2.y, '#ffd9d0', quality === 2 ? 10 : 6);
+      sfx('smash');
+    }
     sendNetState();
   }
   function rollAiError(side) {
@@ -1670,7 +1758,7 @@ window.__ppWatchdog = setTimeout(function () {
       var player = playerAtSide(side);
       var ps = pendingSwing[player];
       if (ps) {
-        var dt = ps.at - flight.tPlane;
+        var dt = ps.at - contactTimeMs();
         pendingSwing[player] = null;
         if (Math.abs(dt) <= S.GRADE_WINDOWS.graze) { gradeHit(side, ps, dt); return; }
       }
@@ -1678,15 +1766,22 @@ window.__ppWatchdog = setTimeout(function () {
       flight.graceUntil = performance.now() + 130;
       return;
     }
-    if (Math.abs(ball.x - bats[side].x) <= T.reach) doHit(side, null);
+    if (Math.abs(ball.x - bats[side].x) <= T.reach) {
+      if (smashArmedFor(side)) { doHit(side, 'SMASH'); return; }
+      doHit(side, null);
+    }
   }
   function gradeHit(side, ps, dtMs) {
     var adt = Math.abs(dtMs);
-    var grade = adt <= S.GRADE_WINDOWS.perfect && ps.power >= 0.5 ? 'PERFECT'
+    /* a full-power swing met on time while the ball sits HIGH is a
+       smash, not a grade (1.3.2); the height gate keeps ordinary
+       low returns on the PERFECT/GOOD/GRAZE ladder untouched */
+    var grade = ball.h >= T.smashH && ps.power >= 0.8 && adt <= S.GRADE_WINDOWS.good ? 'SMASH'
+              : adt <= S.GRADE_WINDOWS.perfect && ps.power >= 0.5 ? 'PERFECT'
               : adt <= S.GRADE_WINDOWS.good ? 'GOOD' : 'GRAZE';
     var player = playerAtSide(side);
     lastGrade = { player: player, grade: grade, at: performance.now() };
-    showFlash(grade + '!', '', grade === 'PERFECT' ? '#2ecc71' : grade === 'GOOD' ? '#e0b93a' : '#e67e22', 0.85);
+    if (grade !== 'SMASH') showFlash(grade + '!', '', grade === 'PERFECT' ? '#2ecc71' : grade === 'GOOD' ? '#e0b93a' : '#e67e22', 0.85);
     doHit(side, grade);
   }
   function onSwing(player, power, atMs) {
@@ -1700,7 +1795,7 @@ window.__ppWatchdog = setTimeout(function () {
     if (phase !== 'rally' || !flight || flight.toSide !== side) return;
     if (!contactLegal()) {
       /* volley: a swing that connects before the bounce is a fault */
-      var plane = side === 0 ? -T.planeZ : T.planeZ;
+      var plane = bats[side].z;
       if (Math.abs(ball.x - bats[side].x) <= T.reach + 0.05 &&
           Math.abs(ball.z - plane) < 0.55) {
         showFlash('VOLLEY', 'contact before the bounce — fault', '#e74c3c', 1.2);
@@ -1710,7 +1805,7 @@ window.__ppWatchdog = setTimeout(function () {
     }
     pendingSwing[player] = { at: atMs, power: power };
     if (flight.awaitSwing) {                  // late swing inside the grace window
-      var dt = atMs - flight.tPlane;
+      var dt = atMs - contactTimeMs();
       pendingSwing[player] = null;
       flight.awaitSwing = false;
       if (Math.abs(dt) <= S.GRADE_WINDOWS.graze) gradeHit(side, { power: power }, dt);
@@ -1803,9 +1898,9 @@ window.__ppWatchdog = setTimeout(function () {
     if (!flight) return;
     if (ph > 0 && ball.h <= 0 && ball.vh < 0) { bounce(); return; }
     if (!flight) return;
-    var plane = flight.toSide === 1 ? T.planeZ : -T.planeZ;
-    if ((flight.toSide === 1 && pz < plane && ball.z >= plane) ||
-        (flight.toSide === 0 && pz > plane && ball.z <= plane)) {
+    var bz = bats[flight.toSide].z;         // contact at the BAT's plane (1.3.2 depth)
+    if ((flight.toSide === 1 && pz < bz && ball.z >= bz) ||
+        (flight.toSide === 0 && pz > bz && ball.z <= bz)) {
       contactCheck();
       if (!flight) return;
     }
@@ -1842,9 +1937,16 @@ window.__ppWatchdog = setTimeout(function () {
       var target = 0;
       if (flight && flight.toSide === side && ball.live) target = ball.x + aiErr[side];
       else if (ball.live) target = ball.x * 0.25;
-      var mv = S.clamp(target - b.x, -d.speed * dt, d.speed * dt);
+      var spd = d.speed;
+      if (flight && flight.toSide === side && flight.smash) spd *= 0.45;  // a smash is hard to track (1.3.2)
+      var mv = S.clamp(target - b.x, -spd * dt, spd * dt);
       b.x += mv;
       b.target = b.x;
+      /* the computer defends from its home plane: any depth a human
+         left on this side eases back out */
+      var homeZ = side === 0 ? -T.planeZ : T.planeZ;
+      b.z += (homeZ - b.z) * Math.min(1, dt * 6);
+      b.tz = b.z;
     } else if (ctrl === 'phone-swing' || ctrl === 'phone-auto') {
       /* prediction line: aim where the phone's stream is HEADING —
          the last target plus its measured velocity extrapolated a
@@ -1856,27 +1958,38 @@ window.__ppWatchdog = setTimeout(function () {
       var goal = S.clamp(b.target + (b.padVel || 0) * lead, T.batMin, T.batMax);
       var k = Math.min(1, dt * 30);
       b.x += (goal - b.x) * k;
+      b.z += (b.tz - b.z) * Math.min(1, dt * 24);      // phone depth stream (1.3.2)
     } else {
       stepLocalKeys(side, dt);
       var k2 = Math.min(1, dt * 22);
       b.x += (b.target - b.x) * k2;
+      b.z += (b.tz - b.z) * Math.min(1, dt * 22);      // local depth keys / pointer (1.3.2)
     }
     b.x = S.clamp(b.x, T.batMin, T.batMax);
     b.target = S.clamp(b.target, T.batMin, T.batMax);
+    b.z = clampBatZ(side, b.z);
+    b.tz = clampBatZ(side, b.tz);
   }
   function stepLocalKeys(side, dt) {
     var player = playerAtSide(side);
     var b = bats[side];
-    var left = false, right = false;
+    var left = false, right = false, fwd = false, back = false;
     if (player === 0) {
       left = keys['KeyA'] || (mode !== 'local' && (keys['ArrowLeft'] || keys['ArrowUp']));
       right = keys['KeyD'] || (mode !== 'local' && (keys['ArrowRight'] || keys['ArrowDown']));
+      fwd = keys['KeyW'];
+      back = keys['KeyS'];
     } else {
-      left = keys['ArrowLeft'] || keys['ArrowUp'];
-      right = keys['ArrowRight'] || keys['ArrowDown'];
+      left = keys['ArrowLeft'] || (mode === 'local' ? false : keys['ArrowUp']);
+      right = keys['ArrowRight'] || (mode === 'local' ? false : keys['ArrowDown']);
+      if (mode === 'local') { fwd = keys['ArrowUp']; back = keys['ArrowDown']; }
     }
     if (left) b.target -= T.batSpeed * dt;
     if (right) b.target += T.batSpeed * dt;
+    /* depth: step IN over the table toward the net, or back out
+       (1.3.2) — P1: W/S; P2 in local mode: Up/Down arrows */
+    if (fwd) b.tz = clampBatZ(side, b.tz - batSign(side) * T.batSpeed * 0.8 * dt);
+    if (back) b.tz = clampBatZ(side, b.tz + batSign(side) * T.batSpeed * 0.8 * dt);
   }
 
   function update(dt) {
@@ -1905,7 +2018,7 @@ window.__ppWatchdog = setTimeout(function () {
     /* anticipation: open the full swing cycle early enough that its
        CONTACT keyframe lands as the ball reaches the plane */
     if (phase === 'rally' && flight && ball.live) {
-      var lead = (flight.tPlane - performance.now()) / 1000;
+      var lead = (contactTimeMs() - performance.now()) / 1000;
       if (lead > 0 && lead < SWING_DUR * SWING_CONTACT_K) {
         var incAnim = flight.toSide === 1 ? avatar : nearAnim;
         if (incAnim.swingT <= 0) startSwing(flight.toSide, false);
@@ -2230,30 +2343,40 @@ window.__ppWatchdog = setTimeout(function () {
      driven by the same keyframed swing cycle as the far avatar
      (dip back on the wind-up, sweep through contact, high
      follow-through) and wearing the near player's kit — the
-     female kit shows its light trim band at the wrist. */
+     female kit shows its light trim band at the wrist.
+     1.3.2: the bat is anchored on the bat's ACTUAL depth (bats[0].z)
+     and held above the surface, so the whole racket — face and
+     handle — renders ABOVE the table's near edge, fully inside
+     the picture at every depth (the 1.3.1 anchor projected the
+     face centre below the canvas bottom: only a sliver showed).
+     Stepping in moves the racket visibly up over the table. */
   function drawNearBat(now) {
     var nearPlayer = playerAtSide(0);
     var color = players[nearPlayer].color;
     var female = players[nearPlayer].gender === 'female';
-    var bp = proj(bats[0].x, -1.12, 0.10);
+    var bp = proj(bats[0].x, bats[0].z - 0.05, 0.25);
+    var s = Math.min(1, bp.w / 1.045);            // perspective scale (1 at the end line)
     var pump = nearAnim.reactT > 0 ? Math.sin(nearAnim.reactT * 10) * 8 : 0;
     var pose = nearAnim.swingT > 0 ? swingPose(swingKOf(nearAnim)) : null;
     var lift = pose ? pose.lean * 95 : 0;
     var back = pose && swingKOf(nearAnim) < 0.32 ? (0.32 - swingKOf(nearAnim)) * 60 : 0;
-    var cxp = bp.x + back, cyp = bp.y + 66 - lift - pump;
+    var cxp = S.clamp(bp.x + back, 64, W - 64);
+    var cyp = bp.y + 14 * s - lift - pump;
+    renderInfo.nearBatPx = { x: Math.round(cxp), y: Math.round(cyp),
+      top: Math.round(cyp - 68 * s), bottom: Math.round(cyp + 82 * s) };
     /* forearm / sleeve wedge from the bottom edge to the handle */
     ctx.fillStyle = shade(color, 0.55);
     ctx.beginPath();
-    ctx.moveTo(cxp - 30, H);
-    ctx.lineTo(cxp + 30, H);
-    ctx.lineTo(cxp + 10, cyp + 66);
-    ctx.lineTo(cxp - 10, cyp + 66);
+    ctx.moveTo(cxp - 30 * s, H);
+    ctx.lineTo(cxp + 30 * s, H);
+    ctx.lineTo(cxp + 10 * s, cyp + 66 * s);
+    ctx.lineTo(cxp - 10 * s, cyp + 66 * s);
     ctx.closePath(); ctx.fill();
     if (female) {
       ctx.fillStyle = 'rgba(255,255,255,0.75)';
       ctx.beginPath();
-      ctx.moveTo(cxp - 17, cyp + 92); ctx.lineTo(cxp + 17, cyp + 92);
-      ctx.lineTo(cxp + 13, cyp + 74); ctx.lineTo(cxp - 13, cyp + 74);
+      ctx.moveTo(cxp - 17 * s, cyp + 92 * s); ctx.lineTo(cxp + 17 * s, cyp + 92 * s);
+      ctx.lineTo(cxp + 13 * s, cyp + 74 * s); ctx.lineTo(cxp - 13 * s, cyp + 74 * s);
       ctx.closePath(); ctx.fill();
     }
     /* handle */
@@ -2261,14 +2384,14 @@ window.__ppWatchdog = setTimeout(function () {
     ctx.save();
     ctx.translate(cxp, cyp);
     ctx.rotate(S.clamp((bats[0].target - bats[0].x) * 0.5, -0.3, 0.3) - lift * 0.002 - (pose ? pose.sh * 0.10 : 0));
-    ctx.fillRect(-8, 30, 16, 52);
+    ctx.fillRect(-8 * s, 30 * s, 16 * s, 52 * s);
     /* bat face */
     ctx.fillStyle = color;
-    ctx.beginPath(); ctx.ellipse(0, 0, 56, 68, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(0, 0, 56 * s, 68 * s, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = 'rgba(10,16,28,0.88)';
-    ctx.beginPath(); ctx.ellipse(0, 0, 45, 57, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(0, 0, 45 * s, 57 * s, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = 'rgba(255,255,255,0.20)';
-    ctx.beginPath(); ctx.ellipse(-14, -20, 16, 22, -0.4, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-14 * s, -20 * s, 16 * s, 22 * s, -0.4, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
   }
 
@@ -2624,6 +2747,14 @@ window.__ppWatchdog = setTimeout(function () {
           pb.target = newTarget;
           pb.padAt = pNow;
         }
+        var zv = parseFloat(data.z);          // bat depth stream (1.3.2): 0 = home plane, 1 = at the net
+        if (!isNaN(zv)) {
+          var zside = sideOfPlayer(entry.player);
+          var zmag = T.planeZ - S.clamp(zv, 0, 1) * (T.planeZ - T.netReach);
+          bats[zside].tz = (zside === 0 ? -1 : 1) * zmag;
+        }
+      } else if (data.t === 'smash' && entry.player >= 0) {
+        armSmash(sideOfPlayer(entry.player));
       } else if (data.t === 'ctrl' && entry.player >= 0) {
         if (data.mode === 'swing' || data.mode === 'touch') entry.mode = data.mode;
       } else if (data.t === 'swing' && entry.player >= 0) {
@@ -2798,6 +2929,12 @@ window.__ppWatchdog = setTimeout(function () {
       if (e.code === 'KeyG') { cycleGender(0); return; }
       if (e.code === 'KeyH') { cycleGender(1); return; }
     }
+    if (phase === 'rally') {
+      /* smash arming on this screen (1.3.2): Space or your side's
+         Shift key — connect while the ball sits high */
+      if (e.code === 'Space' || e.code === 'ShiftLeft') armSmash(sideOfPlayer(0));
+      if (e.code === 'ShiftRight') armSmash(sideOfPlayer(1));
+    }
     if (e.code === 'Enter' || e.code === 'Space') {
       if (onButton) return; // focused button handles it natively
       if (phase === 'lobby') startMatch('ai');
@@ -2812,25 +2949,44 @@ window.__ppWatchdog = setTimeout(function () {
     if (!paused && (phase === 'serve' || phase === 'rally' || phase === 'point')) showPause();
   });
 
-  function canvasPosX(e) {
+  /* Direct play on THIS screen (a phone browser on the host page,
+     a mouse on a PC): the pointer drives the near bat in TWO axes
+     (1.3.2) — sideways = across the table; vertical = depth, the
+     top of the court reaching in over the table toward the net.
+     A quick upward flick arms the smash. */
+  function canvasPos(e) {
     var r = canvas.getBoundingClientRect();
-    var clientX = (e.touches && e.touches[0]) ? e.touches[0].clientX : e.clientX;
-    return T.batMin + S.clamp((clientX - r.left) / r.width, 0, 1) * (T.batMax - T.batMin);
+    var t = (e.touches && e.touches[0]) ? e.touches[0] : e;
+    var fx = S.clamp((t.clientX - r.left) / r.width, 0, 1);
+    var fy = S.clamp((t.clientY - r.top) / r.height, 0, 1);
+    return { x: T.batMin + fx * (T.batMax - T.batMin),
+             z01: S.clamp((0.98 - fy) / 0.68, 0, 1) };
   }
-  canvas.addEventListener('mousemove', function (e) {
-    if (players[0].kind === 'human' && !net.players[0]) {
-      bats[sideOfPlayer(0)].target = canvasPosX(e);
-    }
-  });
+  function localPointer(e) {
+    if (!(players[0].kind === 'human' && !net.players[0])) return;
+    var side = sideOfPlayer(0);
+    var p = canvasPos(e);
+    bats[side].target = p.x;
+    var mag = T.planeZ - p.z01 * (T.planeZ - T.netReach);
+    bats[side].tz = (side === 0 ? -1 : 1) * mag;
+  }
+  var touchTrack = { y: 0, t: 0 };
+  canvas.addEventListener('mousemove', function (e) { localPointer(e); });
   canvas.addEventListener('touchstart', function (e) {
     e.preventDefault();
+    if (e.touches && e.touches[0]) touchTrack = { y: e.touches[0].clientY, t: performance.now() };
+    localPointer(e);
     if (phase === 'serve' && controllerOf(sideOfPlayer(server)) === 'local') launchServe();
   }, { passive: false });
   canvas.addEventListener('touchmove', function (e) {
     e.preventDefault();
-    if (players[0].kind === 'human' && !net.players[0]) {
-      bats[sideOfPlayer(0)].target = canvasPosX(e);
+    if (e.touches && e.touches[0]) {
+      var nowT = performance.now();
+      var vy = (touchTrack.y - e.touches[0].clientY) / Math.max(1, nowT - touchTrack.t);
+      if (vy > 1.3) armSmash(sideOfPlayer(0));        // quick up-flick = smash (1.3.2)
+      touchTrack = { y: e.touches[0].clientY, t: nowT };
     }
+    localPointer(e);
   }, { passive: false });
   canvas.addEventListener('click', function () {
     if (phase === 'serve' && controllerOf(sideOfPlayer(server)) === 'local') launchServe();
@@ -2839,7 +2995,7 @@ window.__ppWatchdog = setTimeout(function () {
   /* ---------------- debug / test hooks (used by the check scripts) ---- */
   function bat01(side) { return (bats[side].x - T.batMin) / (T.batMax - T.batMin); }
   window.PP = {
-    version: '1.3.1',
+    version: '1.3.2',
     getState: function () {
       return {
         phase: phase, mode: mode, paused: paused,
@@ -2860,9 +3016,11 @@ window.__ppWatchdog = setTimeout(function () {
                  live: ball.live,
                  toSide: flight ? flight.toSide : -1, fromSide: flight ? flight.fromSide : -1,
                  serve: flight ? flight.serve : false, bounces: flight ? flight.bounces : 0,
-                 cord: flight ? flight.cord : false,
+                 cord: flight ? flight.cord : false, smash: flight ? !!flight.smash : false,
                  tPlaneInMs: flight ? Math.max(0, Math.round(flight.tPlane - performance.now())) : -1 },
         bats: [Math.round(bats[0].x * 100) / 100, Math.round(bats[1].x * 100) / 100],
+        batsZ: [Math.round(bats[0].z * 100) / 100, Math.round(bats[1].z * 100) / 100],
+        depth01: [Math.round(depth01Of(0) * 1000) / 1000, Math.round(depth01Of(1) * 1000) / 1000],
         bats01: [Math.round(bat01(0) * 1000) / 1000, Math.round(bat01(1) * 1000) / 1000],
         paddles: [Math.round(bat01(0) * 1000) / 1000, Math.round(bat01(1) * 1000) / 1000],
         avatar: { x01: Math.round(bat01(1) * 1000) / 1000, swing: avatar.swingT > 0, react: avatar.react,
@@ -2917,6 +3075,17 @@ window.__ppWatchdog = setTimeout(function () {
       var side = sideOfPlayer(p);
       bats[side].x = bats[side].target = T.batMin + S.clamp(v01, 0, 1) * (T.batMax - T.batMin);
     },
+    /* Depth hooks (1.3.2): v01 = 0 at the home plane, 1 at the net. */
+    setBatZ: function (side, v01) {
+      var mag = T.planeZ - S.clamp(v01, 0, 1) * (T.planeZ - T.netReach);
+      bats[side].z = bats[side].tz = (side === 0 ? -1 : 1) * mag;
+    },
+    setPlayerBatZ: function (p, v01) {
+      var side = sideOfPlayer(p);
+      var mag = T.planeZ - S.clamp(v01, 0, 1) * (T.planeZ - T.netReach);
+      bats[side].z = bats[side].tz = (side === 0 ? -1 : 1) * mag;
+    },
+    debugSmash: function (p) { armSmash(sideOfPlayer(p)); },
     /* Construct a ball flight directly (rules + motion audits).
        opts: {serve, bounces, cord} preset the flight record. */
     testFlight: function (o) {
@@ -2929,7 +3098,7 @@ window.__ppWatchdog = setTimeout(function () {
       flight = { fromSide: 1 - toSide, toSide: toSide, serve: !!(o && o.serve),
                  bounces: (o && o.bounces != null) ? o.bounces : 0,
                  crossed: (toSide === 1 && ball.z > 0) || (toSide === 0 && ball.z < 0),
-                 cord: !!(o && o.cord), tPlane: 0 };
+                 cord: !!(o && o.cord), tPlane: 0, smash: false };
       flight.tPlane = performance.now() + (((toSide === 1 ? T.planeZ : -T.planeZ) - ball.z) / vz) * 1000;
       trail.length = 0;
       sendNetState();

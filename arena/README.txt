@@ -2,13 +2,34 @@ MOTION ARENA — PING PONG
 An IEC, Inc. game. Broadcast table tennis: the TV watches the table
 from behind your end, with the other player standing at the far end.
 Official rules: game to 11, win by 2, match best of 5.
-Build relay-1.3.1 — the TV pages are SINGLE FILES:
+Build relay-1.3.2 — the TV pages are SINGLE FILES:
 everything the game needs (design + all code) is inside the one page
 itself, so there is nothing separate left for a TV browser to fail
 to load. The page also heals itself: if the TV is merely slow, it
 recovers on its own within 30 seconds, no reload needed. If you
 still see a red box after 30 seconds, note its words exactly (or
 photograph it) — it names the exact stage that failed.
+
+WHAT'S NEW IN 1.3.2
+  - YOUR RACKET IS ABOVE THE TABLE: the near player's racket used
+    to be clipped at the bottom of the picture — only a sliver
+    showed. The racket and forearm now render raised above the
+    table's near edge, fully on screen, and the racket follows
+    your depth: step in and it moves up over the table with you.
+  - STEP IN AND CATCH SHORT BALLS: your racket's reach now extends
+    INSIDE the table, up toward the net. A short ball dropping on
+    your side is catchable instead of dying out of reach.
+  - SMASH: when the ball sits HIGH on your side, put it away —
+    a fast, downward strike the other player can genuinely miss.
+  - FULL CONTROL FROM THE PHONE, both ways (phone-as-controller
+    with the TV, and playing directly in the phone browser):
+    TOUCH MODE — the track is now a 2-axis pad: drag sideways to
+    move, drag UP to step in over the table, drag down to retreat;
+    tap the red SMASH button (or flick up quickly on the track)
+    to arm a smash. SWING MODE — tilt forward/back for depth, and
+    SMASH fires a full-power swing. On the TV screen itself: drag
+    the mouse/touch in two axes, W/S step in and back, Space (or
+    Shift) arms the smash.
 
 WHAT'S NEW IN 1.3.1
   - TWO WAYS FOR PHONES TO REACH THE TV: the phone first tries the
