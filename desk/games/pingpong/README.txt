@@ -1,8 +1,12 @@
 MOTION ARENA — PING PONG
 An IEC, Inc. game. First to 11, win by 2.
-Build tvfix-1.1.0 — Samsung TV browser compatibility fix: if the game
-ever fails to start on the TV, the screen now says exactly what failed
-instead of sitting blank. Note that message word for word.
+Build tvfix-1.2.0-singlefile — the TV pages are now SINGLE FILES:
+everything the game needs (design + all code) is inside the one page
+itself, so there is nothing separate left for a TV browser to fail
+to load. The page also heals itself: if the TV is merely slow, it
+recovers on its own within 30 seconds, no reload needed. If you
+still see a red box after 30 seconds, note its words exactly (or
+photograph it) — it names the exact stage that failed.
 
 ====================================================================
 1) PLAY ON THE SAMSUNG TV  (the main way)
@@ -12,16 +16,17 @@ take apps from Samsung's own store. So on the TV, the game runs from
 its web address, in the TV's built-in Internet browser:
 
   1. On the TV, open the "Internet" browser app.
-  2. Go to:  https://iecincglobal.com/desk/games.html
-     (the Games page of the IEC Desk — sign in if the Desk asks).
-  3. Choose "Ping Pong — TV Host".
+  2. Go to:  https://iecincglobal.com/arena/
+     The TV Host opens by itself — no sign-in, nothing to choose.
+  3. If a red box appears, give it 30 seconds: a slow TV clears it
+     by itself. If it stays, note its words (see the note above).
   4. Play with the TV remote: UP / DOWN arrows move your paddle,
      Enter starts the game, serves, and restarts. That is all you
      need for 1 Player vs Computer.
 
   Phone controller (2-player, needs internet):
-  5. On your phone's browser, open the same Games page and choose
-     "Ping Pong — Phone Controller" (or scan the link there).
+  5. On your phone's browser, open:
+     https://iecincglobal.com/arena/controller.html
   6. Type the 4-letter room code shown on the TV and tap Join.
   7. Drag on the phone pad to move your paddle — or tap
      "Enable tilt control" and tip the phone. Tap SERVE when the
@@ -34,15 +39,16 @@ its web address, in the TV's built-in Internet browser:
 ====================================================================
 SAMSUNG TV TEST — do this once at the real TV (about 5 minutes)
 ====================================================================
-You need: the TV remote, a phone, and the Desk sign-in.
+You need: the TV remote and a phone. No sign-in anywhere.
 Report back the NUMBER of any step that fails, plus what the
 screen showed instead. Every step has its PASS line.
 
  1. On the TV, open the "Internet" browser and go to
-    https://iecincglobal.com/desk/games.html — sign in if asked.
-    PASS: the Games page appears with "Ping Pong — TV Host".
-    If it fails: note the exact screen (blank? error? no sign-in?).
- 2. Choose "Open TV Host".
+    https://iecincglobal.com/arena/
+    PASS: the game lobby appears on the navy arena page.
+    If a red box appears instead, wait 30 seconds — a slow TV
+    clears it by itself. If it stays, note its words exactly.
+ 2. Look at the top-right of the screen.
     PASS: the table fills the screen and a 4-letter room code
     shows at the top. If the code area says phones need internet,
     that is fine — keep going.
@@ -57,8 +63,8 @@ screen showed instead. Every step has its PASS line.
     PASS: the score climbs, the game ends with a winner screen,
     and Enter ("Play Again") starts a fresh game at 0 : 0.
  6. Go back to the lobby (press M, or choose Back to Lobby).
-    On the phone, open the same Games page, sign in, choose
-    "Phone Controller", type the room code from the TV, tap Join.
+    On the phone, open https://iecincglobal.com/arena/controller.html
+    type the room code from the TV, tap Join.
     PASS: the TV shows your phone's name as the LEFT player and
     dragging on the phone pad moves the TV paddle.
     If it fails: note the phone's message word for word (room not
