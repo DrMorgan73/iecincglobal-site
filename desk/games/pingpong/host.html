@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Motion Arena — Ping Pong (TV Host)</title>
+<meta name="description" content="Motion Arena Ping Pong — the TV host screen. Play solo against the computer, share the screen, or join with a phone controller. An IEC, Inc. game.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="stylesheet" href="pingpong.css">
+</head>
+<body>
+<div id="hostApp">
+  <div class="host-topbar">
+    <div class="host-title">MOTION ARENA <span class="gold">· PING PONG</span></div>
+    <div class="room-box" title="Room code for phone controllers">
+      <span class="dot" id="netDot"></span>
+      <span class="lbl">ROOM</span>
+      <span id="roomCode">····</span>
+    </div>
+  </div>
+
+  <div id="netBanner" class="hidden"></div>
+
+  <div class="stage">
+    <div class="canvas-wrap">
+      <canvas id="game" width="1920" height="1080"></canvas>
+
+      <div class="panel" id="lobbyPanel">
+        <h2>PING <span class="gold">PONG</span></h2>
+        <p id="lobbyText">First to 11, win by 2. On the TV remote or keyboard: <b>↑ ↓</b> move, <b>Enter</b> starts and serves.<br>
+        Phones: open the controller page on your phone and enter the room code above.</p>
+        <div id="joinedList"></div>
+        <div class="modes">
+          <button class="btn btn-gold btn-big" id="btnModeAI">▶&nbsp; 1 Player vs Computer&nbsp; <small>(Enter)</small></button>
+          <button class="btn btn-outline btn-big" id="btnModeLocal">👥&nbsp; 2 Players — Same Screen&nbsp; <small>(2)</small></button>
+          <button class="btn btn-outline btn-big" id="btnModePhone">📱&nbsp; Phone Controller Game&nbsp; <small>(3)</small></button>
+        </div>
+        <p id="lobbyHint">W/S or ↑/↓ = left paddle · Arrow keys = right paddle in 2-player mode.</p>
+      </div>
+
+      <div class="panel hidden" id="overPanel">
+        <h2 id="overTitle">GAME</h2>
+        <div class="final-score" id="overScore">11 — 4</div>
+        <p id="overSub"></p>
+        <div class="modes">
+          <button class="btn btn-gold btn-big" id="btnAgain">↻&nbsp; Play Again&nbsp; <small>(Enter)</small></button>
+          <button class="btn btn-outline btn-big" id="btnLobby">Lobby&nbsp; <small>(Esc)</small></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>Motion Arena · Ping Pong — an IEC, Inc. game · ↑/↓ move · Enter start / serve / restart · M mid-game menu</footer>
+</div>
+
+<script src="vendor/peerjs.min.js"></script>
+<script src="game.js"></script>
+<script src="host.js"></script>
+</body>
+</html>

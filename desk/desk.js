@@ -17,6 +17,7 @@ const NAV_GROUPS = [
     { id: 'home',      href: '/',                    icon: '🏠', label: 'Home',          page: 'home',      desc: 'Suite command center — at-a-glance stats and quick actions.' },
     { id: 'suzy-chat', href: '/desk/suzy-chat.html', icon: '💬', label: 'Chat with Suzy', page: 'suzy-chat', desc: 'Talk to Suzy — she carries the agenda, the briefing and the to-do list.' },
     { id: 'demo-users', href: '/desk/demo-users.html', icon: '🎟️', label: 'Demo Users',  page: 'demo-users', desc: 'Demo accounts and the permission matrix for all five assets — plus NDA signings and the activity feed.' },
+    { id: 'games', href: '/desk/games.html', icon: '🏓', label: 'Games', page: 'games', desc: 'Motion Arena — Ping Pong for the TV, phone controllers, and the USB/Android downloads.' },
   ]},
   { sec: 'Deals & People', items: [
     { id: 'opps',     href: '/desk/opportunities.html', icon: '💼', label: 'Dana — Opportunities', page: 'opps', badgeId: 'nav-opps', desc: "Dana's pipeline — scouted employers and data buyers, ranked and followed up." },

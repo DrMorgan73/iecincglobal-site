@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Games — IEC Suite</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/desk/desk.css">
+<style>
+  .game-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+  .game-actions a.btn{text-decoration:none}
+  .steps{font-size:13.5px;color:var(--dim);line-height:1.75;padding-left:20px}
+  .steps b{color:var(--text)}
+  .dl-note{font-size:12.5px;color:var(--dim);margin-top:10px;line-height:1.6}
+</style>
+</head>
+<body data-page="games">
+<div class="orbs" aria-hidden="true"><span class="orb gold"></span><span class="orb teal"></span><span class="orb violet"></span></div>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="side-brand">
+      <img class="logo-img" src="/assets/iec-logo.png" alt="IEC Inc.">
+      <div><h1>IEC <span>Suite</span></h1><p>International Empire Consultants, Inc.</p></div>
+    </div>
+    <nav id="nav"></nav>
+    <div class="side-foot">
+      <div class="themes" id="themes">
+        <button data-t="iec" style="--sw1:#f0b942;--sw2:#3b82f6" title="IEC Brand"></button>
+        <button data-t="midnight" style="--sw1:#f0b942;--sw2:#2dd4bf" title="Midnight Gold"></button>
+        <button data-t="amethyst" style="--sw1:#d8b4fe;--sw2:#f0abfc" title="Royal Amethyst"></button>
+        <button data-t="ocean" style="--sw1:#7dd3fc;--sw2:#5eead4" title="Deep Ocean"></button>
+        <button data-t="ember" style="--sw1:#fdba74;--sw2:#fbbf24" title="Sunset Ember"></button>
+        <button data-t="emerald" style="--sw1:#6ee7b7;--sw2:#f0b942" title="Emerald Noir"></button>
+        <button data-t="rose" style="--sw1:#fda4af;--sw2:#f0abfc" title="Rose Noir"></button>
+        <label class="cpick" title="Accent color"><input type="color" id="pick-gold" value="#f0b942"></label>
+        <label class="cpick" title="Highlight color"><input type="color" id="pick-teal" value="#2dd4bf"></label>
+        <button class="creset" id="pick-reset" title="Reset colors">⟲</button>
+      </div>
+      <button class="signout" id="signout"><i>🚪</i>Sign out</button>
+      <a class="public-link" href="/welcome.html">← Public site</a>
+      <div class="clockbox">
+        <div id="clock">--:--</div>
+        <div id="dateline">—</div>
+      </div>
+    </div>
+  </aside>
+
+  <main>
+    <div class="section-head"><h2>Games</h2><span class="hint">Motion Arena — play on the TV, a phone, or this screen</span></div>
+
+    <div class="grid">
+      <div class="card">
+        <h3>🏓 Ping Pong — TV Host</h3>
+        <p>The big-screen game: table, score and room code. Open this on the Samsung TV's Internet browser (sign in to the Desk first) — or on any computer. First to 11, win by 2.</p>
+        <div class="game-actions">
+          <a class="btn" href="/desk/games/pingpong/host.html">Open TV Host</a>
+          <a class="btn" href="/desk/games/pingpong/index.html">Game launcher</a>
+        </div>
+      </div>
+      <div class="card">
+        <h3>📱 Ping Pong — Phone Controller</h3>
+        <p>Open this on a phone, type the 4-letter room code shown on the TV, and play with touch-drag or tilt. The phone and TV meet through the internet, so both need a connection.</p>
+        <div class="game-actions">
+          <a class="btn" href="/desk/games/pingpong/controller.html">Open Phone Controller</a>
+        </div>
+      </div>
+      <div class="card">
+        <h3>💾 Take it with you</h3>
+        <p>Download the game for a USB stick or a Samsung Galaxy phone/tablet. A Samsung TV cannot install from USB — on the TV, always use the web address above.</p>
+        <div class="game-actions">
+          <a class="btn" href="/desk/games/motion-arena-pingpong.zip" download>Download USB package (.zip)</a>
+          <a class="btn" href="/desk/games/motion-arena-pingpong.apk" download>Download Android app (.apk)</a>
+        </div>
+        <p class="dl-note">ZIP: unzip anywhere, open <b>index.html</b> in a browser — 1-player and same-screen 2-player work with no internet at all. APK: copy to a Galaxy device, open it in Files and Install (allow installs from that source when Android asks).</p>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:18px">
+      <h3>📺 On the Samsung TV</h3>
+      <ol class="steps">
+        <li>Open the TV's <b>Internet</b> browser and come to this Desk page (sign in if asked), then choose <b>Open TV Host</b>.</li>
+        <li><b>1 Player vs Computer</b> needs nothing else: the remote's <b>↑ / ↓ arrows</b> move your paddle and <b>Enter</b> starts, serves and restarts.</li>
+        <li>For phone play, open <b>Phone Controller</b> on the phone (same Desk sign-in), type the <b>room code</b> on the TV, and tap Join.</li>
+      </ol>
+    </div>
+
+    <footer>© 2026 International Empire Consultants, Inc. · IEC Suite</footer>
+  </main>
+</div>
+
+<script src="/desk/desk.js"></script>
+</body>
+</html>

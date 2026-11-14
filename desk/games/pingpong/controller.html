@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Motion Arena — Ping Pong Controller</title>
+<meta name="description" content="Phone controller for Motion Arena Ping Pong. Enter the room code shown on the TV. An IEC, Inc. game.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="stylesheet" href="pingpong.css">
+</head>
+<body>
+<div id="ctlApp">
+  <div class="ctl-title">PING PONG <span class="gold">CONTROLLER</span></div>
+  <div class="ctl-sub">Motion Arena · your phone is the paddle</div>
+
+  <!-- join -->
+  <div id="joinPanel">
+    <div class="field">
+      <label for="codeInput">ROOM CODE (shown on the TV)</label>
+      <input id="codeInput" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="····">
+    </div>
+    <div class="field">
+      <label for="nameInput">YOUR NAME</label>
+      <input id="nameInput" maxlength="14" autocomplete="off" placeholder="Player">
+    </div>
+    <div class="field">
+      <label>YOUR COLOUR</label>
+      <div class="swatches" id="swatches"></div>
+    </div>
+    <button class="btn btn-gold btn-big" id="btnJoin" style="max-width:none">Join game</button>
+    <div class="msg" id="joinMsg" style="margin-top:14px"></div>
+    <p class="status-line">Hold the phone in your hand or an armband. After joining you can turn on tilt control, or just drag on the pad — touch always works.</p>
+  </div>
+
+  <!-- pad -->
+  <div id="padPanel" class="hidden" style="display:flex; flex-direction:column; flex:1; min-height:0">
+    <div class="scorebar">
+      <span id="sbLeft">—</span>
+      <span class="sc" id="sbScore">0 : 0</span>
+      <span id="sbRight">—</span>
+    </div>
+    <div id="pad">
+      <div id="padPaddle"></div>
+      <div class="hint">Drag here to move your paddle.<br>Tip: it follows your finger height on the pad.</div>
+    </div>
+    <button class="btn btn-gold btn-big hidden" id="serveBtn" style="max-width:none">🏓 SERVE</button>
+    <div class="ctl-row">
+      <button class="btn btn-outline" id="btnTilt">Enable tilt control</button>
+      <button class="btn btn-outline" id="btnLeave">Leave</button>
+    </div>
+    <div class="status-line" id="padStatus">Connected.</div>
+  </div>
+
+  <!-- error -->
+  <div id="errPanel" class="hidden">
+    <div class="msg err" id="errMsg" style="font-size:18px; margin: 18px 0"></div>
+    <button class="btn btn-gold btn-big" id="btnRetry" style="max-width:none">Try again</button>
+    <p class="status-line">You can also play right on the TV screen — 1 Player vs Computer, or 2 Players sharing the screen.</p>
+  </div>
+</div>
+
+<script src="vendor/peerjs.min.js"></script>
+<script src="game.js"></script>
+<script src="controller.js"></script>
+</body>
+</html>
