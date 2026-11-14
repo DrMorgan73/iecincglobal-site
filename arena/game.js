@@ -38,8 +38,23 @@
     return PP.PEER_PREFIX + String(code).toUpperCase();
   };
 
+  /* Query params, with an ES5 fallback: URLSearchParams needs Chrome 49+;
+     older TV browsers fall back to a manual parse of location.search. */
+  function queryParams() {
+    if (typeof global.URLSearchParams === 'function') return new global.URLSearchParams(global.location.search);
+    var map = {};
+    var s = String(global.location.search || '').replace(/^\?/, '');
+    var parts = s.split('&');
+    for (var i = 0; i < parts.length; i++) {
+      if (!parts[i]) continue;
+      var kv = parts[i].split('=');
+      try { map[decodeURIComponent(kv[0])] = kv.length > 1 ? decodeURIComponent(kv.slice(1).join('=')) : ''; } catch (e) {}
+    }
+    return { get: function (k) { return k in map ? map[k] : null; } };
+  }
+
   PP.brokerOptions = function () {
-    var q = new URLSearchParams(global.location.search);
+    var q = queryParams();
     if (q.get('broker') === 'local') {
       return { host: global.location.hostname || 'localhost', port: 9000, path: '/', secure: false, debug: 0 };
     }

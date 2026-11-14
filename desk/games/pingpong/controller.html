@@ -7,9 +7,83 @@
 <meta name="description" content="Phone controller for Motion Arena Ping Pong. Enter the room code shown on the TV. An IEC, Inc. game.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
+<meta name="pp-build" content="tvfix-1.1.0">
 <link rel="stylesheet" href="pingpong.css">
+<script>
+/* Boot guard (build tvfix-1.1.0): installed before any game file loads.
+   Traps errors and, if the controller has not booted within 6 s, names
+   the failed stage in big on-screen text instead of a blank page.
+   ES5 on purpose. */
+window.__PP_BUILD = 'tvfix-1.1.0';
+window.__ppShowDiag = function (title, detail) {
+  var tries = 0;
+  var show = function () {
+    var d = document.getElementById('bootDiag');
+    if (!d) { if (tries++ < 20) setTimeout(show, 100); return; }
+    d.innerHTML = '';
+    var h = document.createElement('div');
+    h.style.cssText = 'font-size:34px;font-weight:900;margin-bottom:10px;';
+    h.appendChild(document.createTextNode(title));
+    var p = document.createElement('div');
+    p.style.cssText = 'font-size:22px;line-height:1.45;';
+    p.appendChild(document.createTextNode(detail));
+    d.appendChild(h);
+    d.appendChild(p);
+    d.style.display = 'block';
+    var l = document.getElementById('bootLoading');
+    if (l) l.style.display = 'none';
+  };
+  show();
+};
+window.__ppScriptError = function (name) {
+  window.__ppShowDiag('A GAME FILE FAILED TO LOAD',
+    '"' + name + '" could not be loaded, or this browser cannot read its code. Build ' + window.__PP_BUILD + '. Reload the page — if this message stays, please note it word for word.');
+};
+window.onerror = function (msg, src, line) {
+  var f = src ? String(src).split('/').pop() : 'this page';
+  window.__ppShowDiag('THE CONTROLLER HIT AN ERROR',
+    String(msg) + ' — in ' + f + (line ? ', line ' + line : '') + '. Build ' + window.__PP_BUILD + '. Reload the page — if this message stays, please note it word for word.');
+  return false;
+};
+if (window.addEventListener) {
+  window.addEventListener('unhandledrejection', function (e) {
+    window.__ppShowDiag('THE CONTROLLER HIT AN ERROR',
+      'A background step failed: ' + String((e && e.reason) || 'unknown') + '. Build ' + window.__PP_BUILD + '.');
+  });
+}
+window.__ppBootDone = function () {
+  var l = document.getElementById('bootLoading');
+  if (l && l.parentNode) l.parentNode.removeChild(l);
+};
+window.__ppWatchdog = setTimeout(function () {
+  var booted = !!window[window.__PP_APP_GLOBAL || 'PPC'];
+  var probe = document.getElementById('bootCssProbe');
+  var cssOk = false;
+  if (probe && window.getComputedStyle) {
+    try { cssOk = window.getComputedStyle(probe).position === 'absolute'; } catch (e) {}
+  }
+  if (booted && cssOk) return;
+  if (booted && !cssOk) {
+    window.__ppShowDiag('THE CONTROLLER STARTED BUT ITS STYLES DID NOT LOAD',
+      'The page design file (pingpong.css) did not apply on this browser, so the page may look blank or unstyled. Build ' + window.__PP_BUILD + '. Reload the page — if this message stays, please note it word for word.');
+    return;
+  }
+  var missing = [];
+  if (typeof window.Peer === 'undefined') missing.push('the phone library (vendor/peerjs.min.js)');
+  if (typeof window.PPShared === 'undefined') missing.push('the shared game code (game.js)');
+  if (typeof window.PPShared !== 'undefined') missing.push('the main controller code (' + (window.__PP_APP_FILE || 'controller.js') + ')');
+  window.__ppShowDiag('THE CONTROLLER DID NOT START',
+    (missing.length ? 'Missing: ' + missing.join(' · ') + '. ' : '') +
+    (cssOk ? '' : 'The page styles (pingpong.css) did not apply either. ') +
+    'Build ' + window.__PP_BUILD + '. Reload the page — if this message stays, please note it word for word.');
+}, 6000);
+</script>
+<script>window.__PP_APP_GLOBAL = 'PPC'; window.__PP_APP_FILE = 'controller.js';</script>
 </head>
 <body>
+<div id="bootDiag" role="alert" style="display:none;position:fixed;top:12px;left:12px;right:12px;z-index:9999;background:#7a1408;color:#ffffff;border:3px solid #ffffff;border-radius:14px;padding:22px 26px;font-family:Arial,Helvetica,sans-serif;"></div>
+<div id="bootLoading" style="position:fixed;left:0;right:0;bottom:0;z-index:9998;background:#0B2447;color:#C9A227;font-family:Arial,Helvetica,sans-serif;font-size:26px;font-weight:700;text-align:center;padding:16px 10px;">Loading the controller…</div>
+<span id="bootCssProbe" aria-hidden="true"></span>
 <div id="ctlApp">
   <div class="ctl-title">PING PONG <span class="gold">CONTROLLER</span></div>
   <div class="ctl-sub">Motion Arena · your phone is the paddle</div>
@@ -60,8 +134,8 @@
   </div>
 </div>
 
-<script src="vendor/peerjs.min.js"></script>
-<script src="game.js"></script>
-<script src="controller.js"></script>
+<script src="vendor/peerjs.min.js" onerror="__ppScriptError('vendor/peerjs.min.js')"></script>
+<script src="game.js" onerror="__ppScriptError('game.js')"></script>
+<script src="controller.js" onerror="__ppScriptError('controller.js')"></script>
 </body>
 </html>

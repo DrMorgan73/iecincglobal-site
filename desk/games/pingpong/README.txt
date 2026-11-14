@@ -1,5 +1,8 @@
 MOTION ARENA — PING PONG
 An IEC, Inc. game. First to 11, win by 2.
+Build tvfix-1.1.0 — Samsung TV browser compatibility fix: if the game
+ever fails to start on the TV, the screen now says exactly what failed
+instead of sitting blank. Note that message word for word.
 
 ====================================================================
 1) PLAY ON THE SAMSUNG TV  (the main way)

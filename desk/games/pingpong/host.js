@@ -529,11 +529,13 @@
     b.classList.remove('hidden');
   }
   function initPeer() {
+    // Room code FIRST: the TV must show a code even when the phone
+    // library itself failed to load on an old TV browser.
+    net.code = S.makeRoomCode();
+    document.getElementById('roomCode').textContent = net.code;
     if (typeof window.Peer === 'undefined') { netOffline('controller library unavailable'); return; }
     net.status = 'connecting';
     setDot('');
-    net.code = S.makeRoomCode();
-    document.getElementById('roomCode').textContent = net.code;
     var peer;
     try {
       peer = new window.Peer(S.peerIdFor(net.code), S.brokerOptions());
@@ -702,7 +704,7 @@
 
   /* ---------------- debug / test hooks (used by check-pingpong.py) ---------------- */
   window.PP = {
-    version: '1.0.0',
+    version: '1.1.0',
     getState: function () {
       return {
         phase: phase, mode: mode, scores: scores.slice(), server: server,
@@ -779,4 +781,5 @@
   initPeer();
   document.getElementById('btnModeAI').focus();
   requestAnimationFrame(tick);
+  if (typeof window.__ppBootDone === 'function') window.__ppBootDone();
 })();

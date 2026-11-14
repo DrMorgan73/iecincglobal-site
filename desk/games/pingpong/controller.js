@@ -223,7 +223,7 @@
 
   /* debug / test hooks (used by check-pingpong.py) */
   window.PPC = {
-    version: '1.0.0',
+    version: '1.1.0',
     getState: function () {
       return { joined: joined, side: side, targetY: targetY, tiltOn: tiltOn,
                panel: $('padPanel').classList.contains('hidden') ? 'not-pad' : 'pad' };
@@ -235,4 +235,5 @@
     peerId: function () { return peer ? peer.id : null; },
     injectData: function (msg) { onHostData(msg); }
   };
+  if (typeof window.__ppBootDone === 'function') window.__ppBootDone();
 })();
