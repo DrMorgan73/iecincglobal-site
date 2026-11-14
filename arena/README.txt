@@ -2,13 +2,27 @@ MOTION ARENA — PING PONG
 An IEC, Inc. game. Broadcast table tennis: the TV watches the table
 from behind your end, with the other player standing at the far end.
 Official rules: game to 11, win by 2, match best of 5.
-Build relay-1.3.2 — the TV pages are SINGLE FILES:
+Build relay-1.3.3 — the TV pages are SINGLE FILES:
 everything the game needs (design + all code) is inside the one page
 itself, so there is nothing separate left for a TV browser to fail
 to load. The page also heals itself: if the TV is merely slow, it
 recovers on its own within 30 seconds, no reload needed. If you
 still see a red box after 30 seconds, note its words exactly (or
 photograph it) — it names the exact stage that failed.
+
+WHAT'S NEW IN 1.3.3
+  - SWING CALIBRATION THAT STAYS TRUE: the tilt centre used to be
+    captured once and never again — but a match is dozens of hard
+    swings, your grip drifts, and the bat slowly sat off-centre
+    with one edge needing over-tilt. Now the centre refreshes
+    itself at every serve (the natural pause, phone back at rest)
+    whenever the phone is near-still, and the Centre button's
+    capture ignores the tap itself. Calibration stays accurate
+    for the whole match.
+  - THE PHONE IS NOW A FULL TV REMOTE: Start, Next Game, Restart,
+    End (back to the lobby) and Sound buttons on the controller
+    run the TV's own actions over the same link — no walking to
+    the TV between games.
 
 WHAT'S NEW IN 1.3.2
   - YOUR RACKET IS ABOVE THE TABLE: the near player's racket used

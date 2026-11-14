@@ -6,7 +6,7 @@
 <title>Motion Arena — Ping Pong (TV Host)</title>
 <meta name="description" content="Motion Arena Ping Pong — the TV host screen. Play solo against the computer, share the screen, or join with a phone controller. An IEC, Inc. game.">
 <link rel="icon" href="data:,">
-<meta name="pp-build" content="relay-1.3.2">
+<meta name="pp-build" content="relay-1.3.3">
 <meta name="robots" content="noindex,nofollow">
 <style>
 /* pingpong.css — inlined by build-singlefile.py (single-file build) */
@@ -257,11 +257,11 @@ canvas#game {
 
 </style>
 <script>
-/* Boot guard (build relay-1.3.2): installed before any game file loads.
+/* Boot guard (build relay-1.3.3): installed before any game file loads.
    Traps errors and, if the game has not booted within 30 s, names the
    failed stage in big on-screen text — so a TV-browser failure says
    what it is instead of sitting on a white page. ES5 on purpose. */
-window.__PP_BUILD = 'relay-1.3.2';
+window.__PP_BUILD = 'relay-1.3.3';
 window.__ppShowDiag = function (title, detail) {
   var tries = 0;
   var show = function () {
@@ -303,7 +303,7 @@ window.__ppBootDone = function () {
   if (l && l.parentNode) l.parentNode.removeChild(l);
 };
 
-/* Self-heal poll (build relay-1.3.2): check every 500 ms
+/* Self-heal poll (build relay-1.3.3): check every 500 ms
    whether the game has booted (app global defined + styles applied).
    The moment it has, stand down - clear any diagnostic and the
    loading bar - so a merely slow TV recovers on its own, with no
@@ -451,7 +451,7 @@ window.__ppWatchdog = setTimeout(function () {
    Used by host.js (TV) and controller.js (phone). Classic script, no
    modules, so the game also runs from file:// (USB stick, offline).
 
-   Build relay-1.3.2: the game is BROADCAST table tennis —
+   Build relay-1.3.3: the game is BROADCAST table tennis —
    the TV camera sits behind the near end of a 3D table. World space:
      x  across the table   (-1 .. +1 is the table surface)
      z  along the table    (-1 = near end / side 0, +1 = far end / side 1)
@@ -613,7 +613,7 @@ window.__ppWatchdog = setTimeout(function () {
 </script>
 <script>
 /* relay.js — inlined by build-singlefile.py */
-/* Motion Arena — Ping Pong: RELAY transport (build relay-1.3.2).
+/* Motion Arena — Ping Pong: RELAY transport (build relay-1.3.3).
    A minimal MQTT 3.1.1 client over secure WebSocket, plus a
    PeerJS-shaped peer (window.RelayPeer) that carries the EXACT game
    wire protocol (join / welcome / pad / swing / ctrl / serve / state)
@@ -1118,7 +1118,12 @@ window.__ppWatchdog = setTimeout(function () {
 </script>
 <script>
 /* host.js — inlined by build-singlefile.py */
-/* Motion Arena — Ping Pong: TV host. RELAY build (1.3.2).
+/* Motion Arena — Ping Pong: TV host. RELAY build (1.3.3).
+   (1.3.3: phone controllers double as full TV remotes — a
+   'remote' message runs start / next-game / restart / lobby /
+   sound-toggle through the very functions the TV's own keys and
+   buttons call, and the state broadcast carries the sound flag
+   so the phone's Sound button mirrors the TV.)
    (Broadcast view + official rules as 1.3.0; 1.3.1 adds the relay
    transport fallback for phone controllers, male/female avatar
    variants on a keyframed animation rig, an animated crowd with
@@ -2775,6 +2780,31 @@ window.__ppWatchdog = setTimeout(function () {
         if (phase === 'serve' && entry.player === server) launchServe();
         else if (phase === 'lobby') startMatch('phone');
         else if (phase === 'over') playAgain();
+      } else if (data.t === 'remote' && entry.player >= 0) {
+        /* phone as full TV remote (1.3.3): every command runs the
+           SAME function the TV's own keys / buttons run — Start is
+           the Enter action, Next Game is the game-over screen's
+           Enter button (playAgain), Restart is the pause menu's
+           restart (startMatch in the current mode), End is the
+           lobby action behind the game-over "Lobby (Esc)" button
+           and the M key (raw Esc mid-game only opens the pause
+           menu on the TV itself), Sound is the N key / sound
+           button — its label flips on the TV, and the new state
+           rides the broadcast back to the phones */
+        if (data.cmd === 'start') {
+          if (phase === 'lobby') startMatch('phone');
+          else if (phase === 'serve' && entry.player === server) launchServe();
+          else if (phase === 'over') playAgain();
+        } else if (data.cmd === 'next') {
+          if (phase === 'over') playAgain();
+        } else if (data.cmd === 'restart') {
+          if (phase !== 'lobby') { hidePause(); startMatch(mode); }
+        } else if (data.cmd === 'end') {
+          if (phase !== 'lobby') toLobby();
+        } else if (data.cmd === 'sound') {
+          toggleSound();
+          sendNetState();
+        }
       }
     });
     conn.on('close', function () {
@@ -2801,7 +2831,7 @@ window.__ppWatchdog = setTimeout(function () {
     var base = { t: 'state', phase: phase, mode: mode, scores: scores.slice(),
       names: [players[0].name, players[1].name], colors: [players[0].color, players[1].color],
       genders: [players[0].gender, players[1].gender],
-      games: games.slice(), server: server, paused: paused,
+      games: games.slice(), server: server, paused: paused, sound: settings.sound,
       grade: lastGrade.player >= 0 && performance.now() - lastGrade.at < 2500
         ? { player: lastGrade.player, grade: lastGrade.grade } : null };
     var all = net.players.concat(net.spectators);
@@ -2995,7 +3025,7 @@ window.__ppWatchdog = setTimeout(function () {
   /* ---------------- debug / test hooks (used by the check scripts) ---- */
   function bat01(side) { return (bats[side].x - T.batMin) / (T.batMax - T.batMin); }
   window.PP = {
-    version: '1.3.2',
+    version: '1.3.3',
     getState: function () {
       return {
         phase: phase, mode: mode, paused: paused,
