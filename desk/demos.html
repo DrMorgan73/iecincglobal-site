@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Demo Launcher — IEC Suite</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/desk/desk.css">
+<style>
+  a.card.demo{display:block;text-decoration:none;color:inherit}
+  .card.demo h3{font-size:19px}
+  .card.demo p{min-height:42px}
+  .card.demo .open-hint{opacity:1;font-size:13px}
+</style>
+</head>
+<body data-page="demos">
+<div class="orbs" aria-hidden="true"><span class="orb gold"></span><span class="orb teal"></span><span class="orb violet"></span></div>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="side-brand">
+      <img class="logo-img" src="/assets/iec-logo.png" alt="IEC Inc.">
+      <div><h1>IEC <span>Suite</span></h1><p>International Empire Consultants, Inc.</p></div>
+    </div>
+    <nav id="nav"></nav>
+    <div class="side-foot">
+      <div class="themes" id="themes">
+        <button data-t="iec" style="--sw1:#f0b942;--sw2:#3b82f6" title="IEC Brand"></button>
+        <button data-t="midnight" style="--sw1:#f0b942;--sw2:#2dd4bf" title="Midnight Gold"></button>
+        <button data-t="amethyst" style="--sw1:#d8b4fe;--sw2:#f0abfc" title="Royal Amethyst"></button>
+        <button data-t="ocean" style="--sw1:#7dd3fc;--sw2:#5eead4" title="Deep Ocean"></button>
+        <button data-t="ember" style="--sw1:#fdba74;--sw2:#fbbf24" title="Sunset Ember"></button>
+        <button data-t="emerald" style="--sw1:#6ee7b7;--sw2:#f0b942" title="Emerald Noir"></button>
+        <button data-t="rose" style="--sw1:#fda4af;--sw2:#f0abfc" title="Rose Noir"></button>
+        <label class="cpick" title="Accent color"><input type="color" id="pick-gold" value="#f0b942"></label>
+        <label class="cpick" title="Highlight color"><input type="color" id="pick-teal" value="#2dd4bf"></label>
+        <button class="creset" id="pick-reset" title="Reset colors">⟲</button>
+      </div>
+      <button class="signout" id="signout"><i>🚪</i>Sign out</button>
+      <a class="public-link" href="/welcome.html">← Public site</a>
+      <div class="clockbox">
+        <div id="clock">--:--</div>
+        <div id="dateline">—</div>
+      </div>
+    </div>
+  </aside>
+
+  <main>
+    <div class="section-head">
+      <h2>Demo Launcher — Presentations</h2>
+    </div>
+    <p class="hint" style="margin-bottom:16px">Every asset demo in one place. Open a demo in a new tab and present — each demo runs on synthetic data only. Each demo has its own sign-in; your demo account is <b>drmohdmorgan@gmail.com</b> on all five.</p>
+
+    <div class="grid">
+      <a class="card tap demo" href="https://getmedexec.com/demo/" target="_blank" rel="noopener">
+        <h3>MEDEXEC</h3>
+        <p>The full MEDEXEC workflow — from intake to the expert report — on synthetic cases only.</p>
+        <span class="open-hint">Open demo →</span>
+      </a>
+      <a class="card tap demo" href="https://insnap-job-engine.vercel.app/demo" target="_blank" rel="noopener">
+        <h3>InSnap</h3>
+        <p>The dispatch board, the client app, and the Pro app moving through one job together — synthetic case only.</p>
+        <span class="open-hint">Open demo →</span>
+      </a>
+      <a class="card tap demo" href="https://getcuravia.com/demo/" target="_blank" rel="noopener">
+        <h3>CURAVIA</h3>
+        <p>The CURAVIA Suite and the patient app — one clinic day end to end: booking, intake, the visit, the scribe's summary, billing review.</p>
+        <span class="open-hint">Open demo →</span>
+      </a>
+      <a class="card tap demo" href="https://www.inssnapp.com/demo" target="_blank" rel="noopener">
+        <h3>INSNAPP</h3>
+        <p>The resident, prospect, and broker mobile apps and the Management and Control Center — one showing from request to live lead.</p>
+        <span class="open-hint">Open demo →</span>
+      </a>
+      <a class="card tap demo" href="https://iec-docs.vercel.app/demo" target="_blank" rel="noopener">
+        <h3>IEC Docs</h3>
+        <p>The real IEC Docs screens — library, viewer, PDF tools, conversion, de-identification, e-sign and the vault — on synthetic documents only.</p>
+        <span class="open-hint">Open demo →</span>
+      </a>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <h3>Managing access</h3>
+      <p>Demo accounts, invitations, pause / resume / revoke, and the full activity feed are managed on the <a href="/desk/demo-users.html" style="color:var(--gold)">Demo Users</a> page. First time opening a demo: set your password once through your one-time activation link, then the demo sign-in is yours.</p>
+    </div>
+
+    <footer>© 2026 International Empire Consultants, Inc. · IEC Suite · Developed by IEC, Inc.</footer>
+  </main>
+</div>
+
+<script src="/desk/desk.js"></script>
+</body>
+</html>
