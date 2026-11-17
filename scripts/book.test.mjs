@@ -33,6 +33,7 @@ delete process.env.BOOKING_MAIL_FROM;
 
 /* ---------------- mocked fetch (Resend + Blob URLs) ---------------- */
 const sentEmails = [];
+const blobFetchUrls = [];
 
 const jsonRes = (status, obj) => ({
   ok: status >= 200 && status < 300,
@@ -54,8 +55,12 @@ globalThis.fetch = async (url, opts = {}) => {
     return jsonRes(200, { id: `email-${sentEmails.length}` });
   }
   if (u.startsWith("https://blob.mock/")) {
+    blobFetchUrls.push(u);
+    /* The real Blob CDN keys objects by path and ignores the
+       query string (the store's cache-buster) — match likewise. */
+    const pathOnly = u.split("?")[0];
     for (const rec of __blobs.values()) {
-      if (rec.url === u) return textRes(200, rec.content);
+      if (rec.url === pathOnly) return textRes(200, rec.content);
     }
     return textRes(404, "");
   }
@@ -99,6 +104,7 @@ async function call(method, { url = "/api/book", body } = {}) {
 function resetAll() {
   __blobs.clear();
   sentEmails.length = 0;
+  blobFetchUrls.length = 0;
 }
 
 /* ---------------- tiny assert kit ---------------- */
@@ -206,6 +212,9 @@ console.log("handler — availability, booking, double-booking, cancel");
 
   const stored = await store.readBookings();
   check("booking stored in bookings.json", stored.length === 1 && stored[0].id === made.body.id);
+  check("store reads carry the cache-busting query (live CDN serves 30-day cache headers)",
+    blobFetchUrls.length > 0 && blobFetchUrls.every(u => u.includes("?v=")),
+    blobFetchUrls[0] || "no blob fetch recorded");
 
   const avail2 = await call("GET", {});
   const day2 = avail2.body.days.find(d => d.date === day.date);

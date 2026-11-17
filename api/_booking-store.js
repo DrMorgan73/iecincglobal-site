@@ -26,6 +26,16 @@
    first via bookingsConfigured(); the endpoint answers 503 when
    it is false.
 
+   READ FRESHNESS (differs from _questionnaire-store.js on
+   purpose): the Blob public URL is served with a 30-day CDN
+   cache header, so a plain fetch of it can return a copy that
+   predates the latest write — verified live 2026-11-17, when a
+   cancelled booking kept its slot "taken" on availability reads
+   minutes after the store document itself was already empty.
+   A booking store cannot run double-booking protection on stale
+   reads, so readBookings fetches with a unique cache-busting
+   query parameter and always sees the current document.
+
    Env (this Vercel project — iecincglobal-site):
      BLOB_READ_WRITE_TOKEN   the Office Blob store (same store the
                              questionnaire submissions use)
@@ -45,7 +55,11 @@ export async function readBookings() {
   const { blobs } = await list({ prefix: BOOKINGS_PATHNAME });
   const hit = blobs.find(b => b.pathname === BOOKINGS_PATHNAME);
   if (!hit) return [];
-  const r = await fetch(hit.url);
+  /* Cache-busting query: the Blob CDN otherwise serves a stale
+     copy of the document (see the header note on read freshness).
+     The store ignores the parameter; the cache cannot. */
+  const freshUrl = `${hit.url}${hit.url.includes("?") ? "&" : "?"}v=${Date.now()}`;
+  const r = await fetch(freshUrl);
   if (!r.ok) return [];
   try {
     const parsed = JSON.parse(await r.text());
