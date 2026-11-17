@@ -20,3 +20,4 @@ All photos below are used under their stated Creative Commons / public-domain li
 - `airplane-wing.jpg` — “Airplane wing above the clouds” by Tobias1984 / Wikimedia Commons (CC BY-SA 3.0) — https://commons.wikimedia.org/wiki/File:Airplane_wing_sky_and_clouds.jpg
 - `boardroom.jpg` — “Corporate boardroom meeting” by Bludgeoner86 (CC BY 2.0) — https://www.flickr.com/photos/8662416@N02/388854313
 - `private-jet.jpg` — “Private jet on the tarmac” by string_bass_dave (CC BY-SA 2.0) — https://www.flickr.com/photos/string_bass_dave/2858142573
+- `clinic-reception.jpg` — AI-generated in-house for IEC (2026-11-17), generated in the style of a warm modern clinic reception (curved wood-slat desk, navy chairs); IEC-owned, no third-party license, no attribution required or shown. Healthcare page hero (EN + ES), replacing the exam-room photo previously served as `hospital-exterior.jpg` on that page.
