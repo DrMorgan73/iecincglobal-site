@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reservar una llamada | IEC Inc.</title>
+<meta name="description" content="Reserve una llamada de 30 minutos con el Dr. Mohammed Morgan, fundador y CEO de IEC, Inc. Elija un día y una hora — todos los horarios son del Este.">
+<link rel="stylesheet" href="../style.css">
+<style>
+  .bk { max-width: 820px; }
+  .bkcard { border: 1px solid var(--line); border-radius: var(--radius); padding: 26px 28px; margin: 0 0 22px; background: #fff; }
+  .bkcard h3 { color: var(--navy); margin: 0 0 6px; font-size: 20px; }
+  .bkcard p.bksub { color: var(--muted); margin: 0 0 18px; font-size: 15px; }
+  .bkdays { display: flex; flex-wrap: wrap; gap: 9px; margin: 0 0 22px; }
+  .bkday { border: 1px solid #c9c2b2; background: #fff; border-radius: 10px; padding: 9px 13px; font: inherit; font-size: 15px; cursor: pointer; text-align: center; line-height: 1.3; color: var(--ink); }
+  .bkday small { display: block; color: var(--muted); font-size: 12.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+  .bkday[aria-pressed="true"] { background: var(--navy); border-color: var(--navy); color: #fff; }
+  .bkday[aria-pressed="true"] small { color: var(--gold-soft); }
+  .bkslots { display: flex; flex-wrap: wrap; gap: 9px; }
+  .bkslot { border: 1px solid #c9c2b2; background: #fff; border-radius: 10px; padding: 10px 16px; font: inherit; font-size: 15.5px; cursor: pointer; color: var(--ink); min-width: 118px; }
+  .bkslot[aria-pressed="true"] { background: var(--navy); border-color: var(--navy); color: #fff; font-weight: 700; }
+  .bkfield { margin: 0 0 20px; }
+  .bkfield label.bklabel { display: block; font-weight: 600; color: var(--ink); margin-bottom: 7px; font-size: 16px; }
+  .bk input[type="text"], .bk input[type="email"], .bk textarea {
+    width: 100%; padding: 11px 13px; border: 1px solid #c9c2b2; border-radius: 9px; font: inherit; font-size: 16px; background: #fff; color: var(--ink);
+  }
+  .bk textarea { min-height: 74px; resize: vertical; }
+  .bk input:focus, .bk textarea:focus { outline: 2px solid var(--gold-soft); border-color: var(--gold); }
+  .bkreq { color: #a33; font-weight: 700; }
+  .bkerr { display: none; background: #fbeae8; border: 1px solid #d99; border-radius: 10px; padding: 13px 18px; margin: 16px 0; font-size: 15px; }
+  .bksel { background: var(--bg-soft); border: 1px solid var(--gold); border-radius: 10px; padding: 13px 18px; margin: 0 0 20px; font-size: 16px; }
+  .bkthanks { display: none; background: var(--bg-soft); border: 1px solid var(--gold); border-radius: var(--radius); padding: 30px 32px; margin: 26px 0; }
+  .bkthanks h2 { margin-top: 0; }
+  .hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+  .bksubmit { font-size: 18px; padding: 14px 34px; }
+  .bkloading { color: var(--muted); font-size: 16px; }
+</style>
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a class="brand" href="welcome.html"><img class="brand-logo" src="../assets/iec-logo-light.png" alt="IEC Inc."></a>
+    <button class="menu-btn" aria-label="Abrir menú" aria-expanded="false"><span></span><span></span><span></span></button>
+    <nav class="site-nav" aria-label="Principal">
+      <a href="welcome.html">Inicio</a>
+      <a href="about.html">Nosotros</a>
+      <a href="services.html">Capacidades</a>
+      <a href="os.html">IEC OS</a>
+      <a href="healthcare.html">Salud</a>
+      <a href="data-network.html">Red de Datos</a>
+      <a href="real-estate.html">Bienes Raíces</a>
+      <a href="international.html">Internacional</a>
+      <a href="assets.html">Activos</a>
+      <a href="strategic-partner.html">Socio Estratégico</a>
+      <a href="project-advisory.html">Asesoría</a>
+      <a href="news.html">Noticias</a>
+      <a href="contractors.html">Portal de Socios</a>
+      <a href="welcome.html#nda">NDA</a>
+      <a href="media.html">Medios</a>
+      <a class="nav-suite" href="/desk/login.html">IEC Suite</a>
+      <a class="nav-cta" href="https://wa.me/18578671767?text=Hello%20DrMorgan%2C%20I%27d%20like%20to%20connect%20with%20IEC%20Inc.">Contactar a IEC</a>
+      <a class="lang-switch" href="../book.html">English</a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="eyebrow">Reservar una llamada</div>
+    <h1>Reserve una llamada con el Dr. Mohammed Morgan</h1>
+    <p class="lede">Mohammed Morgan, MD — Fundador y CEO, IEC, Inc. · Director de IEC MSO. Una llamada de 30 minutos, a la hora que le convenga. Elija un día y una hora abajo — todos los horarios son del Este.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap bk">
+    <noscript><p class="bkerr" style="display:block">Esta página de reservas necesita JavaScript. También puede reservar por correo — escriba a <a href="mailto:info@iecincglobal.com">info@iecincglobal.com</a> y coordinamos una hora.</p></noscript>
+
+    <div id="bkMain">
+      <div class="bkcard">
+        <h3>1 · Elija un día y una hora</h3>
+        <p class="bksub">30 minutos · De lunes a viernes · Hora del Este. Los horarios ya reservados no se muestran.</p>
+        <div id="bkDays" class="bkdays" role="group" aria-label="Elija un día"></div>
+        <div id="bkSlots" class="bkslots" role="group" aria-label="Elija una hora"></div>
+        <p id="bkLoading" class="bkloading">Cargando horarios disponibles…</p>
+      </div>
+
+      <form id="bkForm" novalidate>
+        <div class="bkcard">
+          <h3>2 · Sus datos</h3>
+          <p class="bksub">Para saber con quién es la llamada y dónde confirmarla.</p>
+          <div class="bksel" id="bkSel" style="display:none"></div>
+          <div class="bkfield">
+            <label class="bklabel" for="bName">Su nombre <span class="bkreq">*</span></label>
+            <input type="text" id="bName" autocomplete="name" required>
+          </div>
+          <div class="bkfield">
+            <label class="bklabel" for="bEmail">Correo electrónico <span class="bkreq">*</span></label>
+            <input type="email" id="bEmail" autocomplete="email" required>
+          </div>
+          <div class="bkfield">
+            <label class="bklabel" for="bCompany">Empresa <span style="color:var(--muted);font-weight:400">(opcional)</span></label>
+            <input type="text" id="bCompany" autocomplete="organization">
+          </div>
+          <div class="bkfield">
+            <label class="bklabel" for="bNote">¿Qué le gustaría tratar? <span style="color:var(--muted);font-weight:400">(opcional)</span></label>
+            <textarea id="bNote"></textarea>
+          </div>
+          <div class="hp" aria-hidden="true">
+            <label>Sitio web de la empresa<input type="text" id="bWebsite" tabindex="-1" autocomplete="off"></label>
+          </div>
+          <div class="bkerr" id="bkErr"></div>
+          <button type="submit" class="btn dark bksubmit" id="bkSubmitBtn">Reservar esta hora</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="bkthanks" id="bkThanks" tabindex="-1">
+      <div class="eyebrow">Confirmado</div>
+      <h2>Su llamada está reservada.</h2>
+      <p id="bkWhen" style="font-size:18px"></p>
+      <p>La oficina de IEC tiene su reserva y la confirmará por correo electrónico. Si necesita cambiarla o cancelarla, responda a esa confirmación, o escriba a <a href="mailto:info@iecincglobal.com">info@iecincglobal.com</a>.</p>
+      <p style="color:var(--muted);font-size:14px">Referencia de la reserva: <span id="bkRef"></span></p>
+    </div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="foot-grid">
+      <div class="foot-brand">
+        <div class="brand"><img class="brand-logo foot-logo" src="../assets/iec-logo-light.png" alt="IEC Inc."></div>
+        <p>International Empire Consultants, Inc. — Desarrollo de negocios y consultoría estratégica con sede en Boston en los sectores de salud, tecnología, bienes raíces y mercados internacionales desde hace más de una década.</p>
+      </div>
+      <nav class="foot-col" aria-label="Explorar">
+        <h4>Explorar</h4>
+        <a href="welcome.html">Inicio</a>
+        <a href="services.html">Capacidades</a>
+        <a href="healthcare.html">Salud</a>
+        <a href="data-network.html">Red de Datos</a>
+        <a href="how-licensing-works.html">Cómo funciona el licenciamiento</a>
+        <a href="for-buyers.html">Para compradores</a>
+        <a href="data-faq.html">Preguntas frecuentes de la Red de Datos</a>
+        <a href="questionnaires.html">Cuestionarios</a>
+        <a href="real-estate.html">Bienes Raíces</a>
+        <a href="international.html">Internacional</a>
+        <a href="assets.html">Activos</a>
+        <a href="news.html">Noticias</a>
+      </nav>
+      <nav class="foot-col" aria-label="IEC OS">
+        <h4>IEC OS</h4>
+        <a href="os.html">Resumen</a>
+        <a href="os-medical.html">Para medicina</a>
+        <a href="os-dental.html">Para odontología</a>
+      </nav>
+      <nav class="foot-col" aria-label="Company">
+        <h4>Compañía</h4>
+        <a href="about.html">Nosotros</a>
+        <a href="strategic-partner.html">Socio Estratégico</a>
+        <a href="project-advisory.html">Asesoría</a>
+        <a href="welcome.html#nda">NDA mutuo</a>
+        <a href="contact.html">Contacto</a>
+      </nav>
+    </div>
+    <div class="foot-bottom">
+      <div class="copyright">&copy; 2026 International Empire Consultants, Inc. Todos los derechos reservados. &middot; <a href="privacy.html">Privacidad</a> &middot; <a href="/desk/login.html">Acceso del equipo</a> &middot; Desarrollado por IEC, Inc.</div>
+      <button class="to-top" id="toTop" aria-label="Volver arriba">&#8593;</button>
+    </div>
+  </div>
+</footer>
+<script src="../nav.js" defer></script>
+<script>
+(function () {
+  var TZ = "America/New_York";
+  var daysEl = document.getElementById("bkDays");
+  var slotsEl = document.getElementById("bkSlots");
+  var loadingEl = document.getElementById("bkLoading");
+  var errEl = document.getElementById("bkErr");
+  var selEl = document.getElementById("bkSel");
+  var form = document.getElementById("bkForm");
+  var days = [];
+  var sel = null; // { date, time, startUtc }
+
+  var dayFmt = new Intl.DateTimeFormat("es-ES", { timeZone: TZ, weekday: "short" });
+  var dayNumFmt = new Intl.DateTimeFormat("es-ES", { timeZone: TZ, month: "short", day: "numeric" });
+  var timeFmt = new Intl.DateTimeFormat("es-ES", { timeZone: TZ, hour: "numeric", minute: "2-digit" });
+  var longFmt = new Intl.DateTimeFormat("es-ES", { timeZone: TZ, weekday: "long", month: "long", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "short" });
+
+  function showErr(html) { errEl.innerHTML = html; errEl.style.display = "block"; }
+  function hideErr() { errEl.style.display = "none"; }
+
+  function renderDays() {
+    daysEl.innerHTML = "";
+    days.forEach(function (d, i) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "bkday";
+      var first = new Date(d.slots[0].startUtc);
+      b.innerHTML = "<small></small><span></span>";
+      b.querySelector("small").textContent = dayFmt.format(first);
+      b.querySelector("span").textContent = dayNumFmt.format(first);
+      b.setAttribute("aria-pressed", sel && sel.date === d.date ? "true" : "false");
+      b.addEventListener("click", function () { selectDay(i); });
+      daysEl.appendChild(b);
+    });
+  }
+
+  function renderSlots(day) {
+    slotsEl.innerHTML = "";
+    day.slots.forEach(function (s) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "bkslot";
+      b.textContent = timeFmt.format(new Date(s.startUtc));
+      b.setAttribute("aria-pressed", sel && sel.date === day.date && sel.time === s.time ? "true" : "false");
+      b.addEventListener("click", function () {
+        sel = { date: day.date, time: s.time, startUtc: s.startUtc };
+        hideErr();
+        renderDays(); renderSlots(day); renderSel();
+      });
+      slotsEl.appendChild(b);
+    });
+  }
+
+  function renderSel() {
+    if (!sel) { selEl.style.display = "none"; return; }
+    selEl.textContent = "Seleccionado: " + longFmt.format(new Date(sel.startUtc)) + " · 30 minutos";
+    selEl.style.display = "block";
+  }
+
+  function selectDay(i) {
+    var day = days[i];
+    if (!day) return;
+    if (!sel || sel.date !== day.date) {
+      var keep = sel && day.slots.some(function (s) { return s.time === sel.time; });
+      sel = keep ? { date: day.date, time: sel.time, startUtc: day.slots.filter(function (s) { return s.time === sel.time; })[0].startUtc } : null;
+    }
+    renderDays(); renderSlots(day); renderSel();
+  }
+
+  function loadAvailability(keepSelection) {
+    loadingEl.style.display = "block";
+    loadingEl.textContent = "Cargando horarios disponibles…";
+    daysEl.innerHTML = ""; slotsEl.innerHTML = "";
+    fetch("/api/book", { headers: { "Accept": "application/json" } })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        loadingEl.style.display = "none";
+        if (!j.ok || !j.days || !j.days.length) {
+          loadingEl.style.display = "block";
+          loadingEl.textContent = "No hay horarios disponibles en las próximas dos semanas — escriba a info@iecincglobal.com y coordinamos una hora.";
+          return;
+        }
+        days = j.days;
+        var idx = 0;
+        if (keepSelection && sel) {
+          var found = days.findIndex(function (d) { return d.date === sel.date; });
+          if (found >= 0) idx = found;
+          if (!days[idx].slots.some(function (s) { return sel && s.time === sel.time; })) sel = null;
+        } else { sel = null; }
+        selectDay(idx);
+      })
+      .catch(function () {
+        loadingEl.style.display = "block";
+        loadingEl.textContent = "No se pudieron cargar los horarios — inténtelo de nuevo, o escriba a info@iecincglobal.com.";
+      });
+  }
+
+  form.addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    hideErr();
+    if (!sel) { showErr("Primero elija un día y una hora."); return; }
+    var name = document.getElementById("bName").value.trim();
+    var email = document.getElementById("bEmail").value.trim();
+    if (!name) { showErr("Ingrese su nombre para saber con quién es la llamada."); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showErr("Ingrese un correo electrónico válido — así confirma IEC su reserva."); return; }
+    var btn = document.getElementById("bkSubmitBtn");
+    btn.disabled = true;
+    btn.textContent = "Reservando…";
+    fetch("/api/book", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: name,
+        email: email,
+        company: document.getElementById("bCompany").value.trim(),
+        note: document.getElementById("bNote").value.trim(),
+        date: sel.date,
+        time: sel.time,
+        company_website: document.getElementById("bWebsite").value
+      })
+    }).then(function (r) { return r.json().then(function (j) { return { status: r.status, j: j }; }); })
+      .then(function (res) {
+        btn.disabled = false;
+        btn.textContent = "Reservar esta hora";
+        if (res.j && res.j.ok) {
+          document.getElementById("bkMain").style.display = "none";
+          var t = document.getElementById("bkThanks");
+          document.getElementById("bkWhen").textContent =
+            "Su llamada con el Dr. Mohammed Morgan está reservada para el " + longFmt.format(new Date(res.j.startUtc)) + " (30 minutos).";
+          document.getElementById("bkRef").textContent = res.j.id || "";
+          t.style.display = "block";
+          t.focus();
+          window.scrollTo({ top: t.offsetTop - 120, behavior: "smooth" });
+          return;
+        }
+        if (res.status === 409 || (res.j && res.j.error === "slot_taken")) {
+          showErr("Esa hora acaba de ocuparse — elija otro horario. La lista se ha actualizado.");
+          loadAvailability(true);
+          return;
+        }
+        if (res.j && res.j.error === "slot_unavailable") {
+          showErr("Esa hora ya no está disponible — elija otro horario. La lista se ha actualizado.");
+          loadAvailability(true);
+          return;
+        }
+        throw new Error("book_failed");
+      })
+      .catch(function () {
+        btn.disabled = false;
+        btn.textContent = "Reservar esta hora";
+        showErr("Algo salió mal con la reserva. Inténtelo de nuevo, o escriba a <a href=\"mailto:info@iecincglobal.com\">info@iecincglobal.com</a>.");
+      });
+  });
+
+  loadAvailability(false);
+})();
+</script>
+</body>
+</html>
