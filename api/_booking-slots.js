@@ -56,10 +56,22 @@ export function zonedTimeToUtc(year, month, day, hour, minute) {
 const START_MIN = C.startHour * 60 + C.startMinute;
 const END_MIN = C.endHour * 60 + C.endMinute;
 
+/* Blocked start-ranges (minutes since midnight) for a weekday,
+   from the config's recurring weekly blocked windows. */
+function blockedRangesFor(weekday) {
+  return (C.blockedWindows || [])
+    .filter(w => w.weekday === weekday)
+    .map(w => [
+      w.startHour * 60 + w.startMinute,
+      w.endHour * 60 + w.endMinute
+    ]);
+}
+
 /* Every bookable slot from `now` forward, minus the booked ones.
    `booked` is an array of records (or {date, time} pairs) already
    in the store. Excludes: non-configured weekdays, slots starting
-   before now + minNoticeHours, and booked slots. */
+   before now + minNoticeHours, slots starting inside a configured
+   blocked window, and booked slots. */
 export function generateSlots(now = new Date(), booked = []) {
   const bookedKeys = new Set(
     (booked || []).map(b => `${b && b.date}T${b && b.time}`)
@@ -73,11 +85,13 @@ export function generateSlots(now = new Date(), booked = []) {
     const dayMs = Date.UTC(today.year, today.month - 1, today.day + i);
     const day = new Date(dayMs);
     if (!C.weekdays.includes(day.getUTCDay())) continue;
+    const blocked = blockedRangesFor(day.getUTCDay());
     const y = day.getUTCFullYear();
     const mo = day.getUTCMonth() + 1;
     const d = day.getUTCDate();
     const date = `${y}-${pad(mo)}-${pad(d)}`;
     for (let t = START_MIN; t + C.slotMinutes <= END_MIN; t += C.slotMinutes) {
+      if (blocked.some(([bs, be]) => t >= bs && t < be)) continue;
       const time = `${pad(Math.floor(t / 60))}:${pad(t % 60)}`;
       if (bookedKeys.has(`${date}T${time}`)) continue;
       const start = zonedTimeToUtc(y, mo, d, Math.floor(t / 60), t % 60);

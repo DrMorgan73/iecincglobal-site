@@ -20,6 +20,17 @@ export const BOOKING_CONFIG = {
      6 = Saturday. Default: Monday–Friday. */
   weekdays: [1, 2, 3, 4, 5],
 
+  /* Recurring weekly blocked windows: on `weekday` (same
+     convention as above), no slot may START at or after
+     startHour:startMinute and before endHour:endMinute — those
+     starts are simply never offered. Add future blocks here;
+     nothing else needs to change. Default: every Friday,
+     12:00 PM–2:00 PM is blocked (the 12:00, 12:30, 1:00 and
+     1:30 PM starts; 11:30 AM and 2:00 PM stay bookable). */
+  blockedWindows: [
+    { weekday: 5, startHour: 12, startMinute: 0, endHour: 14, endMinute: 0 }
+  ],
+
   /* First slot of the day starts at startHour:startMinute. */
   startHour: 9,
   startMinute: 0,

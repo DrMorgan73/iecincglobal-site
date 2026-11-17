@@ -9,7 +9,9 @@
    No real Blob store, no real emails.
 
    Covers: DST-safe America/New_York slot math (EST/EDT offsets,
-   spring-forward and fall-back days), weekend exclusion, past and
+   spring-forward and fall-back days), the recurring Friday
+   12:00–2:00 PM block (incl. a spring-forward-week Friday),
+   weekend exclusion, past and
    minimum-notice exclusion, booked-slot exclusion, availability
    grouping, booking + notification, double-booking refusal (409),
    rule re-validation server-side, validation + honeypot, the
@@ -155,6 +157,72 @@ console.log("slot math — generation rules (fixed now: Wed Nov 18 2026, 10:00 A
   check("isOfferedSlot refuses outside hours", !slots.isOfferedSlot("2026-11-19", "17:00", now));
   check("isOfferedSlot refuses inside the notice window", !slots.isOfferedSlot("2026-11-18", "11:30", now));
   check("isOfferedSlot refuses beyond the horizon", !slots.isOfferedSlot("2026-12-02", "10:00", now));
+}
+
+console.log("slot math — recurring Friday block, 12:00–2:00 PM ET");
+{
+  const now = new Date("2026-11-18T15:00:00.000Z"); // Wed Nov 18 2026, 10:00 AM EST
+  const all = slots.generateSlots(now, []);
+  const fri = all.filter(s => s.date === "2026-11-20"); // Friday Nov 20 2026
+  check("Friday Nov 20 still offers slots", fri.length > 0, `n=${fri.length}`);
+  for (const t of ["12:00", "12:30", "13:00", "13:30"]) {
+    check(`Friday ${t} start blocked`, !fri.some(s => s.time === t));
+  }
+  check("Friday 11:30 AM stays bookable", fri.some(s => s.time === "11:30"));
+  check("Friday 2:00 PM stays bookable", fri.some(s => s.time === "14:00"));
+  check("Friday offers 12 slots (16 minus the 4 blocked starts)",
+    fri.length === 12, `n=${fri.length}`);
+  const thu = all.filter(s => s.date === "2026-11-19"); // Thursday Nov 19 2026
+  check("Thursday midday unaffected (12:00 and 13:30 offered, 16 slots)",
+    thu.length === 16 && thu.some(s => s.time === "12:00") && thu.some(s => s.time === "13:30"),
+    `n=${thu.length}`);
+  check("isOfferedSlot refuses a blocked Friday start",
+    !slots.isOfferedSlot("2026-11-20", "12:30", now));
+  check("isOfferedSlot accepts Friday 11:30 and 14:00",
+    slots.isOfferedSlot("2026-11-20", "11:30", now) &&
+    slots.isOfferedSlot("2026-11-20", "14:00", now));
+}
+
+console.log("slot math — Friday block across the spring-forward week (Mar 2027)");
+{
+  const now = new Date("2027-03-10T15:00:00.000Z"); // Wed Mar 10 2027, 10:00 AM EST
+  const all = slots.generateSlots(now, []);
+  const friEst = all.filter(s => s.date === "2027-03-12"); // Fri before the Mar 14 switch (EST)
+  const friEdt = all.filter(s => s.date === "2027-03-19"); // Fri after the switch (EDT)
+  check("DST-week Fridays both present in the window",
+    friEst.length > 0 && friEdt.length > 0, `est=${friEst.length} edt=${friEdt.length}`);
+  for (const [label, fri] of [["EST Fri Mar 12", friEst], ["EDT Fri Mar 19", friEdt]]) {
+    check(`${label}: 12:00–13:30 starts blocked, 11:30 + 14:00 offered, 12 slots`,
+      fri.length === 12 &&
+      !fri.some(s => ["12:00", "12:30", "13:00", "13:30"].includes(s.time)) &&
+      fri.some(s => s.time === "11:30") && fri.some(s => s.time === "14:00"),
+      `n=${fri.length}`);
+  }
+  check("EST Friday 11:30 AM = 16:30 UTC (block math stays wall-clock)",
+    (friEst.find(s => s.time === "11:30") || {}).startUtc === "2027-03-12T16:30:00.000Z",
+    (friEst.find(s => s.time === "11:30") || {}).startUtc);
+  check("EDT Friday 11:30 AM = 15:30 UTC (block math stays wall-clock)",
+    (friEdt.find(s => s.time === "11:30") || {}).startUtc === "2027-03-19T15:30:00.000Z",
+    (friEdt.find(s => s.time === "11:30") || {}).startUtc);
+  check("EDT Friday 2:00 PM = 18:00 UTC",
+    (friEdt.find(s => s.time === "14:00") || {}).startUtc === "2027-03-19T18:00:00.000Z",
+    (friEdt.find(s => s.time === "14:00") || {}).startUtc);
+}
+
+console.log("handler — a blocked Friday start cannot be booked");
+{
+  resetAll();
+  const blockedPost = await call("POST", {
+    body: {
+      name: "Friday Booker", email: "friday@example.com",
+      date: "2026-11-20", time: "12:00", company_website: ""
+    }
+  });
+  check("POST Friday Nov 20 12:00 refused 400 slot_unavailable",
+    blockedPost.status === 400 && blockedPost.body.error === "slot_unavailable",
+    JSON.stringify(blockedPost.body));
+  check("refused Friday booking stored nothing and sent nothing",
+    (await store.readBookings()).length === 0 && sentEmails.length === 0);
 }
 
 /* ================= handler flow ================= */
