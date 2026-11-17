@@ -3,74 +3,112 @@
    underscore keeps Vercel from routing it as a function, the same
    convention as api/_questionnaire-store.js).
 
-   Every confirmed booking from the public booking page
-   (book.html → POST /api/book) is appended here as ONE JSON
-   document in the Office Blob store, read-modify-write through
-   @vercel/blob with exactly the pattern of
-   api/_questionnaire-store.js:
+   STORAGE DESIGN — two layers in the Office Blob store, because
+   this platform's reads are eventually consistent in ways that
+   matter here (all verified live, 2026-11-17):
 
-     bookings.json —
-       [ { id, receivedAt, date, time, startUtc, timezone,
-           name, email, company, note, status } ]
+   1. AUTHORITATIVE — one immutable file per booking:
+        bookings/by-slot/<date>T<time>.json
+      The file IS the slot claim: it is written with
+      allowOverwrite:false, so the storage service itself refuses
+      a second write for a taken slot, atomically, at write time.
+      Double-booking protection therefore never depends on a
+      read being fresh. Reads list these files and get() each
+      one from origin (useCache:false); their content never
+      changes after the write, so a cached copy is a correct
+      copy. Cancellation deletes the file.
 
-   date/time are wall-clock in America/New_York (see
-   api/_booking-slots.js); startUtc is the same instant in UTC.
+   2. LEDGER — bookings.json, ONE JSON document holding every
+      booking, appended read-modify-write exactly like the
+      questionnaire's questionnaire-submissions.json
+      (api/_questionnaire-store.js). This is the human-readable
+      record the office can open. It is a MIRROR: appended
+      best-effort after the slot claim succeeds. Nothing in the
+      booking flow reads it back — availability, existence and
+      cancellation all read layer 1.
 
-   DOUBLE-BOOKING PROTECTION: tryAppendBooking re-reads the whole
-   document immediately before writing and refuses when a booking
-   for the same date+time is already present, so the check and the
-   write run against the freshest state the store can offer.
+   Why not read bookings.json like the questionnaire store does?
+   The document's public URL is CDN-served with a 30-day cache
+   header keyed on the path alone, and even origin reads via
+   get(useCache:false) trail a write by ~15 seconds (measured
+   live). On that pattern a cancelled slot stayed "taken" on
+   stale reads, and — the dangerous direction — a duplicate
+   booking was accepted when its conflict check read a
+   pre-booking copy. The questionnaire can live with it (its
+   system of record is a database; the Blob copy is a backup).
+   A booking store cannot: its conflict check IS the product.
 
-   Reads/writes THROW on transport failure: the endpoint must know
-   when a booking could not be stored. Configuration is checked
-   first via bookingsConfigured(); the endpoint answers 503 when
-   it is false.
-
-   READ FRESHNESS (differs from _questionnaire-store.js on
-   purpose): the Blob public URL is served through a CDN with a
-   30-day cache header, and the CDN keys that cache on the path
-   alone — a plain fetch of the document URL (the questionnaire
-   store's read) can return a copy that predates the latest
-   write, in either direction, for as long as an edge holds it.
-   Verified live 2026-11-17: a cancelled booking's slot stayed
-   "taken" on stale reads, and a second booking for a taken slot
-   was accepted when the conflict check read a pre-booking copy.
-   A booking store cannot run double-booking protection on
-   stale reads, so readBookings uses the SDK's get() with
-   useCache:false — an authenticated read from origin storage
-   that always returns the current document.
+   Reads/writes of layer 1 THROW on transport failure: the
+   endpoint must know when a booking could not be stored.
+   Configuration is checked first via bookingsConfigured(); the
+   endpoint answers 503 when it is false.
 
    Env (this Vercel project — iecincglobal-site):
      BLOB_READ_WRITE_TOKEN   the Office Blob store (same store the
                              questionnaire submissions use)
    ===================================================================== */
 
-import { put, get } from "@vercel/blob";
+import { put, get, list, del } from "@vercel/blob";
 
 export const BOOKINGS_PATHNAME = "bookings.json";
+export const BY_SLOT_PREFIX = "bookings/by-slot/";
 
 export function bookingsConfigured() {
   return !!process.env.BLOB_READ_WRITE_TOKEN;
 }
 
-/* The whole bookings document, read from ORIGIN via the SDK
-   (never the CDN-cached public URL — see the header note on
-   read freshness). [] when it does not exist yet or holds
-   nothing usable. Throws only on Blob transport errors. */
-export async function readBookings() {
-  const result = await get(BOOKINGS_PATHNAME, { access: "public", useCache: false });
-  if (!result || result.statusCode !== 200 || !result.stream) return [];
+const bySlotPath = (date, time) => `${BY_SLOT_PREFIX}${date}T${time}.json`;
+
+async function readJsonBlob(pathname) {
+  const result = await get(pathname, { access: "public", useCache: false });
+  if (!result || result.statusCode !== 200 || !result.stream) return null;
   try {
-    const text = await new Response(result.stream).text();
-    const parsed = JSON.parse(text);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter(x => x && typeof x === "object" && x.id && x.date && x.time);
+    return JSON.parse(await new Response(result.stream).text());
   } catch (e) {
-    return [];
+    return null;
   }
 }
 
-async function writeBookings(records) {
+function usableRecord(x) {
+  return x && typeof x === "object" && x.id && x.date && x.time;
+}
+
+/* Every booking file with its store location, read from origin.
+   Throws only on Blob transport errors. */
+async function readBookingFiles() {
+  const { blobs } = await list({ prefix: BY_SLOT_PREFIX });
+  const files = [];
+  for (const b of blobs) {
+    if (!b.pathname.endsWith(".json")) continue;
+    const record = await readJsonBlob(b.pathname);
+    if (usableRecord(record)) {
+      files.push({ record, pathname: b.pathname, url: b.url });
+    }
+  }
+  files.sort((a, b2) =>
+    `${a.record.date}T${a.record.time}`.localeCompare(`${b2.record.date}T${b2.record.time}`)
+  );
+  return files;
+}
+
+/* All current bookings (authoritative layer), oldest slot first. */
+export async function readBookings() {
+  const files = await readBookingFiles();
+  return files.map(f => f.record);
+}
+
+export function slotTaken(records, date, time) {
+  return records.some(b => b.date === date && b.time === time && b.status !== "cancelled");
+}
+
+/* ------------------------------------------------------------------ */
+/* Ledger mirror (bookings.json) — best-effort, never read back        */
+/* ------------------------------------------------------------------ */
+
+async function appendToLedger(record) {
+  const parsed = await readJsonBlob(BOOKINGS_PATHNAME);
+  const records = Array.isArray(parsed) ? parsed.filter(usableRecord) : [];
+  records.push(record);
   await put(BOOKINGS_PATHNAME, JSON.stringify(records, null, 2), {
     access: "public",
     addRandomSuffix: false,
@@ -79,41 +117,74 @@ async function writeBookings(records) {
   });
 }
 
-export function slotTaken(records, date, time) {
-  return records.some(b => b.date === date && b.time === time && b.status !== "cancelled");
+async function removeFromLedger(id) {
+  const parsed = await readJsonBlob(BOOKINGS_PATHNAME);
+  if (!Array.isArray(parsed)) return;
+  const records = parsed.filter(x => !(x && x.id === id));
+  if (records.length === parsed.length) return;
+  await put(BOOKINGS_PATHNAME, JSON.stringify(records, null, 2), {
+    access: "public",
+    addRandomSuffix: false,
+    allowOverwrite: true,
+    contentType: "application/json"
+  });
 }
 
-/* Append one booking only if its slot is still free in the
-   freshly re-read store. Returns { ok:true, record } or
+/* ------------------------------------------------------------------ */
+/* Writes                                                              */
+/* ------------------------------------------------------------------ */
+
+/* Claim a slot and store its booking. The claim is the write of
+   the by-slot file with allowOverwrite:false — refused by the
+   storage service itself when the slot is taken, whatever any
+   read anywhere last saw. Returns { ok:true, record } or
    { ok:false, conflict:true }. Throws on transport failure. */
 export async function tryAppendBooking(record) {
-  const records = await readBookings();
-  if (slotTaken(records, record.date, record.time)) {
-    return { ok: false, conflict: true };
+  try {
+    await put(bySlotPath(record.date, record.time), JSON.stringify(record, null, 2), {
+      access: "public",
+      addRandomSuffix: false,
+      allowOverwrite: false,
+      contentType: "application/json"
+    });
+  } catch (e) {
+    if (e && /already exists/i.test(String(e.message || ""))) {
+      return { ok: false, conflict: true };
+    }
+    throw e;
   }
-  records.push(record);
-  await writeBookings(records);
+  try {
+    await appendToLedger(record);
+  } catch (e) {
+    console.error(`[book-store] ledger append FAILED for ${record.id}: ${e && e.message}`);
+  }
   return { ok: true, record };
 }
 
 export async function findBooking(id) {
-  const records = await readBookings();
-  return records.find(x => x.id === id) || null;
+  const files = await readBookingFiles();
+  const hit = files.find(f => f.record.id === id);
+  return hit ? hit.record : null;
 }
 
 /* Remove one booking, only when the caller's email matches the
    booker's — the self-service cancel a booking page owes its
    users (and the path used to remove labeled test bookings).
-   Returns the removed record, or null when nothing matched.
-   Throws on transport failure. */
+   Deletes the authoritative by-slot file, then mirrors the
+   removal in the ledger. Returns the removed record, or null
+   when nothing matched. Throws on transport failure. */
 export async function removeBooking(id, email) {
   const target = String(email || "").trim().toLowerCase();
-  const records = await readBookings();
-  const idx = records.findIndex(
-    x => x.id === id && String(x.email || "").trim().toLowerCase() === target
+  const files = await readBookingFiles();
+  const hit = files.find(
+    f => f.record.id === id && String(f.record.email || "").trim().toLowerCase() === target
   );
-  if (idx < 0) return null;
-  const [removed] = records.splice(idx, 1);
-  await writeBookings(records);
-  return removed;
+  if (!hit) return null;
+  await del(hit.url);
+  try {
+    await removeFromLedger(id);
+  } catch (e) {
+    console.error(`[book-store] ledger removal FAILED for ${id}: ${e && e.message}`);
+  }
+  return hit.record;
 }

@@ -207,6 +207,11 @@ console.log("handler — availability, booking, double-booking, cancel");
 
   const stored = await store.readBookings();
   check("booking stored in bookings.json", stored.length === 1 && stored[0].id === made.body.id);
+  check("slot claimed by its authoritative by-slot file",
+    __blobs.has(`bookings/by-slot/${day.date}T${slot.time}.json`));
+  check("ledger mirror bookings.json holds the booking too",
+    __blobs.has("bookings.json") &&
+    JSON.parse(__blobs.get("bookings.json").content).some(b => b.id === made.body.id));
   check("store reads go through SDK get() with useCache:false (origin reads, never the CDN copy)",
     __gets.length > 0 && __gets.every(g => g.opts && g.opts.useCache === false && g.opts.access === "public"),
     JSON.stringify(__gets[0] || null));
@@ -222,6 +227,19 @@ console.log("handler — availability, booking, double-booking, cancel");
   check("double-booking stored nothing new", (await store.readBookings()).length === 1);
   check("double-booking sent no second email", sentEmails.length === 1);
 
+  /* The production failure mode, simulated: the ledger document
+     is missing/stale (a read elsewhere last saw an old copy).
+     The slot claim must STILL refuse a second booking, because
+     the claim is the by-slot write itself, not a read. */
+  __blobs.delete("bookings.json");
+  const staleClaim = await store.tryAppendBooking({
+    id: "stale-read-attack-1", date: day.date, time: slot.time,
+    name: "Stale Read", email: "stale@example.com", status: "booked"
+  });
+  check("slot claim refuses even with the ledger gone (atomic by-slot write)",
+    staleClaim.ok === false && staleClaim.conflict === true);
+  check("refused claim wrote nothing", (await store.readBookings()).length === 1);
+
   const found = await call("GET", { url: `/api/book?id=${made.body.id}` });
   check("existence check finds the booking",
     found.status === 200 && found.body.found === true && found.body.date === day.date);
@@ -236,6 +254,8 @@ console.log("handler — availability, booking, double-booking, cancel");
   check("cancel with the booker's email succeeds (case-insensitive)",
     cancelled.status === 200 && cancelled.body.removed === true);
   check("store empty after cancel", (await store.readBookings()).length === 0);
+  check("by-slot claim file deleted by the cancel",
+    ![...__blobs.keys()].some(k => k.startsWith("bookings/by-slot/")));
   const rebooked = await call("POST", { body: booking });
   check("freed slot can be booked again", rebooked.status === 200 && rebooked.body.ok === true);
 }
