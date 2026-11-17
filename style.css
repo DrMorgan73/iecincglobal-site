@@ -423,3 +423,7 @@ details.credits a { color: #aeb9c8; }
 .cc-pillar p { color: #b9c8dd; line-height: 1.65; margin: 0 0 14px; font-size: 16px; }
 .cc-pillar a { color: var(--gold); font-weight: 700; text-decoration: none; }
 .cc-pillar a:hover { text-decoration: underline; }
+
+/* Language switcher (EN/ES) — added 2026-11-17 with the bilingual mirror */
+.site-nav a.lang-switch { font-weight: 700; color: var(--gold, #b98a2f); white-space: nowrap; }
+.lang-switch-standalone { position: absolute; top: 14px; right: 18px; font-weight: 700; font-size: 14px; color: #b98a2f; text-decoration: none; z-index: 50; }

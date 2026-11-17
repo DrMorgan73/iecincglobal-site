@@ -1,0 +1,94 @@
+WEBVTT
+
+00:00:02.960 --> 00:00:08.770
+Todo comienza en el propio edificio del propietario, y los datos no viven en un solo sistema.
+
+00:00:08.770 --> 00:00:14.580
+Viven en los sistemas de la práctica: la historia clínica electrónica, el sistema telefónico, el correo seguro, la facturación y más.
+
+00:00:14.580 --> 00:00:20.027
+Los lotes se extraen sistema por sistema: cada sistema se inventaría y se cuenta por separado.
+
+00:00:20.747 --> 00:00:28.171
+Cada caja se registra al empacarla: una etiqueta de lote, una hoja de conteo, y conteos que coinciden con el manifiesto.
+
+00:00:28.891 --> 00:00:31.777
+Dentro del edificio, el lote se desidentifica.
+
+00:00:31.777 --> 00:00:33.426
+Los nombres se convierten en códigos.
+
+00:00:33.426 --> 00:00:34.250
+Las fechas se desplazan.
+
+00:00:34.250 --> 00:00:35.487
+Los códigos postales se acortan.
+
+00:00:35.487 --> 00:00:41.670
+Y la llave que vincula los códigos con las personas queda guardada en la caja fuerte del propietario.
+
+00:00:41.670 --> 00:00:42.907
+Nunca viaja.
+
+00:00:43.627 --> 00:00:44.817
+Luego viene el control.
+
+00:00:44.817 --> 00:00:46.799
+El lote se escanea otra vez.
+
+00:00:46.799 --> 00:00:48.782
+Limpio: se marca como liberable.
+
+00:00:48.782 --> 00:00:53.144
+Pero si un solo identificador sobrevive, el control se pone rojo: bloqueado.
+
+00:00:53.144 --> 00:00:55.523
+El lote regresa para limpiarse de nuevo.
+
+00:00:55.523 --> 00:00:57.110
+No se mueve.
+
+00:00:57.830 --> 00:01:06.214
+Un experto calificado revisa el paquete de evidencia del lote y lo certifica conforme a la HIPAA, sección 164.514.
+
+00:01:06.214 --> 00:01:09.009
+Sin firma, no hay transferencia.
+
+00:01:09.729 --> 00:01:17.452
+Solo entonces el lote se sella: envuelto en sumas de verificación, protegido con cifrado, y su informe de desidentificación adjunto como pasaporte.
+
+00:01:18.172 --> 00:01:24.487
+Ya sellado, el lote viaja por un canal cifrado, directo del edificio del propietario al laboratorio.
+
+00:01:24.487 --> 00:01:28.828
+Pasa por la oficina de IEC, pero ningún dato entra.
+
+00:01:28.828 --> 00:01:33.169
+Solo un comprobante le llega a IEC: informes y recibos, nunca los datos.
+
+00:01:33.889 --> 00:01:39.549
+En el laboratorio, la entrega se verifica: el número de archivos y las sumas de verificación deben coincidir exactamente.
+
+00:01:39.549 --> 00:01:41.974
+Cuando coinciden, se confirma el recibo.
+
+00:01:42.694 --> 00:01:47.601
+El recibo se archiva en el registro: una pista de auditoría completa de cada lote.
+
+00:01:48.321 --> 00:01:51.974
+De vuelta en el edificio del propietario, las copias temporales se destruyen.
+
+00:01:51.974 --> 00:01:56.724
+Quedan la llave en la caja fuerte, los informes y los recibos.
+
+00:01:56.724 --> 00:02:00.012
+Un lote a la vez, cada uno con su propio control independiente.
+
+00:02:00.012 --> 00:02:02.569
+La correspondencia de la llave nunca sale del propietario.
+
+00:02:02.569 --> 00:02:04.396
+Una licencia, no una venta.
+
+00:02:04.396 --> 00:02:05.857
+Licenciamiento de datos, bien hecho.

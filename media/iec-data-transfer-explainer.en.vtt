@@ -1,0 +1,94 @@
+WEBVTT
+
+00:00:02.960 --> 00:00:08.770
+It starts at the owner's own building — and the data doesn't live in one system.
+
+00:00:08.770 --> 00:00:14.580
+It lives across the practice's systems: the EHR, the phone system, secure email, billing, and more.
+
+00:00:14.580 --> 00:00:20.027
+Batches are drawn system by system — each system inventoried and counted on its own.
+
+00:00:20.747 --> 00:00:28.171
+Each crate is registered as it's packed — a batch tag, a count sheet, and counts that reconcile against the manifest.
+
+00:00:28.891 --> 00:00:31.777
+Inside the building, the batch is de-identified.
+
+00:00:31.777 --> 00:00:33.426
+Names become code tags.
+
+00:00:33.426 --> 00:00:34.250
+Dates shift.
+
+00:00:34.250 --> 00:00:35.487
+ZIP codes shorten.
+
+00:00:35.487 --> 00:00:41.670
+And the key that links codes back to people stays locked in the owner's safe.
+
+00:00:41.670 --> 00:00:42.907
+It never travels.
+
+00:00:43.627 --> 00:00:44.817
+Then, the gate.
+
+00:00:44.817 --> 00:00:46.799
+The batch is scanned again.
+
+00:00:46.799 --> 00:00:48.782
+Clean — it's stamped releasable.
+
+00:00:48.782 --> 00:00:53.144
+But if even one identifier survives, the gate turns red: blocked.
+
+00:00:53.144 --> 00:00:55.523
+The batch rolls back for re-scrubbing.
+
+00:00:55.523 --> 00:00:57.110
+It does not move.
+
+00:00:57.830 --> 00:01:06.214
+A qualified expert reviews the batch's evidence pack and certifies it under HIPAA Section 164.514.
+
+00:01:06.214 --> 00:01:09.009
+No signature — no transfer.
+
+00:01:09.729 --> 00:01:17.452
+Only then is the batch sealed — wrapped in checksums, locked with encryption, its De-Id Report attached as its passport.
+
+00:01:18.172 --> 00:01:24.487
+The sealed batch travels through an encrypted channel, straight from the owner's building to the lab.
+
+00:01:24.487 --> 00:01:28.828
+It passes the IEC office — but no data goes in.
+
+00:01:28.828 --> 00:01:33.169
+IEC receives a receipt only: reports and receipts, never the data.
+
+00:01:33.889 --> 00:01:39.549
+At the lab, the delivery is verified: file count and checksums must match exactly.
+
+00:01:39.549 --> 00:01:41.974
+When they do, receipt is confirmed.
+
+00:01:42.694 --> 00:01:47.601
+The receipt is filed in the batch ledger — a complete audit trail for every batch.
+
+00:01:48.321 --> 00:01:51.974
+Back at the owner's building, the staging copies are destroyed.
+
+00:01:51.974 --> 00:01:56.724
+What remains is the key in the safe, the reports, and the receipts.
+
+00:01:56.724 --> 00:02:00.012
+One batch at a time — each independently gated.
+
+00:02:00.012 --> 00:02:02.569
+The key mapping never leaves the owner.
+
+00:02:02.569 --> 00:02:04.396
+A license, not a sale.
+
+00:02:04.396 --> 00:02:05.857
+Data licensing, done right.

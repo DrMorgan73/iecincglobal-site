@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portal de Socios — Vista previa de pantallas</title>
+<style>
+  body{margin:0;background:#0A1626;font-family:Inter,system-ui,Arial,sans-serif;color:#E8EEF5}
+  .page{max-width:1180px;margin:0 auto;padding:36px 20px 70px}
+  h1{font-size:30px;margin:0 0 8px}
+  h1 .gold{color:#C9A227}
+  .intro{color:#B9C6D6;line-height:1.65;max-width:820px}
+  .screen-label{display:flex;align-items:center;gap:12px;margin:38px 0 12px}
+  .tag{background:#C9A227;color:#0B2447;font-weight:800;font-size:12px;border-radius:999px;padding:4px 12px;letter-spacing:.05em}
+  .tag.desk{background:#7C5CFF;color:#fff}
+  .screen-label h2{font-size:20px;margin:0}
+  .frame{background:#F4F7FB;border-radius:16px;padding:26px;color:#1A1A1A;box-shadow:0 18px 50px rgba(0,0,0,.35)}
+  .frame.desk{background:#0D1526;color:#E8EEF5}
+  .card{border:1px solid #DCE3EC;border-radius:14px;background:#fff;padding:22px 24px;margin-bottom:18px}
+  .card h2{font-size:18px;margin:0 0 8px;color:#0E2A47}
+  .card h3{font-size:15px;margin:16px 0 8px;color:#0E2A47}
+  .card p{color:#26313F;line-height:1.6;margin:0 0 10px;font-size:14.5px}
+  .pill{display:inline-block;border-radius:999px;padding:3px 12px;font-size:12.5px;font-weight:700}
+  .pill.ok{background:#E7F4E9;color:#1E6B2E}.pill.warn{background:#FBF6EA;color:#5c4a12}
+  .pill.mut{background:#EEF1F5;color:#5B6B85}.pill.bad{background:#FBEAEA;color:#8B1E1E}
+  table{border-collapse:collapse;width:100%;margin:10px 0;font-size:14px}
+  th{background:#0E2A47;color:#fff;padding:8px 10px;text-align:left}
+  td{border:1px solid #DCE3EC;padding:8px 10px}
+  .btn{display:inline-block;border-radius:10px;padding:11px 20px;font-weight:700;background:#0E2A47;color:#fff;font-size:14.5px}
+  .btn.ghost{background:#fff;color:#0E2A47;border:1.5px solid #0E2A47}
+  .btn.gold{background:#C9A227;color:#0E2A47}
+  .form{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+  .form .full{grid-column:1/-1}
+  .form label{display:block;font-size:12.5px;font-weight:700;color:#0E2A47;margin-bottom:5px}
+  .form input,.form select,.form textarea{width:100%;box-sizing:border-box;padding:10px 11px;border:1px solid #C9D3E0;border-radius:9px;font-size:14.5px;background:#fff;color:#1A1A1A}
+  .fine{font-size:13px;color:#5B6B85;line-height:1.6}
+  .banner{border:1px solid #B98A2F;background:#FBF6EA;border-radius:10px;padding:11px 13px;font-size:14px;color:#5c4a12;margin-bottom:12px}
+  .pipe{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+  .pipe span{border:1px solid #C9D3E0;border-radius:999px;padding:4px 11px;font-size:12.5px;font-weight:600;color:#5B6B85;background:#fff}
+  .pipe span.done{background:#0E2A47;border-color:#0E2A47;color:#fff}
+  .pipe span.now{background:#C9A227;border-color:#C9A227;color:#0E2A47}
+  dl{display:grid;grid-template-columns:190px 1fr;gap:6px 14px;font-size:14.5px;margin:8px 0}
+  dt{font-weight:700;color:#0E2A47}dd{margin:0;color:#26313F}
+  .totals{display:flex;gap:26px;flex-wrap:wrap;font-size:15px;margin:8px 0}
+  .totals b{color:#0E2A47}
+  .steps{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:9px}
+  .steps li{display:flex;gap:11px;align-items:flex-start;font-size:14.5px;color:#26313F;line-height:1.55}
+  .num{flex:0 0 26px;height:26px;border-radius:50%;background:#0E2A47;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;font-size:13px}
+  .hero h2{font-size:26px;color:#0E2A47;margin:0 0 8px}
+  .chips span{display:inline-block;border:1px solid #C9D3E0;border-radius:999px;padding:4px 12px;font-size:12.5px;font-weight:600;color:#0E2A47;margin:0 6px 8px 0;background:#fff}
+  /* desk */
+  .dcard{border:1px solid #22314F;border-radius:14px;background:#111D33;padding:20px 22px;margin-bottom:16px}
+  .dcard h3{margin:0 0 10px;font-size:16px;color:#fff}
+  .dcard p{color:#9FB0C6;font-size:13.5px;line-height:1.6}
+  .dcard table th{background:#1B2B47}
+  .dcard table td{border-color:#22314F;color:#D7E1EE}
+  .chip{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:4px 10px;border-radius:999px}
+  .chip.green{background:#34D399;color:#06281C}.chip.amber{background:#FBBF24;color:#3A2703}
+  .chip.blue{background:#60A5FA;color:#0B2447}.chip.red{background:#F87171;color:#3D0A0A}.chip.plain{border:1px solid #33456B;color:#9FB0C6}
+  .mini{display:inline-block;font:600 11.5px Inter;padding:5px 10px;border-radius:8px;border:1px solid #33456B;color:#F0B942;margin:4px 4px 0 0}
+  .mini.danger{color:#F87171}
+  .who b{display:block;font-size:14px;color:#fff}
+  .who span{font-size:12.5px;color:#9FB0C6}
+</style>
+</head>
+<body>
+<div style="text-align:right;padding:10px 16px 0"><a href="../partner-screens-preview.html" style="font-weight:700;color:#b98a2f;text-decoration:none">English</a></div>
+<div class="page">
+  <h1>Portal de Socios de IEC — <span class="gold">Vista previa de pantallas</span></h1>
+  <p class="intro">Cada pantalla del Portal de Socios tal como fue construida, con <strong>datos sintéticos</strong> (socio "Karim Haddad — ejemplo") y <strong>cálculos reales de honorarios</strong> del motor de honorarios del portal (5% del ingreso bruto del propietario en la primera licencia cerrada · sin límite · bonificación por hito de +2% cuando el ingreso bruto del propietario es de $10,000,000 o más, esquema adoptado el 12 de noviembre de 2026). Vista previa estática — los botones no están conectados. Las pantallas dirigidas a los socios nunca nombran ningún canal ni muestran la economía de ninguna otra parte.</p>
+
+  <!-- 1 REGISTER -->
+  <div class="screen-label"><span class="tag">PÚBLICO</span><h2>1 · Registro de socios — solicitar acceso</h2></div>
+  <div class="frame">
+    <div class="card hero">
+      <p style="color:#C9A227;font-weight:800;letter-spacing:.08em;font-size:12px">PORTAL DE SOCIOS DE IEC</p>
+      <h2>Trabaje bajo IEC. Agregue a sus clientes. Reciba pagos por resultados.</h2>
+      <p>Los socios trabajan bajo IEC como contratistas de IEC. Usted agrega a sus clientes al programa de licencias de datos de IEC desde su propio portal, sigue a cada cliente a lo largo del proceso y gana un honorario por referido que aumenta con la licencia — pagado solo cuando se cierra una licencia de su cliente.</p>
+      <div class="chips"><span>Solo por resultados</span><span>Aumenta con la licencia</span><span>Sin límite</span><span>Pagado por IEC</span></div>
+      <span class="btn gold">Solicitar acceso como socio</span> <span class="btn ghost">Cómo funciona el programa</span>
+    </div>
+    <div class="card">
+      <h2>Cómo funciona</h2>
+      <ol class="steps">
+        <li><span class="num">1</span><span><strong>Solicite acceso</strong> — su nombre, correo electrónico y compañía. IEC registra su solicitud.</span></li>
+        <li><span class="num">2</span><span><strong>Firme primero</strong> — el Acuerdo de Referidos para Contratistas de IEC y el NDA. Ambas firmas preceden a la activación y a la incorporación de cualquier cliente.</span></li>
+        <li><span class="num">3</span><span><strong>IEC activa su portal</strong> — un enlace de activación de un solo uso por correo electrónico. Sin inicios de sesión compartidos, sin contraseñas.</span></li>
+        <li><span class="num">4</span><span><strong>Agregue a sus clientes</strong> — perfil + cuestionario de solo conteos. Un socio por cliente: gana el primero que se registre.</span></li>
+        <li><span class="num">5</span><span><strong>Siga a cada cliente</strong> — cuestionario, evaluación, NDA, registro.</span></li>
+        <li><span class="num">6</span><span><strong>Reciba pagos por resultados</strong> — honorario pagado dentro de los 15 días posteriores a que IEC reciba el pago por la licencia cerrada.</span></li>
+      </ol>
+    </div>
+    <div class="card">
+      <h2>Solicitar acceso como socio</h2>
+      <form class="form" onsubmit="return false">
+        <div><label>Su nombre completo</label><input value="Karim Haddad"></div>
+        <div><label>Su correo electrónico</label><input value="karim@example.com"></div>
+        <div class="full"><label>Su compañía</label><input value="Karim Consulting LLC"></div>
+        <div class="full"><span class="btn">Registrarse</span></div>
+      </form>
+      <p class="fine">Después de registrarse, usted firma el Acuerdo de Referidos para Contratistas y el NDA; una vez que IEC registra ambas firmas, IEC le envía el enlace de activación de su portal.</p>
+    </div>
+  </div>
+
+  <!-- 2 DASHBOARD -->
+  <div class="screen-label"><span class="tag">SOCIO</span><h2>2 · Panel del socio</h2></div>
+  <div class="frame">
+    <div class="card">
+      <h2>Bienvenido, Karim Haddad</h2>
+      <p>Karim Consulting LLC · karim@example.com · Estado: <span class="pill ok">activo</span></p>
+      <p>Acuerdo de Referidos: <span class="pill ok">firmado</span> &nbsp;·&nbsp; NDA: <span class="pill ok">firmado</span></p>
+    </div>
+    <div class="card">
+      <h2>Sus clientes</h2>
+      <p class="fine">Agregado → Cuestionario enviado → Cuestionario respondido → Evaluación realizada → NDA enviado → NDA firmado → Listo para registrar → Registrado. IEC registra los pasos a partir de los eventos reales.</p>
+      <table>
+        <thead><tr><th>Negocio</th><th>Tipo</th><th>Paso del proceso</th><th>Etapa del honorario</th><th>Su honorario</th></tr></thead>
+        <tbody>
+          <tr><td>Harbor Dental Group</td><td>medical-practice</td><td>Registrado</td><td>Honorario pagado</td><td>$25,000</td></tr>
+          <tr><td>Sunrise Home Care LLC</td><td>home-health</td><td>NDA firmado</td><td>Cliente agregado</td><td>—</td></tr>
+          <tr><td>Northgate Pharmacy</td><td>pharmacy</td><td>Cuestionario respondido</td><td>Cliente agregado</td><td>—</td></tr>
+          <tr><td>Summit Physical Therapy</td><td>physical-therapy</td><td>Agregado</td><td>Cliente agregado</td><td>—</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card">
+      <h2>Sus honorarios <span class="pill ok">Esquema adoptado</span></h2>
+      <div class="totals"><span>Ganado: <b>$25,000</b></span><span>Pagado: <b>$25,000</b></span><span>Pendiente: <b>$0</b></span></div>
+    </div>
+  </div>
+
+  <!-- 3 ADD CLIENT -->
+  <div class="screen-label"><span class="tag">SOCIO</span><h2>3 · Agregar un cliente — perfil + cuestionario de solo conteos</h2></div>
+  <div class="frame">
+    <div class="card">
+      <h2>Agregar un cliente</h2>
+      <p>Un cliente solo puede ser registrado por <strong>un único socio</strong> — gana el primero que se registre. Solo conteos: totales y distribuciones, nunca registros individuales.</p>
+      <form class="form" onsubmit="return false">
+        <div><label>Nombre legal del negocio</label><input value="Sunrise Home Care LLC"></div>
+        <div><label>Tipo de negocio</label><select><option>Salud en el hogar</option></select></div>
+        <div><label>Nombre del contacto del propietario</label><input value="Marta Ruiz"></div>
+        <div><label>Correo electrónico del contacto del propietario</label><input value="marta@sunrisehc.example"></div>
+        <div><label>Ubicaciones (cantidad)</label><input value="3"></div>
+        <div><label>Empleados a tiempo completo</label><input value="66"></div>
+        <div><label>Sistemas que utilizan (nombres)</label><input value="WellSky, Microsoft 365, Salesforce"></div>
+        <div><label>Años de registros</label><input value="20"></div>
+      </form>
+      <h3>C. Volumen e historial (solo conteos)</h3>
+      <form class="form" onsubmit="return false">
+        <div><label>8. Clientes atendidos por año</label><input value="4,150"></div>
+        <div><label>9. Trabajos/pedidos/proyectos completados por año</label><input value="38,900 visitas"></div>
+        <div><label>11. Volumen de llamadas/correos por mes, si se registra (solo conteos)</label><input value="2,300"></div>
+        <div><label>14. Idiomas utilizados con los clientes y en la documentación</label><input value="Inglés, Español"></div>
+        <div class="full"><span class="btn">Agregar este cliente</span></div>
+      </form>
+      <p class="fine">Una respuesta que contenga una dirección de correo electrónico, un número de teléfono o un número de identificación será rechazada y no se guardará nada.</p>
+    </div>
+  </div>
+
+  <!-- 4 CLIENT DETAIL -->
+  <div class="screen-label"><span class="tag">SOCIO</span><h2>4 · Detalle del cliente + proceso</h2></div>
+  <div class="frame">
+    <div class="card">
+      <h2>Sunrise Home Care LLC</h2>
+      <div class="pipe">
+        <span class="done">Agregado</span><span class="done">Cuestionario enviado</span><span class="done">Cuestionario respondido</span><span class="done">Evaluación realizada</span><span class="done">NDA enviado</span><span class="now">NDA firmado</span><span>Listo para registrar</span><span>Registrado</span>
+      </div>
+      <dl>
+        <dt>Contacto del propietario</dt><dd>Marta Ruiz · marta@sunrisehc.example</dd>
+        <dt>Tipo de negocio</dt><dd>home-health</dd>
+        <dt>Ubicaciones</dt><dd>3</dd>
+        <dt>Empleados a tiempo completo</dt><dd>66</dd>
+        <dt>Sistemas</dt><dd>WellSky, Microsoft 365, Salesforce</dd>
+        <dt>Años de registros</dt><dd>20</dd>
+      </dl>
+      <p class="fine">Envío del cuestionario en registro: qs-2026-1204</p>
+      <h3>Respuestas del cuestionario (solo conteos)</h3>
+      <dl>
+        <dt>P8. Clientes atendidos por año</dt><dd>4,150</dd>
+        <dt>P10. Años de historial almacenados:</dt><dd>Desde el año: 2005 · Registros de clientes (años): 20 · Registros financieros (años): 12</dd>
+        <dt>P14. Idiomas</dt><dd>Inglés, Español</dd>
+      </dl>
+      <h3>Su honorario por este cliente</h3>
+      <p>Aún no hay honorario — su honorario se establece cuando se cierre la primera licencia de este cliente.</p>
+    </div>
+  </div>
+
+  <!-- 5 FEES -->
+  <div class="screen-label"><span class="tag">SOCIO</span><h2>5 · Vista de honorarios</h2></div>
+  <div class="frame">
+    <div class="card">
+      <h2>Sus honorarios <span class="pill ok">Esquema adoptado</span></h2>
+      <div class="totals"><span>Ganado: <b>$25,000</b></span><span>Pagado: <b>$25,000</b></span><span>Pendiente: <b>$0</b></span></div>
+      <table>
+        <thead><tr><th>Ingreso bruto del propietario — primera licencia cerrada</th><th>Su honorario por referido</th></tr></thead>
+        <tbody>
+          <tr><td>$100,000</td><td>$5,000</td></tr>
+          <tr><td>$216,000</td><td>$10,800</td></tr>
+          <tr><td>$250,000</td><td>$12,500</td></tr>
+          <tr><td>$500,000</td><td>$25,000</td></tr>
+          <tr><td>$1,000,000</td><td>$50,000</td></tr>
+          <tr><td>$10,000,000</td><td>$700,000 (incl. bonificación por hito del 2%)</td></tr>
+        </tbody>
+      </table>
+      <p class="fine">Su honorario es el 5% del ingreso bruto del propietario en la primera licencia cerrada de un cliente — el bruto que recibe el propietario — sin límite. Cuando el ingreso bruto del propietario es de $10,000,000 o más, una bonificación por hito del 2% eleva el total al 7%. Se paga una sola vez por cliente, solo por su primera licencia cerrada (las renovaciones no generan honorario), dentro de los 15 días posteriores a que IEC reciba el pago. El honorario lo paga IEC y nunca se deduce de ningún monto pagadero al propietario. Harbor Dental Group: ingreso bruto del propietario $500,000 → honorario $25,000 · pagado.</p>
+    </div>
+  </div>
+
+  <!-- 6 DESK ADMIN -->
+  <div class="screen-label"><span class="tag desk">IEC DESK</span><h2>6 · Administración del escritorio — socios, clientes, protección contra duplicados</h2></div>
+  <div class="frame desk">
+    <div class="dcard">
+      <h3>Socios</h3>
+      <table>
+        <thead><tr><th>Socio</th><th>Estado</th><th>Acuerdo</th><th>NDA</th><th>Honorarios ganados / pagados</th><th>Acciones</th></tr></thead>
+        <tbody>
+          <tr><td class="who"><b>Karim Haddad</b><span>karim@example.com · Karim Consulting LLC</span></td><td><span class="chip green">activo</span></td><td><span class="chip green">firmado</span></td><td><span class="chip green">firmado</span></td><td>$7,500 / $7,500</td><td><span class="mini">Pausar</span><span class="mini danger">Revocar</span></td></tr>
+          <tr><td class="who"><b>Omar Farouk</b><span>omar@example.com · Omar Advisory</span></td><td><span class="chip amber">invitado</span><br><span style="font-size:12px;color:#9FB0C6">activación bloqueada hasta que ambos firmen</span></td><td><span class="chip green">firmado</span></td><td><span class="chip amber">pendiente</span></td><td>$0 / $0</td><td><span class="mini">Enviar enlace de activación</span><span class="mini">Marcar NDA como firmado</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="dcard">
+      <h3>Clientes — proceso y honorarios</h3>
+      <table>
+        <thead><tr><th>Cliente</th><th>Socio</th><th>Proceso</th><th>Etapa del honorario</th><th>Ingreso bruto del propietario</th><th>Honorario</th><th>Acciones</th></tr></thead>
+        <tbody>
+          <tr><td class="who"><b>Sunrise Home Care LLC</b><span>Marta Ruiz · 3 ubic. · 66 ETC · 20 años de registros<br>Evidencia: copia refrendada abierta y leída; firma y fecha confirmadas</span></td><td>karim@example.com</td><td><span class="chip plain">CNDA firmado</span></td><td><span class="chip plain">Cliente agregado</span></td><td>—</td><td>—</td><td><span class="mini">Registrar: Listo para registrar</span></td></tr>
+          <tr><td class="who"><b>Northgate Pharmacy</b><span>Sam North · envío qs-2026-1190</span></td><td>karim@example.com</td><td><span class="chip plain">Cuestionario respondido</span></td><td><span class="chip plain">Cliente agregado</span></td><td>—</td><td>—</td><td><span class="mini">Registrar: Evaluación realizada</span></td></tr>
+          <tr><td class="who"><b>Harbor Dental Group</b><span>Lena Ortiz</span></td><td>karim@example.com</td><td><span class="chip plain">Registrado</span></td><td><span class="chip plain">Honorario pagado</span></td><td>$500,000</td><td>$25,000</td><td></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="dcard">
+      <h3>Compañías registradas por IEC — protección contra duplicados</h3>
+      <p>Compañías que la propia IEC ha registrado. A un socio que agregue una se le rechaza con la misma respuesta de "ya registrada"; el socio nunca sabe qué parte tiene el registro.</p>
+      <table>
+        <thead><tr><th>Compañía</th><th>Correo del propietario</th><th>Nota</th><th>Acciones</th></tr></thead>
+        <tbody>
+          <tr><td class="who"><b>Virginia Trade Partners LLC</b></td><td>—</td><td>Registrada directamente por IEC, nov. de 2026</td><td><span class="mini danger">Eliminar</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <p class="intro" style="margin-top:34px">Solo compilación local — nada subido, nada desplegado. El despliegue se realiza por indicación de DrMorgan.</p>
+</div>
+</body>
+</html>
