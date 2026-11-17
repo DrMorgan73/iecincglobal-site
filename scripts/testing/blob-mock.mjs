@@ -1,7 +1,8 @@
 /* In-memory mock of @vercel/blob for the local test suites.
-   Implements the subset the api/ functions use — put / list / del —
-   with the same shapes as the real package (pathname, url, size,
-   uploadedAt). Blob "URLs" are https://blob.mock/<pathname>; a
+   Implements the subset the api/ functions use — put / list /
+   del / get — with the same shapes as the real package
+   (pathname, url, size, uploadedAt). Blob "URLs" are
+   https://blob.mock/<pathname>; a
    test's fetch mock serves their content from the same map.
 
    Test-only: reached through ./blob-hooks.mjs, never in production. */
@@ -54,4 +55,41 @@ export async function del(url) {
   for (const [pathname, r] of __blobs.entries()) {
     if (r.url === url || pathname === url) __blobs.delete(pathname);
   }
+}
+
+/* SDK get(): origin read by pathname or URL. The mock's map IS
+   the origin, so every get is current; calls are logged in
+   __gets so suites can assert how a store read (e.g. that it
+   passed useCache:false). Returns the SDK's shape:
+   { statusCode: 200, stream, headers, blob } or null. */
+export const __gets = [];
+
+export async function get(urlOrPathname, opts = {}) {
+  __gets.push({ urlOrPathname: String(urlOrPathname), opts });
+  let record = __blobs.get(String(urlOrPathname));
+  if (!record) {
+    for (const r of __blobs.values()) {
+      if (r.url === String(urlOrPathname)) { record = r; break; }
+    }
+  }
+  if (!record) return null;
+  const bytes = new TextEncoder().encode(record.content);
+  const stream = new ReadableStream({
+    start(controller) {
+      controller.enqueue(bytes);
+      controller.close();
+    }
+  });
+  return {
+    statusCode: 200,
+    stream,
+    headers: new Headers({ "content-type": "application/json" }),
+    blob: {
+      pathname: String(urlOrPathname),
+      url: record.url,
+      downloadUrl: record.url,
+      size: bytes.length,
+      uploadedAt: record.uploadedAt
+    }
+  };
 }

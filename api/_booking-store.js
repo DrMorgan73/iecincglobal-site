@@ -27,21 +27,25 @@
    it is false.
 
    READ FRESHNESS (differs from _questionnaire-store.js on
-   purpose): the Blob public URL is served with a 30-day CDN
-   cache header, so a plain fetch of it can return a copy that
-   predates the latest write — verified live 2026-11-17, when a
-   cancelled booking kept its slot "taken" on availability reads
-   minutes after the store document itself was already empty.
-   A booking store cannot run double-booking protection on stale
-   reads, so readBookings fetches with a unique cache-busting
-   query parameter and always sees the current document.
+   purpose): the Blob public URL is served through a CDN with a
+   30-day cache header, and the CDN keys that cache on the path
+   alone — a plain fetch of the document URL (the questionnaire
+   store's read) can return a copy that predates the latest
+   write, in either direction, for as long as an edge holds it.
+   Verified live 2026-11-17: a cancelled booking's slot stayed
+   "taken" on stale reads, and a second booking for a taken slot
+   was accepted when the conflict check read a pre-booking copy.
+   A booking store cannot run double-booking protection on
+   stale reads, so readBookings uses the SDK's get() with
+   useCache:false — an authenticated read from origin storage
+   that always returns the current document.
 
    Env (this Vercel project — iecincglobal-site):
      BLOB_READ_WRITE_TOKEN   the Office Blob store (same store the
                              questionnaire submissions use)
    ===================================================================== */
 
-import { put, list } from "@vercel/blob";
+import { put, get } from "@vercel/blob";
 
 export const BOOKINGS_PATHNAME = "bookings.json";
 
@@ -49,20 +53,16 @@ export function bookingsConfigured() {
   return !!process.env.BLOB_READ_WRITE_TOKEN;
 }
 
-/* The whole bookings document. [] when it does not exist yet or
-   holds nothing usable. Throws only on Blob transport errors. */
+/* The whole bookings document, read from ORIGIN via the SDK
+   (never the CDN-cached public URL — see the header note on
+   read freshness). [] when it does not exist yet or holds
+   nothing usable. Throws only on Blob transport errors. */
 export async function readBookings() {
-  const { blobs } = await list({ prefix: BOOKINGS_PATHNAME });
-  const hit = blobs.find(b => b.pathname === BOOKINGS_PATHNAME);
-  if (!hit) return [];
-  /* Cache-busting query: the Blob CDN otherwise serves a stale
-     copy of the document (see the header note on read freshness).
-     The store ignores the parameter; the cache cannot. */
-  const freshUrl = `${hit.url}${hit.url.includes("?") ? "&" : "?"}v=${Date.now()}`;
-  const r = await fetch(freshUrl);
-  if (!r.ok) return [];
+  const result = await get(BOOKINGS_PATHNAME, { access: "public", useCache: false });
+  if (!result || result.statusCode !== 200 || !result.stream) return [];
   try {
-    const parsed = JSON.parse(await r.text());
+    const text = await new Response(result.stream).text();
+    const parsed = JSON.parse(text);
     if (!Array.isArray(parsed)) return [];
     return parsed.filter(x => x && typeof x === "object" && x.id && x.date && x.time);
   } catch (e) {
