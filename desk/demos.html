@@ -52,30 +52,30 @@
     <div class="section-head">
       <h2>Demo Launcher — Presentations</h2>
     </div>
-    <p class="hint" style="margin-bottom:16px">Every asset demo in one place. Open a demo in a new tab and present — each demo runs on synthetic data only. Each demo has its own sign-in; your demo account is <b>drmohdmorgan@gmail.com</b> on all five.</p>
+    <p class="hint" style="margin-bottom:16px">Every asset demo in one place. Open a demo in a new tab and present — each demo runs on synthetic data only. From the Suite you go straight in under your demo account (<b>drmohdmorgan@gmail.com</b> on all five) — no second sign-in.</p>
 
     <div class="grid">
-      <a class="card tap demo" href="https://getmedexec.com/demo/" target="_blank" rel="noopener">
+      <a class="card tap demo" href="https://getmedexec.com/demo/" data-demo-url="https://getmedexec.com/demo/" data-aud="medexec" target="_blank" rel="noopener">
         <h3>MEDEXEC</h3>
         <p>The full MEDEXEC workflow — from intake to the expert report — on synthetic cases only.</p>
         <span class="open-hint">Open demo →</span>
       </a>
-      <a class="card tap demo" href="https://insnap-job-engine.vercel.app/demo" target="_blank" rel="noopener">
+      <a class="card tap demo" href="https://insnap-job-engine.vercel.app/demo" data-demo-url="https://insnap-job-engine.vercel.app/demo" data-aud="insnap" target="_blank" rel="noopener">
         <h3>InSnap</h3>
         <p>The dispatch board, the client app, and the Pro app moving through one job together — synthetic case only.</p>
         <span class="open-hint">Open demo →</span>
       </a>
-      <a class="card tap demo" href="https://getcuravia.com/demo/" target="_blank" rel="noopener">
+      <a class="card tap demo" href="https://getcuravia.com/demo/" data-demo-url="https://getcuravia.com/demo/" data-aud="curavia" target="_blank" rel="noopener">
         <h3>CURAVIA</h3>
         <p>The CURAVIA Suite and the patient app — one clinic day end to end: booking, intake, the visit, the scribe's summary, billing review.</p>
         <span class="open-hint">Open demo →</span>
       </a>
-      <a class="card tap demo" href="https://www.inssnapp.com/demo" target="_blank" rel="noopener">
+      <a class="card tap demo" href="https://www.inssnapp.com/demo" data-demo-url="https://www.inssnapp.com/demo" data-aud="insnapp" target="_blank" rel="noopener">
         <h3>INSNAPP</h3>
         <p>The resident, prospect, and broker mobile apps and the Management and Control Center — one showing from request to live lead.</p>
         <span class="open-hint">Open demo →</span>
       </a>
-      <a class="card tap demo" href="https://iec-docs.vercel.app/demo" target="_blank" rel="noopener">
+      <a class="card tap demo" href="https://iec-docs.vercel.app/demo" data-demo-url="https://iec-docs.vercel.app/demo" data-aud="iecdocs" target="_blank" rel="noopener">
         <h3>IEC Docs</h3>
         <p>The real IEC Docs screens — library, viewer, PDF tools, conversion, de-identification, e-sign and the vault — on synthetic documents only.</p>
         <span class="open-hint">Open demo →</span>
@@ -92,5 +92,33 @@
 </div>
 
 <script src="/desk/desk.js"></script>
+
+<script>
+/* Suite handoff (DrMorgan's order, 2026-11-17): while he is signed in
+   to the Suite, mint a short-lived signed handoff token per demo and
+   point each card straight into that demo — the portal verifies the
+   token, establishes his demo session, and skips its landing/sign-in.
+   If minting fails for any reason, the cards keep their plain links
+   and every demo's normal gate applies. Tokens are re-minted every
+   four minutes so an open launcher tab never holds a stale one. */
+(function () {
+  var cards = document.querySelectorAll("a.card.demo[data-aud]");
+  if (!cards.length || typeof fetch !== "function") return;
+  function mint() {
+    cards.forEach(function (card) {
+      var base = card.getAttribute("data-demo-url");
+      var aud = card.getAttribute("data-aud");
+      fetch("/api/demo-handoff?aud=" + encodeURIComponent(aud), { credentials: "same-origin" })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          if (d && d.ok && d.token) card.setAttribute("href", base + "?handoff=" + encodeURIComponent(d.token));
+        })
+        .catch(function () { /* plain link stays */ });
+    });
+  }
+  mint();
+  setInterval(mint, 240000);
+})();
+</script>
 </body>
 </html>
