@@ -1,4 +1,6 @@
-/* Local test suite for api/book.js + api/_booking-store.js +
+/* Local test suite for api/_booking-handler.js (hosted by
+   api/questionnaire-submit.js behind the /api/book rewrite —
+   see that handler's header for why) + api/_booking-store.js +
    api/_booking-slots.js + api/_booking-config.js (IEC — "Book a
    call with Dr. Mohammed Morgan", book.html).
 
@@ -61,9 +63,24 @@ globalThis.fetch = async (url, opts = {}) => {
 };
 
 /* ---------------- modules under test ---------------- */
-const handler = (await import("../api/book.js")).default;
+const handler = (await import("../api/_booking-handler.js")).bookingHandler;
+const hostHandler = (await import("../api/questionnaire-submit.js")).default;
 const slots = await import("../api/_booking-slots.js");
 const store = await import("../api/_booking-store.js");
+
+async function callHost(method, { url = "/api/questionnaire-submit", body } = {}) {
+  const req = { method, url, headers: {}, body };
+  const res = {
+    statusCode: 0,
+    payload: null,
+    status(c) { this.statusCode = c; return this; },
+    json(o) { this.payload = o; return this; },
+    setHeader() {},
+    end(s) { this.payload = JSON.parse(s); }
+  };
+  await hostHandler(req, res);
+  return { status: res.statusCode, body: res.payload };
+}
 
 async function call(method, { url = "/api/book", body } = {}) {
   const req = { method, url, headers: {}, body };
@@ -217,6 +234,22 @@ console.log("handler — availability, booking, double-booking, cancel");
   check("store empty after cancel", (await store.readBookings()).length === 0);
   const rebooked = await call("POST", { body: booking });
   check("freed slot can be booked again", rebooked.status === 200 && rebooked.body.ok === true);
+}
+
+console.log("host dispatch — /api/book arrives as questionnaire-submit?channel=book");
+{
+  resetAll();
+  const viaHost = await callHost("GET", { url: "/api/questionnaire-submit?channel=book" });
+  check("channel=book reaches the booking handler (availability shape)",
+    viaHost.status === 200 && viaHost.body.ok === true && Array.isArray(viaHost.body.days),
+    JSON.stringify(viaHost.body).slice(0, 120));
+  const plain = await callHost("POST", { body: { contact: { name: "Q", email: "q@example.com" } } });
+  check("no channel parameter = questionnaire traffic (unknown_segment)",
+    plain.status === 400 && plain.body.error === "unknown_segment", JSON.stringify(plain.body));
+  const plainGet = await callHost("GET", { url: "/api/questionnaire-submit?id=abcd1234-test" });
+  check("questionnaire existence check still answers on the host",
+    plainGet.status === 200 && plainGet.body.ok === true && plainGet.body.found === false,
+    JSON.stringify(plainGet.body));
 }
 
 console.log("handler — unconfigured store fails closed");

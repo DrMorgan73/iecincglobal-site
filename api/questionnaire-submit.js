@@ -72,6 +72,7 @@ import {
   insertSubmission,
   findSubmissionInDb
 } from "./_questionnaire-db.js";
+import { bookingHandler } from "./_booking-handler.js";
 
 const SEGMENTS = {
   "pharmacy": "Pharmacy Operations",
@@ -275,6 +276,20 @@ async function sendNotification(record) {
 /* ------------------------------------------------------------------ */
 
 export default async function handler(req, res) {
+  /* "Book a call" dispatch — vercel.json rewrites /api/book to
+     this endpoint with ?channel=book, and the booking logic in
+     api/_booking-handler.js is hosted here because the project's
+     Hobby plan caps serverless functions per deployment (see
+     that file's header for the full story). Requests WITHOUT the
+     channel parameter are questionnaire traffic and are handled
+     exactly as before, below. */
+  try {
+    const dispatchUrl = new URL(req.url, "https://iecincglobal.com");
+    if (dispatchUrl.searchParams.get("channel") === "book") {
+      return bookingHandler(req, res);
+    }
+  } catch (e) { /* fall through to questionnaire handling */ }
+
   if (req.method === "GET") {
     const url = new URL(req.url, "https://iecincglobal.com");
 

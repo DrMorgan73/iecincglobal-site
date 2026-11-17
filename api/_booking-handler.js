@@ -1,5 +1,23 @@
 /* =====================================================================
-   IEC — "Book a call with Dr. Mohammed Morgan" endpoint.
+   IEC — "Book a call with Dr. Mohammed Morgan" endpoint logic.
+
+   HOSTING (read before wondering where /api/book is routed): this
+   project is on Vercel's Hobby plan, which caps a deployment at
+   12 serverless functions, and the site already runs more routed
+   endpoints than a NEW function file can be added under — the
+   first version of this endpoint shipped as api/book.js and its
+   deployment failed with exceeded_serverless_functions_per_
+   deployment (verified twice, 2026-11-17). So the booking logic
+   lives here as a shared helper (underscore = never routed) and
+   is HOSTED by api/questionnaire-submit.js: vercel.json rewrites
+   /api/book → /api/questionnaire-submit?channel=book, and that
+   endpoint dispatches to bookingHandler() below when the channel
+   parameter is present. The public URL, the request/response
+   shapes and the behavior are exactly as if /api/book were its
+   own function; questionnaire traffic without the parameter is
+   untouched. If the project moves to a plan without the cap,
+   restore this file as api/book.js with a default export, delete
+   the rewrite and the dispatch, and nothing else changes.
 
    GET /api/book
      → { ok, timezone, slotMinutes, days: [ { date, slots:
@@ -217,7 +235,7 @@ async function sendNotification(record) {
 /* Handler                                                             */
 /* ------------------------------------------------------------------ */
 
-export default async function handler(req, res) {
+export async function bookingHandler(req, res) {
   if (req.method === "GET") {
     const url = new URL(req.url, "https://iecincglobal.com");
     if (!bookingsConfigured()) {
