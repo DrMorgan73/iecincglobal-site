@@ -200,8 +200,8 @@ for (const [list, seedEmail, label] of [
 const medTokens = medList.filter(a => a.token).map(a => a.token);
 const morganMed = medList.find(a => a.email === "drmohdmorgan@gmail.com");
 ok(medTokens.length === medList.length - 1 && medTokens.every(t => /^[0-9a-f]+$/.test(t)) &&
-   morganMed && morganMed.token.length === 47,
-  "medexec: every non-seed account carries a hex token (DrMorgan's hand-issued one is 47 chars)");
+   morganMed && morganMed.token.length === 48,
+  "medexec: every non-seed account carries a hex token (DrMorgan's token refreshed to 48 hex, 2026-11-16)");
 const allTokens = ASSET_IDS.flatMap(id => X.parseProvisioning(FIXTURES[id]).filter(a => a.token).map(a => a.token));
 
 const accountsView = {

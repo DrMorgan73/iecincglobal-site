@@ -124,7 +124,7 @@ check("GET returns the saved layout", r.statusCode === 200 && r.payload.layout &
 r = await call("POST", { order: ["bogus", "home", "home", 42, null], hidden: ["organizer", "vault", "nope"] });
 check("unknown ids + duplicates dropped", !r.payload.layout.order.includes("bogus") && r.payload.layout.order.filter(x => x === "home").length === 1, r.payload.layout);
 check("retired 'organizer' id dropped everywhere", !r.payload.layout.order.includes("organizer") && !r.payload.layout.hidden.includes("organizer") && r.payload.layout.hidden.includes("vault"), r.payload.layout);
-check("registry holds exactly 22 modules, organizer retired", X.MODULE_IDS.length === 22 && !X.MODULE_IDS.includes("organizer"), X.MODULE_IDS);
+check("registry holds exactly 24 modules, organizer retired", X.MODULE_IDS.length === 24 && !X.MODULE_IDS.includes("organizer"), X.MODULE_IDS);
 
 /* --- saved-layout compatibility: a pre-consolidation document ---
    A layout saved while the Organizer still existed names the
@@ -138,7 +138,7 @@ blobMock.__blobs.set("office-layout.json", {
 });
 r = await call("GET");
 check("stale layout loads, retired id gone", r.statusCode === 200 && r.payload.layout && !r.payload.layout.order.includes("organizer") && !r.payload.layout.hidden.includes("organizer"), r.payload);
-check("stale layout keeps his real picks", r.payload.layout.order[0] === "vault" && r.payload.layout.order.length === 22 && r.payload.layout.hidden.includes("trade"), r.payload.layout);
+check("stale layout keeps his real picks", r.payload.layout.order[0] === "vault" && r.payload.layout.order.length === 24 && r.payload.layout.hidden.includes("trade"), r.payload.layout);
 
 /* --- stale layout self-heal: saved before dana-followup existed --- */
 const staleOrder = X.MODULE_IDS.filter(id => id !== "dana-followup");
@@ -182,7 +182,7 @@ check("organizer.html redirects to office.html", organizerHtml.includes("/desk/o
 check("organizer.html is only a redirect (no module grid left)", !organizerHtml.includes("org-groups") && !organizerHtml.includes("OFFICE_MODULES"), null);
 check("desk.js registry has no organizer module", !deskJs.includes("id: 'organizer'") && !deskJs.includes('id:"organizer"'), null);
 const deskIds = [...deskJs.matchAll(/\{ id: '([a-z0-9-]+)',/g)].map(m => m[1]);
-check("desk.js registry and API allowlist agree exactly (22 ids)", deskIds.length === X.MODULE_IDS.length && deskIds.every(id => X.MODULE_IDS.includes(id)), deskIds);
+check("desk.js registry and API allowlist agree exactly (24 ids)", deskIds.length === X.MODULE_IDS.length && deskIds.every(id => X.MODULE_IDS.includes(id)), deskIds);
 
 if (failures) { console.error(`\n${failures} failure(s)`); process.exit(1); }
 console.log("\nAll office-layout tests passed.");
