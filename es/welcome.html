@@ -3,239 +3,144 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>IEC, Inc. | MSO de salud, Red de Datos y desarrollo de negocios internacionales</title>
-<meta name="description" content="IEC, Inc. lidera en el sector de la salud — gestión MSO, crecimiento y alianzas para organizaciones médicas y dentales — y opera la Red de Datos IEC MSO: datos bilingües y desidentificados licenciados a través de una sola contraparte.">
+<title>IEC, Inc. | International Empire Consultants, Inc. — Boston</title>
+<meta name="description" content="IEC, Inc. es una firma de consultoría en Boston — consultoría en salud, desarrollo de negocios e inversión y negocios internacionales. Sede de IEC MSO, la Red de Datos, MEDEXEC, CURAVIA, InSnap e INSNAPP.">
 <link rel="stylesheet" href="../style.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  /* Reception Desk homepage — styles scoped to this page only (rd- prefix).
+     Palette: navy #0E2A47 · screen #0A1C38 · brass #C9A227 · ivory #FAF7F0
+     · ink #26313F · steel #B8C4D6 */
+  body.rd-home { background:#FAF7F0; color:#26313F; }
+  .rd-wrap { max-width:1120px; margin:0 auto; padding:0 24px; }
+  .rd-util { background:#0E2A47; }
+  .rd-util .rd-wrap { display:flex; flex-wrap:wrap; gap:6px 20px; justify-content:flex-end; padding-top:9px; padding-bottom:9px; }
+  .rd-util a { color:#B8C4D6; font-size:13.5px; font-weight:600; letter-spacing:.02em; text-decoration:none; }
+  .rd-util a:hover { color:#C9A227; }
+  .rd-util a.rd-util-book { color:#C9A227; }
+  .rd-nameplate { text-align:center; padding:34px 24px 0; }
+  .rd-nameplate img { height:92px; width:auto; margin:0 auto; border-radius:0; }
+  .rd-name { font-family:"Playfair Display", Georgia, serif; font-weight:800; color:#0E2A47;
+             font-size:clamp(19px,3.4vw,30px); letter-spacing:.14em; margin-top:16px; }
+  .rd-city { color:#6E685C; font-size:14px; letter-spacing:.42em; margin-top:5px; text-indent:.42em; }
+  .rd-rule { height:3px; background:#C9A227; max-width:1120px; margin:20px auto 0; }
+  .rd-wall-label { text-align:center; color:#6E685C; font-size:13px; letter-spacing:.3em; margin:30px 0 12px; text-indent:.3em; }
+  .rd-frame { max-width:880px; margin:0 auto; background:#0E2A47; padding:12px; border-radius:10px;
+              box-shadow:0 18px 44px rgba(14,42,71,.30); }
+  .rd-screen { position:relative; aspect-ratio:16/9; background:#0A1C38; border-radius:4px; overflow:hidden; }
+  .rd-screen video { width:100%; height:100%; display:block; object-fit:cover; background:#0A1C38; }
+  .rd-play { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+             gap:14px; background:rgba(10,28,56,.38); border:0; cursor:pointer; width:100%; }
+  .rd-play-ring { width:86px; height:86px; border-radius:50%; border:3px solid #C9A227;
+                  display:flex; align-items:center; justify-content:center; background:rgba(10,28,56,.45); }
+  .rd-play-tri { width:0; height:0; border-top:17px solid transparent; border-bottom:17px solid transparent;
+                  border-left:27px solid #C9A227; margin-left:8px; }
+  .rd-play-txt { color:#F0EDE4; font-size:14px; letter-spacing:.18em; font-weight:600; }
+  .rd-film-cap { text-align:center; color:#6E685C; font-size:14.5px; margin:12px auto 0; max-width:880px; padding:0 24px; }
+  .rd-welcome { text-align:center; padding:38px 24px 0; }
+  .rd-welcome h1 { font-family:"Playfair Display", Georgia, serif; font-weight:800; color:#0E2A47;
+                   font-size:clamp(30px,5vw,44px); margin:0; }
+  .rd-welcome .rd-lede { color:#5A6472; font-size:clamp(16px,2.4vw,19px); margin-top:10px; }
+  .rd-welcome .rd-alt { color:#6E685C; font-size:16px; margin-top:5px; }
+  .rd-question { text-align:center; font-family:"Playfair Display", Georgia, serif; font-weight:700;
+                 color:#0E2A47; font-size:clamp(21px,3.4vw,27px); margin:30px 0 16px; padding:0 24px; }
+  .rd-cards { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+  .rd-card { background:#fff; border:2px solid #0E2A47; border-radius:10px; padding:20px 18px;
+             text-align:center; text-decoration:none; color:#26313F; font-size:17.5px; line-height:1.45;
+             display:flex; align-items:center; justify-content:center; min-height:96px; transition:border-color .15s ease, transform .15s ease; }
+  .rd-card:hover { border-color:#C9A227; transform:translateY(-2px); }
+  .rd-shelf-label { text-align:center; color:#6E685C; font-size:12.5px; letter-spacing:.22em; margin:36px 0 12px; padding:0 24px; }
+  .rd-shelf { display:flex; flex-wrap:wrap; gap:9px; justify-content:center; padding:0 24px; }
+  .rd-pill { border:2px solid #C9A227; border-radius:999px; padding:7px 18px; background:#fff; color:#0E2A47;
+             font-size:15.5px; font-weight:600; text-decoration:none; white-space:nowrap; }
+  .rd-pill:hover { background:#0E2A47; color:#F0EDE4; }
+  .rd-foot { background:#0E2A47; margin-top:44px; padding:34px 24px 26px; text-align:center; }
+  .rd-book { display:inline-block; background:#C9A227; color:#0E2A47; font-weight:800; font-size:17px;
+             padding:15px 34px; border-radius:9px; text-decoration:none; }
+  .rd-book:hover { background:#d9b544; }
+  .rd-screen-line { color:#B8C4D6; font-size:15px; margin-top:16px; }
+  .rd-screen-line a { color:#C9A227; }
+  .rd-foot-links { margin-top:20px; display:flex; flex-wrap:wrap; gap:6px 18px; justify-content:center; }
+  .rd-foot-links a { color:#B8C4D6; font-size:14px; text-decoration:none; }
+  .rd-foot-links a:hover { color:#C9A227; }
+  .rd-small { color:#8FA1B8; font-size:13px; margin-top:16px; }
+  .rd-small a { color:#B8C4D6; }
+  @media (max-width:760px){
+    .rd-cards { grid-template-columns:1fr; }
+    .rd-util .rd-wrap { justify-content:center; }
+    .rd-nameplate img { height:72px; }
+  }
+</style>
 </head>
-<body class="cc-home">
-<header class="site-header">
-  <div class="wrap header-inner">
-    <a class="brand" href="welcome.html"><img class="brand-logo" src="../assets/iec-logo-light.png" alt="IEC Inc."></a>
-    <button class="menu-btn" aria-label="Abrir menú" aria-expanded="false"><span></span><span></span><span></span></button>
-    <nav class="site-nav" aria-label="Principal">
-      <a href="welcome.html" class="active">Inicio</a>
-      <a href="about.html">Nosotros</a>
-      <a href="services.html">Capacidades</a>
-      <a href="os.html">IEC OS</a>
-      <a href="healthcare.html">Salud</a>
-      <a href="data-network.html">Red de Datos</a>
-      <a href="questionnaires.html">Cuestionarios</a>
-      <a href="real-estate.html">Bienes Raíces</a>
-      <a href="international.html">Internacional</a>
-      <a href="assets.html">Activos</a>
-      <a href="strategic-partner.html">Socio Estratégico</a>
-      <a href="project-advisory.html">Asesoría</a>
-      <a href="news.html">Noticias</a>
-      <a href="contractors.html">Portal de Socios</a>
-      <a href="welcome.html#nda">NDA</a>
-      <a href="media.html">Medios</a>
-      <a class="nav-suite" href="/desk/login.html">IEC Suite</a>
-      <a class="nav-cta" href="https://wa.me/18578671767?text=Hello%20DrMorgan%2C%20I%27d%20like%20to%20connect%20with%20IEC%20Inc.">Contactar a IEC</a>
-      <a class="lang-switch" href="../welcome.html">English</a>
-    </nav>
-  </div>
-</header>
+<body class="cc-home rd-home">
 
-<section class="cc-hero">
-  <div class="wrap">
-    <div class="cc-rule" aria-hidden="true"></div>
-    <h1>Datos de salud y experiencia clínica, <em>dirigidos desde Boston.</em></h1>
-    <p class="cc-lede">IEC, Inc. es una firma de salud, inversión y negocios internacionales. Controlamos una red multilingüe de profesionales clínicos en ejercicio — y ponemos sus datos y su criterio al servicio de los laboratorios que desarrollan IA médica.</p>
-    <div class="cc-btns">
-      <a class="cc-btn-gold" href="for-buyers.html">Licencie los datos</a>
-      <a class="cc-btn-ghost" href="for-buyers.html">Contrate a los expertos</a>
-    </div>
+<div class="rd-util">
+  <div class="rd-wrap">
+    <a href="cnda.html">Firmar el CNDA</a>
+    <a href="questionnaires.html">Cuestionarios</a>
+    <a href="contractors.html">Portal de Socios</a>
+    <a href="/desk/demos.html">Demostraciones</a>
+    <a href="media.html">Medios</a>
+    <a class="rd-util-book" href="book.html">Reservar una llamada</a>
+    <a href="../welcome.html">English</a>
+    <a href="/desk/login.html">Acceso del equipo</a>
   </div>
-</section>
+</div>
 
-<section class="cc-stats" aria-label="IEC en resumen">
-  <div class="wrap cc-stats-grid">
-    <div><b>30+</b><span>Años de experiencia combinada</span></div>
-    <div><b>500+</b><span>Escala de la red gestionada por el MSO</span></div>
-    <div><b>15,000+</b><span>Pacientes en la red principal</span></div>
-    <div><b>4</b><span>Idiomas de los proveedores — EN · ES · AR · Chino</span></div>
-  </div>
-</section>
+<div class="rd-nameplate">
+  <img src="../assets/iec-logo.png" alt="IEC Inc.">
+  <div class="rd-name">INTERNATIONAL EMPIRE CONSULTANTS, INC.</div>
+  <div class="rd-city">BOSTON</div>
+</div>
+<div class="rd-wrap"><div class="rd-rule" aria-hidden="true"></div></div>
 
-<section class="cc-wall-sec">
-  <div class="wrap">
-    <div class="eyebrow">El portafolio</div>
-    <h2>La familia de activos de IEC.</h2>
-    <p class="cc-sub">Una sola firma, un conjunto de plataformas operativas — cada una activa, cada una fortaleciendo la red.</p>
-    <div class="cc-wall">
-      <a class="cc-card" href="about.html"><b>IEC, Inc.</b><span>La firma — salud, inversión, negocios internacionales.</span></a>
-      <a class="cc-card" href="https://getmedexec.com" target="_blank" rel="noopener"><b>MEDEXEC</b><span>Plataforma ejecutiva para el liderazgo de prácticas médicas.</span></a>
-      <a class="cc-card" href="https://www.getcuravia.com" target="_blank" rel="noopener"><b>CURAVIA</b><span>Plataforma de coordinación de la atención y del recorrido del paciente.</span></a>
-      <a class="cc-card" href="https://insnap-job-engine.vercel.app" target="_blank" rel="noopener"><b>InSnap</b><span>Conexión instantánea entre prácticas y profesionales.</span></a>
-      <a class="cc-card" href="https://inssnapp.com" target="_blank" rel="noopener"><b>INSNAPP</b><span>Recuperación de citas — ningún paciente queda sin reserva.</span></a>
-      <a class="cc-card" href="data-network.html"><b>IEC MSO</b><span>Organización de servicios de gestión — la capa operativa detrás de la red, presentada de forma independiente.</span></a>
-      <a class="cc-card" href="contractors.html"><b>Portal de Socios</b><span>Acceso privado para los socios de IEC — el espacio de trabajo propio de los socios, solo por invitación.</span></a>
-    </div>
-  </div>
-</section>
-
-<section class="cc-products">
-  <div class="wrap">
-    <div class="eyebrow">Dos productos · Una red</div>
-    <h2>Escala y control, en ambas direcciones.</h2>
-    <p class="cc-sub">La misma red clínica multilingüe produce ambos productos — registros reales de pacientes para entrenamiento, y los profesionales clínicos que pueden enseñar y evaluar los modelos.</p>
-    <div class="cc-pillars">
-      <div class="cc-pillar">
-        <b>Red de Datos IEC</b>
-        <p>Registros clínicos desidentificados documentados de forma nativa en inglés y español, con profundidad en árabe — los datos más escasos en la IA médica, licenciados a laboratorios bajo NDA. Licenciados, nunca vendidos; una sola contraparte, un solo acuerdo.</p>
-        <a href="data-network.html">Explore la Red de Datos &rarr;</a>
-      </div>
-      <div class="cc-pillar">
-        <b>Red de Expertos Clínicos de IEC</b>
-        <p>Médicos en ejercicio, fisioterapeutas y profesionales de la salud para evaluación clínica, anotación y validación de modelos — bilingües en inglés/español, con profundidad en inglés/árabe, y proveedores que hablan chino.</p>
-        <a href="for-buyers.html">Para compradores y laboratorios &rarr;</a>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section class="dn-band" aria-label="Red de Datos IEC MSO">
-  <div class="wrap">
-    <div class="eyebrow">Nuevo · IEC MSO</div>
-    <h2>La Red de Datos IEC MSO — datos de prácticas, licenciados para la era de la IA.</h2>
-    <p class="dn-lede">IEC MSO opera la capa de gestión de una red de médicos de múltiples especialidades y posee su mandato exclusivo de licenciamiento de datos. Desidentificados, con derechos depurados, gobernados en cada paso — una sola contraparte, un solo acuerdo, y las especialidades y los idiomas que los compradores de IA no pueden obtener por su cuenta.</p>
-    <div class="dn-cols">
-      <div class="dn-col">
-        <span class="tag">Para prácticas</span>
-        <h3>Sus datos son un activo.</h3>
-        <p>Únase a la red y ponga sus datos desidentificados a trabajar — la propiedad nunca se transfiere, usted aprueba las categorías de compradores, y usted participa en los ingresos por licenciamiento con estados de cuenta completos.</p>
-      </div>
-      <div class="dn-col">
-        <span class="tag">Para compradores de IA</span>
-        <h3>Un acuerdo, muchas especialidades.</h3>
-        <p>Datos clínicos desidentificados por especialidad, datos operativos, corpus bilingües de forma nativa en inglés/español y flujos longitudinales — bajo licencias de uso definido con un compromiso estricto de no reidentificación.</p>
-      </div>
-    </div>
-    <p style="max-width:820px;margin:6px auto 20px;color:#d8e2f0;font-size:16.5px;line-height:1.65">La red principal cubre <strong style="color:#fff">15,000+ pacientes</strong> — e IEC MSO gestiona negocios a una escala de <strong style="color:#fff">500+</strong>, con documentación de forma nativa en inglés y español y profundidad en inglés&ndash;árabe.</p>
-    <a class="btn" href="data-network.html" style="font-size:18px;padding:16px 36px">Explore la Red de Datos &rarr;</a>
-    <a class="btn ghost" href="mailto:info@iecincglobal.com?subject=IEC%20MSO%20Data%20Network">Hable con IEC MSO</a>
-  </div>
-</section>
-
-<section class="section soft">
-  <div class="wrap">
-    <div class="eyebrow">Vea la película</div>
-    <h2>Presentamos a IEC, Inc.</h2>
-    <p>Más de treinta años de experiencia combinada, reunidos en una sola firma. Nuestro cortometraje presenta a las personas, las plataformas y las alianzas detrás de IEC — la salud primero, desde Boston para el mundo.</p>
-    <div class="hero-video" style="margin-top:22px">
-      <video controls preload="none" playsinline poster="../assets/iec-tv-commercial-poster.jpg" aria-label="Comercial de televisión de IEC Inc.">
-        <source src="../assets/iec-tv-commercial.mp4" type="video/mp4">
-        Su navegador no admite la etiqueta de video. <a href="../assets/iec-tv-commercial.mp4">Vea la película de IEC</a>.
+<div class="rd-wall-label">EN LA PARED, DETRÁS DEL ESCRITORIO</div>
+<div class="rd-wrap">
+  <div class="rd-frame">
+    <div class="rd-screen" id="rd-film">
+      <video controls preload="metadata" playsinline poster="../media/iec-data-client-video-poster.jpg" aria-label="El Programa de Red de Datos de IEC — escúchelo de nosotros">
+        <source src="../media/iec-data-client-video.mp4" type="video/mp4">
+        <track kind="subtitles" label="English" srclang="en" src="../media/iec-data-client-video.en.vtt">
+        <track kind="subtitles" label="Español" srclang="es" src="../media/iec-data-client-video.es.vtt">
+        Su navegador no admite la etiqueta de video. <a href="../media/iec-data-client-video.mp4">Ver la película de IEC</a>.
       </video>
+      <button class="rd-play" type="button" aria-label="Reproducir la película de IEC">
+        <span class="rd-play-ring"><span class="rd-play-tri"></span></span>
+        <span class="rd-play-txt">REPRODUCIR</span>
+      </button>
     </div>
   </div>
-</section>
+</div>
+<p class="rd-film-cap">El Programa de Red de Datos de IEC — IEC lo explica directamente. Subtítulos en inglés y español, con el botón CC del reproductor.</p>
 
-<section class="section">
-  <div class="wrap grid-2">
-    <div>
-      <div class="eyebrow">La ventaja de IEC</div>
-      <h2>Un solo socio para conectar estrategia, personas y ejecución.</h2>
-      <p>International Empire Consultants, Inc. es una empresa de desarrollo de negocios y consultoría estratégica con sede en Boston, construida sobre más de dos décadas de experiencia en salud y desarrollo de negocios. Ayudamos a los clientes a definir la oportunidad, llegar a los responsables de la toma de decisiones adecuados y mantener el impulso en cada etapa de un proyecto.</p>
-      <div class="trio">
-        <div><strong>Boston</strong><span>Sede en EE. UU.</span></div>
-        <div><strong>Transfronterizo</strong><span>Desarrollo de alianzas</span></div>
-        <div><strong>Multisectorial</strong><span>Experiencia coordinada</span></div>
-      </div>
-    </div>
-    <div>
-      <img src="../assets/collaboration.jpg" alt="Profesionales colaborando en un entorno empresarial moderno">
-    </div>
-  </div>
-</section>
+<div class="rd-welcome">
+  <h1>Bienvenido a IEC.</h1>
+  <p class="rd-lede">Una firma de consultoría — salud, desarrollo de negocios e inversión y negocios internacionales.</p>
+  <p class="rd-alt">Welcome to IEC.</p>
+</div>
 
-<section class="section soft">
-  <div class="wrap">
-    <div class="eyebrow">Mercados y relaciones</div>
-    <h2>Conocimiento local. Perspectiva internacional.</h2>
-    <p>Desde Boston hasta los mercados internacionales, IEC construye las relaciones de confianza necesarias para navegar sistemas desconocidos e identificar caminos creíbles hacia adelante.</p>
-    <div class="chips" style="margin-top:18px">
-      <span class="chip" style="border-color:var(--line);color:var(--navy)">Estados Unidos</span>
-      <span class="chip" style="border-color:var(--line);color:var(--navy)">CCG y Oriente Medio</span>
-      <span class="chip" style="border-color:var(--line);color:var(--navy)">Norte de África</span>
-      <span class="chip" style="border-color:var(--line);color:var(--navy)">Europa</span>
-      <span class="chip" style="border-color:var(--line);color:var(--navy)">Mercados emergentes</span>
-    </div>
-    <div class="steps">
-      <div class="step"><div class="n">01</div><h3>Comprender</h3><p>Defina la oportunidad, la audiencia y el resultado deseado.</p></div>
-      <div class="step"><div class="n">02</div><h3>Posicionar</h3><p>Formule una estrategia creíble y un mensaje listo para el mercado.</p></div>
-      <div class="step"><div class="n">03</div><h3>Conectar</h3><p>Involucre a los socios, instituciones y canales adecuados.</p></div>
-      <div class="step"><div class="n">04</div><h3>Coordinar</h3><p>Organice el seguimiento, la diligencia y las próximas acciones.</p></div>
-    </div>
+<div class="rd-question">¿Qué lo trae a IEC?</div>
+<div class="rd-wrap">
+  <div class="rd-cards">
+    <a class="rd-card" href="healthcare.html">&ldquo;Dirijo una clínica o un consultorio.&rdquo;</a>
+    <a class="rd-card" href="project-advisory.html">&ldquo;Tengo un acuerdo, una alianza, un mercado al que entrar.&rdquo;</a>
+    <a class="rd-card" href="data-network.html">&ldquo;Tengo un negocio — y mis registros valen algo.&rdquo;</a>
   </div>
-</section>
+</div>
 
-<section class="section">
-  <div class="wrap">
-    <div class="eyebrow">A quién apoya IEC</div>
-    <h2>Mandatos que cruzan funciones, sectores y fronteras.</h2>
-    <p>IEC es más valioso cuando una oportunidad requiere más que una sola presentación o una línea de trabajo aislada.</p>
-    <div class="cards">
-      <div class="card first">
-        <h3>Líderes de la salud</h3>
-        <p>Crecimiento no clínico, planificación MSO, desarrollo multisede y comercialización de tecnología.</p>
-      </div>
-      <div class="card">
-        <h3>Fundadores y ejecutivos</h3>
-        <p>Posicionamiento en el mercado, alianzas, acercamiento institucional y seguimiento disciplinado.</p>
-      </div>
-      <div class="card">
-        <h3>Propietarios e inversionistas</h3>
-        <p>Coordinación estratégica en torno a bienes raíces calificados, negocios operativos y activos complejos.</p>
-      </div>
-      <div class="card">
-        <h3>Organizaciones internacionales</h3>
-        <p>Entrada al mercado de EE. UU., contexto local, desarrollo de socios y participación transfronteriza.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section class="section soft">
-  <div class="wrap grid-2">
-    <div class="framed">
-      <img src="../assets/exam-room.jpg" alt="Sala de examen médico moderna">
-      <div class="cap">Los centros de salud son el terreno propio de IEC — la estrategia de crecimiento empieza aquí.</div>
-    </div>
-    <div>
-      <div class="eyebrow">La salud primero</div>
-      <h2>Cuatro disciplinas para organizaciones de salud más fuertes.</h2>
-      <p>IEC lidera con la salud. Nuestro trabajo con organizaciones médicas y dentales se concentra en cuatro áreas:</p>
-      <ul class="check">
-        <li><strong>Crecimiento no clínico</strong> — planificación de líneas de servicio, desarrollo de referencias y posicionamiento en el mercado que respetan la independencia clínica.</li>
-        <li><strong>Planificación MSO</strong> — estructuras de servicios de gestión que separan las operaciones comerciales de la toma de decisiones clínicas.</li>
-        <li><strong>Desarrollo multisede</strong> — modelos operativos repetibles para una expansión regional controlada.</li>
-        <li><strong>Comercialización de tecnología</strong> — caminos prácticos que llevan la tecnología de salud desde el piloto hasta la adopción.</li>
-      </ul>
-      <a class="btn dark" href="healthcare.html">Explore la salud</a>
-    </div>
-  </div>
-</section>
-
-<section class="section soft">
-  <div class="wrap">
-    <div class="eyebrow">Liderazgo</div>
-    <h2>Dr. Mohammed M. Morgan, M.D.</h2>
-    <p><strong>Fundador y director ejecutivo</strong></p>
-    <div class="leader">
-      <img src="../assets/drmorgan-portrait.webp" alt="Dr. Mohammed M. Morgan, fundador y director ejecutivo de IEC Inc.">
-      <div>
-        <p>El Dr. Morgan lidera el desarrollo de negocios internacionales, las alianzas estratégicas y las iniciativas de crecimiento en salud de IEC. Combina comprensión clínica, estrategia comercial y una red internacional basada en relaciones para ayudar a las organizaciones a navegar oportunidades complejas.</p>
-        <div class="quote">&ldquo;Creamos alineación entre una oportunidad sólida, las personas adecuadas y un camino creíble hacia adelante.&rdquo;</div>
-        <div class="quote">&ldquo;La tecnología debe eliminar el esfuerzo desperdiciado para que las personas puedan hacer el trabajo que solo las personas pueden hacer.&rdquo;<div style="font-size:15px;font-style:normal;color:var(--muted);margin-top:8px">— Creencia operativa de IEC</div></div>
-        <a class="btn dark" href="about.html">Nosotros</a>
-      </div>
-    </div>
-  </div>
-</section>
+<div class="rd-shelf-label">LOS INSTRUMENTOS DE LA FIRMA — EN EL ESTANTE, SE TOMAN CUANDO SU ASUNTO LOS NECESITA</div>
+<div class="rd-shelf">
+  <a class="rd-pill" href="data-network.html">IEC MSO</a>
+  <a class="rd-pill" href="healthcare.html">ClearLine Compliance</a>
+  <a class="rd-pill" href="data-network.html">Red de Datos</a>
+  <a class="rd-pill" href="https://getmedexec.com" target="_blank" rel="noopener">MEDEXEC</a>
+  <a class="rd-pill" href="https://www.getcuravia.com" target="_blank" rel="noopener">CURAVIA</a>
+  <a class="rd-pill" href="https://insnap-job-engine.vercel.app" target="_blank" rel="noopener">InSnap</a>
+  <a class="rd-pill" href="https://inssnapp.com" target="_blank" rel="noopener">INSNAPP</a>
+  <a class="rd-pill" href="contractors.html">Portal de Socios</a>
+</div>
 
 <section class="section nda-section" id="nda">
   <div class="wrap">
@@ -310,71 +215,34 @@
   </div>
 </section>
 
-<footer class="site-footer">
-  <div class="wrap">
-    <div class="foot-grid">
-      <div class="foot-brand">
-        <div class="brand"><img class="brand-logo foot-logo" src="../assets/iec-logo-light.png" alt="IEC Inc."></div>
-        <p>International Empire Consultants, Inc. — Desarrollo de negocios y consultoría estratégica con sede en Boston en los sectores de salud, tecnología, bienes raíces y mercados internacionales durante más de una década.</p>
-      </div>
-      <nav class="foot-col" aria-label="Explorar">
-        <h4>Explorar</h4>
-        <a href="welcome.html">Inicio</a>
-        <a href="services.html">Capacidades</a>
-        <a href="healthcare.html">Salud</a>
-        <a href="data-network.html">Red de Datos</a>
-        <a href="questionnaires.html">Cuestionarios</a>
-        <a href="real-estate.html">Bienes Raíces</a>
-        <a href="international.html">Internacional</a>
-        <a href="assets.html">Activos</a>
-        <a href="news.html">Noticias</a>
-      </nav>
-      <nav class="foot-col" aria-label="IEC OS">
-        <h4>IEC OS</h4>
-        <a href="os.html">Descripción general</a>
-        <a href="os-medical.html">Para el sector médico</a>
-        <a href="os-dental.html">Para el sector dental</a>
-      </nav>
-      <nav class="foot-col" aria-label="Compañía">
-        <h4>Compañía</h4>
-        <a href="about.html">Nosotros</a>
-        <a href="strategic-partner.html">Socio Estratégico</a>
-        <a href="project-advisory.html">Asesoría</a>
-        <a href="welcome.html#nda">NDA mutuo</a>
-        <a href="contact.html">Contacto</a>
-      </nav>
-    </div>
-    <div class="foot-bottom">
-      <div class="copyright">&copy; 2026 International Empire Consultants, Inc. Todos los derechos reservados. &middot; <a href="privacy.html">Privacidad</a> &middot; <a href="/desk/login.html">Acceso del equipo</a> &middot; Desarrollado por IEC, Inc.</div>
-      <button class="to-top" id="toTop" aria-label="Volver arriba">&#8593;</button>
-    </div>
-    <details class="credits">
-          <summary>Créditos de fotos</summary>
-          <ul>
-          <li>hospital-exterior.jpg — <a href="https://www.flickr.com/photos/38881927@N00/5936305758" target="_blank" rel="noopener">DoNotLick (CC BY 2.0)</a></li>
-          <li>medical-team.jpg — <a href="https://www.flickr.com/photos/130928109@N04/29720272855" target="_blank" rel="noopener">agilemktg1 (Public Domain)</a></li>
-          <li>dental-clinic.jpg — <a href="https://www.flickr.com/photos/107816323@N06/11042914615" target="_blank" rel="noopener">sunnyviewdental (CC BY 2.0)</a></li>
-          <li>business-team.jpg — <a href="https://www.flickr.com/photos/154254674@N05/45064629294" target="_blank" rel="noopener">Rawpixel Ltd (CC BY 2.0)</a></li>
-          <li>boston-skyline-2.jpg — <a href="https://www.flickr.com/photos/ekilby/10567300896" target="_blank" rel="noopener">Eric Kilby (CC BY-SA 2.0)</a></li>
-          <li>handshake.jpg — <a href="https://www.flickr.com/photos/121935927@N06/13903385550" target="_blank" rel="noopener">flazingo_photos (CC BY-SA 2.0)</a></li>
-          <li>strategy-whiteboard.jpg — <a href="https://stocksnap.io" target="_blank" rel="noopener">Kristin Hardwick / StockSnap (CC0)</a></li>
-          <li>conference.jpg — <a href="https://www.flickr.com/photos/ctbto/5815579678" target="_blank" rel="noopener">CTBTO (CC BY 2.0)</a></li>
-          <li>clinic-interior.jpg — <a href="https://www.flickr.com/photos/38143481@N00/5064296031" target="_blank" rel="noopener">Gareth.D.Jones (CC BY 2.0)</a></li>
-          <li>datacenter.jpg — <a href="https://www.flickr.com/photos/scobleizer/2340202215" target="_blank" rel="noopener">Robert Scoble (CC BY 2.0)</a></li>
-          <li>developers.jpg — <a href="https://www.flickr.com/photos/infusionsoft/4443187649" target="_blank" rel="noopener">Infusionsoft (CC BY-SA 2.0)</a></li>
-          <li>office-building.jpg — <a href="https://commons.wikimedia.org/wiki/File:GECU_corporate_headquarters_building.jpg" target="_blank" rel="noopener">Dimples915 / Wikimedia Commons (CC BY-SA 3.0)</a></li>
-          <li>hotel-lobby.jpg — <a href="https://commons.wikimedia.org/wiki/File:MGM_Grand_Macau_Hotel_Lobby_Interior.jpg" target="_blank" rel="noopener">WiNG / Wikimedia Commons (CC BY 3.0)</a></li>
-          <li>residential.jpg — <a href="https://www.flickr.com/photos/87913776@N00/4006681320" target="_blank" rel="noopener">futureatlas.com (CC BY 2.0)</a></li>
-          <li>cargo-port.jpg — <a href="https://www.flickr.com/photos/jdnx/3464243881" target="_blank" rel="noopener">jdnx (CC BY 2.0)</a></li>
-          <li>airplane-wing.jpg — <a href="https://commons.wikimedia.org/wiki/File:Airplane_wing_sky_and_clouds.jpg" target="_blank" rel="noopener">Tobias1984 / Wikimedia Commons (CC BY-SA 3.0)</a></li>
-          <li>boardroom.jpg — <a href="https://www.flickr.com/photos/8662416@N02/388854313" target="_blank" rel="noopener">Bludgeoner86 (CC BY 2.0)</a></li>
-          <li>private-jet.jpg — <a href="https://www.flickr.com/photos/string_bass_dave/2858142573" target="_blank" rel="noopener">string_bass_dave (CC BY-SA 2.0)</a></li>
-            <li>Fotografía adicional del sitio: IEC Inc. y fuentes públicas.</li>
-          </ul>
-        </details>
-  </div>
+
+<footer class="rd-foot">
+  <a class="rd-book" href="book.html">Reservar una llamada — la agenda está sobre el escritorio</a>
+  <p class="rd-screen-line">Las películas largas esperan en la sala de proyección — la <a href="media.html">página de Medios</a>: la película del programa de datos, y cómo viajan sus datos a un laboratorio.</p>
+  <nav class="rd-foot-links" aria-label="Explorar">
+    <a href="about.html">Nosotros</a>
+    <a href="services.html">Capacidades</a>
+    <a href="healthcare.html">Salud</a>
+    <a href="data-network.html">Red de Datos</a>
+    <a href="international.html">Internacional</a>
+    <a href="news.html">Noticias</a>
+    <a href="contact.html">Contacto</a>
+  </nav>
+  <p class="rd-small">&copy; 2026 International Empire Consultants, Inc. Todos los derechos reservados. &middot; <a href="privacy.html">Privacidad</a> &middot; <a href="/desk/login.html">Acceso del equipo</a> &middot; Desarrollado por IEC, Inc.</p>
 </footer>
 <script src="../nav.js" defer></script>
 <script src="../nda.js" defer></script>
+<script>
+/* Reception Desk film — brass play overlay; the film itself never autoplays. */
+(function(){
+  var box = document.getElementById('rd-film');
+  if (!box) return;
+  var v = box.querySelector('video');
+  var b = box.querySelector('.rd-play');
+  if (!v || !b) return;
+  b.addEventListener('click', function(){ v.play(); });
+  v.addEventListener('play', function(){ b.style.display = 'none'; });
+})();
+</script>
 </body>
 </html>

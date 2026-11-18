@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IEC, Inc. | International Empire Consultants, Inc. — Boston</title>
+<meta name="description" content="IEC, Inc. es una firma de consultoría en Boston — consultoría en salud, desarrollo de negocios e inversión y negocios internacionales. Sede de IEC MSO, la Red de Datos, MEDEXEC, CURAVIA, InSnap e INSNAPP.">
+<link rel="stylesheet" href="../style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  /* Reception Desk homepage — styles scoped to this page only (rd- prefix).
+     Palette: navy #0E2A47 · screen #0A1C38 · brass #C9A227 · ivory #FAF7F0
+     · ink #26313F · steel #B8C4D6 */
+  body.rd-home { background:#FAF7F0; color:#26313F; }
+  .rd-wrap { max-width:1120px; margin:0 auto; padding:0 24px; }
+  .rd-util { background:#0E2A47; }
+  .rd-util .rd-wrap { display:flex; flex-wrap:wrap; gap:6px 20px; justify-content:flex-end; padding-top:9px; padding-bottom:9px; }
+  .rd-util a { color:#B8C4D6; font-size:13.5px; font-weight:600; letter-spacing:.02em; text-decoration:none; }
+  .rd-util a:hover { color:#C9A227; }
+  .rd-util a.rd-util-book { color:#C9A227; }
+  .rd-nameplate { text-align:center; padding:34px 24px 0; }
+  .rd-nameplate img { height:92px; width:auto; margin:0 auto; border-radius:0; }
+  .rd-name { font-family:"Playfair Display", Georgia, serif; font-weight:800; color:#0E2A47;
+             font-size:clamp(19px,3.4vw,30px); letter-spacing:.14em; margin-top:16px; }
+  .rd-city { color:#6E685C; font-size:14px; letter-spacing:.42em; margin-top:5px; text-indent:.42em; }
+  .rd-rule { height:3px; background:#C9A227; max-width:1120px; margin:20px auto 0; }
+  .rd-wall-label { text-align:center; color:#6E685C; font-size:13px; letter-spacing:.3em; margin:30px 0 12px; text-indent:.3em; }
+  .rd-frame { max-width:880px; margin:0 auto; background:#0E2A47; padding:12px; border-radius:10px;
+              box-shadow:0 18px 44px rgba(14,42,71,.30); }
+  .rd-screen { position:relative; aspect-ratio:16/9; background:#0A1C38; border-radius:4px; overflow:hidden; }
+  .rd-screen video { width:100%; height:100%; display:block; object-fit:cover; background:#0A1C38; }
+  .rd-play { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+             gap:14px; background:rgba(10,28,56,.38); border:0; cursor:pointer; width:100%; }
+  .rd-play-ring { width:86px; height:86px; border-radius:50%; border:3px solid #C9A227;
+                  display:flex; align-items:center; justify-content:center; background:rgba(10,28,56,.45); }
+  .rd-play-tri { width:0; height:0; border-top:17px solid transparent; border-bottom:17px solid transparent;
+                  border-left:27px solid #C9A227; margin-left:8px; }
+  .rd-play-txt { color:#F0EDE4; font-size:14px; letter-spacing:.18em; font-weight:600; }
+  .rd-film-cap { text-align:center; color:#6E685C; font-size:14.5px; margin:12px auto 0; max-width:880px; padding:0 24px; }
+  .rd-welcome { text-align:center; padding:38px 24px 0; }
+  .rd-welcome h1 { font-family:"Playfair Display", Georgia, serif; font-weight:800; color:#0E2A47;
+                   font-size:clamp(30px,5vw,44px); margin:0; }
+  .rd-welcome .rd-lede { color:#5A6472; font-size:clamp(16px,2.4vw,19px); margin-top:10px; }
+  .rd-welcome .rd-alt { color:#6E685C; font-size:16px; margin-top:5px; }
+  .rd-question { text-align:center; font-family:"Playfair Display", Georgia, serif; font-weight:700;
+                 color:#0E2A47; font-size:clamp(21px,3.4vw,27px); margin:30px 0 16px; padding:0 24px; }
+  .rd-cards { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+  .rd-card { background:#fff; border:2px solid #0E2A47; border-radius:10px; padding:20px 18px;
+             text-align:center; text-decoration:none; color:#26313F; font-size:17.5px; line-height:1.45;
+             display:flex; align-items:center; justify-content:center; min-height:96px; transition:border-color .15s ease, transform .15s ease; }
+  .rd-card:hover { border-color:#C9A227; transform:translateY(-2px); }
+  .rd-shelf-label { text-align:center; color:#6E685C; font-size:12.5px; letter-spacing:.22em; margin:36px 0 12px; padding:0 24px; }
+  .rd-shelf { display:flex; flex-wrap:wrap; gap:9px; justify-content:center; padding:0 24px; }
+  .rd-pill { border:2px solid #C9A227; border-radius:999px; padding:7px 18px; background:#fff; color:#0E2A47;
+             font-size:15.5px; font-weight:600; text-decoration:none; white-space:nowrap; }
+  .rd-pill:hover { background:#0E2A47; color:#F0EDE4; }
+  .rd-foot { background:#0E2A47; margin-top:44px; padding:34px 24px 26px; text-align:center; }
+  .rd-book { display:inline-block; background:#C9A227; color:#0E2A47; font-weight:800; font-size:17px;
+             padding:15px 34px; border-radius:9px; text-decoration:none; }
+  .rd-book:hover { background:#d9b544; }
+  .rd-screen-line { color:#B8C4D6; font-size:15px; margin-top:16px; }
+  .rd-screen-line a { color:#C9A227; }
+  .rd-foot-links { margin-top:20px; display:flex; flex-wrap:wrap; gap:6px 18px; justify-content:center; }
+  .rd-foot-links a { color:#B8C4D6; font-size:14px; text-decoration:none; }
+  .rd-foot-links a:hover { color:#C9A227; }
+  .rd-small { color:#8FA1B8; font-size:13px; margin-top:16px; }
+  .rd-small a { color:#B8C4D6; }
+  @media (max-width:760px){
+    .rd-cards { grid-template-columns:1fr; }
+    .rd-util .rd-wrap { justify-content:center; }
+    .rd-nameplate img { height:72px; }
+  }
+</style>
+</head>
+<body class="cc-home rd-home">
+
+<div class="rd-util">
+  <div class="rd-wrap">
+    <a href="cnda.html">Firmar el CNDA</a>
+    <a href="questionnaires.html">Cuestionarios</a>
+    <a href="contractors.html">Portal de Socios</a>
+    <a href="/desk/demos.html">Demostraciones</a>
+    <a href="media.html">Medios</a>
+    <a class="rd-util-book" href="book.html">Reservar una llamada</a>
+    <a href="../welcome.html">English</a>
+    <a href="/desk/login.html">Acceso del equipo</a>
+  </div>
+</div>
+
+<div class="rd-nameplate">
+  <img src="../assets/iec-logo.png" alt="IEC Inc.">
+  <div class="rd-name">INTERNATIONAL EMPIRE CONSULTANTS, INC.</div>
+  <div class="rd-city">BOSTON</div>
+</div>
+<div class="rd-wrap"><div class="rd-rule" aria-hidden="true"></div></div>
+
+<div class="rd-wall-label">EN LA PARED, DETRÁS DEL ESCRITORIO</div>
+<div class="rd-wrap">
+  <div class="rd-frame">
+    <div class="rd-screen" id="rd-film">
+      <video controls preload="metadata" playsinline poster="../media/iec-data-client-video-poster.jpg" aria-label="El Programa de Red de Datos de IEC — escúchelo de nosotros">
+        <source src="../media/iec-data-client-video.mp4" type="video/mp4">
+        <track kind="subtitles" label="English" srclang="en" src="../media/iec-data-client-video.en.vtt">
+        <track kind="subtitles" label="Español" srclang="es" src="../media/iec-data-client-video.es.vtt">
+        Su navegador no admite la etiqueta de video. <a href="../media/iec-data-client-video.mp4">Ver la película de IEC</a>.
+      </video>
+      <button class="rd-play" type="button" aria-label="Reproducir la película de IEC">
+        <span class="rd-play-ring"><span class="rd-play-tri"></span></span>
+        <span class="rd-play-txt">REPRODUCIR</span>
+      </button>
+    </div>
+  </div>
+</div>
+<p class="rd-film-cap">El Programa de Red de Datos de IEC — IEC lo explica directamente. Subtítulos en inglés y español, con el botón CC del reproductor.</p>
+
+<div class="rd-welcome">
+  <h1>Bienvenido a IEC.</h1>
+  <p class="rd-lede">Una firma de consultoría — salud, desarrollo de negocios e inversión y negocios internacionales.</p>
+  <p class="rd-alt">Welcome to IEC.</p>
+</div>
+
+<div class="rd-question">¿Qué lo trae a IEC?</div>
+<div class="rd-wrap">
+  <div class="rd-cards">
+    <a class="rd-card" href="healthcare.html">&ldquo;Dirijo una clínica o un consultorio.&rdquo;</a>
+    <a class="rd-card" href="project-advisory.html">&ldquo;Tengo un acuerdo, una alianza, un mercado al que entrar.&rdquo;</a>
+    <a class="rd-card" href="data-network.html">&ldquo;Tengo un negocio — y mis registros valen algo.&rdquo;</a>
+  </div>
+</div>
+
+<div class="rd-shelf-label">LOS INSTRUMENTOS DE LA FIRMA — EN EL ESTANTE, SE TOMAN CUANDO SU ASUNTO LOS NECESITA</div>
+<div class="rd-shelf">
+  <a class="rd-pill" href="data-network.html">IEC MSO</a>
+  <a class="rd-pill" href="healthcare.html">ClearLine Compliance</a>
+  <a class="rd-pill" href="data-network.html">Red de Datos</a>
+  <a class="rd-pill" href="https://getmedexec.com" target="_blank" rel="noopener">MEDEXEC</a>
+  <a class="rd-pill" href="https://www.getcuravia.com" target="_blank" rel="noopener">CURAVIA</a>
+  <a class="rd-pill" href="https://insnap-job-engine.vercel.app" target="_blank" rel="noopener">InSnap</a>
+  <a class="rd-pill" href="https://inssnapp.com" target="_blank" rel="noopener">INSNAPP</a>
+  <a class="rd-pill" href="contractors.html">Portal de Socios</a>
+</div>
+
+<section class="section nda-section" id="nda">
+  <div class="wrap">
+    <div class="legal-intro">
+      <div>
+        <div class="eyebrow">Revisión guiada del NDA</div>
+        <h2>Comprenda cada sección antes de firmar.</h2>
+      </div>
+      <div>
+        <p>Revise el NDA mutuo de IEC una sección a la vez y haga preguntas al asistente. Cuando cada sección esté marcada como revisada, complete los datos del acuerdo y firme &mdash; la copia ejecutada es registrada por IEC y enviada por correo electrónico a usted y a IEC. Las páginas públicas son una descripción general; los detalles específicos sobre cualquier activo de IEC se comparten bajo NDA, y esta es la puerta de entrada.</p>
+        <div class="nda-lang-toggle" role="group" aria-label="Idioma del NDA">
+          <button type="button" id="nda-lang-en" class="active">EN</button>
+          <button type="button" id="nda-lang-es">ES</button>
+        </div>
+      </div>
+    </div>
+    <div class="legal-workspace">
+      <aside class="doc-nav" aria-label="NDA mutuo">
+        <p class="doc-nav-title" id="sections-label">Secciones del documento</p>
+        <div class="doc-nav-list" id="doc-nav-list"></div>
+        <div class="doc-progress-track" aria-hidden="true"><span id="progress-bar"></span></div>
+        <button class="step-button reset-matter" type="button" id="reset-matter">Restablecer (empezar de nuevo)</button>
+        <p class="reset-status" id="reset-status" role="status"></p>
+        <p class="public-scope">Este flujo público cubre únicamente el NDA mutuo de IEC. Otros acuerdos comerciales &mdash; incluidos los términos de BAA, MSO, SaaS, DPA y de contratistas &mdash; se gestionan directamente con IEC.</p>
+      </aside>
+
+      <article class="doc-reader" aria-live="polite">
+        <div class="doc-meta"><span class="doc-progress" id="doc-label">NDA mutuo &middot; Sección 1 de 12</span></div>
+        <h3 id="doc-title"></h3>
+        <p class="doc-purpose" id="doc-summary"></p>
+        <div class="doc-section" id="doc-copy"></div>
+        <div class="doc-controls">
+          <button class="step-button" id="prev-section" type="button">&larr; Anterior</button>
+          <button class="step-button primary" id="review-section" type="button">Marcar como revisado y continuar</button>
+        </div>
+        <section class="sign-form" id="signature-panel" aria-labelledby="signature-title">
+          <p class="doc-progress" id="signature-label">Paso final &middot; Copia del firmante</p>
+          <h4 id="signature-title">Complete el acuerdo y firme</h4>
+          <p id="signature-intro">Todas las secciones han sido revisadas. Complete cada dato del acuerdo y agregue la firma escrita de la contraparte firmante.</p>
+          <form id="signature-form">
+            <div class="sign-fields">
+              <div class="sign-field"><label for="effective-date" id="effective-date-label">Fecha de entrada en vigor</label><input id="effective-date" type="date" required /></div>
+              <div class="sign-field"><label for="iec-state" id="iec-state-label">Estado de constitución de IEC</label><input id="iec-state" required autocomplete="address-level1" placeholder="Massachusetts" /></div>
+              <div class="sign-field"><label for="party-name" id="party-label">Nombre legal de la contraparte</label><input id="party-name" required autocomplete="organization" /></div>
+              <div class="sign-field"><label for="entity-type-state" id="entity-type-state-label">Tipo de entidad y estado de la contraparte</label><input id="entity-type-state" required placeholder="Sociedad de responsabilidad limitada de Massachusetts" /></div>
+              <div class="sign-field full"><label for="counterparty-address" id="address-label">Dirección principal de la contraparte</label><input id="counterparty-address" required autocomplete="street-address" /></div>
+              <div class="sign-field full"><label for="agreement-purpose" id="purpose-label">Propósito</label><input id="agreement-purpose" required placeholder="una posible relación comercial con IEC, Inc." /></div>
+              <div class="sign-field"><label for="printed-name" id="printed-label">Nombre en letra de imprenta del firmante de la contraparte</label><input id="printed-name" required autocomplete="name" /></div>
+              <div class="sign-field"><label for="signer-email" id="signer-email-label">Correo electrónico del firmante para la copia ejecutada</label><input id="signer-email" type="email" required autocomplete="email" /></div>
+              <div class="sign-field"><label for="signature-date" id="date-label">Fecha de la firma</label><input id="signature-date" type="date" required /></div>
+              <div class="sign-field"><label for="signer-title" id="title-label">Cargo del firmante (opcional)</label><input id="signer-title" autocomplete="organization-title" /></div>
+              <div class="sign-field full"><label for="typed-signature" id="typed-label">Firma escrita</label><input class="signature-input" id="typed-signature" required placeholder="Escriba su nombre legal completo" /></div>
+            </div>
+            <button class="download-signed" type="submit" id="download-signed">Firmar el acuerdo</button>
+            <button class="step-button download-copy" type="button" id="download-copy" hidden>Descargar la copia firmada (PDF)</button>
+            <p class="form-note" id="form-status" role="status"></p>
+            <p class="fine-print" id="signature-fine">Cuando usted firma y envía, el NDA ejecutado es registrado por IEC, Inc., y una copia en PDF ejecutada se envía por correo electrónico a IEC a info@iecincglobal.com y a usted a la dirección de correo electrónico indicada arriba. También puede descargar el PDF firmado para sus propios registros.</p>
+          </form>
+        </section>
+      </article>
+
+      <aside class="assistant-panel" aria-label="Asistente del documento">
+        <div class="assistant-head"><strong id="assistant-name">Guía de documentos de IEC</strong><span id="assistant-limit">Explicaciones sección por sección basadas en este acuerdo</span></div>
+        <div class="chat-log" id="chat-log" aria-live="polite"></div>
+        <div class="quick-asks" id="quick-asks"></div>
+        <form class="chat-composer" id="chat-form">
+          <input id="chat-question" aria-label="Pregunte sobre este acuerdo" placeholder="Pregunte sobre confidencialidad, plazo&hellip;" autocomplete="off" />
+          <button class="chat-send" type="submit" id="chat-send">Preguntar</button>
+        </form>
+      </aside>
+    </div>
+  </div>
+</section>
+
+
+<footer class="rd-foot">
+  <a class="rd-book" href="book.html">Reservar una llamada — la agenda está sobre el escritorio</a>
+  <p class="rd-screen-line">Las películas largas esperan en la sala de proyección — la <a href="media.html">página de Medios</a>: la película del programa de datos, y cómo viajan sus datos a un laboratorio.</p>
+  <nav class="rd-foot-links" aria-label="Explorar">
+    <a href="about.html">Nosotros</a>
+    <a href="services.html">Capacidades</a>
+    <a href="healthcare.html">Salud</a>
+    <a href="data-network.html">Red de Datos</a>
+    <a href="international.html">Internacional</a>
+    <a href="news.html">Noticias</a>
+    <a href="contact.html">Contacto</a>
+  </nav>
+  <p class="rd-small">&copy; 2026 International Empire Consultants, Inc. Todos los derechos reservados. &middot; <a href="privacy.html">Privacidad</a> &middot; <a href="/desk/login.html">Acceso del equipo</a> &middot; Desarrollado por IEC, Inc.</p>
+</footer>
+<script src="../nav.js" defer></script>
+<script src="../nda.js" defer></script>
+<script>
+/* Reception Desk film — brass play overlay; the film itself never autoplays. */
+(function(){
+  var box = document.getElementById('rd-film');
+  if (!box) return;
+  var v = box.querySelector('video');
+  var b = box.querySelector('.rd-play');
+  if (!v || !b) return;
+  b.addEventListener('click', function(){ v.play(); });
+  v.addEventListener('play', function(){ b.style.display = 'none'; });
+})();
+</script>
+</body>
+</html>
