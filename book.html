@@ -11,11 +11,20 @@
   .bkcard { border: 1px solid var(--line); border-radius: var(--radius); padding: 26px 28px; margin: 0 0 22px; background: #fff; }
   .bkcard h3 { color: var(--navy); margin: 0 0 6px; font-size: 20px; }
   .bkcard p.bksub { color: var(--muted); margin: 0 0 18px; font-size: 15px; }
-  .bkdays { display: flex; flex-wrap: wrap; gap: 9px; margin: 0 0 22px; }
-  .bkday { border: 1px solid #c9c2b2; background: #fff; border-radius: 10px; padding: 9px 13px; font: inherit; font-size: 15px; cursor: pointer; text-align: center; line-height: 1.3; color: var(--ink); }
-  .bkday small { display: block; color: var(--muted); font-size: 12.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
-  .bkday[aria-pressed="true"] { background: var(--navy); border-color: var(--navy); color: #fff; }
-  .bkday[aria-pressed="true"] small { color: var(--gold-soft); }
+  .bkcal { max-width: 400px; margin: 0 0 22px; }
+  .bkcal-head { display: flex; align-items: center; justify-content: space-between; margin: 0 0 10px; }
+  .bkcal-month { font-weight: 700; color: var(--navy); font-size: 17px; }
+  .bkcal-nav { border: 1px solid #c9c2b2; background: #fff; border-radius: 8px; width: 34px; height: 34px; font-size: 20px; line-height: 1; cursor: pointer; color: var(--ink); }
+  .bkcal-nav:disabled { opacity: .35; cursor: default; }
+  .bkcal-week, .bkcal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .bkcal-week { margin: 0 0 4px; }
+  .bkcal-week span { text-align: center; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); padding: 4px 0; }
+  .bkcal-blank { height: 40px; }
+  .bkcal-day { border: 1px solid transparent; background: transparent; border-radius: 50%; width: 40px; height: 40px; justify-self: center; font: inherit; font-size: 15px; cursor: pointer; color: var(--ink); }
+  .bkcal-day:hover:not(:disabled) { border-color: var(--gold); }
+  .bkcal-day:disabled { color: #bdb5a3; cursor: default; }
+  .bkcal-day.is-today { border-color: var(--gold); font-weight: 700; }
+  .bkcal-day.is-selected { background: var(--navy); border-color: var(--navy); color: #fff; font-weight: 700; }
   .bkslots { display: flex; flex-wrap: wrap; gap: 9px; }
   .bkslot { border: 1px solid #c9c2b2; background: #fff; border-radius: 10px; padding: 10px 16px; font: inherit; font-size: 15.5px; cursor: pointer; color: var(--ink); min-width: 118px; }
   .bkslot[aria-pressed="true"] { background: var(--navy); border-color: var(--navy); color: #fff; font-weight: 700; }
@@ -80,7 +89,15 @@
       <div class="bkcard">
         <h3>1 · Pick a day and a time</h3>
         <p class="bksub">30 minutes · Monday to Friday · Eastern Time. Times already booked are not shown.</p>
-        <div id="bkDays" class="bkdays" role="group" aria-label="Choose a day"></div>
+        <div class="bkcal">
+          <div class="bkcal-head">
+            <button type="button" id="bkPrev" class="bkcal-nav" aria-label="Previous month">&#8249;</button>
+            <div id="bkMonth" class="bkcal-month" aria-live="polite"></div>
+            <button type="button" id="bkNext" class="bkcal-nav" aria-label="Next month">&#8250;</button>
+          </div>
+          <div class="bkcal-week" id="bkWeek" aria-hidden="true"></div>
+          <div id="bkDays" class="bkcal-grid" role="group" aria-label="Choose a day"></div>
+        </div>
         <div id="bkSlots" class="bkslots" role="group" aria-label="Choose a time"></div>
         <p id="bkLoading" class="bkloading">Loading available times…</p>
       </div>
@@ -180,30 +197,97 @@
   var form = document.getElementById("bkForm");
   var days = [];
   var sel = null; // { date, time, startUtc }
+  var viewYear = 0, viewMonth = 0; // month on display in the calendar (month 1-12)
 
-  var dayFmt = new Intl.DateTimeFormat("en-US", { timeZone: TZ, weekday: "short" });
-  var dayNumFmt = new Intl.DateTimeFormat("en-US", { timeZone: TZ, month: "short", day: "numeric" });
+  var monthFmt = new Intl.DateTimeFormat("en-US", { timeZone: "UTC", month: "long", year: "numeric" });
+  var weekFmt = new Intl.DateTimeFormat("en-US", { timeZone: "UTC", weekday: "short" });
   var timeFmt = new Intl.DateTimeFormat("en-US", { timeZone: TZ, hour: "numeric", minute: "2-digit" });
   var longFmt = new Intl.DateTimeFormat("en-US", { timeZone: TZ, weekday: "long", month: "long", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "short" });
 
   function showErr(html) { errEl.innerHTML = html; errEl.style.display = "block"; }
   function hideErr() { errEl.style.display = "none"; }
 
-  function renderDays() {
-    daysEl.innerHTML = "";
-    days.forEach(function (d, i) {
-      var b = document.createElement("button");
-      b.type = "button";
-      b.className = "bkday";
-      var first = new Date(d.slots[0].startUtc);
-      b.innerHTML = "<small></small><span></span>";
-      b.querySelector("small").textContent = dayFmt.format(first);
-      b.querySelector("span").textContent = dayNumFmt.format(first);
-      b.setAttribute("aria-pressed", sel && sel.date === d.date ? "true" : "false");
-      b.addEventListener("click", function () { selectDay(i); });
-      daysEl.appendChild(b);
-    });
+  function pad2(n) { return String(n).padStart(2, "0"); }
+  function dateStrOf(y, m, d) { return y + "-" + pad2(m) + "-" + pad2(d); }
+  function todayStr() {
+    var p = {};
+    new Intl.DateTimeFormat("en-US", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit" })
+      .formatToParts(new Date()).forEach(function (x) { p[x.type] = x.value; });
+    return p.year + "-" + p.month + "-" + p.day;
   }
+
+  /* Month-view calendar (Calendly-style): a day is selectable only
+     when the availability API returned it — weekends, past days and
+     days beyond the booking horizon never come back, so they render
+     disabled. Prev/next cannot leave the span from today's month to
+     the last available day's month. */
+  function renderCalendar() {
+    var monthEl = document.getElementById("bkMonth");
+    var prevBtn = document.getElementById("bkPrev");
+    var nextBtn = document.getElementById("bkNext");
+    daysEl.innerHTML = "";
+    if (!days.length || !viewYear) {
+      monthEl.textContent = "";
+      prevBtn.disabled = true; nextBtn.disabled = true;
+      return;
+    }
+    monthEl.textContent = monthFmt.format(new Date(Date.UTC(viewYear, viewMonth - 1, 1)));
+    var tp = todayStr().split("-");
+    var minY = Number(tp[0]), minM = Number(tp[1]);
+    var lp = days[days.length - 1].date.split("-");
+    var maxY = Number(lp[0]), maxM = Number(lp[1]);
+    prevBtn.disabled = viewYear < minY || (viewYear === minY && viewMonth <= minM);
+    nextBtn.disabled = viewYear > maxY || (viewYear === maxY && viewMonth >= maxM);
+
+    var byDate = {};
+    days.forEach(function (d) { byDate[d.date] = d; });
+
+    var lead = (new Date(Date.UTC(viewYear, viewMonth - 1, 1)).getUTCDay() + 6) % 7; // blanks before the 1st (weeks start Monday)
+    var count = new Date(Date.UTC(viewYear, viewMonth, 0)).getUTCDate();
+    var today = todayStr();
+    for (var b = 0; b < lead; b++) {
+      var blank = document.createElement("span");
+      blank.className = "bkcal-blank";
+      daysEl.appendChild(blank);
+    }
+    for (var d = 1; d <= count; d++) {
+      var ds = dateStrOf(viewYear, viewMonth, d);
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "bkcal-day";
+      btn.textContent = d;
+      if (ds === today) btn.classList.add("is-today");
+      if (sel && sel.date === ds) btn.classList.add("is-selected");
+      if (byDate[ds]) {
+        (function (dateStr) {
+          btn.addEventListener("click", function () { selectDate(dateStr); });
+        })(ds);
+      } else {
+        btn.disabled = true;
+      }
+      daysEl.appendChild(btn);
+    }
+  }
+
+  function shiftMonth(delta) {
+    var m = viewMonth + delta, y = viewYear;
+    if (m < 1) { m = 12; y--; }
+    if (m > 12) { m = 1; y++; }
+    viewYear = y; viewMonth = m;
+    renderCalendar();
+  }
+
+  (function renderWeekHeader() {
+    var weekEl = document.getElementById("bkWeek");
+    var monday = Date.UTC(2024, 0, 1); // 1 Jan 2024 was a Monday
+    for (var i = 0; i < 7; i++) {
+      var s = document.createElement("span");
+      s.textContent = weekFmt.format(new Date(monday + i * 86400000));
+      weekEl.appendChild(s);
+    }
+  })();
+  document.getElementById("bkPrev").addEventListener("click", function () { shiftMonth(-1); });
+  document.getElementById("bkNext").addEventListener("click", function () { shiftMonth(1); });
 
   function renderSlots(day) {
     slotsEl.innerHTML = "";
@@ -216,7 +300,7 @@
       b.addEventListener("click", function () {
         sel = { date: day.date, time: s.time, startUtc: s.startUtc };
         hideErr();
-        renderDays(); renderSlots(day); renderSel();
+        renderCalendar(); renderSlots(day); renderSel();
       });
       slotsEl.appendChild(b);
     });
@@ -231,11 +315,20 @@
   function selectDay(i) {
     var day = days[i];
     if (!day) return;
+    selectDate(day.date);
+  }
+
+  function selectDate(dateStr) {
+    var day = null;
+    for (var i = 0; i < days.length; i++) if (days[i].date === dateStr) { day = days[i]; break; }
+    if (!day) return;
     if (!sel || sel.date !== day.date) {
       var keep = sel && day.slots.some(function (s) { return s.time === sel.time; });
       sel = keep ? { date: day.date, time: sel.time, startUtc: day.slots.filter(function (s) { return s.time === sel.time; })[0].startUtc } : null;
     }
-    renderDays(); renderSlots(day); renderSel();
+    var p = dateStr.split("-");
+    viewYear = Number(p[0]); viewMonth = Number(p[1]);
+    renderCalendar(); renderSlots(day); renderSel();
   }
 
   function loadAvailability(keepSelection) {
@@ -248,7 +341,7 @@
         loadingEl.style.display = "none";
         if (!j.ok || !j.days || !j.days.length) {
           loadingEl.style.display = "block";
-          loadingEl.textContent = "No times are available in the next two weeks — please email info@iecincglobal.com and we will arrange a time.";
+          loadingEl.textContent = "No times are available in the next two months — please email info@iecincglobal.com and we will arrange a time.";
           return;
         }
         days = j.days;

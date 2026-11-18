@@ -46,7 +46,7 @@
 
    AVAILABILITY RULES live in ONE place: api/_booking-config.js
    (Mon–Fri, 9:00 AM–5:00 PM America/New_York, 30-minute slots,
-   2 hours' minimum notice, 14 days ahead).
+   2 hours' minimum notice, 60 days ahead).
 
    The Blob store is REQUIRED here (unlike the questionnaire's
    email fallback): without it there is no double-booking

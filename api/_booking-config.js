@@ -48,5 +48,5 @@ export const BOOKING_CONFIG = {
 
   /* How many calendar days ahead (starting today, in `timezone`)
      the picker offers. */
-  daysAhead: 14
+  daysAhead: 60
 };
