@@ -149,9 +149,10 @@ check('fee 0 / negative / NaN -> 0', feesMod.referralFee(0) === 0 && feesMod.ref
 check('schedule is ADOPTED, basis Owner Gross, no cap, no open rulings',
   feesMod.FEE_SCHEDULE.status === 'ADOPTED' && feesMod.FEE_SCHEDULE.basis === 'Owner Gross'
   && feesMod.FEE_SCHEDULE.cap === null && feesMod.FEE_SCHEDULE.openRulings.length === 0);
-check('examples are computed, 5 rows, $100K row $3,000, $2M row $25,000',
-  feesMod.feeExamples().length === 5 && feesMod.feeExamples()[0].fee === 3000
-  && feesMod.feeExamples()[4].fee === 25000 && feesMod.feeExamples()[4].ownerGross === 2000000);
+check('examples are computed bands, 4 rows, first band $3,000-$7,500, top band from $15,000 with $2M anchor $25,000',
+  feesMod.feeExamples().length === 4 && feesMod.feeExamples()[0].feeFrom === 3000
+  && feesMod.feeExamples()[0].feeTo === 7500 && feesMod.feeExamples()[3].feeFrom === 15000
+  && feesMod.feeExamples()[3].anchorGross === 2000000 && feesMod.feeExamples()[3].anchorFee === 25000);
 
 /* ================= auth ================= */
 console.log('contractor tokens');
@@ -169,7 +170,7 @@ console.log('public schedule endpoint');
   check('schedule returns 200 + ADOPTED + basis Owner Gross + no cap',
     r.statusCode === 200 && r.payload.ok && r.payload.schedule.status === 'ADOPTED'
     && r.payload.schedule.basis === 'Owner Gross' && r.payload.schedule.cap === null
-    && r.payload.schedule.examples.length === 5 && r.payload.schedule.examples[4].fee === 25000);
+    && r.payload.schedule.examples.length === 4 && r.payload.schedule.examples[3].anchorFee === 25000);
   check('schedule names no channel', JSON.stringify(r.payload).toLowerCase().includes('datasupply') === false
     && JSON.stringify(r.payload).toLowerCase().includes('janise') === false);
 }

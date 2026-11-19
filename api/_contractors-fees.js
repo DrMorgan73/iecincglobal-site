@@ -54,14 +54,20 @@ export function referralFee(ownerGross) {
     + Math.floor((v - first) * FEE_SCHEDULE.aboveRate);
 }
 
-/* Worked examples for the fee-schedule display — computed, never
-   hand-typed, so the page can never disagree with the math. */
+/* Worked examples for the fee-schedule display, presented in
+   BANDS (DrMorgan, 2026-11-19) — computed from the fee math at the
+   band edges, never hand-typed, so the page can never disagree
+   with the math. The open top band carries one anchor example. */
 export function feeExamples() {
-  return [100000, 250000, 500000, 1000000, 2000000]
-    .map(v => ({
-      ownerGross: v,
-      fee: referralFee(v)
-    }));
+  const bands = [[100000, 250000], [250000, 500000], [500000, 1000000], [1000000, null]];
+  return bands.map(([from, to]) => ({
+    ownerGrossFrom: from,
+    ownerGrossTo: to,
+    feeFrom: referralFee(from),
+    feeTo: to === null ? null : referralFee(to),
+    anchorGross: to === null ? 2000000 : null,
+    anchorFee: to === null ? referralFee(2000000) : null
+  }));
 }
 
 export function formatUSD(n) {

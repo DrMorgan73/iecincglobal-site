@@ -335,7 +335,9 @@
       '<span>Earned: <b>' + usd(t.earned) + '</b></span><span>Paid: <b>' + usd(t.paid) + '</b></span><span>Outstanding: <b>' + usd(t.outstanding) + '</b></span>';
     var s = d.schedule;
     var srows = s.examples.map(function (e) {
-      return '<tr><td>' + usd(e.ownerGross) + '</td><td>' + usd(e.fee) + '</td></tr>';
+      var gross = e.ownerGrossTo ? usd(e.ownerGrossFrom) + ' – ' + usd(e.ownerGrossTo) : 'Above ' + usd(e.ownerGrossFrom);
+      var fee = e.feeTo ? usd(e.feeFrom) + ' – ' + usd(e.feeTo) : usd(e.feeFrom) + ' and up (' + usd(e.anchorGross) + ' → ' + usd(e.anchorFee) + ')';
+      return '<tr><td>' + gross + '</td><td>' + fee + '</td></tr>';
     }).join('');
     document.getElementById('feeTable').innerHTML =
       '<table class="ctr-refs"><thead><tr><th>Owner gross — first closed license</th><th>Your referral fee</th></tr></thead><tbody>' + srows + '</tbody></table>';
