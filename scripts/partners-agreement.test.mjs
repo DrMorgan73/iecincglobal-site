@@ -153,7 +153,7 @@ console.log('agreement content module');
     '15. Communications and Data', '16. Resolving Disputes', '17. Liability and General Terms',
     '18. Signatures', 'EXHIBIT A'];
   check('content carries all 18 articles + Exhibit A', arts.every(a => t.includes(a)), arts.filter(a => !t.includes(a)));
-  check('content carries the adopted fee figures', ['$10,800', '$50,000', '$700,000', '$10,000,000'].every(n => t.includes(n)));
+  check('content carries the adopted fee figures', ['$6,480', '$25,000', '$3,000', '$15,000'].every(n => t.includes(n)));
   const stripped = contentMod.AGREEMENT_HTML
     .replace(/<\/?(?:h1|h2|h3|p|ul|li|table|thead|tbody|tr|th|td|hr)\b[^>]*>/g, ' ')
     .replace(/<[^>]+>/g, '')
@@ -162,7 +162,7 @@ console.log('agreement content module');
   check('HTML render round-trips to the agreement text (verbatim)', norm(stripped) === norm(t));
   check('version id is the instrument version (+content stamp when built)',
     /^IEC-CRA-2026-11-12(\+[0-9a-f]{7})?$/.test(contentMod.agreementVersionId()), contentMod.agreementVersionId());
-  const banned = ['client fee', "IEC's share", 'IEC share', "IEC's fees", 'Seller Fee', 'Origination Fee', '2.0%', '1.0%', '0.5%'];
+  const banned = ['client fee', "IEC's share", 'IEC share', "IEC's fees", 'Seller Fee', 'Origination Fee', '2.0%', '1.0%', '0.5%', '5%', '7%', 'milestone bonus'];
   check('no scrubbed IEC-fee phrasing in the served text', banned.every(b => !t.includes(b)), banned.filter(b => t.includes(b)));
 }
 
@@ -198,7 +198,7 @@ console.log('agreement endpoint');
   check('served state: agreement pending, NDA pending, no acceptance yet',
     g.payload.agreementStatus === 'pending' && g.payload.ndaStatus === 'pending' && g.payload.acceptance === null, g.payload);
   check('served HTML carries Article 5 + Exhibit A figures',
-    g.payload.html.includes('5. Compensation') && g.payload.html.includes('$700,000') && g.payload.html.includes('EXHIBIT A'));
+    g.payload.html.includes('5. Compensation') && g.payload.html.includes('$25,000') && g.payload.html.includes('EXHIBIT A'));
 }
 
 /* ================= acceptance validation ================= */

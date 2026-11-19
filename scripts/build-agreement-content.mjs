@@ -100,13 +100,14 @@ if (norm(fromHtml) !== norm(text)) {
 }
 
 const NEEDLES = ['IEC CONTRACTOR REFERRAL AGREEMENT', '1. Definitions', '5. Compensation',
-  '18. Signatures', 'EXHIBIT A', 'Owner Gross', '$10,800', '$50,000', '$700,000', '$10,000,000',
-  '15 days', 'Earnings Disclaimer', 'no cap', 'milestone bonus'];
+  '18. Signatures', 'EXHIBIT A', 'Owner Gross', '3% of the first $250,000', '$6,480', '$25,000',
+  '15 days', 'Earnings Disclaimer', 'no cap'];
 for (const n of NEEDLES) {
   if (!norm(text).includes(n)) { console.error(`FAIL — missing in agreement text: ${n}`); process.exit(1); }
 }
 const BANNED = ['client fee', "IEC's share", 'IEC share', "IEC's fees", "IEC's own fee",
-  'Seller Fee', 'Origination Fee', '2.0%', '1.0%', '0.5%', 'capped at $25,000', '80%'];
+  'Seller Fee', 'Origination Fee', '2.0%', '1.0%', '0.5%', 'capped at $25,000', '80%',
+  '5%', '7%', 'milestone bonus', '$10,800', '$700,000'];
 for (const b of BANNED) {
   if (norm(text).includes(b)) { console.error(`FAIL — scrubbed/stale phrasing present: ${b}`); process.exit(1); }
 }
