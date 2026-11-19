@@ -10,7 +10,7 @@
    ===================================================================== */
 
 export const AGREEMENT_VERSION_BASE = 'IEC-CRA-2026-11-12';
-export const AGREEMENT_CONTENT_COMMIT = "pending";
+export const AGREEMENT_CONTENT_COMMIT = "7290e300ba29fea87806549bcad0c59c4c03c8bf";
 export const AGREEMENT_SOURCE_SHA256 = "8191967b4c7215ddf0726ce31206f76c497b04f9313bed7b1b6fa550b4098f2b";
 
 /* The version id shown on the agreement page and stored with each
