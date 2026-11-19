@@ -166,7 +166,7 @@
       <h2>Your fees <span class="ctr-pill ok">Schedule adopted</span></h2>
       <div class="ctr-totals" id="feeTotals"></div>
       <div id="feeTable"><p class="ctr-status">Loading the fee schedule…</p></div>
-      <p class="ctr-fine">Your fee is 5% of the owner's gross on a client's first closed license — the gross the owner receives — with no cap. At an owner gross of $10,000,000 or more, a 2% milestone bonus takes the total to 7%. Paid once per client, on their first closed license only (renewals earn no fee), within 15 days after IEC is paid. The fee is payable by IEC and is never deducted from any amount payable to the owner.</p>
+      <p class="ctr-fine">Your fee is 3% of the first $250,000 of the owner's gross on a client's first closed license — the gross the owner receives — plus 1% of the owner's gross above $250,000, with no cap. Paid once per client, on their first closed license only (renewals earn no fee), within 15 days after IEC is paid. The fee is payable by IEC and is never deducted from any amount payable to the owner.</p>
     </div>
 
     <div class="ctr-card">
@@ -335,7 +335,7 @@
       '<span>Earned: <b>' + usd(t.earned) + '</b></span><span>Paid: <b>' + usd(t.paid) + '</b></span><span>Outstanding: <b>' + usd(t.outstanding) + '</b></span>';
     var s = d.schedule;
     var srows = s.examples.map(function (e) {
-      return '<tr><td>' + usd(e.ownerGross) + '</td><td>' + usd(e.fee) + (e.bonus ? ' (incl. 2% milestone bonus)' : '') + '</td></tr>';
+      return '<tr><td>' + usd(e.ownerGross) + '</td><td>' + usd(e.fee) + '</td></tr>';
     }).join('');
     document.getElementById('feeTable').innerHTML =
       '<table class="ctr-refs"><thead><tr><th>Owner gross — first closed license</th><th>Your referral fee</th></tr></thead><tbody>' + srows + '</tbody></table>';

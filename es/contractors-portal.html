@@ -166,7 +166,7 @@
       <h2>Sus honorarios <span class="ctr-pill ok">Tabla adoptada</span></h2>
       <div class="ctr-totals" id="feeTotals"></div>
       <div id="feeTable"><p class="ctr-status">Cargando la tabla de honorarios…</p></div>
-      <p class="ctr-fine">Su honorario es el 5% del ingreso bruto del propietario en la primera licencia cerrada de un cliente —el bruto que recibe el propietario—, sin límite máximo. Con un ingreso bruto del propietario de $10,000,000 o más, un bono por hito del 2% eleva el total al 7%. Se paga una sola vez por cliente, únicamente por su primera licencia cerrada (las renovaciones no generan honorario), dentro de los 15 días posteriores al pago a IEC. El honorario es pagadero por IEC y nunca se deduce de ningún monto pagadero al propietario.</p>
+      <p class="ctr-fine">Su honorario es el 3% de los primeros $250,000 del ingreso bruto del propietario en la primera licencia cerrada de un cliente —el bruto que recibe el propietario—, más el 1% del ingreso bruto del propietario que supere los $250,000, sin límite máximo. Se paga una sola vez por cliente, únicamente por su primera licencia cerrada (las renovaciones no generan honorario), dentro de los 15 días posteriores al pago a IEC. El honorario es pagadero por IEC y nunca se deduce de ningún monto pagadero al propietario.</p>
     </div>
 
     <div class="ctr-card">
@@ -335,7 +335,7 @@
       '<span>Earned: <b>' + usd(t.earned) + '</b></span><span>Paid: <b>' + usd(t.paid) + '</b></span><span>Outstanding: <b>' + usd(t.outstanding) + '</b></span>';
     var s = d.schedule;
     var srows = s.examples.map(function (e) {
-      return '<tr><td>' + usd(e.ownerGross) + '</td><td>' + usd(e.fee) + (e.bonus ? ' (incl. 2% milestone bonus)' : '') + '</td></tr>';
+      return '<tr><td>' + usd(e.ownerGross) + '</td><td>' + usd(e.fee) + '</td></tr>';
     }).join('');
     document.getElementById('feeTable').innerHTML =
       '<table class="ctr-refs"><thead><tr><th>Owner gross — first closed license</th><th>Your referral fee</th></tr></thead><tbody>' + srows + '</tbody></table>';
