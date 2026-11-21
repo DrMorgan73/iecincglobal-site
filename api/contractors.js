@@ -93,7 +93,8 @@ import {
   readContractorByClientCode, ensureContractorClientCode,
   readContractorByInviteCode, ensureContractorInviteCode,
   listContractorsByInviter,
-  backfillPartnerClientCodes, listLinkHolds, normalizePartnerCode
+  backfillPartnerClientCodes, listLinkHolds, normalizePartnerCode,
+  readLinkHold, deleteLinkHold
 } from './_contractors-store.js';
 import { qrSvg } from './_qr.js';
 import { blocksToPdf } from './_data-assets-pdf.js';
@@ -1563,6 +1564,55 @@ export default async function handler(req, res) {
     await updateReferral(r.id, { approvedAmount: amount, approvedAt: new Date().toISOString() });
     const updated = await readReferral(r.id);
     return json(res, { ok: true, client: publicClient(updated), referral: updated });
+  }
+
+  /* ---- admin: rule on one partner-link HOLD (the Desk's hold
+     board). A hold is a real owner submission that arrived while
+     the partner was not active: it was never credited and never
+     enters fee totals. The office's ruling is the ONLY way it
+     moves: 'credit' creates the referral under the partner —
+     only while the partner is ACTIVE again and only if the
+     business is still unregistered (the duplicate guard decides;
+     a duplicate keeps the hold for dismissal) — and 'dismiss'
+     removes it. Nothing here is automatic, and a credited hold
+     starts at questionnaire_answered with the original
+     submission as its evidence, exactly like a live link
+     registration. ---- */
+  if (req.method === 'POST' && action === 'resolve-hold') {
+    const body = await readBody(req);
+    const hold = await readLinkHold(str(body.holdId, 64));
+    if (!hold) return json(res, { ok: false, error: 'not_found' }, 404);
+    const decision = str(body.decision, 20);
+    if (decision === 'dismiss') {
+      await deleteLinkHold(hold.id);
+      return json(res, { ok: true, dismissed: hold.id });
+    }
+    if (decision !== 'credit') {
+      return json(res, { ok: false, error: 'invalid_fields' }, 400);
+    }
+    const partner = await readContractorById(hold.contractorId);
+    if (!partner) return json(res, { ok: false, error: 'not_found' }, 404);
+    if (partner.status !== 'active') {
+      return json(res, { ok: false, error: 'partner_not_active' }, 409);
+    }
+    const dup = await findDuplicateReferral(hold.businessName, hold.ownerEmail);
+    if (dup === undefined) return json(res, { ok: false, error: 'not_configured' }, 503);
+    if (dup) return json(res, { ok: false, error: 'already_registered' }, 409);
+    const referralId = crypto.randomUUID();
+    await createReferral({
+      id: referralId, contractorId: partner.id,
+      businessName: hold.businessName, ownerName: hold.ownerName,
+      ownerEmail: hold.ownerEmail, industry: hold.industry || 'general-business',
+      questionnaireAnswers: hold.questionnaireAnswers || undefined,
+      questionnaireSubmissionId: hold.questionnaireSubmissionId || undefined,
+      pipelineStatus: 'questionnaire_answered',
+      source: 'link', attributionStatus: 'credited',
+      partnerCode: hold.clientCode || partner.clientCode || '',
+      businessCity: hold.businessCity || '', businessState: hold.businessState || ''
+    });
+    await deleteLinkHold(hold.id);
+    const created = await readReferral(referralId);
+    return json(res, { ok: true, credited: referralId, client: created ? publicClient(created) : null });
   }
 
   /* ---- admin: advance the CLIENT pipeline — strictly one step,

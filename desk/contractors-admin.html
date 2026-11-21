@@ -93,8 +93,8 @@
       <h3>Partner-link registrations on hold</h3>
       <p class="hint">These owners registered and answered the questionnaire through a partner's client link while that partner was <b>paused or revoked</b>. They are <b>not</b> credited to the partner and do not appear in his clients or fees. The questionnaire submission itself is in the submissions store under the reference shown. Work them from here: if the company should proceed, record it under IEC-registered companies or reassign it manually per DrMorgan's ruling.</p>
       <div class="table-wrap"><table class="matrix" id="holdTable">
-        <thead><tr><th>Company</th><th>Owner</th><th>Partner (link code)</th><th>Held because</th><th>Submission</th><th>Received</th></tr></thead>
-        <tbody><tr><td colspan="6">Loading…</td></tr></tbody>
+        <thead><tr><th>Company</th><th>Owner</th><th>Partner (link code)</th><th>Held because</th><th>Submission</th><th>Received</th><th>Ruling</th></tr></thead>
+        <tbody><tr><td colspan="7">Loading…</td></tr></tbody>
       </table></div>
     </div>
 
@@ -136,13 +136,22 @@
   var PIPE_LABEL = {
     added: 'Added', questionnaire_sent: 'Questionnaire sent', questionnaire_answered: 'Questionnaire answered',
     assessment_done: 'Assessment done', cnda_sent: 'CNDA sent', cnda_signed: 'CNDA signed',
-    ready_to_register: 'Ready to register', registered: 'Registered'
+    ready_to_register: 'Ready to register', registered: 'Registered',
+    intake_review: 'Data intake review', valuation_packaging: 'Valuation and packaging',
+    presented: 'Presented', buyer_diligence: 'Buyer diligence', offer_received: 'Offer received',
+    negotiating_terms: 'Negotiating terms', license_sent: 'License sent', license_signed: 'License signed',
+    data_delivery: 'Data delivery', acceptance_review: 'Buyer acceptance review',
+    awaiting_payment: 'Awaiting buyer payment', deal_closed: 'Deal closed'
   };
   var PIPE_NEXT = {
     added: 'questionnaire_sent', questionnaire_sent: 'questionnaire_answered', questionnaire_answered: 'assessment_done',
-    assessment_done: 'cnda_sent', cnda_sent: 'cnda_signed', cnda_signed: 'ready_to_register', ready_to_register: 'registered'
+    assessment_done: 'cnda_sent', cnda_sent: 'cnda_signed', cnda_signed: 'ready_to_register', ready_to_register: 'registered',
+    registered: 'intake_review', intake_review: 'valuation_packaging', valuation_packaging: 'presented',
+    presented: 'buyer_diligence', buyer_diligence: 'offer_received', offer_received: 'negotiating_terms',
+    negotiating_terms: 'license_sent', license_sent: 'license_signed', license_signed: 'data_delivery',
+    data_delivery: 'acceptance_review', acceptance_review: 'awaiting_payment', awaiting_payment: 'deal_closed'
   };
-  var PIPE_EVIDENCE = { questionnaire_answered: 1, assessment_done: 1, cnda_signed: 1 };
+  var PIPE_EVIDENCE = { questionnaire_answered: 1, assessment_done: 1, cnda_signed: 1, presented: 1, offer_received: 1, license_signed: 1 };
 
   function api(path, opts) {
     return fetch(path, opts).then(function (r) {
@@ -254,6 +263,14 @@
         act += '<button class="mini" data-advance="' + esc(r.id) + '" data-next="' + next + '">' +
           (next === 'agreement_signed' ? 'Mark client agreement signed' : 'Mark fee paid') + '</button>';
       }
+      act += '<br>';
+      if (r.approvedAt) {
+        act += '<span style="font-size:12px">Amount approved: <b>' + usd(r.approvedAmount) + '</b> (partner can see it)</span> ' +
+          '<button class="mini danger" data-approved-clear="' + esc(r.id) + '">Clear approval</button>';
+      } else {
+        act += '<input class="lic-input" type="number" min="1" step="1" placeholder="Approved amount $" data-approved-input="' + esc(r.id) + '"> ' +
+          '<button class="mini" data-approved="' + esc(r.id) + '">Approve amount</button>';
+      }
       if (frozen) act += '<span style="font-size:12px;color:var(--dim)">Partner ' + esc(c.status) + ' — pipeline frozen</span>';
       var profile = [r.locations != null ? r.locations + ' loc' : null, r.employees != null ? r.employees + ' FTE' : null, r.yearsRecords != null ? r.yearsRecords + ' yrs records' : null].filter(Boolean).join(' · ');
       var srcLine = r.source === 'link' ? 'Registered via partner link' : 'Entered by partner';
@@ -282,12 +299,15 @@
         '<td>' + esc(p ? p.email : h.contractorId) + '<br><span style="font-size:12px;color:var(--dim)">code ' + esc(h.clientCode || '') + '</span></td>' +
         '<td><span class="chip">' + esc(h.reason || '') + '</span></td>' +
         '<td>' + esc(h.questionnaireSubmissionId || '—') + '</td>' +
-        '<td>' + esc(String(h.createdAt || '').slice(0, 10) || '—') + '</td></tr>';
-    }).join('') : '<tr><td colspan="6">None — no link registrations are on hold.</td></tr>';
+        '<td>' + esc(String(h.createdAt || '').slice(0, 10) || '—') + '</td>' +
+        '<td><button class="mini" data-hold-credit="' + esc(h.id) + '">Credit to partner</button> ' +
+        '<button class="mini danger" data-hold-dismiss="' + esc(h.id) + '">Dismiss</button><br>' +
+        '<span style="font-size:12px;color:var(--dim)">Credit works only while the partner is active and the company is still unregistered.</span></td></tr>';
+    }).join('') : '<tr><td colspan="7">None — no link registrations are on hold.</td></tr>';
   }
 
   document.addEventListener('click', function (ev) {
-    var t = ev.target.closest('button[data-details],button[data-invite],button[data-email-invite],button[data-nda],button[data-agreement],button[data-status],button[data-reactivate],button[data-advance],button[data-padvance],button[data-unclaim]');
+    var t = ev.target.closest('button[data-details],button[data-invite],button[data-email-invite],button[data-nda],button[data-agreement],button[data-status],button[data-reactivate],button[data-advance],button[data-padvance],button[data-unclaim],button[data-approved],button[data-approved-clear],button[data-hold-credit],button[data-hold-dismiss]');
     if (!t) return;
     if (t.hasAttribute('data-details')) {
       var drow = document.getElementById('detail-' + t.getAttribute('data-details'));
@@ -355,6 +375,25 @@
     } else if (t.hasAttribute('data-unclaim')) {
       post('remove-claim', { claimId: t.getAttribute('data-unclaim') }).then(function (out) {
         done(out.body && out.body.ok ? '' : 'Could not remove the company.', !(out.body && out.body.ok));
+      });
+    } else if (t.hasAttribute('data-approved')) {
+      var ainp = document.querySelector('input[data-approved-input="' + t.getAttribute('data-approved') + '"]');
+      var amt = ainp ? Number(ainp.value) : NaN;
+      if (!Number.isFinite(amt) || amt <= 0) { t.disabled = false; alert('Enter the amount IEC is approving first — the partner sees it only once it is approved here.'); return; }
+      post('set-approved-amount', { referralId: t.getAttribute('data-approved'), amount: amt }).then(function (out) {
+        done(out.body && out.body.ok ? 'Amount approved — the partner now sees it on this client.' : 'Could not approve the amount: ' + ((out.body && out.body.error) || 'error'), !(out.body && out.body.ok));
+      });
+    } else if (t.hasAttribute('data-approved-clear')) {
+      post('set-approved-amount', { referralId: t.getAttribute('data-approved-clear'), amount: null }).then(function (out) {
+        done(out.body && out.body.ok ? 'Approval cleared — the amount is hidden from the partner again.' : 'Could not clear the approval.', !(out.body && out.body.ok));
+      });
+    } else if (t.hasAttribute('data-hold-credit')) {
+      post('resolve-hold', { holdId: t.getAttribute('data-hold-credit'), decision: 'credit' }).then(function (out) {
+        done(out.body && out.body.ok ? 'Hold credited — the client now stands under the partner at Questionnaire answered.' : 'Could not credit the hold: ' + ((out.body && out.body.error) || 'error'), !(out.body && out.body.ok));
+      });
+    } else if (t.hasAttribute('data-hold-dismiss')) {
+      post('resolve-hold', { holdId: t.getAttribute('data-hold-dismiss'), decision: 'dismiss' }).then(function (out) {
+        done(out.body && out.body.ok ? 'Hold dismissed.' : 'Could not dismiss the hold.', !(out.body && out.body.ok));
       });
     } else if (t.hasAttribute('data-advance')) {
       var body = { referralId: t.getAttribute('data-advance'), status: t.getAttribute('data-next') };

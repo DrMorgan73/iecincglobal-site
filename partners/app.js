@@ -507,10 +507,36 @@
     }).catch(function () { renderFront(); });
   }
 
+  /* The client link THIS portal presents: the standalone
+     portal's own landing, re-based onto the current origin — on
+     the portal host it is /r/<code>; in the site preview it is
+     /partners/r/<code>, so a preview click follows the real
+     route. The ready email template is re-based the same way
+     (its link line swapped for the presented link). */
+  function standaloneLink(me) {
+    var code = me.clientCode || '';
+    if (!code) return me.portalClientLink || me.clientLink || '';
+    var onPartnersHost = /^partners\./.test(location.hostname);
+    return location.origin + (onPartnersHost ? '/r/' : '/partners/r/') + code;
+  }
+  function displayEmail(me, link) {
+    var src = me.portalClientLinkEmail || me.clientLinkEmail;
+    if (!src) return null;
+    var from = me.portalClientLinkEmail ? me.portalClientLink : me.clientLink;
+    if (!from || from === link) return src;
+    return {
+      subject: src.subject,
+      body: String(src.body || '').split(from).join(link),
+      link: link
+    };
+  }
+
   /* ------------------------- shell ------------------------- */
   function render() {
     var me = state.me;
     if (!me) return;
+    state.displayLink = standaloneLink(me);
+    state.displayEmail = displayEmail(me, state.displayLink);
     var r = currentHash();
     state.route = r.route; state.clientId = r.id || null;
     var c = me.contractor;
@@ -548,10 +574,10 @@
       api({ action: 'logout' }).then(function () { location.hash = ''; location.reload(); });
     });
     var b = document.getElementById('pp-copy-link');
-    if (b) b.addEventListener('click', function () { copyText(state.me.clientLink, t('link_copied')); });
+    if (b) b.addEventListener('click', function () { copyText(state.displayLink, t('link_copied')); });
     var ce = document.getElementById('pp-copy-email');
     if (ce) ce.addEventListener('click', function () {
-      copyText('Subject: ' + state.me.clientLinkEmail.subject + '\n\n' + state.me.clientLinkEmail.body, t('email_copied'));
+      copyText('Subject: ' + state.displayEmail.subject + '\n\n' + state.displayEmail.body, t('email_copied'));
     });
     var cm = document.getElementById('pp-copy-message');
     if (cm) cm.addEventListener('click', function () {
@@ -604,14 +630,14 @@
       statCard(t('stat_projected'), fmtMoney(me.earnings.projected)) +
       statCard(t('stat_payable'), fmtMoney(me.earnings.payable)) +
       statCard(t('stat_paid'), fmtMoney(me.earnings.paid)) + '</div>';
-    if (me.clientLink) html += '<div class="pp-card"><h2 class="pp-h2">' + esc(t('your_client_link')) + '</h2>' +
+    if (state.displayLink) html += '<div class="pp-card"><h2 class="pp-h2">' + esc(t('your_client_link')) + '</h2>' +
       '<p class="pp-p">' + esc(t('link_expl')) + '</p>' +
       '<div class="pp-linkrow"><label class="pp-label">' + esc(t('your_link')) + '</label>' +
-      '<div class="pp-linkbox"><code id="pp-client-link">' + esc(me.clientLink || '') + '</code>' +
+      '<div class="pp-linkbox"><code id="pp-client-link">' + esc(state.displayLink) + '</code>' +
       '<button class="pp-btn" id="pp-copy-link">' + esc(t('copy_link')) + '</button></div></div>' +
       '<div class="pp-qr" id="pp-qr-box"></div>' +
       '<label class="pp-label">' + esc(t('email_template')) + '</label>' +
-      '<div class="pp-template">' + esc(me.clientLinkEmail ? (me.clientLinkEmail.subject + '\n\n' + me.clientLinkEmail.body) : '') + '</div>' +
+      '<div class="pp-template">' + esc(state.displayEmail ? (state.displayEmail.subject + '\n\n' + state.displayEmail.body) : '') + '</div>' +
       '<button class="pp-btn pp-btn-ghost" id="pp-copy-email">' + esc(t('copy_email')) + '</button></div>';
     html += '<div class="pp-card"><h2 class="pp-h2">' + esc(t('edu_highlights')) + '</h2><div class="pp-res-grid">' +
       '<div class="pp-res"><h3>' + esc(t('edu_film_t')) + '</h3><p>' + esc(t('edu_film_d')) + '</p>' +
@@ -621,12 +647,12 @@
       '</div></div>';
     setTimeout(function () {
       var b2 = document.getElementById('pp-copy-link-2');
-      if (b2) b2.addEventListener('click', function () { copyText(me.clientLink, t('link_copied')); });
+      if (b2) b2.addEventListener('click', function () { copyText(state.displayLink, t('link_copied')); });
       var box = document.getElementById('pp-qr-box');
       if (box) {
         if (DEMO) box.innerHTML = DEMO_QR + '<div class="pp-qr-hint">' + esc(t('qr_hint')) + '</div>';
         else {
-          fetch('/api/contractors?action=client-link-qr', { credentials: 'same-origin' }).then(function (r) { return r.text(); }).then(function (svg) {
+          fetch('/api/contractors?action=client-link-qr&form=portal', { credentials: 'same-origin' }).then(function (r) { return r.text(); }).then(function (svg) {
             box.innerHTML = svg + '<div class="pp-qr-hint">' + esc(t('qr_hint')) + '</div>';
           }).catch(function () {});
         }
