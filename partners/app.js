@@ -27,7 +27,7 @@
       agreement: 'Referral Agreement', nda: 'NDA', signed: 'signed', pending: 'pending',
       frozen_paused: 'Your portal is paused. This is a read-only view of your clients — nothing can be added or changed while paused.',
       frozen_revoked: 'Your partnership is revoked. This is a frozen, read-only view of your clients — nothing can be added or changed, and your clients\u2019 steps do not move.',
-      fast_start: 'Your fast start', fs_agreement: 'Accept your agreement', fs_link: 'Copy your client link',
+      fast_start: 'Your fast start', next_step: 'Next step', fs_agreement: 'Accept your agreement', fs_link: 'Copy your client link',
       fs_education: 'Attend a partner education session', fs_payouts: 'Set up your payouts',
       stat_referrals: 'Referrals', stat_payable: 'Payable', stat_paid: 'Paid', stat_projected: 'Projected',
       your_client_link: 'Your client link',
@@ -166,7 +166,7 @@
       agreement: 'Acuerdo de Referidos', nda: 'NDA', signed: 'firmado', pending: 'pendiente',
       frozen_paused: 'Su portal está en pausa. Esta es una vista de solo lectura de sus clientes: nada puede agregarse ni cambiarse durante la pausa.',
       frozen_revoked: 'Su asociación está revocada. Esta es una vista congelada y de solo lectura de sus clientes: nada puede agregarse ni cambiarse, y los pasos de sus clientes no avanzan.',
-      fast_start: 'Su inicio rápido', fs_agreement: 'Acepte su acuerdo', fs_link: 'Copie su enlace de cliente',
+      fast_start: 'Su inicio rápido', next_step: 'Siguiente paso', fs_agreement: 'Acepte su acuerdo', fs_link: 'Copie su enlace de cliente',
       fs_education: 'Asista a una sesión de educación para socios', fs_payouts: 'Configure sus pagos',
       stat_referrals: 'Referidos', stat_payable: 'Por pagar', stat_paid: 'Pagado', stat_projected: 'Proyectado',
       your_client_link: 'Su enlace de cliente',
@@ -561,11 +561,17 @@
     root.innerHTML =
       (DEMO ? '<div class="pp-demo-ribbon">' + esc(t('demo_ribbon')) + '</div>' : '') +
       '<div class="pp-app"><aside class="pp-side">' +
-      '<div class="pp-brand"><div class="pp-brand-name">IEC, Inc.</div><div class="pp-brand-sub">' + esc(t('product')) + '</div></div>' +
+      '<div class="pp-brand"><img class="pp-brand-logo" src="/assets/iec-logo-light.png" alt="IEC, Inc."><div><div class="pp-brand-name">IEC, Inc.</div><div class="pp-brand-sub">' + esc(t('product')) + '</div></div></div>' +
       '<nav class="pp-nav">' + nav + '</nav>' +
       '<div class="pp-side-foot">' + esc(t('questions')) + ' <a href="mailto:info@iecincglobal.com">info@iecincglobal.com</a>' +
       (DEMO ? '' : '<br><button class="pp-linklike" id="pp-signout">' + esc(t('sign_out')) + '</button>') + '</div>' +
-      '</aside><main class="pp-main">' + frozenBanner + body + '</main></div>';
+      '</aside><main class="pp-main">' +
+      '<div class="pp-topbar"><div class="pp-topbar-id"><span class="pp-topbar-name">' + esc(c.name) + '</span>' +
+      (c.company ? '<span class="pp-topbar-co">' + esc(c.company) + '</span>' : '') + '</div>' +
+      (c.status === 'active' ? '<a class="pp-btn pp-btn-small" href="#/referrals">' + esc(t('add_client')) + '</a>' : '') + '</div>' +
+      frozenBanner + body +
+      '<footer class="pp-footer"><strong>IEC, Inc.</strong><span>· ' + esc(t('product')) + '</span><span>·</span><a href="https://iecincglobal.com">iecincglobal.com</a></footer>' +
+      '</main></div>';
     bindShell();
   }
   function bindShell() {
@@ -614,12 +620,15 @@
       { done: false, label: t('fs_education'), linkText: t('open_resources'), action: 'resources' },
       { done: !!fs.payoutsSet, label: t('fs_payouts'), linkText: t('go_settings'), action: 'settings' }
     ];
-    var stepsHtml = steps.map(function (s) {
+    var currentMarked = false;
+    var stepsHtml = steps.map(function (s, i) {
       var right = '';
       if (!s.done && s.action === 'copy') right = '<button class="pp-btn pp-btn-small" id="pp-copy-link-2">' + esc(s.linkText) + '</button>';
       if (!s.done && s.action === 'resources') right = '<a class="pp-btn pp-btn-small" href="#/resources">' + esc(s.linkText) + '</a>';
       if (!s.done && s.action === 'settings') right = '<a class="pp-btn pp-btn-small" href="#/settings">' + esc(s.linkText) + '</a>';
-      return '<li class="' + (s.done ? 'done' : '') + '"><span class="pp-check">' + (s.done ? '✓' : '') + '</span><span class="pp-step-label">' + esc(s.label) + '</span>' + right + '</li>';
+      var isCurrent = !s.done && !currentMarked;
+      if (isCurrent) { currentMarked = true; right = '<span class="pp-next-pill">' + esc(t('next_step')) + '</span>' + right; }
+      return '<li class="' + (s.done ? 'done' : '') + (isCurrent ? ' current' : '') + '"><span class="pp-check">' + (s.done ? '✓' : String(i + 1)) + '</span><span class="pp-step-label">' + esc(s.label) + '</span>' + right + '</li>';
     }).join('');
     var html = '<h1 class="pp-h1">' + esc(t('welcome')) + ', ' + esc(c.name) + '</h1>' +
       '<p class="pp-sub">' + esc(c.company || '') + ' · ' + esc(t('agreement')) + ': ' + esc(c.agreementStatus === 'signed' ? t('signed') : t('pending')) +
@@ -630,7 +639,7 @@
       statCard(t('stat_projected'), fmtMoney(me.earnings.projected)) +
       statCard(t('stat_payable'), fmtMoney(me.earnings.payable)) +
       statCard(t('stat_paid'), fmtMoney(me.earnings.paid)) + '</div>';
-    if (state.displayLink) html += '<div class="pp-card"><h2 class="pp-h2">' + esc(t('your_client_link')) + '</h2>' +
+    if (state.displayLink) html += '<div class="pp-card pp-linkcard"><h2 class="pp-h2">' + esc(t('your_client_link')) + '</h2>' +
       '<p class="pp-p">' + esc(t('link_expl')) + '</p>' +
       '<div class="pp-linkrow"><label class="pp-label">' + esc(t('your_link')) + '</label>' +
       '<div class="pp-linkbox"><code id="pp-client-link">' + esc(state.displayLink) + '</code>' +
@@ -670,12 +679,18 @@
         '<td>' + (c.feeAmount != null ? esc(fmtMoney(c.feeAmount)) : '—') + '</td></tr>';
     }).join('');
     var html = '<h1 class="pp-h1">' + esc(t('referrals_title')) + '</h1><p class="pp-sub">' + esc(t('referrals_sub')) + '</p>';
-    if (!me.clients || !me.clients.length) html += '<div class="pp-card"><p class="pp-p">' + esc(t('no_clients')) + '</p></div>';
+    if (!me.clients || !me.clients.length) html += '<div class="pp-card pp-empty"><p>' + esc(t('no_clients')) + '</p>' +
+      (!me.frozen ? '<button class="pp-btn" id="pp-empty-add">' + esc(t('add_client')) + '</button>' : '') + '</div>';
     else html += '<div class="pp-card pp-card-table"><table class="pp-table"><thead><tr><th>' + esc(t('col_business')) + '</th><th>' + esc(t('col_type')) + '</th><th>' + esc(t('col_stage')) + '</th><th>' + esc(t('col_contact')) + '</th><th>' + esc(t('col_date')) + '</th><th>' + esc(t('col_approved')) + '</th><th>' + esc(t('col_fee')) + '</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
     if (!me.frozen) html += qualificationHtml() + addClientHtml(me);
     setTimeout(function () {
       Array.prototype.forEach.call(document.querySelectorAll('.pp-rowlink'), function (tr) {
         tr.addEventListener('click', function () { go('referrals', tr.getAttribute('data-id')); });
+      });
+      var ea = document.getElementById('pp-empty-add');
+      if (ea) ea.addEventListener('click', function () {
+        var q = document.getElementById('pp-qual-card');
+        if (q) q.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
     }, 0);
     return html;
@@ -948,7 +963,7 @@
       '</div></div>' +
       '<div class="pp-card"><h2 class="pp-h2">' + esc(t('res_brand')) + '</h2><div class="pp-res-grid">' +
       '<div class="pp-res"><h3>' + esc(t('res_logo_t')) + '</h3><p>' + esc(t('res_logo_d')) + '</p>' +
-      '<a class="pp-btn pp-btn-ghost" href="/iec-logo.png" download>' + esc(t('dl_logo')) + '</a></div>' +
+      '<a class="pp-btn pp-btn-ghost" href="/assets/iec-logo.png" download>' + esc(t('dl_logo')) + '</a></div>' +
       '</div></div>';
   }
   function viewSettings(me) {
@@ -1008,14 +1023,15 @@
   /* ------------------------- front door ------------------------- */
   function renderFront() {
     root.innerHTML = '<div class="pp-front">' +
-      '<div class="pp-front-hero"><div class="pp-front-k">' + esc(t('front_hero_k')) + '</div>' +
+      '<div class="pp-front-hero"><img class="pp-front-logo" src="/assets/iec-logo.png" alt="IEC, Inc."><div class="pp-front-k">' + esc(t('front_hero_k')) + '</div>' +
       '<h1 class="pp-front-h">' + esc(t('front_hero_t')) + '</h1><p class="pp-front-p">' + esc(t('front_hero_p')) + '</p></div>' +
       '<div class="pp-front-grid">' +
       '<div class="pp-card"><h2 class="pp-h2">' + esc(t('front_enter_t')) + '</h2>' +
       '<p class="pp-p">' + esc(t('front_enter_p')) + '</p><p class="pp-p">' + esc(t('front_enter_p2')) + '</p></div>' +
       '<div class="pp-card"><h2 class="pp-h2">' + esc(t('front_req_t')) + '</h2>' +
       '<p class="pp-p">' + esc(t('front_req_p')) + '</p>' + signupFormHtml('') + '</div>' +
-      '</div></div>';
+      '</div></div>' +
+      '<div class="pp-front-foot"><strong>IEC, Inc.</strong> · ' + esc(t('product')) + ' · <a href="https://iecincglobal.com">iecincglobal.com</a></div>';
     bindSignup('');
   }
   function signupFormHtml(inviteCode) {
@@ -1068,10 +1084,11 @@
   }
   function renderJoin() {
     var code = location.pathname.split('/join/')[1] || '';
-    root.innerHTML = '<div class="pp-front"><div class="pp-front-hero"><div class="pp-front-k">' + esc(t('front_hero_k')) + '</div>' +
+    root.innerHTML = '<div class="pp-front"><div class="pp-front-hero"><img class="pp-front-logo" src="/assets/iec-logo.png" alt="IEC, Inc."><div class="pp-front-k">' + esc(t('front_hero_k')) + '</div>' +
       '<h1 class="pp-front-h">' + esc(t('join_title')) + '</h1><p class="pp-front-p" id="pp-join-inviter">' + esc(t('loading')) + '</p></div>' +
       '<div class="pp-card" style="max-width:760px;margin:0 auto"><h2 class="pp-h2">' + esc(t('front_req_t')) + '</h2>' +
-      '<p class="pp-p">' + esc(t('front_req_p')) + '</p>' + signupFormHtml(code) + '</div></div>';
+      '<p class="pp-p">' + esc(t('front_req_p')) + '</p>' + signupFormHtml(code) + '</div></div>' +
+      '<div class="pp-front-foot"><strong>IEC, Inc.</strong> · ' + esc(t('product')) + ' · <a href="https://iecincglobal.com">iecincglobal.com</a></div>';
     bindSignup(code);
     if (!DEMO) {
       api({ action: 'resolve-invite', code: code }, 'GET').then(function (res) {
@@ -1087,7 +1104,7 @@
 
   /* ------------------------- agreement step ------------------------- */
   function renderAgreement(token) {
-    root.innerHTML = '<div class="pp-front"><div class="pp-front-hero"><div class="pp-front-k">' + esc(t('front_hero_k')) + '</div>' +
+    root.innerHTML = '<div class="pp-front"><div class="pp-front-hero"><img class="pp-front-logo" src="/assets/iec-logo.png" alt="IEC, Inc."><div class="pp-front-k">' + esc(t('front_hero_k')) + '</div>' +
       '<h1 class="pp-front-h">' + esc(t('agr_title')) + '</h1><p class="pp-front-p">' + esc(t('loading')) + '</p></div></div>';
     api({ action: 'agreement', token: token }, 'GET').then(function (res) {
       if (res.status !== 200 || !res.body.ok) { renderFront(); return; }
@@ -1115,7 +1132,7 @@
           '<p class="pp-error" id="pp-agr-error" hidden></p>' +
           '<button class="pp-btn" id="pp-agr-sign">' + esc(t('agr_sign_btn')) + '</button></div>';
       }
-      root.innerHTML = '<div class="pp-front"><div class="pp-front-hero"><div class="pp-front-k">' + esc(t('front_hero_k')) + '</div>' +
+      root.innerHTML = '<div class="pp-front"><div class="pp-front-hero"><img class="pp-front-logo" src="/assets/iec-logo.png" alt="IEC, Inc."><div class="pp-front-k">' + esc(t('front_hero_k')) + '</div>' +
         '<h1 class="pp-front-h">' + esc(t('agr_title')) + '</h1><p class="pp-front-p">' + esc(t('agr_expl')) + '</p></div>' +
         '<div class="pp-card" style="max-width:860px;margin:0 auto">' + bodyHtml + '</div></div>';
       var btn = document.getElementById('pp-agr-sign');

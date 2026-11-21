@@ -86,12 +86,15 @@
     if (m) code = m[1].toUpperCase();
   }
   function hero(sub) {
-    return '<div class="pp-front"><div class="pp-front-hero"><div class="pp-front-k">' + esc(t('kicker')) + '</div>' +
+    return '<div class="pp-front"><div class="pp-front-hero"><img class="pp-front-logo" src="/assets/iec-logo.png" alt="IEC, Inc."><div class="pp-front-k">' + esc(t('kicker')) + '</div>' +
       '<h1 class="pp-front-h">' + esc(t('title')) + '</h1>' + (sub || '') + '</div>';
+  }
+  function foot() {
+    return '<div class="pp-front-foot"><strong>IEC, Inc.</strong> · <a href="https://iecincglobal.com">iecincglobal.com</a> · <a href="mailto:info@iecincglobal.com">info@iecincglobal.com</a></div>';
   }
   function showInvalid() {
     root.innerHTML = hero() + '<div class="pp-card" style="max-width:760px;margin:0 auto"><h2 class="pp-h2">' +
-      esc(t('invalid_t')) + '</h2><p class="pp-p">' + esc(t('invalid_p')) + '</p></div></div>';
+      esc(t('invalid_t')) + '</h2><p class="pp-p">' + esc(t('invalid_p')) + '</p></div></div>' + foot();
   }
   function showForm(partner) {
     var invited = partner
@@ -115,7 +118,7 @@
       '<div><label class="pp-label">' + esc(t('f_state')) + '</label><input class="pp-input" id="pp-r-state"></div>' +
       '</div><p class="pp-error" id="pp-r-error" hidden>' + esc(t('err_fields')) + '</p>' +
       '<button class="pp-btn" type="submit">' + esc(t('continue')) + '</button></form>' +
-      '</div></div>';
+      '</div></div>' + foot();
     document.getElementById('pp-reg-form').addEventListener('submit', function (ev) {
       ev.preventDefault();
       var business = document.getElementById('pp-r-business').value.trim();

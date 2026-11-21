@@ -92,7 +92,7 @@
     return '<option value="' + esc(slug) + '"' + (slug === current ? ' selected' : '') + '>' + esc(SEGMENTS[slug].title) + '</option>';
   }).join('');
   root.innerHTML =
-    '<div class="pp-qwrap"><div class="pp-front-hero"><div class="pp-front-k">' + esc(t('kicker')) + '</div>' +
+    '<div class="pp-qwrap"><div class="pp-front-hero"><img class="pp-front-logo" src="/assets/iec-logo.png" alt="IEC, Inc."><div class="pp-front-k">' + esc(t('kicker')) + '</div>' +
     '<h1 class="pp-front-h">' + esc(t('title')) + '</h1>' +
     '<p class="pp-front-p">' + esc(t('expl')) + '</p></div>' +
     '<div class="pp-card"><label class="pp-label" for="pp-seg">' + esc(t('segment')) + '</label>' +
@@ -106,7 +106,8 @@
     '</div>' +
     '<input type="text" id="pp-c-website" autocomplete="off" style="display:none" tabindex="-1">' +
     '<p class="pp-error" id="pp-q-error" hidden></p>' +
-    '<button class="pp-btn" type="submit" id="pp-q-submit">' + esc(t('submit')) + '</button></div></form></div>';
+    '<button class="pp-btn" type="submit" id="pp-q-submit">' + esc(t('submit')) + '</button></div></form>' +
+    '<div class="pp-front-foot"><strong>IEC, Inc.</strong> · <a href="https://iecincglobal.com">iecincglobal.com</a> · <a href="mailto:info@iecincglobal.com">info@iecincglobal.com</a></div></div>';
 
   if (profile) {
     if (profile.ownerName) document.getElementById('pp-c-name').value = profile.ownerName;
@@ -222,8 +223,9 @@
   function showDone(kind) {
     try { sessionStorage.removeItem('iecPartnerLinkProfile'); } catch (e) {}
     var msg = kind === 'credited' ? t('done_credited') : kind === 'held' ? t('done_held') : t('done_plain');
-    root.innerHTML = '<div class="pp-qwrap"><div class="pp-card"><h1 class="pp-h1">' + esc(t('done_t')) + '</h1>' +
-      '<p class="pp-p">' + esc(msg) + '</p></div></div>';
+    root.innerHTML = '<div class="pp-qwrap"><div class="pp-front-hero"><img class="pp-front-logo" src="/assets/iec-logo.png" alt="IEC, Inc."></div><div class="pp-card"><h1 class="pp-h1">' + esc(t('done_t')) + '</h1>' +
+      '<p class="pp-p">' + esc(msg) + '</p></div>' +
+      '<div class="pp-front-foot"><strong>IEC, Inc.</strong> · <a href="https://iecincglobal.com">iecincglobal.com</a> · <a href="mailto:info@iecincglobal.com">info@iecincglobal.com</a></div></div>';
   }
   document.getElementById('pp-q-form').addEventListener('submit', function (ev) {
     ev.preventDefault();
