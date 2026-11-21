@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Register Your Company — IEC, Inc. Data Licensing Program</title>
+<meta name="description" content="You were invited by an IEC partner. Register your company and complete the short counts-only questionnaire for IEC's data licensing program — licensing, never a sale; owners keep 80%.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="stylesheet" href="style.css">
+<style>
+  .plink { max-width: 820px; }
+  .plink fieldset { border: 1px solid var(--line); border-radius: var(--radius); padding: 22px 24px 8px; margin: 0 0 22px; background: #fff; }
+  .plink legend { font-weight: 800; color: var(--navy); font-size: 19px; padding: 0 8px; }
+  .pfield { margin: 0 0 20px; }
+  .pfield label.plabel { display: block; font-weight: 600; color: var(--ink); margin-bottom: 7px; font-size: 16px; }
+  .plink input[type="text"], .plink input[type="email"], .plink select {
+    width: 100%; padding: 11px 13px; border: 1px solid #c9c2b2; border-radius: 9px; font: inherit; font-size: 16px; background: #fff; color: var(--ink);
+  }
+  .prow { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 640px) { .prow { grid-template-columns: 1fr; } }
+  .preq { color: #a33; font-weight: 700; }
+  .perr { display: none; background: #fbeae8; border: 1px solid #d99; border-radius: 10px; padding: 13px 18px; margin: 16px 0; font-size: 15px; }
+  .pinvite { background: var(--bg-soft); border: 1px solid var(--gold); border-radius: var(--radius); padding: 18px 22px; margin: 22px 0; font-size: 16px; }
+  .psteps { line-height: 1.9; }
+  .psubmit { font-size: 18px; padding: 14px 34px; }
+</style>
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a class="brand" href="welcome.html"><img class="brand-logo" src="assets/iec-logo-light.png" alt="IEC Inc."></a>
+    <button class="menu-btn" aria-label="Open menu" aria-expanded="false"><span></span><span></span><span></span></button>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="welcome.html">Home</a>
+      <a href="about.html">About</a>
+      <a href="services.html">Capabilities</a>
+      <a href="healthcare.html">Healthcare</a>
+      <a href="data-network.html" class="active">Data Network</a>
+      <a href="real-estate.html">Real Estate</a>
+      <a href="international.html">International</a>
+      <a href="assets.html">Assets</a>
+      <a href="contractors.html">Partner Portal</a>
+      <a href="media.html">Media</a>
+      <a class="nav-suite" href="/desk/login.html">IEC Suite</a>
+      <a class="nav-cta" href="https://wa.me/18578671767?text=Hello%20DrMorgan%2C%20I%27d%20like%20to%20connect%20with%20IEC%20Inc.">Contact IEC</a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <div class="eyebrow">IEC MSO Data Network</div>
+      <h1>Your business data may be worth licensing.</h1>
+      <p class="lede">AI companies pay to license real-world operational data. IEC, Inc. helps business owners license theirs — a license, never a sale — and the first step is a short, counts-only questionnaire.</p>
+      <div class="chips">
+        <span class="chip">Counts only</span>
+        <span class="chip">No personal information</span>
+        <span class="chip">License, never a sale</span>
+        <span class="chip">Owner keeps 80%</span>
+      </div>
+    </div>
+    <div>
+      <img src="assets/datacenter.jpg" alt="Data infrastructure supporting secure information systems">
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap plink">
+
+    <div class="pinvite" id="inviteBox" style="display:none"></div>
+
+    <div id="invalidBox" style="display:none">
+      <h2>This invitation link is not active.</h2>
+      <p>The link you opened does not match an IEC partner record, so nothing can be registered through it. If you believe this is a mistake, write to <a href="mailto:info@iecincglobal.com">info@iecincglobal.com</a> — or start directly on <a href="questionnaires.html">IEC's questionnaire page</a>.</p>
+    </div>
+
+    <div id="linkMain" style="display:none">
+      <div class="eyebrow">About data licensing</div>
+      <h2>Licensing — and what your data is worth.</h2>
+      <p>AI companies train their systems on real-world operational data — records, workflows, scheduling, transactions, billing patterns — and they pay to license it. A license is <strong>not a sale</strong>: you keep full ownership, the license covers defined uses for a defined time, and the same data can be licensed to more than one buyer, so value can be earned repeatedly. Three things set the price: <strong>volume</strong>, <strong>years of history</strong>, and <strong>standardization</strong> — the same workflows repeated across locations.</p>
+      <p>Approved licensing programs in this market range from <strong>$100,000 to $5,000,000 per term</strong>. Your share of any license IEC closes on your data is <strong>80%</strong> of the license value, paid when the buyer pays.</p>
+
+      <h3>How it works — five steps</h3>
+      <ol class="psteps">
+        <li><strong>Register your company</strong> below and complete the short questionnaire — counts only.</li>
+        <li><strong>IEC reviews your counts</strong> and values the opportunity.</li>
+        <li><strong>You review and sign</strong> IEC's data licensing agreements — nothing is licensed without your signature.</li>
+        <li><strong>IEC registers and presents</strong> your company to buyers; any data that ever moves is de-identified first, inside your own systems.</li>
+        <li><strong>You are paid your 80%</strong> when a license closes and the buyer pays.</li>
+      </ol>
+      <p><strong>Counts only, always.</strong> The questionnaire asks for totals, years of history and system names — never individual records, never customer or patient information.</p>
+
+      <form id="pForm" novalidate>
+        <fieldset>
+          <legend>Step 1 — Register your company</legend>
+          <div class="pfield">
+            <label class="plabel" for="pBusiness">Business legal name <span class="preq">*</span></label>
+            <input type="text" id="pBusiness" autocomplete="organization" required maxlength="160">
+          </div>
+          <div class="pfield">
+            <label class="plabel" for="pIndustry">Business type <span class="preq">*</span></label>
+            <select id="pIndustry" required>
+              <option value="home-health">Home health</option>
+              <option value="physical-therapy">Physical therapy</option>
+              <option value="medical-practice">Medical practice</option>
+              <option value="pharmacy">Pharmacy</option>
+              <option value="gas-convenience">Gas / convenience</option>
+              <option value="general-business" selected>General business</option>
+              <option value="nonprofit">Nonprofit — School / Mosque</option>
+            </select>
+          </div>
+          <div class="prow">
+            <div class="pfield">
+              <label class="plabel" for="pOwner">Owner contact name <span class="preq">*</span></label>
+              <input type="text" id="pOwner" autocomplete="name" required maxlength="120">
+            </div>
+            <div class="pfield">
+              <label class="plabel" for="pEmail">Owner contact email <span class="preq">*</span></label>
+              <input type="email" id="pEmail" autocomplete="email" required maxlength="120">
+            </div>
+          </div>
+          <div class="prow">
+            <div class="pfield">
+              <label class="plabel" for="pCity">City</label>
+              <input type="text" id="pCity" autocomplete="address-level2" maxlength="120">
+            </div>
+            <div class="pfield">
+              <label class="plabel" for="pState">State</label>
+              <input type="text" id="pState" autocomplete="address-level1" maxlength="80">
+            </div>
+          </div>
+        </fieldset>
+        <div class="perr" id="pErr"></div>
+        <p><button type="submit" class="btn dark psubmit">Continue to the questionnaire</button></p>
+        <p style="font-size:14px;color:var(--muted)">Registering costs nothing and commits you to nothing. Questions: IEC, Inc. — 857-867-1767 · <a href="mailto:info@iecincglobal.com">info@iecincglobal.com</a>.</p>
+      </form>
+    </div>
+
+    <p style="margin-top:26px"><em>IEC, Inc. — licensing only, never a sale. Your data stays in your systems; anything shared with a buyer is de-identified first, under agreement. More on how the Network works: <a href="data-network.html">the IEC MSO Data Network</a>.</em></p>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="foot-grid">
+      <div class="foot-brand">
+        <div class="brand"><img class="brand-logo foot-logo" src="assets/iec-logo-light.png" alt="IEC Inc."></div>
+        <p>International Empire Consultants, Inc. — Boston-based business development and strategic consulting across healthcare, technology, real estate and international markets for more than a decade.</p>
+      </div>
+      <nav class="foot-col" aria-label="Explore">
+        <h4>Explore</h4>
+        <a href="welcome.html">Home</a>
+        <a href="services.html">Capabilities</a>
+        <a href="healthcare.html">Healthcare</a>
+        <a href="data-network.html">Data Network</a>
+        <a href="questionnaires.html">Questionnaires</a>
+        <a href="real-estate.html">Real Estate</a>
+        <a href="international.html">International</a>
+        <a href="assets.html">Assets</a>
+        <a href="news.html">News</a>
+      </nav>
+      <nav class="foot-col" aria-label="Company">
+        <h4>Company</h4>
+        <a href="about.html">About</a>
+        <a href="strategic-partner.html">Strategic Partner</a>
+        <a href="project-advisory.html">Advisory</a>
+        <a href="welcome.html#nda">Mutual NDA</a>
+        <a href="contact.html">Contact</a>
+      </nav>
+    </div>
+    <div class="foot-bottom">
+      <div class="copyright">&copy; 2026 International Empire Consultants, Inc. All rights reserved. &middot; <a href="privacy.html">Privacy</a> &middot; <a href="/desk/login.html">Team sign-in</a> &middot; Developed by IEC, Inc.</div>
+      <button class="to-top" id="toTop" aria-label="Back to top">&#8593;</button>
+    </div>
+  </div>
+</footer>
+<script src="nav.js" defer></script>
+<script>
+(function () {
+  /* The partner code arrives as ?code= (the /r/<code> and
+     /w/p/<code> rewrites in vercel.json land here) or in the path
+     itself when the page is reached without the rewrite. */
+  var params = new URLSearchParams(location.search);
+  var code = params.get("code") || "";
+  if (!code) {
+    var m = location.pathname.match(/\/(?:r|w\/p)\/([A-Za-z0-9]+)/);
+    if (m) code = m[1];
+  }
+  code = String(code || "").toUpperCase();
+
+  /* Partner industry -> questionnaire-form segment slug. */
+  var SEGMENT_BY_INDUSTRY = { "physical-therapy": "pt" };
+
+  var inviteBox = document.getElementById("inviteBox");
+  var invalidBox = document.getElementById("invalidBox");
+  var linkMain = document.getElementById("linkMain");
+  var err = document.getElementById("pErr");
+
+  function showInvalid() {
+    invalidBox.style.display = "block";
+    linkMain.style.display = "none";
+    inviteBox.style.display = "none";
+  }
+
+  if (!code) { showInvalid(); return; }
+
+  fetch("/api/contractors?action=partner-link&code=" + encodeURIComponent(code), {
+    credentials: "same-origin"
+  })
+    .then(function (r) { return r.json().then(function (j) { return { ok: r.ok && j.ok, j: j }; }); })
+    .then(function (res) {
+      if (!res.ok) { showInvalid(); return; }
+      linkMain.style.display = "block";
+      if (res.j.partner) {
+        var who = res.j.partner.company
+          ? res.j.partner.name + " · " + res.j.partner.company
+          : res.j.partner.name;
+        inviteBox.innerHTML = "You were invited by <strong></strong>, an IEC partner. Register below and IEC will follow up with you directly.";
+        inviteBox.querySelector("strong").textContent = who;
+        inviteBox.style.display = "block";
+      } else {
+        inviteBox.textContent = "You were invited by an IEC partner. Register below and IEC will follow up with you directly.";
+        inviteBox.style.display = "block";
+      }
+    })
+    .catch(function () { showInvalid(); });
+
+  document.getElementById("pForm").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    err.style.display = "none";
+    var business = document.getElementById("pBusiness").value.trim();
+    var industry = document.getElementById("pIndustry").value;
+    var owner = document.getElementById("pOwner").value.trim();
+    var email = document.getElementById("pEmail").value.trim();
+    if (!business || !owner || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      err.textContent = "Please complete the business legal name, the owner contact name, and a valid owner email — IEC needs them to register your company.";
+      err.style.display = "block";
+      return;
+    }
+    var profile = {
+      code: code,
+      businessName: business,
+      industry: industry,
+      ownerName: owner,
+      ownerEmail: email,
+      city: document.getElementById("pCity").value.trim(),
+      state: document.getElementById("pState").value.trim()
+    };
+    try { sessionStorage.setItem("iecPartnerLinkProfile", JSON.stringify(profile)); } catch (e) { /* the code also travels in the URL */ }
+    var slug = SEGMENT_BY_INDUSTRY[industry] || industry;
+    location.href = "questionnaire-form.html?segment=" + encodeURIComponent(slug) + "&partner=" + encodeURIComponent(code);
+  });
+})();
+</script>
+</body>
+</html>

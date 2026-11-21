@@ -15,6 +15,19 @@
                           business address, website, how they heard
                           about IEC, and free notes — the complete
                           record the office works from.
+                          client_code is the partner's public
+                          client-link code (…/r/<code>): issued when
+                          the partner is activated (both signatures
+                          recorded), 8 characters from an unambiguous
+                          alphabet, collision-checked at issue. It is
+                          a public routing code, not a credential —
+                          the partner's access still rides the
+                          activation link + session cookie alone.
+     contractor_link_holds registrations that arrived through a
+                          partner's client link while that partner
+                          was NOT active (paused/revoked): stored
+                          for the Desk, flagged, and NEVER credited
+                          to the partner as a referral.
                           agreement_accepted_* records an IN-PORTAL
                           acceptance of the Referral Agreement (the
                           partner read the full text in the portal
@@ -58,6 +71,8 @@
    database is configured the store reports null and the API says
    so honestly (503 not_configured) — a save is never faked.
    ===================================================================== */
+
+import crypto from 'node:crypto';
 
 const globalKey = '__iecContractorsStore';
 const state = globalThis[globalKey] || (globalThis[globalKey] = { urlOverride: undefined, tablesReady: false });
@@ -113,6 +128,7 @@ async function ensureTables() {
     agreement_accepted_version text NOT NULL DEFAULT '',
     agreement_accepted_via text NOT NULL DEFAULT '',
     activation_token_hash text NOT NULL DEFAULT '',
+    client_code text UNIQUE,
     source text NOT NULL DEFAULT 'office-invite',
     phone text NOT NULL DEFAULT '',
     address_street text NOT NULL DEFAULT '',
@@ -136,8 +152,24 @@ async function ensureTables() {
     pipeline_status text NOT NULL DEFAULT 'added',
     questionnaire_answers jsonb, questionnaire_submission_id text,
     pipeline_note text, pipeline_updated_at timestamptz,
+    source text NOT NULL DEFAULT 'partner-entered',
+    attribution_status text NOT NULL DEFAULT 'credited',
+    partner_code text NOT NULL DEFAULT '',
+    business_city text NOT NULL DEFAULT '',
+    business_state text NOT NULL DEFAULT '',
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now())`);
+  await neonQuery(`CREATE TABLE IF NOT EXISTS contractor_link_holds (
+    id text PRIMARY KEY, contractor_id text NOT NULL,
+    client_code text NOT NULL DEFAULT '',
+    business_name text NOT NULL, business_key text NOT NULL,
+    owner_name text NOT NULL, owner_email text NOT NULL,
+    industry text NOT NULL DEFAULT '',
+    business_city text NOT NULL DEFAULT '',
+    business_state text NOT NULL DEFAULT '',
+    questionnaire_answers jsonb, questionnaire_submission_id text,
+    reason text NOT NULL DEFAULT '',
+    created_at timestamptz NOT NULL DEFAULT now())`);
   await neonQuery(`CREATE TABLE IF NOT EXISTS client_claims (
     id text PRIMARY KEY, business_name text NOT NULL, business_key text NOT NULL,
     owner_email text NOT NULL DEFAULT '', note text NOT NULL DEFAULT '',
@@ -171,7 +203,13 @@ async function ensureTables() {
     `ALTER TABLE contractor_referrals ADD COLUMN IF NOT EXISTS questionnaire_answers jsonb`,
     `ALTER TABLE contractor_referrals ADD COLUMN IF NOT EXISTS questionnaire_submission_id text`,
     `ALTER TABLE contractor_referrals ADD COLUMN IF NOT EXISTS pipeline_note text`,
-    `ALTER TABLE contractor_referrals ADD COLUMN IF NOT EXISTS pipeline_updated_at timestamptz`
+    `ALTER TABLE contractor_referrals ADD COLUMN IF NOT EXISTS pipeline_updated_at timestamptz`,
+    `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS client_code text`,
+    `ALTER TABLE contractor_referrals ADD COLUMN IF NOT EXISTS source text NOT NULL DEFAULT 'partner-entered'`,
+    `ALTER TABLE contractor_referrals ADD COLUMN IF NOT EXISTS attribution_status text NOT NULL DEFAULT 'credited'`,
+    `ALTER TABLE contractor_referrals ADD COLUMN IF NOT EXISTS partner_code text NOT NULL DEFAULT ''`,
+    `ALTER TABLE contractor_referrals ADD COLUMN IF NOT EXISTS business_city text NOT NULL DEFAULT ''`,
+    `ALTER TABLE contractor_referrals ADD COLUMN IF NOT EXISTS business_state text NOT NULL DEFAULT ''`
   ]) {
     await neonQuery(stmt);
   }
@@ -200,6 +238,7 @@ function rowToContractor(r) {
     agreementAcceptedName: r.agreement_accepted_name || '',
     agreementAcceptedVersion: r.agreement_accepted_version || '',
     agreementAcceptedVia: r.agreement_accepted_via || '',
+    clientCode: r.client_code || '',
     activatedAt: r.activated_at || null, createdAt: r.created_at || null,
     invitationSentAt: r.invitation_sent_at || null,
     invitationFrom: r.invitation_from || '',
@@ -241,7 +280,25 @@ function rowToReferral(r) {
     questionnaireAnswers: parseAnswers(r.questionnaire_answers),
     questionnaireSubmissionId: r.questionnaire_submission_id || null,
     pipelineNote: r.pipeline_note || null,
-    pipelineUpdatedAt: r.pipeline_updated_at || null
+    pipelineUpdatedAt: r.pipeline_updated_at || null,
+    source: r.source || 'partner-entered',
+    attributionStatus: r.attribution_status || 'credited',
+    partnerCode: r.partner_code || '',
+    businessCity: r.business_city || '',
+    businessState: r.business_state || ''
+  };
+}
+
+function rowToLinkHold(r) {
+  if (!r) return null;
+  return {
+    id: r.id, contractorId: r.contractor_id, clientCode: r.client_code || '',
+    businessName: r.business_name, ownerName: r.owner_name,
+    ownerEmail: r.owner_email, industry: r.industry || '',
+    businessCity: r.business_city || '', businessState: r.business_state || '',
+    questionnaireAnswers: parseAnswers(r.questionnaire_answers),
+    questionnaireSubmissionId: r.questionnaire_submission_id || null,
+    reason: r.reason || '', createdAt: r.created_at || null
   };
 }
 
@@ -302,7 +359,7 @@ export async function updateContractor(id, patch) {
   await ensureTables();
   const sets = [];
   const params = [];
-  const map = { status: 'status', ndaStatus: 'nda_status', agreementStatus: 'agreement_status', agreementSignedAt: 'agreement_signed_at', agreementAcceptedName: 'agreement_accepted_name', agreementAcceptedVersion: 'agreement_accepted_version', agreementAcceptedVia: 'agreement_accepted_via', activationTokenHash: 'activation_token_hash', activatedAt: 'activated_at', invitationSentAt: 'invitation_sent_at', invitationFrom: 'invitation_from' };
+  const map = { status: 'status', ndaStatus: 'nda_status', agreementStatus: 'agreement_status', agreementSignedAt: 'agreement_signed_at', agreementAcceptedName: 'agreement_accepted_name', agreementAcceptedVersion: 'agreement_accepted_version', agreementAcceptedVia: 'agreement_accepted_via', activationTokenHash: 'activation_token_hash', clientCode: 'client_code', activatedAt: 'activated_at', invitationSentAt: 'invitation_sent_at', invitationFrom: 'invitation_from' };
   for (const [k, col] of Object.entries(map)) {
     if (patch[k] !== undefined) { params.push(patch[k]); sets.push(`${col} = $${params.length}`); }
   }
@@ -358,12 +415,136 @@ export async function createReferral(r) {
   if (!contractorsDbConfigured()) return false;
   await ensureTables();
   await neonQuery(
-    `INSERT INTO contractor_referrals (id, contractor_id, business_name, business_key, owner_name, owner_email, industry, status, locations, employees, systems, years_records, pipeline_status, questionnaire_answers)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, 'registered', $8, $9, $10, $11, 'added', $12)`,
+    `INSERT INTO contractor_referrals (id, contractor_id, business_name, business_key, owner_name, owner_email, industry, status, locations, employees, systems, years_records, pipeline_status, questionnaire_answers, questionnaire_submission_id, source, attribution_status, partner_code, business_city, business_state)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, 'registered', $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)`,
     [r.id, r.contractorId, r.businessName, businessKey(r.businessName), r.ownerName, r.ownerEmail, r.industry,
      r.locations ?? null, r.employees ?? null, r.systems ?? null, r.yearsRecords ?? null,
-     r.questionnaireAnswers ? JSON.stringify(r.questionnaireAnswers) : null]);
+     r.pipelineStatus || 'added',
+     r.questionnaireAnswers ? JSON.stringify(r.questionnaireAnswers) : null,
+     r.questionnaireSubmissionId ?? null,
+     r.source || 'partner-entered', r.attributionStatus || 'credited',
+     r.partnerCode || '', r.businessCity || '', r.businessState || '']);
   return true;
+}
+
+/* Remove one referral — used ONLY as compensation when a linked
+   questionnaire submission fails to store after the referral row
+   was written (the two stores share one database in production,
+   but the writes are sequential, not transactional). */
+export async function deleteReferral(id) {
+  if (!contractorsDbConfigured()) return false;
+  await ensureTables();
+  await neonQuery(`DELETE FROM contractor_referrals WHERE id = $1`, [id]);
+  return true;
+}
+
+/* ---------------------------------------------------------------- */
+/* Partner client-link codes — the public …/r/<code> each active
+   partner emails to his clients. 8 characters from an alphabet
+   with no look-alikes (no 0/O, 1/I/L), generated with a CSPRNG and
+   COLLISION-CHECKED against every issued code before it is
+   stored. A code is a routing label, not a credential: knowing a
+   code lets an owner register under that partner — exactly what
+   the link is for — and nothing else.                          */
+/* ---------------------------------------------------------------- */
+
+export const PARTNER_CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+export const PARTNER_CODE_LENGTH = 8;
+
+export function generatePartnerClientCode(randomInt = crypto.randomInt) {
+  let code = '';
+  for (let i = 0; i < PARTNER_CODE_LENGTH; i++) {
+    code += PARTNER_CODE_ALPHABET[randomInt(PARTNER_CODE_ALPHABET.length)];
+  }
+  return code;
+}
+
+export function normalizePartnerCode(code) {
+  return String(code || '').trim().toUpperCase();
+}
+
+export async function readContractorByClientCode(code) {
+  if (!contractorsDbConfigured()) return undefined;
+  await ensureTables();
+  const normalized = normalizePartnerCode(code);
+  if (!normalized) return null;
+  const rows = await neonQuery(`SELECT * FROM contractors WHERE client_code = $1`, [normalized]);
+  return rows.length ? rowToContractor(rows[0]) : null;
+}
+
+/* Issue (or return the existing) client-link code for one partner.
+   Idempotent: a partner who already holds a code keeps it. The
+   generator is injectable for tests. Returns the code, or '' when
+   the partner does not exist / the store is unavailable. */
+export async function ensureContractorClientCode(id, generate = generatePartnerClientCode) {
+  if (!contractorsDbConfigured()) return '';
+  const c = await readContractorById(id);
+  if (!c) return '';
+  if (c.clientCode) return c.clientCode;
+  for (let attempt = 0; attempt < 25; attempt++) {
+    const candidate = generate();
+    const clash = await readContractorByClientCode(candidate);
+    if (clash && clash.id !== id) continue;
+    const ok = await updateContractor(id, { clientCode: candidate });
+    if (ok) return candidate;
+    return '';
+  }
+  return '';
+}
+
+/* Backfill: every partner who has been activated at some point
+   (active, paused or revoked — 'invited' partners have not
+   activated yet and get their code at activation) receives a code
+   if he does not hold one. Returns the number of codes issued.
+   Used by the Desk admin list (lazy, self-healing) and by
+   scripts/backfill-partner-client-codes.mjs. */
+const CODE_BACKFILL_STATUSES = ['active', 'paused', 'revoked'];
+export async function backfillPartnerClientCodes() {
+  if (!contractorsDbConfigured()) return 0;
+  const all = await listContractors();
+  let issued = 0;
+  for (const c of all || []) {
+    if (!CODE_BACKFILL_STATUSES.includes(c.status) || c.clientCode) continue;
+    const code = await ensureContractorClientCode(c.id);
+    if (code) issued++;
+  }
+  return issued;
+}
+
+/* ---------------------------------------------------------------- */
+/* contractor_link_holds — a registration that arrived through a
+   partner's client link while the partner was NOT active. The
+   submission is real (the owner answered IEC's questionnaire) but
+   it is NOT the partner's referral: it waits here, flagged with
+   the reason, for the Desk. It never enters fee totals and the
+   partner's frozen view does not list it.                       */
+/* ---------------------------------------------------------------- */
+
+export async function createLinkHold(h) {
+  if (!contractorsDbConfigured()) return false;
+  await ensureTables();
+  await neonQuery(
+    `INSERT INTO contractor_link_holds (id, contractor_id, client_code, business_name, business_key, owner_name, owner_email, industry, business_city, business_state, questionnaire_answers, questionnaire_submission_id, reason)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+    [h.id, h.contractorId, h.clientCode || '', h.businessName, businessKey(h.businessName),
+     h.ownerName, h.ownerEmail, h.industry || '', h.businessCity || '', h.businessState || '',
+     h.questionnaireAnswers ? JSON.stringify(h.questionnaireAnswers) : null,
+     h.questionnaireSubmissionId ?? null, h.reason || '']);
+  return true;
+}
+
+export async function deleteLinkHold(id) {
+  if (!contractorsDbConfigured()) return false;
+  await ensureTables();
+  await neonQuery(`DELETE FROM contractor_link_holds WHERE id = $1`, [id]);
+  return true;
+}
+
+export async function listLinkHolds() {
+  if (!contractorsDbConfigured()) return null;
+  await ensureTables();
+  const rows = await neonQuery(`SELECT * FROM contractor_link_holds ORDER BY created_at DESC LIMIT 200`);
+  return rows.map(rowToLinkHold);
 }
 
 export async function listReferralsByContractor(contractorId) {
@@ -459,4 +640,4 @@ export async function deleteClientClaim(id) {
   return true;
 }
 
-export const _internals = { businessKey, rowToContractor, rowToReferral };
+export const _internals = { businessKey, rowToContractor, rowToReferral, rowToLinkHold, CODE_BACKFILL_STATUSES };

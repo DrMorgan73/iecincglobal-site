@@ -90,6 +90,15 @@
     </div>
 
     <div class="card" style="margin-bottom:16px">
+      <h3>Partner-link registrations on hold</h3>
+      <p class="hint">These owners registered and answered the questionnaire through a partner's client link while that partner was <b>paused or revoked</b>. They are <b>not</b> credited to the partner and do not appear in his clients or fees. The questionnaire submission itself is in the submissions store under the reference shown. Work them from here: if the company should proceed, record it under IEC-registered companies or reassign it manually per DrMorgan's ruling.</p>
+      <div class="table-wrap"><table class="matrix" id="holdTable">
+        <thead><tr><th>Company</th><th>Owner</th><th>Partner (link code)</th><th>Held because</th><th>Submission</th><th>Received</th></tr></thead>
+        <tbody><tr><td colspan="6">Loading…</td></tr></tbody>
+      </table></div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
       <h3>Clients — pipeline &amp; fees</h3>
       <p class="hint">Pipeline: Added → Questionnaire sent → Questionnaire answered → Assessment done → CNDA sent → CNDA signed → Ready to register → Registered (with DataSupply — internal label; partners never see the channel name). Evidence is required for Questionnaire answered (the submission reference from Dana's database), Assessment done (the valuation reference) and CNDA signed (the countersignature verification note). A paused or revoked partner's clients do not move.</p>
       <div class="table-wrap"><table class="matrix" id="refTable">
@@ -194,7 +203,8 @@
       acts += '<button class="mini" data-details="' + esc(c.id) + '">Full record</button>';
       var ft = c.feeTotals || { earned: 0, paid: 0 };
       var srcLabel = c.source === 'public-signup' ? 'Public sign-up' : 'Office invite';
-      var mainRow = '<tr><td class="who"><b>' + esc(c.name) + '</b><span>' + esc(c.email) + ' · ' + esc(c.company) + '<br>' + esc(srcLabel) + '</span></td>' +
+      var mainRow = '<tr><td class="who"><b>' + esc(c.name) + '</b><span>' + esc(c.email) + ' · ' + esc(c.company) + '<br>' + esc(srcLabel) +
+        (c.clientLink ? '<br>Client link: <b>' + esc(c.clientLink) + '</b> (code ' + esc(c.clientCode || '') + ')' : '<br>Client link: not issued yet') + '</span></td>' +
         '<td><span class="chip ' + esc(c.status) + '">' + esc(c.status) + '</span>' + (signedBoth ? '' : '<br><span style="font-size:12px;color:var(--dim)">activation blocked until both sign</span>') + '</td>' +
         '<td><span class="chip ' + ((c.agreementStatus || 'pending') === 'signed' ? 'signed' : 'pending') + '">' + esc(c.agreementStatus || 'pending') + '</span></td>' +
         '<td><span class="chip ' + (c.ndaStatus === 'signed' ? 'signed' : 'pending') + '">' + esc(c.ndaStatus) + '</span></td>' +
@@ -245,7 +255,10 @@
       }
       if (frozen) act += '<span style="font-size:12px;color:var(--dim)">Partner ' + esc(c.status) + ' — pipeline frozen</span>';
       var profile = [r.locations != null ? r.locations + ' loc' : null, r.employees != null ? r.employees + ' FTE' : null, r.yearsRecords != null ? r.yearsRecords + ' yrs records' : null].filter(Boolean).join(' · ');
-      return '<tr><td class="who"><b>' + esc(r.businessName) + '</b><span>' + esc(r.ownerName) + ' · ' + esc(r.ownerEmail) + (profile ? '<br>' + esc(profile) : '') + (r.pipelineNote ? '<br>Evidence: ' + esc(r.pipelineNote) : '') + '</span></td>' +
+      var srcLine = r.source === 'link' ? 'Registered via partner link' : 'Entered by partner';
+      return '<tr><td class="who"><b>' + esc(r.businessName) + '</b><span>' + esc(r.ownerName) + ' · ' + esc(r.ownerEmail) + '<br>' + esc(srcLine) +
+        ([r.businessCity, r.businessState].filter(Boolean).length ? ' · ' + esc([r.businessCity, r.businessState].filter(Boolean).join(', ')) : '') +
+        (profile ? '<br>' + esc(profile) : '') + (r.pipelineNote ? '<br>Evidence: ' + esc(r.pipelineNote) : '') + '</span></td>' +
         '<td>' + esc(c ? c.email : r.contractorId) + '</td>' +
         '<td><span class="chip">' + esc(PIPE_LABEL[r.pipelineStatus || 'added']) + '</span></td>' +
         '<td><span class="chip">' + esc(STATUS_LABEL[r.status] || r.status) + '</span></td>' +
@@ -258,6 +271,18 @@
       return '<tr><td class="who"><b>' + esc(cl.businessName) + '</b></td><td>' + esc(cl.ownerEmail || '—') + '</td><td>' + esc(cl.note || '—') + '</td>' +
         '<td><button class="mini danger" data-unclaim="' + esc(cl.id) + '">Remove</button></td></tr>';
     }).join('') : '<tr><td colspan="4">None recorded — add the companies IEC has registered itself so partners cannot register them again.</td></tr>';
+
+    var holds = d.linkHolds || [];
+    document.querySelector('#holdTable tbody').innerHTML = holds.length ? holds.map(function (h) {
+      var p = byId[h.contractorId];
+      return '<tr><td class="who"><b>' + esc(h.businessName) + '</b><span>' + esc(h.industry || '') +
+        ([h.businessCity, h.businessState].filter(Boolean).length ? ' · ' + esc([h.businessCity, h.businessState].filter(Boolean).join(', ')) : '') + '</span></td>' +
+        '<td>' + esc(h.ownerName) + ' · ' + esc(h.ownerEmail) + '</td>' +
+        '<td>' + esc(p ? p.email : h.contractorId) + '<br><span style="font-size:12px;color:var(--dim)">code ' + esc(h.clientCode || '') + '</span></td>' +
+        '<td><span class="chip">' + esc(h.reason || '') + '</span></td>' +
+        '<td>' + esc(h.questionnaireSubmissionId || '—') + '</td>' +
+        '<td>' + esc(String(h.createdAt || '').slice(0, 10) || '—') + '</td></tr>';
+    }).join('') : '<tr><td colspan="6">None — no link registrations are on hold.</td></tr>';
   }
 
   document.addEventListener('click', function (ev) {

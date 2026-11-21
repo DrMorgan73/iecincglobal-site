@@ -94,6 +94,30 @@
       <div id="frozenBanner" class="ctr-banner" style="display:none"></div>
     </div>
 
+    <div class="ctr-card" id="linkCard" style="display:none">
+      <h2>Your client link</h2>
+      <p>Email this IEC link to a business owner you are introducing. It opens your personal IEC registration page: the owner registers his company and completes the short counts-only questionnaire, and the client is credited to you. Prefer to enter a client yourself? Use <strong>Add a client</strong> below — both routes land in the same pipeline, one registration per company.</p>
+      <div class="ctr-form">
+        <div class="full">
+          <label for="clientLinkInput">Your link</label>
+          <input id="clientLinkInput" type="text" readonly>
+        </div>
+        <div class="full">
+          <button class="ctr-btn" type="button" id="copyLinkBtn">Copy the link</button>
+          <span class="ctr-status" id="linkCopyStatus" role="status"></span>
+        </div>
+        <div class="full">
+          <label for="linkEmailTemplate">Ready-to-send email — copy it into your own email, adjust anything above the link, and send it from your address</label>
+          <textarea id="linkEmailTemplate" readonly rows="16"></textarea>
+        </div>
+        <div class="full">
+          <button class="ctr-btn ghost" type="button" id="copyTemplateBtn">Copy the email</button>
+          <span class="ctr-status" id="templateCopyStatus" role="status"></span>
+        </div>
+      </div>
+      <p class="ctr-fine">The link stays yours while your partnership is active. If your portal is paused or revoked, the link stops crediting you — registrations through it are held for IEC's review instead.</p>
+    </div>
+
     <div class="ctr-card" id="addCard">
       <h2>Add a client</h2>
       <p>Add a business owner you are introducing to IEC's data-licensing program. A client can be registered by <strong>one partner only</strong> — first to register wins; if the business is already registered, your add will be refused without naming anyone. Counts only: totals and distributions, never individual records, never patient or customer information.</p>
@@ -241,9 +265,34 @@
         : 'Your portal is paused. This is a read-only view of your clients — nothing can be added or changed while paused.';
       document.getElementById('addCard').style.display = 'none';
     }
+    renderLink(d);
     renderQuestionnaireForm(d.questionnaireSections || []);
     renderClients(d);
     renderFees(d);
+  }
+
+  function renderLink(d) {
+    var card = document.getElementById('linkCard');
+    if (!d.clientLink || d.frozen) { card.style.display = 'none'; return; }
+    card.style.display = 'block';
+    document.getElementById('clientLinkInput').value = d.clientLink;
+    var t = d.clientLinkEmail || { subject: '', body: '' };
+    document.getElementById('linkEmailTemplate').value = 'Subject: ' + t.subject + '\n\n' + t.body;
+  }
+
+  function copyText(id, statusId, doneText) {
+    var el = document.getElementById(id);
+    var st = document.getElementById(statusId);
+    var finish = function (okCopy) { st.textContent = okCopy ? doneText : 'Select the text and copy it manually.'; };
+    el.focus();
+    el.select();
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(el.value).then(function () { finish(true); }, function () {
+        try { finish(document.execCommand('copy')); } catch (e) { finish(false); }
+      });
+    } else {
+      try { finish(document.execCommand('copy')); } catch (e) { finish(false); }
+    }
   }
 
   function renderQuestionnaireForm(sections) {
@@ -356,6 +405,8 @@
         var rows = [
           ['Owner contact', r.ownerName + ' · ' + r.ownerEmail],
           ['Business type', r.industry],
+          ['Registered through', r.source === 'link' ? 'Your client link' : 'You entered this client'],
+          ['Location', [r.businessCity, r.businessState].filter(Boolean).join(', ') || '—'],
           ['Locations', r.locations === null ? '—' : r.locations],
           ['Full-time employees', r.employees === null ? '—' : r.employees],
           ['Systems', r.systems || '—'],
@@ -459,6 +510,13 @@
         btn.disabled = false;
         st.textContent = 'Something went wrong — please try again.';
       });
+  });
+
+  document.getElementById('copyLinkBtn').addEventListener('click', function () {
+    copyText('clientLinkInput', 'linkCopyStatus', 'Link copied.');
+  });
+  document.getElementById('copyTemplateBtn').addEventListener('click', function () {
+    copyText('linkEmailTemplate', 'templateCopyStatus', 'Email copied — paste it into your own email.');
   });
 
   document.getElementById('logoutBtn').addEventListener('click', function () {

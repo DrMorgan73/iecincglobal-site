@@ -27,6 +27,18 @@ import crypto from 'node:crypto';
 const COOKIE_NAME = 'contractor_session';
 const SESSION_DAYS = 30;
 
+/* Partner client-link attribution cookie: opening a partner's
+   public client link (…/r/<code>) sets this signed cookie holding
+   the partner CODE (the token's id slot carries the code, not a
+   contractor id), so a registration completed on any IEC page
+   within the credit window is credited to that partner. The
+   window mirrors the channel rule IEC works under: 3 days. The
+   cookie is HttpOnly — the questionnaire endpoint reads it
+   server-side; page scripts never touch it. Same-device /
+   same-browser limits apply and are documented as such. */
+const ATTRIBUTION_COOKIE_NAME = 'iec_partner_link';
+const ATTRIBUTION_DAYS = 3;
+
 function hmacHex(secret, data) {
   return crypto.createHmac('sha256', secret).update(data).digest('hex');
 }
@@ -105,4 +117,20 @@ export function clearSessionCookieHeader() {
   return `${COOKIE_NAME}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax; Secure`;
 }
 
-export const _internals = { COOKIE_NAME, SESSION_DAYS, hmacHex, timingSafeEqual };
+/* Mint the 3-day attribution token for one partner code. */
+export function mintAttributionToken(code) {
+  return mintToken(String(code || '').toUpperCase(), ATTRIBUTION_DAYS * 24 * 3600);
+}
+
+/* The partner code carried by a request's attribution cookie, or
+   null (no cookie, expired, or forged). */
+export function attributionCodeFromRequest(req) {
+  const code = verifyToken(getCookie(req, ATTRIBUTION_COOKIE_NAME));
+  return code ? String(code).toUpperCase() : null;
+}
+
+export function attributionCookieHeader(token) {
+  return `${ATTRIBUTION_COOKIE_NAME}=${encodeURIComponent(token)}; Path=/; Max-Age=${ATTRIBUTION_DAYS * 24 * 3600}; HttpOnly; SameSite=Lax; Secure`;
+}
+
+export const _internals = { COOKIE_NAME, SESSION_DAYS, ATTRIBUTION_COOKIE_NAME, ATTRIBUTION_DAYS, hmacHex, timingSafeEqual };

@@ -50,10 +50,36 @@
    original semantics: success when the Blob append or the email
    lands.
 
+   PARTNER-LINK ATTRIBUTION (2026-11-21): a submission may carry
+   a partner client-link code — explicitly (body.partnerCode, set
+   by questionnaire-form.html from the link landing) or through
+   the signed 3-day attribution cookie the link set
+   (api/_contractors-auth.js). When a code resolves to a partner:
+     - every answer is scanned with the SAME identifier patterns
+       the Partner Portal questionnaire enforces; an identifier
+       refuses the submission and NOTHING is stored anywhere;
+     - the duplicate guard (api/_contractors-store.js) runs
+       BEFORE any write; a duplicate is refused with the neutral
+       already_registered answer and NOTHING is stored;
+     - an ACTIVE partner is credited: a referral is created under
+       him at pipeline stage questionnaire_answered,
+       source 'link', with this submission's id as the evidence
+       reference. If the primary insert then fails, the referral
+       is deleted again (compensation — the stores share one
+       database but the writes are sequential);
+     - a paused/revoked partner is NOT credited: the submission
+       is stored as a flagged hold (contractor_link_holds) for
+       the Desk instead.
+   An unresolvable code is ignored (the submission proceeds as a
+   direct IEC submission); a resolvable code with the contractors
+   store unconfigured fails closed (503) rather than losing the
+   attribution silently.
+
    SANITY: POST only for submissions; bodies over 64 KB are
    rejected (413); every string is length-capped; the answers map
    is capped at 80 entries; a filled honeypot is refused with a
-   generic 400. No sessions, no cookies — this is a public intake.
+   generic 400. Apart from the attribution cookie above, no
+   sessions — this is a public intake.
 
    Env (this Vercel project — iecincglobal-site):
      QUESTIONNAIRE_DATABASE_URL  Neon iec_questionnaires database
@@ -73,6 +99,18 @@ import {
   findSubmissionInDb
 } from "./_questionnaire-db.js";
 import { bookingHandler } from "./_booking-handler.js";
+import {
+  contractorsDbConfigured,
+  readContractorByClientCode,
+  findDuplicateReferral,
+  createReferral,
+  deleteReferral,
+  createLinkHold,
+  deleteLinkHold,
+  normalizePartnerCode
+} from "./_contractors-store.js";
+import { attributionCodeFromRequest } from "./_contractors-auth.js";
+import { _internals as questionnaireInternals } from "./_partner-questionnaire.js";
 
 const SEGMENTS = {
   "pharmacy": "Pharmacy Operations",
@@ -190,6 +228,54 @@ function sanitizeAnswers(input) {
     n++;
   }
   return out;
+}
+
+/* ------------------------------------------------------------------ */
+/* Partner-link attribution                                            */
+/* ------------------------------------------------------------------ */
+
+/* Questionnaire segment slug -> Partner Portal industry. The
+   portal's physical-therapy industry is the form's "pt" segment;
+   nonprofit has no partner industry and maps to general-business
+   (it runs the general-business field set). */
+const INDUSTRY_BY_SEGMENT = {
+  "pharmacy": "pharmacy",
+  "home-health": "home-health",
+  "pt": "physical-therapy",
+  "medical-practice": "medical-practice",
+  "gas-convenience": "gas-convenience",
+  "general-business": "general-business",
+  "nonprofit": "general-business"
+};
+
+/* Resolve the partner behind a submission's client-link code.
+   Returns one of:
+     null                  no code anywhere — a direct submission
+     { ignored: true }     a code was supplied but resolves to no
+                           partner — proceed unattributed
+     { error }             a code was supplied and the contractors
+                           store is not configured — fail closed
+     { partner, code }     the resolved partner record          */
+async function resolveAttribution(req, body) {
+  const explicit = normalizePartnerCode(
+    body.partnerCode || body.partner_code || ""
+  );
+  const fromCookie = attributionCodeFromRequest(req);
+  const code = explicit || fromCookie || "";
+  if (!code) return null;
+  if (!contractorsDbConfigured()) return { error: "not_configured" };
+  const partner = await readContractorByClientCode(code);
+  if (!partner) return { ignored: true };
+  return { partner, code };
+}
+
+/* The counts-only guard, identical to the Partner Portal's: an
+   answer value carrying an email, phone, SSN or birth-date
+   pattern refuses the whole submission. */
+function answersHaveIdentifier(answers) {
+  return Object.values(answers || {}).some(
+    v => questionnaireInternals.valueHasIdentifier(String(v))
+  );
 }
 
 /* ------------------------------------------------------------------ */
@@ -359,12 +445,115 @@ export default async function handler(req, res) {
   if (!contact.name) return reply(res, 400, { ok: false, error: "name_required" });
   if (!plausibleEmail(contact.email)) return reply(res, 400, { ok: false, error: "invalid_email" });
 
+  const answers = sanitizeAnswers(body.answers);
+
+  /* Partner-link attribution — resolved and fully validated
+     BEFORE anything is stored (see the header). */
+  let attribution = null;
+  try {
+    attribution = await resolveAttribution(req, body);
+  } catch (e) {
+    console.error(`[questionnaire-submit] attribution resolve FAILED: ${e && e.message}`);
+    return reply(res, 502, { ok: false, error: "store_failed" });
+  }
+  if (attribution && attribution.error) {
+    return reply(res, 503, { ok: false, error: attribution.error });
+  }
+  let linkContext = null;
+  if (attribution && attribution.partner) {
+    if (answersHaveIdentifier(answers)) {
+      return reply(res, 400, { ok: false, error: "identifier_content" });
+    }
+    const profile = body.partnerProfile && typeof body.partnerProfile === "object" ? body.partnerProfile : {};
+    const businessName = cap(profile.businessName || profile.business || contact.business, 200).trim();
+    if (!businessName) {
+      return reply(res, 400, { ok: false, error: "business_required" });
+    }
+    let duplicate;
+    try {
+      duplicate = await findDuplicateReferral(businessName, contact.email);
+    } catch (e) {
+      console.error(`[questionnaire-submit] duplicate check FAILED: ${e && e.message}`);
+      return reply(res, 502, { ok: false, error: "store_failed" });
+    }
+    if (duplicate === undefined) {
+      return reply(res, 503, { ok: false, error: "not_configured" });
+    }
+    if (duplicate) {
+      /* The neutral answer the portal itself gives: no holder is
+         named, nothing is stored, nobody is credited. */
+      return reply(res, 409, { ok: false, error: "already_registered" });
+    }
+    linkContext = {
+      partner: attribution.partner,
+      code: attribution.code,
+      businessName,
+      industry: INDUSTRY_BY_SEGMENT[segment] || "general-business",
+      businessCity: cap(profile.city || profile.businessCity, 120).trim(),
+      businessState: cap(profile.state || profile.businessState, 80).trim()
+    };
+  }
+
   const record = {
     id: `${Date.now().toString(36)}-${crypto.randomBytes(4).toString("hex")}`,
     receivedAt: new Date().toISOString(),
     segment,
     contact,
-    answers: sanitizeAnswers(body.answers)
+    answers
+  };
+
+  /* Partner-link write-through, BEFORE the primary insert so a
+     failure here stores nothing: an ACTIVE partner's referral
+     (credited, at questionnaire_answered with this submission as
+     its evidence) or a flagged Desk hold for a partner who is not
+     active. If the primary insert below fails, the row written
+     here is deleted again as compensation. */
+  let linkReferralId = null;
+  let linkHoldId = null;
+  if (linkContext) {
+    const shared = {
+      contractorId: linkContext.partner.id,
+      businessName: linkContext.businessName,
+      ownerName: contact.name,
+      ownerEmail: contact.email,
+      industry: linkContext.industry,
+      businessCity: linkContext.businessCity,
+      businessState: linkContext.businessState,
+      questionnaireAnswers: record.answers,
+      questionnaireSubmissionId: record.id
+    };
+    try {
+      if (linkContext.partner.status === "active") {
+        linkReferralId = crypto.randomUUID();
+        await createReferral({
+          ...shared,
+          id: linkReferralId,
+          pipelineStatus: "questionnaire_answered",
+          source: "link",
+          attributionStatus: "credited",
+          partnerCode: linkContext.code
+        });
+      } else {
+        linkHoldId = crypto.randomUUID();
+        await createLinkHold({
+          ...shared,
+          id: linkHoldId,
+          clientCode: linkContext.code,
+          reason: linkContext.partner.status
+        });
+      }
+    } catch (e) {
+      console.error(`[questionnaire-submit] partner-link write FAILED: ${e && e.message}`);
+      return reply(res, 502, { ok: false, error: "store_failed" });
+    }
+  }
+  const undoLinkWrite = async () => {
+    try {
+      if (linkReferralId) await deleteReferral(linkReferralId);
+      if (linkHoldId) await deleteLinkHold(linkHoldId);
+    } catch (e) {
+      console.error(`[questionnaire-submit] partner-link compensation FAILED: ${e && e.message}`);
+    }
   };
 
   const dbReady = dbConfigured();
@@ -415,11 +604,21 @@ export default async function handler(req, res) {
   }
 
   if (dbFailed) {
+    await undoLinkWrite();
     return reply(res, 502, { ok: false, error: "store_failed" });
   }
   if (!stored && !sent.sent) {
+    await undoLinkWrite();
     return reply(res, 502, { ok: false, error: "delivery_failed" });
   }
   console.log(`[questionnaire-submit] submission ${record.id} (${segment}) stored=${stored} emailed=${sent.sent}.`);
-  return reply(res, 200, { ok: true, id: record.id, stored, emailed: sent.sent });
+  return reply(res, 200, {
+    ok: true, id: record.id, stored, emailed: sent.sent,
+    ...(linkContext ? {
+      attribution: {
+        source: "link",
+        status: linkContext.partner.status === "active" ? "credited" : "held"
+      }
+    } : {})
+  });
 }

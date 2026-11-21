@@ -62,6 +62,21 @@
    side. Partner-facing responses never name any channel or any
    other party's economics.
 
+   PARTNER CLIENT LINK (2026-11-21, DrMorgan's order — the
+   DataSupply seller-link shape, IEC-branded): when a partner is
+   activated he is issued a short public code; his client link is
+   https://iecincglobal.com/r/<code> (partner-page variant
+   /w/p/<code>). He emails it to owners himself, with the ready
+   template this API serves on `me`. Opening the link resolves the
+   partner (action=partner-link), sets a signed 3-day attribution
+   cookie, and routes the owner through registration + the counts-
+   only questionnaire (questionnaire-form.html, extended by
+   api/questionnaire-submit.js to carry the attribution). A link
+   submission from an ACTIVE partner lands as his referral at
+   questionnaire_answered, source 'link'; from a paused/revoked
+   partner it is held for the Desk (contractor_link_holds) and
+   never credited. The duplicate guard applies unchanged.
+
    Storage: Neon via api/_contractors-store.js. When the store is
    not configured the API says so honestly (503 not_configured).
    ===================================================================== */
@@ -73,7 +88,9 @@ import {
   readActivationHash,
   findDuplicateReferral, createReferral, listReferralsByContractor,
   listAllReferrals, readReferral, updateReferral,
-  createClientClaim, listClientClaims, deleteClientClaim, businessKey
+  createClientClaim, listClientClaims, deleteClientClaim, businessKey,
+  readContractorByClientCode, ensureContractorClientCode,
+  backfillPartnerClientCodes, listLinkHolds, normalizePartnerCode
 } from './_contractors-store.js';
 import { FEE_SCHEDULE, referralFee, feeExamples, formatUSD } from './_contractors-fees.js';
 import {
@@ -81,7 +98,8 @@ import {
 } from './_partner-questionnaire.js';
 import {
   mintActivationToken, mintSessionToken, verifyToken, hashToken,
-  contractorFromRequest, sessionCookieHeader, clearSessionCookieHeader
+  contractorFromRequest, sessionCookieHeader, clearSessionCookieHeader,
+  mintAttributionToken, attributionCookieHeader
 } from './_contractors-auth.js';
 import { AGREEMENT_HTML, agreementVersionId } from './_agreement-content.js';
 
@@ -398,6 +416,10 @@ function publicClient(r) {
     pipelineUpdatedAt: r.pipelineUpdatedAt ?? null,
     questionnaireAnswers: r.questionnaireAnswers ?? null,
     questionnaireSubmissionId: r.questionnaireSubmissionId ?? null,
+    source: r.source || 'partner-entered',
+    attributionStatus: r.attributionStatus || 'credited',
+    businessCity: r.businessCity || '',
+    businessState: r.businessState || '',
     licenseValue: r.licenseValue, ownerGross: r.ownerGross ?? null,
     feeAmount: r.feeAmount,
     feePaidAt: r.feePaidAt, createdAt: r.createdAt
@@ -430,6 +452,49 @@ function portalBase() {
 
 function activationUrlFor(token) {
   return `${portalBase()}/api/contractors?action=activate&token=${encodeURIComponent(token)}`;
+}
+
+/* The partner's public client link, or '' when he holds no code
+   (not activated yet). The code is a routing label, safe to show
+   the partner and the Desk; it grants no portal access. */
+function clientLinkFor(c) {
+  const code = normalizePartnerCode(c && c.clientCode);
+  return code ? `${portalBase()}/r/${code}` : '';
+}
+
+/* The ready-to-send email a partner pastes into his OWN mail to
+   introduce a client to IEC. Owner-facing economics ONLY, in the
+   conservative form DrMorgan ruled: the program range and the
+   owner's 80% share. Never the partner's fee, never any channel
+   or other party. IEC-branded throughout. */
+function buildClientLinkEmail(c, link) {
+  const partnerName = String(c.name || '').trim();
+  const partnerCompany = String(c.company || '').trim();
+  const fromLine = partnerCompany ? `${partnerName}, ${partnerCompany}` : partnerName;
+  const subject = 'Your business data may be worth licensing — a short questionnaire from IEC, Inc.';
+  const body = [
+    'Hello,',
+    '',
+    `I am ${fromLine}. I work with IEC, Inc., and I am writing to introduce a program that may be worth your time.`,
+    '',
+    'IEC helps business owners license their operational data. A license is not a sale: you keep full ownership of your data, the license covers defined uses for a defined term, and nothing moves without an agreement you sign.',
+    '',
+    'The first step is a short questionnaire — counts only. IEC reviews totals, years of history and the names of the systems you run. No individual records, no customer or patient information, ever.',
+    '',
+    'Approved licensing programs in this market range from $100,000 to $5,000,000 per term. The owner\u2019s share of any license IEC closes on your data is 80%, paid when the buyer pays.',
+    '',
+    'You can register your company and complete the questionnaire through my IEC client link:',
+    link,
+    '',
+    'The link is connected to my IEC partner record, so IEC can follow up with you directly and keep me posted on the process.',
+    '',
+    'Thank you for considering it.',
+    '',
+    partnerName,
+    partnerCompany,
+    'IEC Partner'
+  ].join('\n');
+  return { subject, body, link };
 }
 
 async function readBody(req) {
@@ -517,6 +582,9 @@ export default async function handler(req, res) {
       status: c.status === 'invited' ? 'active' : c.status,
       activationTokenHash: '', activatedAt: new Date().toISOString()
     });
+    // Activation issues the partner's client-link code (…/r/<code>)
+    // — idempotent, collision-checked in the store.
+    await ensureContractorClientCode(c.id);
     res.status(302);
     res.setHeader('Set-Cookie', sessionCookieHeader(session));
     res.setHeader('Location', '/contractors-portal.html');
@@ -660,6 +728,32 @@ export default async function handler(req, res) {
     return json(res, { ok: true, emailed: mail.sent, next: '/cnda.html' });
   }
 
+  /* ---- public: resolve a partner client link (…/r/<code>) ----
+     The landing page calls this to learn whose link it is. For an
+     ACTIVE partner the response names him ("You were invited by
+     …") and sets the signed 3-day attribution cookie. For a
+     paused/revoked partner the link still resolves and the cookie
+     is still set (recognition), but NO partner is named and the
+     response is flagged held: a submission in that state is held
+     for the Desk, never credited (see questionnaire-submit.js).
+     An unknown code answers 404 and sets nothing. */
+  if (req.method === 'GET' && action === 'partner-link') {
+    const code = normalizePartnerCode(url.searchParams.get('code'));
+    if (!code) return json(res, { ok: false, error: 'invalid_link' }, 404);
+    const c = await readContractorByClientCode(code);
+    if (!c) return json(res, { ok: false, error: 'invalid_link' }, 404);
+    const active = c.status === 'active';
+    const token = mintAttributionToken(code);
+    const headers = token ? { 'Set-Cookie': attributionCookieHeader(token) } : {};
+    return json(res, {
+      ok: true,
+      code,
+      attribution: active ? 'active' : 'held',
+      partner: active ? { name: c.name, company: c.company } : null,
+      industries: INDUSTRIES
+    }, 200, headers);
+  }
+
   /* ---- contractor session required below ---- */
   const contractorId = contractorFromRequest(req);
   const isAdmin = validDeskSession(req);
@@ -679,6 +773,22 @@ export default async function handler(req, res) {
     // advance a frozen partner's pipeline.
     const referrals = await listReferralsByContractor(contractorId);
     const clients = (referrals || []).map(publicClient);
+    /* The client link is an ACTIVE partner's tool: he sees his
+       link + the ready email template only while active. A frozen
+       partner's link stops attributing (submissions are held for
+       the Desk), so nothing copyable is served here. An active
+       partner missing a code (pre-link record) is issued one
+       lazily — the same backfill the Desk list runs. */
+    let clientLink = '';
+    let clientLinkEmail = null;
+    if (c.status === 'active') {
+      if (!c.clientCode) {
+        const issued = await ensureContractorClientCode(c.id);
+        if (issued) c.clientCode = issued;
+      }
+      clientLink = clientLinkFor(c);
+      if (clientLink) clientLinkEmail = buildClientLinkEmail(c, clientLink);
+    }
     return json(res, {
       ok: true,
       contractor: publicContractor(c),
@@ -688,7 +798,10 @@ export default async function handler(req, res) {
       feeTotals: feeTotals(referrals),
       pipeline: CLIENT_PIPELINE,
       questionnaireSections: QUESTIONNAIRE_SECTIONS,
-      schedule: publicSchedule()
+      schedule: publicSchedule(),
+      clientCode: c.status === 'active' ? (c.clientCode || '') : '',
+      clientLink,
+      clientLinkEmail
     });
   }
 
@@ -730,7 +843,9 @@ export default async function handler(req, res) {
     await createReferral({
       id, contractorId, businessName, ownerName, ownerEmail, industry,
       locations, employees, systems, yearsRecords,
-      questionnaireAnswers: checked.answers
+      questionnaireAnswers: checked.answers,
+      source: 'partner-entered', attributionStatus: 'credited',
+      partnerCode: c.clientCode || ''
     });
     return json(res, { ok: true, referralId: id, clientId: id, status: 'registered', pipelineStatus: 'added' });
   }
@@ -805,17 +920,31 @@ export default async function handler(req, res) {
   if (!isAdmin) return json(res, { ok: false, error: 'unauthorized' }, 401);
 
   if (req.method === 'GET' && action === 'admin-list') {
+    // Lazy backfill: partners activated before the client link
+    // existed receive their codes here (idempotent; 'invited'
+    // partners are issued theirs at activation).
+    await backfillPartnerClientCodes();
     const contractors = await listContractors();
     const referrals = await listAllReferrals();
     const claims = await listClientClaims();
+    /* The holds board is auxiliary: if its read ever fails, the
+       Desk still loads and the failure is flagged in the payload
+       (linkHoldsError) rather than hidden or fatal. */
+    let holds = [];
+    let linkHoldsError = false;
+    try { holds = (await listLinkHolds()) || []; }
+    catch { linkHoldsError = true; }
     const withTotals = (contractors || []).map(c => ({
       ...c,
+      clientLink: clientLinkFor(c),
       feeTotals: feeTotals((referrals || []).filter(r => r.contractorId === c.id))
     }));
     return json(res, {
       ok: true, contractors: withTotals,
       referrals: (referrals || []).map(r => ({ ...r, questionnaireUrl: questionnaireUrl(r.industry) })),
       claims: claims || [],
+      linkHolds: holds,
+      linkHoldsError,
       pipeline: CLIENT_PIPELINE
     });
   }
@@ -914,6 +1043,8 @@ export default async function handler(req, res) {
       return json(res, { ok: false, error: 'invalid_transition' }, 409);
     }
     await updateContractor(c.id, { status: target });
+    // A partner returning to active holds a working client link.
+    if (target === 'active') await ensureContractorClientCode(c.id);
     return json(res, { ok: true, status: target });
   }
 
@@ -1024,5 +1155,6 @@ export const _internals = {
   PIPELINE_EVIDENCE, SEGMENT_BY_INDUSTRY, questionnaireUrl, formatUSD,
   resolveActivationToken, agreementAcceptance, nameMatches,
   INVITE_FROM_ADDRESS, INVITE_MAIL_FROM, INVITE_SUBJECT,
-  buildInvitationEmail, activationUrlFor
+  buildInvitationEmail, activationUrlFor,
+  clientLinkFor, buildClientLinkEmail
 };

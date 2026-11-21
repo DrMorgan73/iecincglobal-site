@@ -1,1 +1,1 @@
-{"rewrites":[{"destination":"/api/questionnaire-submit?channel=book","source":"/api/book"}]}
+{"rewrites":[{"destination":"/api/questionnaire-submit?channel=book","source":"/api/book"},{"destination":"/partner-link.html?code=:code","source":"/r/:code"},{"destination":"/partner-link.html?code=:code&variant=partner-page","source":"/w/p/:code"}]}
