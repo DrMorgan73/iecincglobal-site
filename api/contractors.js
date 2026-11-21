@@ -36,7 +36,8 @@
        refused and his clients' pipeline does not move.
      - ADMIN (Desk session): invite, email the invitation from
        info@iecincglobal.com, mark agreement/NDA signed,
-       pause/revoke partners, advance the client pipeline (one
+       pause/resume/revoke partners, reactivate a revoked partner
+       (back to invited, with a fresh activation link), advance the client pipeline (one
        step at a time, from the real events, with the evidence
        recorded), advance the fee pipeline, mark fee paid, record
        IEC-registered companies (duplicate guard), list all.
@@ -1038,14 +1039,49 @@ export default async function handler(req, res) {
     const target = str(body.status, 20);
     const from = CONTRACTOR_ORDER.indexOf(c.status);
     const to = CONTRACTOR_ORDER.indexOf(target);
-    // Forward-only; "invited" is never a settable target; revoked -> invited forbidden.
-    if (to < 0 || to <= from || target === 'invited') {
+    // Forward-only, with ONE backward exception: paused -> active
+    // is the office's Resume (the Desk button has always promised
+    // it; a pause is a temporary hold, not a termination). Every
+    // other backward move is refused; "invited" is never a
+    // settable target; a revoked record never leaves 'revoked'
+    // here — its only return path is the reactivate action below.
+    const isResume = c.status === 'paused' && target === 'active';
+    if (to < 0 || target === 'invited' || (to <= from && !isResume)) {
       return json(res, { ok: false, error: 'invalid_transition' }, 409);
     }
     await updateContractor(c.id, { status: target });
     // A partner returning to active holds a working client link.
     if (target === 'active') await ensureContractorClientCode(c.id);
     return json(res, { ok: true, status: target });
+  }
+
+  /* ---- admin: reactivate a REVOKED partner (DrMorgan's order,
+     2026-11-21 — the Desk offered no way back from a revocation:
+     no reactivate, no link re-issue). This dedicated action is
+     the office's single return path, with the same Desk-session
+     guard as every admin action: the record goes back to
+     'invited' and a FRESH one-time activation link is minted and
+     returned (any earlier link stays dead — its hash was consumed
+     or is superseded by this one). The partner follows the new
+     link and lands active again only when both signatures stand,
+     exactly like a first activation; the signing gates do not
+     move. ---- */
+  if (req.method === 'POST' && action === 'reactivate') {
+    const body = await readBody(req);
+    const c = await readContractorById(str(body.contractorId, 64));
+    if (!c) return json(res, { ok: false, error: 'not_found' }, 404);
+    if (c.status !== 'revoked') {
+      return json(res, { ok: false, error: 'invalid_transition' }, 409);
+    }
+    const token = mintActivationToken(c.id);
+    if (!token) return json(res, { ok: false, error: 'not_configured' }, 503);
+    await updateContractor(c.id, { status: 'invited', activationTokenHash: hashToken(token) });
+    /* The response names the ONE record reactivated (id + email),
+       same discipline as set-nda / set-agreement. */
+    return json(res, {
+      ok: true, status: 'invited', activationUrl: activationUrlFor(token),
+      contractorId: c.id, name: c.name, email: c.email
+    });
   }
 
   if (req.method === 'POST' && action === 'advance-referral') {

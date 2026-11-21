@@ -389,6 +389,42 @@ console.log('admin gating and scoping');
   check('revoked contractor cannot write (401)', w.statusCode === 401, w.payload);
 }
 {
+  // Resume + reactivate (audit fix, 2026-11-21): paused -> active
+  // is the office's Resume; a revoked partner returns ONLY through
+  // the reactivate action — back to invited with a fresh link.
+  const row2 = await storeMod.readContractorByEmail('second@example.test');
+  const bad = await call('POST', 'reactivate', { cookie: deskCookie(), body: { contractorId: ctrId } });
+  check('reactivate on a non-revoked partner -> 409 invalid_transition',
+    bad.statusCode === 409 && bad.payload.error === 'invalid_transition', bad.payload);
+  const re = await call('POST', 'reactivate', { cookie: deskCookie(), body: { contractorId: row2.id } });
+  check('reactivate on revoked -> 200, back to invited, fresh activation link issued',
+    re.statusCode === 200 && re.payload.ok && re.payload.status === 'invited'
+    && typeof re.payload.activationUrl === 'string' && re.payload.activationUrl.includes('action=activate&token=')
+    && re.payload.contractorId === row2.id && re.payload.email === 'second@example.test', re.payload);
+  check('record stands invited after reactivate', (await storeMod.readContractorById(row2.id)).status === 'invited');
+  // The office records both signatures; the fresh link then
+  // activates the partner exactly like a first activation.
+  await storeMod.updateContractor(row2.id, { ndaStatus: 'signed', agreementStatus: 'signed' });
+  const reToken = new URL(re.payload.activationUrl).searchParams.get('token');
+  const res = await rawActivate(reToken);
+  check('reactivated partner activates through the fresh link (302 -> portal, session cookie)',
+    res.statusCode === 302 && res.headers.Location === '/contractors-portal.html'
+    && String(res.headers['Set-Cookie'] || '').startsWith('contractor_session='), { status: res.statusCode, headers: res.headers });
+  check('reactivated partner is active again', (await storeMod.readContractorById(row2.id)).status === 'active');
+  const res2 = await rawActivate(reToken);
+  check('reactivation link is single-use (second use 401)', res2.statusCode === 401, res2.payload);
+  // Resume: pause, then set-status back to active.
+  const pz = await call('POST', 'set-status', { cookie: deskCookie(), body: { contractorId: row2.id, status: 'paused' } });
+  check('active -> paused ok (resume setup)', pz.statusCode === 200 && pz.payload.status === 'paused', pz.payload);
+  const rs = await call('POST', 'set-status', { cookie: deskCookie(), body: { contractorId: row2.id, status: 'active' } });
+  check('paused -> active resume ok', rs.statusCode === 200 && rs.payload.status === 'active', rs.payload);
+  // Revocation stays terminal for set-status itself.
+  const rv = await call('POST', 'set-status', { cookie: deskCookie(), body: { contractorId: row2.id, status: 'revoked' } });
+  check('active -> revoked ok (resume setup)', rv.statusCode === 200 && rv.payload.status === 'revoked', rv.payload);
+  const out = await call('POST', 'set-status', { cookie: deskCookie(), body: { contractorId: row2.id, status: 'active' } });
+  check('revoked -> active via set-status still refused (reactivate is the only way back)', out.statusCode === 409, out.payload);
+}
+{
   // Logout clears the cookie.
   const r = await call('POST', 'logout', { cookie: ck() });
   check('logout clears the session cookie',

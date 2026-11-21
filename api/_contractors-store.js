@@ -49,8 +49,13 @@
 
    Status machines (forward-only; a step never moves backwards):
      contractor.status: invited -> active -> paused -> revoked
-       ("invited" is never a settable target; revoked -> invited
-       is expressly forbidden — same rule as api/demo-admin.js.)
+       (forward-only via set-status, with the single backward
+       exception paused -> active — the office's Resume.
+       "invited" is never a settable target there. A REVOKED
+       record returns only through the dedicated admin
+       reactivate action — status back to invited plus a fresh
+       activation token — added on DrMorgan's order, 2026-11-21;
+       set-status itself never moves a record out of revoked.)
      contractor.nda_status: pending -> signed
      contractor.agreement_status: pending -> signed
        (the Contractor Referral Agreement; activation is blocked
