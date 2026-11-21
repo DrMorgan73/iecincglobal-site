@@ -41,6 +41,18 @@
                           the office-maintained half of the
                           duplicate guard (see findDuplicateReferral)
 
+   STANDALONE PORTAL EXTENSION (2026-11-21): contractors carry
+   invited_by (the partner whose invite link brought this partner
+   in — IEC's network is FLAT: a partner sees only his own
+   invites, never levels, never another partner's financials) and
+   faststart_webinar_at (the Fast Start checklist's webinar step).
+   Referrals carry approved_amount + approved_unlocked (the
+   AMOUNT APPROVED: recorded by the office, shown to the partner
+   ONLY once the office unlocks it) and pipeline_history — the
+   dated per-company status timeline (the "process time table"):
+   an append-only JSON array of {status, at, note}, seeded at
+   creation and extended on every office pipeline advance.
+
    COUNTS AND NAMES ONLY. A referral records the referred business
    and its owner contact — the identifiers IEC needs to register an
    introduction and to pay a fee. No patient or customer records,
@@ -134,6 +146,12 @@ async function ensureTables() {
     agreement_accepted_via text NOT NULL DEFAULT '',
     activation_token_hash text NOT NULL DEFAULT '',
     client_code text UNIQUE,
+    invite_code text UNIQUE,
+    invited_by text NOT NULL DEFAULT '',
+    payout_method text NOT NULL DEFAULT '',
+    payout_last4 text NOT NULL DEFAULT '',
+    w9_on_file boolean NOT NULL DEFAULT false,
+    w9_uploaded_at timestamptz,
     source text NOT NULL DEFAULT 'office-invite',
     phone text NOT NULL DEFAULT '',
     address_street text NOT NULL DEFAULT '',
@@ -146,6 +164,7 @@ async function ensureTables() {
     activated_at timestamptz,
     invitation_sent_at timestamptz,
     invitation_from text NOT NULL DEFAULT '',
+    faststart_webinar_at timestamptz,
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now())`);
   await neonQuery(`CREATE TABLE IF NOT EXISTS contractor_referrals (
@@ -155,6 +174,9 @@ async function ensureTables() {
     license_value numeric, owner_gross numeric, fee_amount integer, fee_paid_at timestamptz,
     locations integer, employees integer, systems text, years_records integer,
     pipeline_status text NOT NULL DEFAULT 'added',
+    pipeline_history jsonb,
+    approved_amount numeric, approved_at timestamptz,
+    desk_staff_band text NOT NULL DEFAULT '',
     questionnaire_answers jsonb, questionnaire_submission_id text,
     pipeline_note text, pipeline_updated_at timestamptz,
     source text NOT NULL DEFAULT 'partner-entered',
@@ -210,11 +232,22 @@ async function ensureTables() {
     `ALTER TABLE contractor_referrals ADD COLUMN IF NOT EXISTS pipeline_note text`,
     `ALTER TABLE contractor_referrals ADD COLUMN IF NOT EXISTS pipeline_updated_at timestamptz`,
     `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS client_code text`,
+    `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS invite_code text`,
+    `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS invited_by text NOT NULL DEFAULT ''`,
+    `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS payout_method text NOT NULL DEFAULT ''`,
+    `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS payout_last4 text NOT NULL DEFAULT ''`,
+    `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS w9_on_file boolean NOT NULL DEFAULT false`,
+    `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS w9_uploaded_at timestamptz`,
+    `ALTER TABLE contractor_referrals ADD COLUMN IF NOT EXISTS pipeline_history jsonb`,
+    `ALTER TABLE contractor_referrals ADD COLUMN IF NOT EXISTS approved_amount numeric`,
+    `ALTER TABLE contractor_referrals ADD COLUMN IF NOT EXISTS approved_at timestamptz`,
+    `ALTER TABLE contractor_referrals ADD COLUMN IF NOT EXISTS desk_staff_band text NOT NULL DEFAULT ''`,
     `ALTER TABLE contractor_referrals ADD COLUMN IF NOT EXISTS source text NOT NULL DEFAULT 'partner-entered'`,
     `ALTER TABLE contractor_referrals ADD COLUMN IF NOT EXISTS attribution_status text NOT NULL DEFAULT 'credited'`,
     `ALTER TABLE contractor_referrals ADD COLUMN IF NOT EXISTS partner_code text NOT NULL DEFAULT ''`,
     `ALTER TABLE contractor_referrals ADD COLUMN IF NOT EXISTS business_city text NOT NULL DEFAULT ''`,
-    `ALTER TABLE contractor_referrals ADD COLUMN IF NOT EXISTS business_state text NOT NULL DEFAULT ''`
+    `ALTER TABLE contractor_referrals ADD COLUMN IF NOT EXISTS business_state text NOT NULL DEFAULT ''`,
+    `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS faststart_webinar_at timestamptz`
   ]) {
     await neonQuery(stmt);
   }
@@ -244,9 +277,16 @@ function rowToContractor(r) {
     agreementAcceptedVersion: r.agreement_accepted_version || '',
     agreementAcceptedVia: r.agreement_accepted_via || '',
     clientCode: r.client_code || '',
+    inviteCode: r.invite_code || '',
+    invitedBy: r.invited_by || '',
+    payoutMethod: r.payout_method || '',
+    payoutLast4: r.payout_last4 || '',
+    w9OnFile: !!r.w9_on_file,
+    w9UploadedAt: r.w9_uploaded_at || null,
     activatedAt: r.activated_at || null, createdAt: r.created_at || null,
     invitationSentAt: r.invitation_sent_at || null,
     invitationFrom: r.invitation_from || '',
+    faststartWebinarAt: r.faststart_webinar_at || null,
     source: r.source || 'office-invite',
     contractorType: r.contractor_type || '',
     phone: r.phone || '',
@@ -282,6 +322,10 @@ function rowToReferral(r) {
     systems: r.systems || null,
     yearsRecords: r.years_records === null || r.years_records === undefined ? null : Number(r.years_records),
     pipelineStatus: r.pipeline_status || 'added',
+    pipelineHistory: parseHistory(r.pipeline_history),
+    approvedAmount: r.approved_amount === null || r.approved_amount === undefined ? null : Number(r.approved_amount),
+    approvedAt: r.approved_at || null,
+    deskStaffBand: r.desk_staff_band || '',
     questionnaireAnswers: parseAnswers(r.questionnaire_answers),
     questionnaireSubmissionId: r.questionnaire_submission_id || null,
     pipelineNote: r.pipeline_note || null,
@@ -292,6 +336,16 @@ function rowToReferral(r) {
     businessCity: r.business_city || '',
     businessState: r.business_state || ''
   };
+}
+
+/* Pipeline history: [{status, at, note}] — the dated status
+   timeline the partner sees on a client's detail ("process time
+   table"). Stored as jsonb; parsed defensively. */
+function parseHistory(v) {
+  const p = parseAnswers(v);
+  if (!Array.isArray(p)) return [];
+  return p.filter(e => e && typeof e === 'object' && e.status)
+    .map(e => ({ status: String(e.status), at: e.at || null, note: e.note || null }));
 }
 
 function rowToLinkHold(r) {
@@ -312,12 +366,12 @@ export async function createContractor(c) {
   await ensureTables();
   await neonQuery(
     `INSERT INTO contractors (id, email, name, company, status, nda_status, activation_token_hash,
-       source, phone, address_street, address_city, address_state, address_zip, website, heard_about, notes, contractor_type)
-     VALUES ($1, $2, $3, $4, 'invited', 'pending', $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
+       source, phone, address_street, address_city, address_state, address_zip, website, heard_about, notes, contractor_type, invited_by)
+     VALUES ($1, $2, $3, $4, 'invited', 'pending', $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
     [c.id, c.email, c.name, c.company, c.activationTokenHash || '',
      c.source || 'office-invite', c.phone || '', c.addressStreet || '', c.addressCity || '',
      c.addressState || '', c.addressZip || '', c.website || '', c.heardAbout || '', c.notes || '',
-     c.contractorType || '']);
+     c.contractorType || '', c.invitedBy || '']);
   return true;
 }
 
@@ -364,7 +418,7 @@ export async function updateContractor(id, patch) {
   await ensureTables();
   const sets = [];
   const params = [];
-  const map = { status: 'status', ndaStatus: 'nda_status', agreementStatus: 'agreement_status', agreementSignedAt: 'agreement_signed_at', agreementAcceptedName: 'agreement_accepted_name', agreementAcceptedVersion: 'agreement_accepted_version', agreementAcceptedVia: 'agreement_accepted_via', activationTokenHash: 'activation_token_hash', clientCode: 'client_code', activatedAt: 'activated_at', invitationSentAt: 'invitation_sent_at', invitationFrom: 'invitation_from' };
+  const map = { status: 'status', ndaStatus: 'nda_status', agreementStatus: 'agreement_status', agreementSignedAt: 'agreement_signed_at', agreementAcceptedName: 'agreement_accepted_name', agreementAcceptedVersion: 'agreement_accepted_version', agreementAcceptedVia: 'agreement_accepted_via', activationTokenHash: 'activation_token_hash', clientCode: 'client_code', inviteCode: 'invite_code', activatedAt: 'activated_at', invitationSentAt: 'invitation_sent_at', invitationFrom: 'invitation_from', payoutMethod: 'payout_method', payoutLast4: 'payout_last4', w9OnFile: 'w9_on_file', w9UploadedAt: 'w9_uploaded_at', phone: 'phone', name: 'name', company: 'company', faststartWebinarAt: 'faststart_webinar_at', addressStreet: 'address_street', addressCity: 'address_city', addressState: 'address_state', addressZip: 'address_zip', website: 'website' };
   for (const [k, col] of Object.entries(map)) {
     if (patch[k] !== undefined) { params.push(patch[k]); sets.push(`${col} = $${params.length}`); }
   }
@@ -419,12 +473,21 @@ export async function findDuplicateReferral(businessName, ownerEmail) {
 export async function createReferral(r) {
   if (!contractorsDbConfigured()) return false;
   await ensureTables();
+  /* Seed the dated pipeline history: every referral starts at
+     'added'; a link submission lands directly at
+     questionnaire_answered, so its history records both events
+     at the same instant (registration + questionnaire arrived
+     together — that is what actually happened). */
+  const startStatus = r.pipelineStatus || 'added';
+  const nowIso = new Date().toISOString();
+  const history = [{ status: 'added', at: nowIso, note: null }];
+  if (startStatus !== 'added') history.push({ status: startStatus, at: nowIso, note: null });
   await neonQuery(
-    `INSERT INTO contractor_referrals (id, contractor_id, business_name, business_key, owner_name, owner_email, industry, status, locations, employees, systems, years_records, pipeline_status, questionnaire_answers, questionnaire_submission_id, source, attribution_status, partner_code, business_city, business_state)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, 'registered', $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)`,
+    `INSERT INTO contractor_referrals (id, contractor_id, business_name, business_key, owner_name, owner_email, industry, status, locations, employees, systems, years_records, pipeline_status, pipeline_history, desk_staff_band, questionnaire_answers, questionnaire_submission_id, source, attribution_status, partner_code, business_city, business_state)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, 'registered', $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)`,
     [r.id, r.contractorId, r.businessName, businessKey(r.businessName), r.ownerName, r.ownerEmail, r.industry,
      r.locations ?? null, r.employees ?? null, r.systems ?? null, r.yearsRecords ?? null,
-     r.pipelineStatus || 'added',
+     startStatus, JSON.stringify(history), r.deskStaffBand || '',
      r.questionnaireAnswers ? JSON.stringify(r.questionnaireAnswers) : null,
      r.questionnaireSubmissionId ?? null,
      r.source || 'partner-entered', r.attributionStatus || 'credited',
@@ -517,6 +580,54 @@ export async function backfillPartnerClientCodes() {
 }
 
 /* ---------------------------------------------------------------- */
+/* Partner INVITE codes — the standalone portal's flat partner
+   invitation (…/join/<code>): a partner invites another partner
+   DIRECTLY under IEC. There are no levels and no network: the
+   code only records who invited whom (invited_by), so the
+   inviter's portal can list the partners he personally brought
+   in. Same generator and collision discipline as client codes;
+   a separate column, so a client code never resolves as an
+   invite code or the reverse. Issued at activation.           */
+/* ---------------------------------------------------------------- */
+
+export async function readContractorByInviteCode(code) {
+  if (!contractorsDbConfigured()) return undefined;
+  await ensureTables();
+  const normalized = normalizePartnerCode(code);
+  if (!normalized) return null;
+  const rows = await neonQuery(`SELECT * FROM contractors WHERE invite_code = $1`, [normalized]);
+  return rows.length ? rowToContractor(rows[0]) : null;
+}
+
+export async function ensureContractorInviteCode(id, generate = generatePartnerClientCode) {
+  if (!contractorsDbConfigured()) return '';
+  const c = await readContractorById(id);
+  if (!c) return '';
+  if (c.inviteCode) return c.inviteCode;
+  for (let attempt = 0; attempt < 25; attempt++) {
+    const candidate = generate();
+    const clashInvite = await readContractorByInviteCode(candidate);
+    if (clashInvite && clashInvite.id !== id) continue;
+    const clashClient = await readContractorByClientCode(candidate);
+    if (clashClient && clashClient.id !== id) continue;
+    const ok = await updateContractor(id, { inviteCode: candidate });
+    if (ok) return candidate;
+    return '';
+  }
+  return '';
+}
+
+/* The partners one partner personally invited (flat — direct
+   invitees only, never a tree). */
+export async function listContractorsByInviter(inviterId) {
+  if (!contractorsDbConfigured()) return null;
+  await ensureTables();
+  const rows = await neonQuery(
+    `SELECT * FROM contractors WHERE invited_by = $1 ORDER BY created_at DESC LIMIT 200`, [inviterId]);
+  return rows.map(rowToContractor);
+}
+
+/* ---------------------------------------------------------------- */
 /* contractor_link_holds — a registration that arrived through a
    partner's client link while the partner was NOT active. The
    submission is real (the owner answered IEC's questionnaire) but
@@ -550,6 +661,13 @@ export async function listLinkHolds() {
   await ensureTables();
   const rows = await neonQuery(`SELECT * FROM contractor_link_holds ORDER BY created_at DESC LIMIT 200`);
   return rows.map(rowToLinkHold);
+}
+
+export async function readLinkHold(id) {
+  if (!contractorsDbConfigured()) return undefined;
+  await ensureTables();
+  const rows = await neonQuery(`SELECT * FROM contractor_link_holds WHERE id = $1`, [id]);
+  return rows.length ? rowToLinkHold(rows[0]) : null;
 }
 
 export async function listReferralsByContractor(contractorId) {
@@ -589,7 +707,8 @@ export async function updateReferral(id, patch) {
     status: 'status', licenseValue: 'license_value', ownerGross: 'owner_gross', feeAmount: 'fee_amount', feePaidAt: 'fee_paid_at',
     locations: 'locations', employees: 'employees', systems: 'systems', yearsRecords: 'years_records',
     pipelineStatus: 'pipeline_status', questionnaireSubmissionId: 'questionnaire_submission_id',
-    pipelineNote: 'pipeline_note', pipelineUpdatedAt: 'pipeline_updated_at'
+    pipelineNote: 'pipeline_note', pipelineUpdatedAt: 'pipeline_updated_at',
+    approvedAmount: 'approved_amount', approvedAt: 'approved_at', deskStaffBand: 'desk_staff_band'
   };
   for (const [k, col] of Object.entries(map)) {
     if (patch[k] !== undefined) { params.push(patch[k]); sets.push(`${col} = $${params.length}`); }
@@ -597,6 +716,10 @@ export async function updateReferral(id, patch) {
   if (patch.questionnaireAnswers !== undefined) {
     params.push(patch.questionnaireAnswers ? JSON.stringify(patch.questionnaireAnswers) : null);
     sets.push(`questionnaire_answers = $${params.length}`);
+  }
+  if (patch.pipelineHistory !== undefined) {
+    params.push(patch.pipelineHistory ? JSON.stringify(patch.pipelineHistory) : null);
+    sets.push(`pipeline_history = $${params.length}`);
   }
   if (!sets.length) return false;
   params.push(id);

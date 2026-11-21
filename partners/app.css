@@ -1,0 +1,157 @@
+/* =====================================================================
+   IEC Partner Portal — standalone app styles.
+   The portal is its own product: its own shell, its own chrome.
+   IEC, Inc. branding only (navy #0E2A47, gold #C9A227).
+   Covers partners/app.js (the partner app), partners/register.js
+   (the client landing) and partners/questionnaire.js — one design
+   system across the whole standalone product.
+   ===================================================================== */
+:root{
+  --navy:#0E2A47; --navy2:#14365C; --gold:#C9A227; --ink:#1A1A1A;
+  --body:#26313F; --muted:#5B6B85; --line:#DCE3EC; --bg:#F4F7FB;
+  --card:#FFFFFF; --ok:#1E6B2E; --okbg:#E7F4E9; --warn:#5C4A12; --warnbg:#FBF6EA;
+  --bad:#8B1E1E; --badbg:#FBEAEA;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--body);font-size:15px;line-height:1.55}
+a{color:var(--navy)}
+button{font:inherit}
+code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;word-break:break-all}
+
+/* ---------- app shell ---------- */
+.pp-app{display:flex;min-height:100vh}
+.pp-side{width:264px;flex:0 0 264px;background:var(--navy);color:#DCE3EC;display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
+.pp-brand{padding:22px 22px 14px;border-bottom:1px solid rgba(255,255,255,.14)}
+.pp-brand-name{color:#fff;font-weight:700;font-size:19px;letter-spacing:.01em}
+.pp-brand-sub{margin-top:4px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);font-weight:700}
+.pp-nav{padding:12px;flex:1}
+.pp-nav a{display:block;color:#DCE3EC;text-decoration:none;padding:11px 12px;border-radius:9px;font-weight:600;font-size:15px;margin-bottom:2px}
+.pp-nav a:hover{background:var(--navy2);color:#fff}
+.pp-nav a.active{background:var(--gold);color:var(--navy)}
+.pp-side-foot{padding:16px 22px;border-top:1px solid rgba(255,255,255,.14);font-size:13px;color:#B9C6D8}
+.pp-side-foot a{color:#fff}
+.pp-linklike{background:none;border:0;color:#fff;cursor:pointer;padding:0;text-decoration:underline;font-size:13px}
+.pp-main{flex:1;min-width:0;padding:28px 32px 56px;max-width:1180px}
+.pp-demo-ribbon{background:var(--gold);color:var(--navy);font-weight:700;text-align:center;padding:8px 16px;font-size:13.5px}
+
+/* ---------- type & cards ---------- */
+.pp-h1{font-size:26px;color:var(--navy);margin:0 0 6px}
+.pp-h2{font-size:18px;color:var(--navy);margin:0 0 10px}
+.pp-h3{font-size:15.5px;color:var(--navy);margin:18px 0 8px}
+.pp-sub{color:var(--muted);margin:0 0 18px}
+.pp-p{margin:0 0 12px}
+.pp-muted{color:var(--muted)}
+.pp-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px 22px;margin:0 0 18px;box-shadow:0 1px 2px rgba(14,42,71,.04)}
+.pp-card-table{padding:6px 10px;overflow-x:auto}
+.pp-grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+.pp-banner{border-radius:10px;padding:13px 16px;margin:0 0 18px;font-weight:600}
+.pp-banner-warn{background:var(--warnbg);color:var(--warn);border:1px solid #E7D9A8}
+.pp-banner-danger{background:var(--badbg);color:var(--bad);border:1px solid #E5B4B4}
+.pp-error{color:var(--bad);font-weight:600;margin:10px 0}
+.pp-ok{color:var(--ok);font-weight:600;margin:10px 0}
+.pp-pill{display:inline-block;background:#EAF0F8;color:var(--navy);border:1px solid var(--line);border-radius:999px;padding:2px 10px;font-size:12.5px;font-weight:700;white-space:nowrap}
+.pp-amount{font-size:30px;font-weight:700;color:var(--navy)}
+
+/* ---------- buttons & forms ---------- */
+.pp-btn{display:inline-block;background:var(--navy);color:#fff;border:1px solid var(--navy);border-radius:9px;padding:9px 16px;font-weight:700;cursor:pointer;text-decoration:none;font-size:14.5px}
+.pp-btn:hover{background:var(--navy2)}
+.pp-btn[disabled]{opacity:.55;cursor:default}
+.pp-btn-ghost{background:#fff;color:var(--navy)}
+.pp-btn-ghost:hover{background:#EAF0F8}
+.pp-btn-small{padding:6px 12px;font-size:13.5px}
+.pp-label{display:block;font-weight:700;color:var(--navy);font-size:13.5px;margin:0 0 5px}
+.pp-input{width:100%;border:1px solid var(--line);border-radius:8px;padding:9px 11px;font:inherit;background:#fff;color:var(--ink)}
+.pp-input:focus{outline:2px solid var(--gold);outline-offset:0;border-color:var(--gold)}
+.pp-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 18px;margin:0 0 14px}
+.pp-checkline{display:flex;gap:9px;align-items:flex-start;font-weight:600;margin:12px 0}
+.pp-checkline input{margin-top:3px}
+
+/* ---------- dashboard ---------- */
+.pp-steps{list-style:none;margin:0;padding:0}
+.pp-steps li{display:flex;align-items:center;gap:11px;padding:9px 0;border-bottom:1px solid var(--line)}
+.pp-steps li:last-child{border-bottom:0}
+.pp-steps li .pp-btn,.pp-steps li .pp-btn-small{margin-left:auto}
+.pp-check{width:24px;height:24px;flex:0 0 24px;border-radius:50%;border:2px solid var(--line);display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:700}
+.pp-steps li.done .pp-check{background:var(--ok);border-color:var(--ok)}
+.pp-step-label{font-weight:600}
+.pp-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:0 0 18px}
+.pp-stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+.pp-stat-label{font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.pp-stat-value{font-size:27px;font-weight:700;color:var(--navy);margin-top:3px}
+.pp-stat-note{font-size:12.5px;color:var(--muted);margin-top:3px}
+.pp-linkrow{margin:0 0 14px}
+.pp-linkbox{display:flex;gap:10px;align-items:center;background:#F8FAFD;border:1px solid var(--line);border-radius:9px;padding:10px 12px;flex-wrap:wrap}
+.pp-linkbox code{flex:1;min-width:220px}
+.pp-qr{margin:6px 0 14px}
+.pp-qr svg{max-width:200px;height:auto}
+.pp-qr-hint{font-size:13px;color:var(--muted);margin-top:6px}
+.pp-template{white-space:pre-wrap;background:#F8FAFD;border:1px solid var(--line);border-radius:9px;padding:14px 16px;font-size:14px;margin:0 0 12px;max-height:340px;overflow:auto}
+.pp-res-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+.pp-res{border:1px solid var(--line);border-radius:10px;padding:16px}
+.pp-res h3{margin:0 0 6px;font-size:15.5px;color:var(--navy)}
+.pp-res p{margin:0 0 10px;color:var(--body)}
+.pp-slot-note{font-size:13px;color:var(--muted);font-style:italic}
+.pp-video{width:100%;border-radius:8px;background:#000}
+
+/* ---------- tables ---------- */
+.pp-table{width:100%;border-collapse:collapse;font-size:14.5px}
+.pp-table th{text-align:left;color:var(--muted);font-size:12.5px;letter-spacing:.06em;text-transform:uppercase;padding:10px;border-bottom:1px solid var(--line)}
+.pp-table td{padding:11px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+.pp-table tr:last-child td{border-bottom:0}
+.pp-rowlink{cursor:pointer}
+.pp-rowlink:hover td{background:#F8FAFD}
+
+/* ---------- client detail ---------- */
+.pp-checklist{list-style:none;margin:0;padding:0;counter-reset:step}
+.pp-checklist li{display:flex;align-items:center;gap:11px;padding:7px 0;border-bottom:1px solid var(--line)}
+.pp-checklist li:last-child{border-bottom:0}
+.pp-num{width:24px;height:24px;flex:0 0 24px;border-radius:50%;border:2px solid var(--line);display:inline-flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:700;color:var(--muted)}
+.pp-checklist li.done .pp-num{background:var(--ok);border-color:var(--ok);color:#fff}
+.pp-checklist li.current .pp-num{border-color:var(--gold);color:var(--navy);background:#FBF3D9}
+.pp-step-date{margin-left:auto;font-size:13px;color:var(--muted)}
+.pp-timeline{list-style:none;margin:0;padding:0}
+.pp-timeline li{display:flex;gap:12px;padding:8px 0;border-bottom:1px solid var(--line)}
+.pp-timeline li:last-child{border-bottom:0}
+.pp-tl-dot{width:11px;height:11px;flex:0 0 11px;border-radius:50%;background:var(--gold);margin-top:6px}
+.pp-tl-status{font-weight:700;color:var(--navy)}
+.pp-tl-date{font-size:13px;color:var(--muted)}
+.pp-facts{display:grid;grid-template-columns:1fr 1fr;gap:10px 22px}
+.pp-fact-k{font-size:12.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.pp-fact-v{font-weight:600;color:var(--ink)}
+
+/* ---------- front door / join / agreement ---------- */
+.pp-front{max-width:1060px;margin:0 auto;padding:34px 22px 60px}
+.pp-front-hero{text-align:center;margin:0 0 26px}
+.pp-front-k{font-size:12.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);font-weight:700}
+.pp-front-h{font-size:32px;color:var(--navy);margin:8px 0}
+.pp-front-p{color:var(--muted);max-width:720px;margin:0 auto}
+.pp-front-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+.pp-agreement{border:1px solid var(--line);border-radius:10px;padding:18px 20px;max-height:430px;overflow:auto;background:#FDFEFF;font-size:14.5px}
+.pp-signbox{margin-top:16px;border-top:1px solid var(--line);padding-top:14px}
+
+/* ---------- questionnaire (owner-facing) ---------- */
+.pp-loading{text-align:center;padding:3rem 1rem;color:var(--muted);font-size:16px}
+.pp-qwrap{max-width:860px;margin:0 auto;padding:30px 22px 60px}
+.pp-qsection{margin:0 0 8px}
+fieldset.pp-qsection{border:1px solid var(--line)}
+.pp-qsection legend{padding:0 6px}
+.qfield{margin:0 0 16px}
+.pp-qdetail{margin:6px 0 0}
+.pp-qchecks label{display:flex;gap:8px;align-items:flex-start;font-weight:400;margin:0 0 6px}
+.pp-qchecks input{margin-top:3px}
+
+/* ---------- toast ---------- */
+#pp-toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);background:var(--navy);color:#fff;padding:11px 18px;border-radius:9px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:60;max-width:88vw;text-align:center}
+#pp-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ---------- responsive ---------- */
+@media (max-width:900px){
+  .pp-app{flex-direction:column}
+  .pp-side{width:100%;flex:none;height:auto;position:static}
+  .pp-nav{display:flex;flex-wrap:wrap;gap:4px}
+  .pp-nav a{margin:0}
+  .pp-main{padding:20px 16px 44px}
+  .pp-stats{grid-template-columns:1fr 1fr}
+  .pp-grid2,.pp-front-grid,.pp-form-grid,.pp-facts{grid-template-columns:1fr}
+}

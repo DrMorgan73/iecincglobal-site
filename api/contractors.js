@@ -91,8 +91,12 @@ import {
   listAllReferrals, readReferral, updateReferral,
   createClientClaim, listClientClaims, deleteClientClaim, businessKey,
   readContractorByClientCode, ensureContractorClientCode,
+  readContractorByInviteCode, ensureContractorInviteCode,
+  listContractorsByInviter,
   backfillPartnerClientCodes, listLinkHolds, normalizePartnerCode
 } from './_contractors-store.js';
+import { qrSvg } from './_qr.js';
+import { blocksToPdf } from './_data-assets-pdf.js';
 import { FEE_SCHEDULE, referralFee, feeExamples, formatUSD } from './_contractors-fees.js';
 import {
   QUESTIONNAIRE_SECTIONS, validateQuestionnaireAnswers
@@ -154,8 +158,26 @@ const REFERRAL_ORDER = ['registered', 'agreement_signed', 'license_closed', 'fee
 const CONTRACTOR_ORDER = ['invited', 'active', 'paused', 'revoked'];
 /* The client journey. Partner-facing labels never name any
    channel: the last two steps read "Ready to register" and
-   "Registered" in the portal UI. */
-const CLIENT_PIPELINE = ['added', 'questionnaire_sent', 'questionnaire_answered', 'assessment_done', 'cnda_sent', 'cnda_signed', 'ready_to_register', 'registered'];
+   "Registered" in the portal UI. The standalone portal extends
+   the journey past registration through the full post-
+   registration run to the fee itself (intake review, valuation
+   and packaging, presentation, diligence, offer, negotiation,
+   license, delivery, acceptance, payment, close, fee earned,
+   fee paid) — the same one-step-at-a-time, office-only,
+   evidence-from-the-real-event discipline applies. */
+const CLIENT_PIPELINE = ['added', 'questionnaire_sent', 'questionnaire_answered', 'assessment_done', 'cnda_sent', 'cnda_signed', 'ready_to_register', 'registered',
+  'intake_review', 'valuation_packaging', 'presented', 'buyer_diligence', 'offer_received', 'negotiating_terms',
+  'license_sent', 'license_signed', 'data_delivery', 'acceptance_review', 'awaiting_payment', 'deal_closed'];
+/* Qualification gate for adding a client (mirrors the program's
+   published minimums): most businesses need 20+ local desk
+   staff; Legal / Accounting / Healthcare / Energy / Engineering
+   qualify at any headcount. The portal's healthcare segments
+   are the exempt industries here; gas/convenience and general
+   business carry the 20+ rule. The band is recorded on the
+   referral; the form hides itself for a non-qualifying answer
+   and the API refuses it too. */
+const DESK_STAFF_BANDS = ['under-20', '20-34', '35-75', '76-200', 'over-200'];
+const QUALIFICATION_EXEMPT_INDUSTRIES = ['home-health', 'physical-therapy', 'medical-practice', 'pharmacy'];
 /* Contractor types for the public sign-up — the portal serves IEC
    contractors generally; the data-network partner program is the
    first program inside it. */
@@ -165,7 +187,10 @@ const CONTRACTOR_TYPES = ['Data network introductions', 'Clinical services', 'Co
 const PIPELINE_EVIDENCE = {
   questionnaire_answered: 'the questionnaire submission reference from Dana\u2019s database',
   assessment_done: 'the assessment / valuation reference',
-  cnda_signed: 'the countersignature verification note (message opened, signed copy read, signature and date confirmed)'
+  cnda_signed: 'the countersignature verification note (message opened, signed copy read, signature and date confirmed)',
+  presented: 'the presentation reference (what was presented, when, by whom)',
+  offer_received: 'the offer reference (buyer, amount, date received)',
+  license_signed: 'the signed license reference (countersigned copy verified)'
 };
 
 function json(res, obj, status = 200, extraHeaders = {}) {
@@ -209,6 +234,11 @@ function publicContractor(c) {
     website: c.website || '',
     heardAbout: c.heardAbout || '',
     notes: c.notes || '',
+    payoutMethod: c.payoutMethod || '',
+    payoutLast4: c.payoutLast4 || '',
+    w9OnFile: !!c.w9OnFile,
+    w9UploadedAt: c.w9UploadedAt || null,
+    invitedBy: c.invitedBy || '',
     createdAt: c.createdAt || null
   };
 }
@@ -415,6 +445,16 @@ function publicClient(r) {
     pipelineStatus: r.pipelineStatus || 'added',
     pipelineNote: r.pipelineNote ?? null,
     pipelineUpdatedAt: r.pipelineUpdatedAt ?? null,
+    /* The dated status timeline (the "process time table"). */
+    history: Array.isArray(r.pipelineHistory) ? r.pipelineHistory : [],
+    deskStaffBand: r.deskStaffBand || '',
+    /* The AMOUNT APPROVED: hidden until IEC approves it. The
+       partner sees the figure only once approvedAt stands;
+       before that the field is null and amountApproved false —
+       the value itself is never in the payload. */
+    amountApproved: !!r.approvedAt,
+    approvedAmount: r.approvedAt ? (r.approvedAmount ?? null) : null,
+    approvedAt: r.approvedAt || null,
     questionnaireAnswers: r.questionnaireAnswers ?? null,
     questionnaireSubmissionId: r.questionnaireSubmissionId ?? null,
     source: r.source || 'partner-entered',
@@ -441,6 +481,31 @@ function feeTotals(referrals) {
   return { earned, paid, outstanding: earned - paid };
 }
 
+/* Earnings summary for the standalone portal's Earnings page:
+   Projected is computed ONLY from amounts IEC has actually
+   approved (the referral fee on each approved amount whose
+   license has not closed yet) — never from an estimate of what
+   a client's data might be worth. Payable = earned, not yet
+   paid. Paid = paid out. */
+function earningsSummary(referrals) {
+  const t = feeTotals(referrals);
+  let projected = 0;
+  for (const r of referrals || []) {
+    if (r.approvedAt && r.approvedAmount !== null && r.approvedAmount !== undefined
+      && r.status !== 'license_closed' && r.status !== 'fee_paid') {
+      projected += referralFee(r.approvedAmount);
+    }
+  }
+  return { projected, payable: t.outstanding, paid: t.paid, earned: t.earned };
+}
+
+/* Append one entry to a referral's dated pipeline history. */
+function appendHistory(r, status, note) {
+  const hist = Array.isArray(r.pipelineHistory) ? [...r.pipelineHistory] : [];
+  hist.push({ status, at: new Date().toISOString(), note: note || null });
+  return hist;
+}
+
 function questionnaireUrl(industry) {
   const base = String(process.env.CONTRACTOR_PORTAL_BASE_URL || 'https://iecincglobal.com').replace(/\/$/, '');
   const slug = SEGMENT_BY_INDUSTRY[industry] || industry;
@@ -461,6 +526,18 @@ function activationUrlFor(token) {
 function clientLinkFor(c) {
   const code = normalizePartnerCode(c && c.clientCode);
   return code ? `${portalBase()}/r/${code}` : '';
+}
+
+/* The same client link in its STANDALONE portal form — the
+   portal host's own /r/<code> landing (partners/register.html).
+   The legacy clientLinkFor above is untouched: the legacy pages
+   and the in-flight production links keep working until the
+   cutover. The standalone app displays this form (re-based onto
+   its own origin, so the preview deployment's /partners/r/<code>
+   route is what a preview click follows). */
+function portalClientLinkFor(c) {
+  const code = normalizePartnerCode(c && c.clientCode);
+  return code ? `${partnersBase()}/r/${code}` : '';
 }
 
 /* The ready-to-send email a partner pastes into his OWN mail to
@@ -496,6 +573,73 @@ function buildClientLinkEmail(c, link) {
     'IEC Partner'
   ].join('\n');
   return { subject, body, link };
+}
+
+/* The standalone portal's public base (its own host — the
+   portal is its own product, not a page of the marketing site).
+   Join links point there; at staging time the same paths serve
+   under the site's /partners/ preview route. */
+function partnersBase() {
+  return String(process.env.PARTNER_PORTAL_PUBLIC_URL || 'https://partners.iecincglobal.com').replace(/\/$/, '');
+}
+
+/* True when this request arrived on the standalone portal host —
+   activation then routes into the standalone app (its own front
+   door and agreement screen) instead of the legacy site pages.
+   The signing gates themselves do not move. */
+function isPartnersHost(req) {
+  return String(req.headers.host || '').toLowerCase().startsWith('partners.');
+}
+
+/* The partner's personal invitation link for OTHER partners
+   (flat: direct invitees only), or '' when he holds no code. */
+function inviteLinkFor(c) {
+  const code = normalizePartnerCode(c && c.inviteCode);
+  return code ? `${partnersBase()}/join/${code}` : '';
+}
+
+/* The ready invite message a partner sends a prospective
+   partner. IEC-branded; carries no economics beyond the
+   program's existence — the fee schedule lives in the signed
+   agreement, never in an invitation. */
+function buildInviteMessage(c, link) {
+  const partnerName = String(c.name || '').trim();
+  const subject = 'An invitation to the IEC Partner Program';
+  const body = [
+    'Hello,',
+    '',
+    `I am ${partnerName}, a partner with IEC, Inc. IEC works with business owners who license their operational data, and its partners are the people who make the introductions.`,
+    '',
+    'I am inviting you to request your own IEC Partner Portal. Partners register the companies they introduce, follow each one through the process, and are paid a referral fee when a license closes — the terms are in the partner agreement you review and sign before anything opens.',
+    '',
+    'You can request access through my invitation link:',
+    link,
+    '',
+    'The link is connected to my IEC partner record, so IEC knows the invitation came from me.',
+    '',
+    'Thank you for considering it.',
+    '',
+    partnerName,
+    'IEC Partner'
+  ].join('\n');
+  return { subject, body, link };
+}
+
+/* The partner's IEC email address, as IEC assigns it at
+   activation: first-initial.last-name@iecincglobal.com.
+   Display only — IEC provisions the mailbox; the portal never
+   creates one. Collisions are resolved by IEC when assigning
+   (a middle initial or a number), so this is the expected form,
+   labeled as assigned in the portal's Settings. */
+function iecEmailFor(c) {
+  const name = String(c && c.name || '').trim();
+  const parts = name.split(/\s+/).filter(Boolean);
+  if (parts.length < 2) return '';
+  const clean = s => s.toLowerCase().replace(/[^a-z]/g, '');
+  const first = clean(parts[0]);
+  const last = clean(parts[parts.length - 1]);
+  if (!first || !last) return '';
+  return `${first[0]}.${last}@iecincglobal.com`;
 }
 
 async function readBody(req) {
@@ -570,9 +714,16 @@ export default async function handler(req, res) {
     const token = String(url.searchParams.get('token') || '');
     const c = await resolveActivationToken(token);
     if (!c) return json(res, { ok: false, error: 'invalid_token' }, 401);
+    /* On the standalone portal host, activation routes into the
+       standalone app (its own agreement screen and front door);
+       on the marketing host it keeps the legacy pages until the
+       cutover. The gates are identical either way. */
+    const standalone = isPartnersHost(req);
     if (c.ndaStatus !== 'signed' || (c.agreementStatus || 'pending') !== 'signed') {
       res.status(302);
-      res.setHeader('Location', `/contractors-agreement.html?t=${encodeURIComponent(token)}`);
+      res.setHeader('Location', standalone
+        ? `/?t=${encodeURIComponent(token)}`
+        : `/contractors-agreement.html?t=${encodeURIComponent(token)}`);
       return res.end();
     }
     // Both signatures stand: consume the link (its hash was matched
@@ -584,11 +735,13 @@ export default async function handler(req, res) {
       activationTokenHash: '', activatedAt: new Date().toISOString()
     });
     // Activation issues the partner's client-link code (…/r/<code>)
-    // — idempotent, collision-checked in the store.
+    // and his partner-invite code — idempotent, collision-checked
+    // in the store.
     await ensureContractorClientCode(c.id);
+    await ensureContractorInviteCode(c.id);
     res.status(302);
     res.setHeader('Set-Cookie', sessionCookieHeader(session));
-    res.setHeader('Location', '/contractors-portal.html');
+    res.setHeader('Location', standalone ? '/' : '/contractors-portal.html');
     return res.end();
   }
 
@@ -720,13 +873,44 @@ export default async function handler(req, res) {
         message: 'This email is already registered with the IEC partner program. If that is you, write to info@iecincglobal.com and we will take it from there.'
       }, 409);
     }
+    /* Partner-invite attribution (flat): when the request came
+       through a partner's invitation link (/join/<code>), record
+       WHO invited this partner. A revoked inviter's code records
+       nothing; an unknown code is ignored, never an error — the
+       request itself is what matters. */
+    let invitedBy = '';
+    const inviteCode = normalizePartnerCode(body.inviteCode);
+    if (inviteCode) {
+      const inviter = await readContractorByInviteCode(inviteCode);
+      if (inviter && inviter.status !== 'revoked') invitedBy = inviter.id;
+    }
     const id = crypto.randomUUID();
     await createContractor({
       id, email, name, company, activationTokenHash: '',
-      source: 'public-signup', ...profile
+      source: 'public-signup', invitedBy, ...profile
     });
     const mail = await sendSignupNotification(profile);
     return json(res, { ok: true, emailed: mail.sent, next: '/cnda.html' });
+  }
+
+  /* ---- public: resolve a partner invitation link (/join/<code>)
+     — the standalone portal's join page names the inviter the
+     same way the client landing names an active partner. A
+     paused inviter is not named (the code still attributes); a
+     revoked inviter's link does not resolve at all. ---- */
+  if (req.method === 'GET' && action === 'resolve-invite') {
+    const code = normalizePartnerCode(url.searchParams.get('code'));
+    if (!code) return json(res, { ok: false, error: 'invalid_link' }, 404);
+    const inviter = await readContractorByInviteCode(code);
+    if (!inviter || inviter.status === 'revoked') {
+      return json(res, { ok: false, error: 'invalid_link' }, 404);
+    }
+    const active = inviter.status === 'active';
+    return json(res, {
+      ok: true, code,
+      attribution: active ? 'active' : 'held',
+      partner: active ? { name: inviter.name, company: inviter.company } : null
+    });
   }
 
   /* ---- public: resolve a partner client link (…/r/<code>) ----
@@ -782,14 +966,30 @@ export default async function handler(req, res) {
        lazily — the same backfill the Desk list runs. */
     let clientLink = '';
     let clientLinkEmail = null;
+    let portalClientLink = '';
+    let portalClientLinkEmail = null;
+    let inviteLink = '';
+    let inviteMessage = null;
     if (c.status === 'active') {
       if (!c.clientCode) {
         const issued = await ensureContractorClientCode(c.id);
         if (issued) c.clientCode = issued;
       }
+      if (!c.inviteCode) {
+        const issuedInvite = await ensureContractorInviteCode(c.id);
+        if (issuedInvite) c.inviteCode = issuedInvite;
+      }
       clientLink = clientLinkFor(c);
       if (clientLink) clientLinkEmail = buildClientLinkEmail(c, clientLink);
+      portalClientLink = portalClientLinkFor(c);
+      if (portalClientLink) portalClientLinkEmail = buildClientLinkEmail(c, portalClientLink);
+      inviteLink = inviteLinkFor(c);
+      if (inviteLink) inviteMessage = buildInviteMessage(c, inviteLink);
     }
+    /* The partners THIS partner personally invited (flat list —
+       names, companies, statuses, dates; never their fees or
+       clients). */
+    const invited = (await listContractorsByInviter(contractorId)) || [];
     return json(res, {
       ok: true,
       contractor: publicContractor(c),
@@ -797,12 +997,31 @@ export default async function handler(req, res) {
       referrals: clients,
       clients,
       feeTotals: feeTotals(referrals),
+      earnings: earningsSummary(referrals),
+      payout: {
+        method: c.payoutMethod || '', last4: c.payoutLast4 || '',
+        w9OnFile: !!c.w9OnFile, w9UploadedAt: c.w9UploadedAt || null,
+        set: !!(c.payoutMethod && c.payoutLast4)
+      },
+      iecEmail: iecEmailFor(c),
       pipeline: CLIENT_PIPELINE,
       questionnaireSections: QUESTIONNAIRE_SECTIONS,
       schedule: publicSchedule(),
       clientCode: c.status === 'active' ? (c.clientCode || '') : '',
       clientLink,
-      clientLinkEmail
+      clientLinkEmail,
+      portalClientLink,
+      portalClientLinkEmail,
+      inviteCode: c.status === 'active' ? (c.inviteCode || '') : '',
+      inviteLink,
+      inviteMessage,
+      invitedPartners: invited.map(p => ({
+        name: p.name, company: p.company, status: p.status, createdAt: p.createdAt || null
+      })),
+      fastStart: {
+        agreementAccepted: (c.agreementStatus || 'pending') === 'signed' && c.ndaStatus === 'signed',
+        payoutsSet: !!(c.payoutMethod && c.payoutLast4)
+      }
     });
   }
 
@@ -821,6 +1040,22 @@ export default async function handler(req, res) {
     const industry = str(body.industry, 40);
     if (!businessName || !ownerName || !emailOk(ownerEmail) || !INDUSTRIES.includes(industry)) {
       return json(res, { ok: false, error: 'invalid_fields' }, 400);
+    }
+    /* Qualification gate: the desk-staff band is optional for
+       legacy callers, but when it is supplied it must be a real
+       band, and a non-exempt industry under 20 desk staff does
+       not qualify — refused before anything is stored, with the
+       rule stated plainly (the portal form hides itself on the
+       same answer; this is the server-side half of the gate). */
+    const deskStaffBand = str(body.deskStaffBand, 20);
+    if (deskStaffBand && !DESK_STAFF_BANDS.includes(deskStaffBand)) {
+      return json(res, { ok: false, error: 'invalid_fields' }, 400);
+    }
+    if (deskStaffBand === 'under-20' && !QUALIFICATION_EXEMPT_INDUSTRIES.includes(industry)) {
+      return json(res, {
+        ok: false, error: 'not_qualified',
+        message: 'This program starts at 20+ local desk staff for this business type. A company below that line does not qualify yet — nothing was saved.'
+      }, 400);
     }
     const locations = countOrNull(body.locations);
     const employees = countOrNull(body.employees);
@@ -844,6 +1079,7 @@ export default async function handler(req, res) {
     await createReferral({
       id, contractorId, businessName, ownerName, ownerEmail, industry,
       locations, employees, systems, yearsRecords,
+      deskStaffBand,
       questionnaireAnswers: checked.answers,
       source: 'partner-entered', attributionStatus: 'credited',
       partnerCode: c.clientCode || ''
@@ -911,10 +1147,196 @@ export default async function handler(req, res) {
     }
     await updateReferral(r.id, {
       pipelineStatus: 'questionnaire_sent',
-      pipelineUpdatedAt: new Date().toISOString()
+      pipelineUpdatedAt: new Date().toISOString(),
+      pipelineHistory: appendHistory(r, 'questionnaire_sent')
     });
     const updated = await readReferral(r.id);
     return json(res, { ok: true, client: publicClient(updated), questionnaireUrl: questionnaireUrl(r.industry) });
+  }
+
+  /* ---- partner: update his own profile (Settings). Name and
+     email are his identity of record (the agreement acceptance
+     matches on the name) and never change here. Active only —
+     a frozen portal is read-only. ---- */
+  if (req.method === 'POST' && action === 'update-profile') {
+    if (!contractorId) return json(res, { ok: false, error: 'unauthorized' }, 401);
+    const c = await readContractorById(contractorId);
+    if (!c || c.status !== 'active') return json(res, { ok: false, error: 'unauthorized' }, 401);
+    const body = await readBody(req);
+    const patch = {};
+    if (body.phone !== undefined) patch.phone = str(body.phone, 40);
+    if (body.company !== undefined) {
+      const company = str(body.company, 160);
+      if (!company) return json(res, { ok: false, error: 'invalid_fields' }, 400);
+      patch.company = company;
+    }
+    if (body.addressStreet !== undefined) patch.addressStreet = str(body.addressStreet, 200);
+    if (body.addressCity !== undefined) patch.addressCity = str(body.addressCity, 120);
+    if (body.addressState !== undefined) patch.addressState = str(body.addressState, 80);
+    if (body.addressZip !== undefined) patch.addressZip = str(body.addressZip, 20);
+    if (body.website !== undefined) patch.website = str(body.website, 300);
+    if (!Object.keys(patch).length) return json(res, { ok: false, error: 'invalid_fields' }, 400);
+    await updateContractor(c.id, patch);
+    const updated = await readContractorById(c.id);
+    return json(res, { ok: true, contractor: publicContractor(updated) });
+  }
+
+  /* ---- partner: payout settings. Method + the last 4 of the
+     account — the full account number is NEVER collected here;
+     IEC pays against the details the partner confirms with the
+     office. Active only. ---- */
+  if (req.method === 'POST' && action === 'update-payout') {
+    if (!contractorId) return json(res, { ok: false, error: 'unauthorized' }, 401);
+    const c = await readContractorById(contractorId);
+    if (!c || c.status !== 'active') return json(res, { ok: false, error: 'unauthorized' }, 401);
+    const body = await readBody(req);
+    const method = str(body.method, 20);
+    if (!['', 'wire', 'check'].includes(method)) {
+      return json(res, { ok: false, error: 'invalid_fields' }, 400);
+    }
+    const last4 = str(body.last4, 8);
+    if (method && !/^\d{4}$/.test(last4)) {
+      return json(res, { ok: false, error: 'invalid_fields' }, 400);
+    }
+    await updateContractor(c.id, { payoutMethod: method, payoutLast4: method ? last4 : '' });
+    return json(res, {
+      ok: true,
+      payout: { method, last4: method ? last4 : '', w9OnFile: !!c.w9OnFile, w9UploadedAt: c.w9UploadedAt || null, set: !!method }
+    });
+  }
+
+  /* ---- partner: W-9 upload. The file itself is emailed to the
+     IEC office inbox as an attachment (the office's channel of
+     record) — the portal stores only the fact and the date, so
+     a tax document never sits in the portal's database or a
+     public file store. Active only; PDF only; honest failure:
+     if the mail channel is not configured, nothing is recorded. */
+  if (req.method === 'POST' && action === 'upload-w9') {
+    if (!contractorId) return json(res, { ok: false, error: 'unauthorized' }, 401);
+    const c = await readContractorById(contractorId);
+    if (!c || c.status !== 'active') return json(res, { ok: false, error: 'unauthorized' }, 401);
+    const body = await readBody(req);
+    const b64 = String(body.dataBase64 || '');
+    if (!b64 || b64.length > 7_000_000) return json(res, { ok: false, error: 'invalid_file' }, 400);
+    let buf;
+    try { buf = Buffer.from(b64, 'base64'); } catch { return json(res, { ok: false, error: 'invalid_file' }, 400); }
+    if (buf.length < 5 || buf.subarray(0, 5).toString('latin1') !== '%PDF-') {
+      return json(res, { ok: false, error: 'invalid_file' }, 400);
+    }
+    const key = process.env.DEMO_ADMIN_RESEND_API_KEY || '';
+    if (!key) return json(res, { ok: false, error: 'not_configured' }, 503);
+    try {
+      const r = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: SIGNUP_MAIL_FROM,
+          to: [SIGNUP_NOTIFY_TO],
+          reply_to: c.email,
+          subject: `Partner W-9 received — ${c.company}`,
+          text: `${c.name} (${c.company}, ${c.email}) submitted the W-9 attached to this email through the IEC Partner Portal.\n\n${SIGNUP_SIGNATURE_TEXT}`,
+          attachments: [{ filename: 'w9.pdf', content: b64 }]
+        })
+      });
+      if (!r.ok) return json(res, { ok: false, error: 'send_failed' }, 502);
+    } catch {
+      return json(res, { ok: false, error: 'send_failed' }, 502);
+    }
+    const at = new Date().toISOString();
+    await updateContractor(c.id, { w9OnFile: true, w9UploadedAt: at });
+    return json(res, { ok: true, w9OnFile: true, w9UploadedAt: at });
+  }
+
+  /* ---- partner: his client-link QR code (SVG). Active only —
+     a frozen partner's link is not served, as in `me`. ---- */
+  if (req.method === 'GET' && action === 'client-link-qr') {
+    if (!contractorId) return json(res, { ok: false, error: 'unauthorized' }, 401);
+    const c = await readContractorById(contractorId);
+    if (!c || c.status !== 'active') return json(res, { ok: false, error: 'unauthorized' }, 401);
+    if (!c.clientCode) {
+      const issued = await ensureContractorClientCode(c.id);
+      if (issued) c.clientCode = issued;
+    }
+    /* form=portal encodes the standalone portal form of the link
+       (the portal host's own landing); the default keeps the
+       legacy form the existing pages display. */
+    const link = url.searchParams.get('form') === 'portal'
+      ? portalClientLinkFor(c) : clientLinkFor(c);
+    if (!link) return json(res, { ok: false, error: 'not_found' }, 404);
+    res.status(200);
+    res.setHeader('content-type', 'image/svg+xml');
+    res.setHeader('cache-control', 'private, max-age=300');
+    return res.send(qrSvg(link));
+  }
+
+  /* ---- partner: earnings CSV — his referrals and fees only,
+     generated from his real records. The approved amount and
+     the owner gross appear only where they are his to see (an
+     approved amount once IEC has approved it; the gross once
+     his fee stands on it). ---- */
+  if (req.method === 'GET' && action === 'earnings-csv') {
+    if (!contractorId) return json(res, { ok: false, error: 'unauthorized' }, 401);
+    const c = await readContractorById(contractorId);
+    if (!c) return json(res, { ok: false, error: 'unauthorized' }, 401);
+    const referrals = (await listReferralsByContractor(contractorId)) || [];
+    const cell = v => {
+      const s = String(v ?? '');
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const lines = [['Business', 'Type', 'Stage', 'Registered', 'Amount approved by IEC', 'Owner gross', 'Your fee', 'Fee status', 'Fee paid date'].join(',')];
+    for (const r of referrals) {
+      lines.push([
+        r.businessName, r.industry, r.pipelineStatus || 'added',
+        r.createdAt ? String(r.createdAt).slice(0, 10) : '',
+        r.approvedAt && r.approvedAmount !== null && r.approvedAmount !== undefined ? r.approvedAmount : '',
+        r.feeAmount !== null && r.feeAmount !== undefined ? (r.ownerGross ?? '') : '',
+        r.feeAmount ?? '', r.status,
+        r.feePaidAt ? String(r.feePaidAt).slice(0, 10) : ''
+      ].map(cell).join(','));
+    }
+    const t = feeTotals(referrals);
+    lines.push(['Totals', '', '', '', '', '', t.earned, `earned ${t.earned} · paid ${t.paid} · payable ${t.outstanding}`, ''].map(cell).join(','));
+    res.status(200);
+    res.setHeader('content-type', 'text/csv; charset=utf-8');
+    res.setHeader('content-disposition', 'attachment; filename="iec-partner-earnings.csv"');
+    return res.send(lines.join('\n') + '\n');
+  }
+
+  /* ---- partner: plan summary PDF — the adopted schedule and
+     his own figures, generated from his real records. ---- */
+  if (req.method === 'GET' && action === 'plan-summary') {
+    if (!contractorId) return json(res, { ok: false, error: 'unauthorized' }, 401);
+    const c = await readContractorById(contractorId);
+    if (!c) return json(res, { ok: false, error: 'unauthorized' }, 401);
+    const referrals = (await listReferralsByContractor(contractorId)) || [];
+    const e = earningsSummary(referrals);
+    const blocks = [
+      { t: 'p', text: `Partner: **${c.name}** — ${c.company} (${c.email})` },
+      { t: 'h2', text: 'Your referral fee — the adopted schedule' },
+      { t: 'p', text: 'Your fee is **3% of the first $250,000** of the owner gross on a client\u2019s first closed license, plus **1% of the owner gross above $250,000**, with **no cap**. Paid once per client, on the first closed license only, within 15 days after IEC is paid. The fee is payable by IEC and is never deducted from any amount payable to the owner.' },
+      { t: 'table', head: ['Owner gross — first closed license', 'Your referral fee'], rows: feeExamples().map(x => [
+        x.ownerGrossTo ? `${formatUSD(x.ownerGrossFrom)} - ${formatUSD(x.ownerGrossTo)}` : `Above ${formatUSD(x.ownerGrossFrom)}`,
+        x.feeTo ? `${formatUSD(x.feeFrom)} - ${formatUSD(x.feeTo)}` : `${formatUSD(x.feeFrom)} and up (${formatUSD(x.anchorGross)} -> ${formatUSD(x.anchorFee)})`
+      ]) },
+      { t: 'h2', text: 'Your earnings' },
+      { t: 'table', head: ['Figure', 'Amount'], rows: [
+        ['Projected (fees on amounts IEC has approved, licenses not yet closed)', formatUSD(e.projected)],
+        ['Payable (earned, not yet paid)', formatUSD(e.payable)],
+        ['Paid', formatUSD(e.paid)],
+        ['Earned to date', formatUSD(e.earned)]
+      ] },
+      { t: 'h2', text: 'Your clients' },
+      ...(referrals.length ? [{ t: 'table', head: ['Business', 'Stage', 'Your fee'], rows: referrals.map(r => [
+        r.businessName, r.pipelineStatus || 'added',
+        r.feeAmount !== null && r.feeAmount !== undefined ? formatUSD(r.feeAmount) : 'Not yet set'
+      ]) }] : [{ t: 'p', text: 'No clients registered yet.' }]),
+      { t: 'p', text: 'IEC, Inc. · International Empire Consultants, Inc. · 923 Hyde Park Ave, Boston, MA 02136 · info@iecincglobal.com' }
+    ];
+    const pdf = blocksToPdf(blocks, 'IEC Partner Program — Plan Summary');
+    res.status(200);
+    res.setHeader('content-type', 'application/pdf');
+    res.setHeader('content-disposition', 'attachment; filename="iec-partner-plan-summary.pdf"');
+    return res.send(pdf);
   }
 
   /* ---- admin: Desk session required below ---- */
@@ -1108,9 +1530,39 @@ export default async function handler(req, res) {
       if (r.status !== 'license_closed') return json(res, { ok: false, error: 'invalid_transition' }, 409);
       patch.feePaidAt = new Date().toISOString();
     }
+    /* The fee events belong on the client's dated timeline too:
+       the fee is EARNED when the license closes and PAID when
+       it pays out — the last two steps of the partner's
+       progress checklist read from these entries. */
+    if (target === 'license_closed') patch.pipelineHistory = appendHistory(r, 'fee_earned');
+    if (target === 'fee_paid') patch.pipelineHistory = appendHistory(r, 'fee_paid');
     await updateReferral(r.id, patch);
     const updated = await readReferral(r.id);
     return json(res, { ok: true, referral: updated });
+  }
+
+  /* ---- admin: set (or clear) the AMOUNT APPROVED on one
+     referral. Approving records the amount + the timestamp;
+     the partner's portal reveals the figure only while
+     approved_at stands. Clearing (amount null) re-locks it.
+     This is IEC's approval of a real figure from the real
+     process — the portal never estimates one. ---- */
+  if (req.method === 'POST' && action === 'set-approved-amount') {
+    const body = await readBody(req);
+    const r = await readReferral(str(body.referralId, 64));
+    if (!r) return json(res, { ok: false, error: 'not_found' }, 404);
+    if (body.amount === null || body.amount === undefined) {
+      await updateReferral(r.id, { approvedAmount: null, approvedAt: null });
+      const updated = await readReferral(r.id);
+      return json(res, { ok: true, client: publicClient(updated), referral: updated });
+    }
+    const amount = Number(body.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return json(res, { ok: false, error: 'invalid_fields' }, 400);
+    }
+    await updateReferral(r.id, { approvedAmount: amount, approvedAt: new Date().toISOString() });
+    const updated = await readReferral(r.id);
+    return json(res, { ok: true, client: publicClient(updated), referral: updated });
   }
 
   /* ---- admin: advance the CLIENT pipeline — strictly one step,
@@ -1150,6 +1602,11 @@ export default async function handler(req, res) {
     } else if (body.evidence !== undefined) {
       patch.pipelineNote = str(body.evidence, 500) || null;
     }
+    /* Every advance lands on the client's dated timeline — the
+       partner's "process time table" is built from exactly
+       these entries, so a step that is not recorded here never
+       appears there. */
+    patch.pipelineHistory = appendHistory(r, target, patch.pipelineNote || null);
     await updateReferral(r.id, patch);
     const updated = await readReferral(r.id);
     return json(res, { ok: true, client: publicClient(updated), referral: updated });
@@ -1187,10 +1644,14 @@ export default async function handler(req, res) {
 
 export const _internals = {
   validDeskSession, publicSchedule, publicContractor, publicClient, feeTotals,
+  earningsSummary, appendHistory,
   INDUSTRIES, REFERRAL_ORDER, CONTRACTOR_ORDER, CLIENT_PIPELINE,
+  DESK_STAFF_BANDS, QUALIFICATION_EXEMPT_INDUSTRIES,
   PIPELINE_EVIDENCE, SEGMENT_BY_INDUSTRY, questionnaireUrl, formatUSD,
   resolveActivationToken, agreementAcceptance, nameMatches,
   INVITE_FROM_ADDRESS, INVITE_MAIL_FROM, INVITE_SUBJECT,
   buildInvitationEmail, activationUrlFor,
-  clientLinkFor, buildClientLinkEmail
+  clientLinkFor, buildClientLinkEmail,
+  portalClientLinkFor,
+  inviteLinkFor, buildInviteMessage, iecEmailFor, isPartnersHost, partnersBase
 };

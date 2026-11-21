@@ -50,6 +50,12 @@ async function validSession(value) {
 
 export default async function middleware(request) {
   const { pathname } = new URL(request.url);
+  // The standalone Partner Portal lives on its own host. Its pages are
+  // served by the partners.* rewrites in vercel.json and its access is
+  // gated by the partner's own activation/session, never by the Suite
+  // sign-in — pass every partners-host request straight through.
+  const host = request.headers.get('host') || '';
+  if (host.startsWith('partners.')) return undefined;
   // The sign-in page itself must stay public.
   if (pathname === '/desk/login.html') return undefined;
   const session = getCookie(request.headers.get('cookie'), 'desk_session');
