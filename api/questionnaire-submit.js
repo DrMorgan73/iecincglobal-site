@@ -110,6 +110,7 @@ import {
   normalizePartnerCode
 } from "./_contractors-store.js";
 import { attributionCodeFromRequest } from "./_contractors-auth.js";
+import { issueClientCnda } from "./_client-cnda.js";
 import { _internals as questionnaireInternals } from "./_partner-questionnaire.js";
 
 const SEGMENTS = {
@@ -612,6 +613,43 @@ export default async function handler(req, res) {
     return reply(res, 502, { ok: false, error: "delivery_failed" });
   }
   console.log(`[questionnaire-submit] submission ${record.id} (${segment}) stored=${stored} emailed=${sent.sent}.`);
+
+  /* The CNDA step (DrMorgan's order, Nov 21, 2026): the owner's
+     credentials are now captured and the client record stands
+     (credited referral or Desk hold), so the portal issues the
+     IEC CNDA — pre-filled from this registration, pre-signed by
+     Mohammed Morgan, MD — and emails the owner his signing link;
+     the response carries the step so the flow itself presents
+     it. Sign first, then the client proceeds: a link client
+     cannot be advanced to `presented` without the signed record
+     (api/contractors.js). Issuance is best-effort BY DESIGN: a
+     failure here never fails the stored submission — the Desk
+     can (re-)issue from the client record at any time. */
+  let cnda = null;
+  if (linkContext && (linkReferralId || linkHoldId)) {
+    try {
+      const issued = await issueClientCnda({
+        referralId: linkReferralId,
+        holdId: linkHoldId,
+        contractorId: linkContext.partner.id,
+        businessName: linkContext.businessName,
+        ownerName: contact.name,
+        ownerEmail: contact.email,
+        businessCity: linkContext.businessCity,
+        businessState: linkContext.businessState,
+        industry: linkContext.industry,
+        lang: body.lang === "es" ? "es" : "en"
+      });
+      cnda = issued
+        ? { issued: true, token: issued.token, url: issued.url, emailed: issued.emailed }
+        : { issued: false };
+      if (issued) console.log(`[questionnaire-submit] client CNDA ${issued.id} issued for submission ${record.id} (emailed=${issued.emailed}).`);
+    } catch (e) {
+      console.error(`[questionnaire-submit] client CNDA issuance FAILED for submission ${record.id}: ${e && e.message}`);
+      cnda = { issued: false };
+    }
+  }
+
   return reply(res, 200, {
     ok: true, id: record.id, stored, emailed: sent.sent,
     ...(linkContext ? {
@@ -619,6 +657,7 @@ export default async function handler(req, res) {
         source: "link",
         status: linkContext.partner.status === "active" ? "credited" : "held"
       }
-    } : {})
+    } : {}),
+    ...(cnda ? { cnda } : {})
   });
 }

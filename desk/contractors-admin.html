@@ -100,7 +100,7 @@
 
     <div class="card" style="margin-bottom:16px">
       <h3>Clients — pipeline &amp; fees</h3>
-      <p class="hint">Pipeline: Added → Questionnaire sent → Questionnaire answered → Assessment done → CNDA sent → CNDA signed → Ready to register → Registered (with DataSupply — internal label; partners never see the channel name). Evidence is required for Questionnaire answered (the submission reference from Dana's database), Assessment done (the valuation reference) and CNDA signed (the countersignature verification note). A paused or revoked partner's clients do not move.</p>
+      <p class="hint">Pipeline: Added → Questionnaire sent → Questionnaire answered → Assessment done → CNDA sent → CNDA signed → Ready to register → Registered (with DataSupply — internal label; partners never see the channel name). Evidence is required for Questionnaire answered (the submission reference from Dana's database), Assessment done (the valuation reference) and CNDA signed (the countersignature verification note). A paused or revoked partner's clients do not move. <b>Partner-link clients:</b> the portal issues the IEC CNDA — pre-filled, pre-signed by IEC — the moment the owner's questionnaire lands; his countersignature is recorded on the client record (the CNDA line below) and satisfies the CNDA-signed evidence by itself, and a link client cannot be moved to Presented or beyond until that signed record exists.</p>
       <div class="table-wrap"><table class="matrix" id="refTable">
         <thead><tr><th>Client</th><th>Partner</th><th>Pipeline</th><th>Fee stage</th><th>Owner gross</th><th>Fee</th><th>Actions</th></tr></thead>
         <tbody><tr><td colspan="7">Loading…</td></tr></tbody>
@@ -275,12 +275,21 @@
         act += '<input class="lic-input" type="number" min="1" step="1" placeholder="Approved amount $" data-approved-input="' + esc(r.id) + '"> ' +
           '<button class="mini" data-approved="' + esc(r.id) + '">Approve amount</button>';
       }
+      act += '<br>';
+      if (r.cnda && r.cnda.status === 'signed') {
+        act += '<button class="mini" data-cnda-view="' + esc(r.id) + '">View executed CNDA</button>';
+      } else if (r.source === 'link') {
+        act += '<button class="mini" data-cnda-issue="' + esc(r.id) + '">' + (r.cnda ? 'Re-issue CNDA to owner' : 'Issue CNDA to owner') + '</button>';
+      }
       if (frozen) act += '<span style="font-size:12px;color:var(--dim)">Partner ' + esc(c.status) + ' — pipeline frozen</span>';
       var profile = [r.locations != null ? r.locations + ' loc' : null, r.employees != null ? r.employees + ' FTE' : null, r.yearsRecords != null ? r.yearsRecords + ' yrs records' : null].filter(Boolean).join(' · ');
       var srcLine = r.source === 'link' ? 'Registered via partner link' : 'Entered by partner';
+      var cndaLine = r.cnda
+        ? '<br>CNDA: <b>' + (r.cnda.status === 'signed' ? 'signed ' + esc(String(r.cnda.signedAt || '').slice(0, 10)) : 'issued — awaiting the owner\u2019s countersignature') + '</b>'
+        : (r.source === 'link' ? '<br>CNDA: <b>not issued</b>' : '');
       return '<tr><td class="who"><b>' + esc(r.businessName) + '</b><span>' + esc(r.ownerName) + ' · ' + esc(r.ownerEmail) + '<br>' + esc(srcLine) +
         ([r.businessCity, r.businessState].filter(Boolean).length ? ' · ' + esc([r.businessCity, r.businessState].filter(Boolean).join(', ')) : '') +
-        (profile ? '<br>' + esc(profile) : '') + (r.pipelineNote ? '<br>Evidence: ' + esc(r.pipelineNote) : '') + '</span></td>' +
+        (profile ? '<br>' + esc(profile) : '') + (r.pipelineNote ? '<br>Evidence: ' + esc(r.pipelineNote) : '') + cndaLine + '</span></td>' +
         '<td>' + esc(c ? c.email : r.contractorId) + '</td>' +
         '<td><span class="chip">' + esc(PIPE_LABEL[r.pipelineStatus || 'added']) + '</span></td>' +
         '<td><span class="chip">' + esc(STATUS_LABEL[r.status] || r.status) + '</span></td>' +
@@ -298,21 +307,60 @@
     document.querySelector('#holdTable tbody').innerHTML = holds.length ? holds.map(function (h) {
       var p = byId[h.contractorId];
       return '<tr><td class="who"><b>' + esc(h.businessName) + '</b><span>' + esc(h.industry || '') +
-        ([h.businessCity, h.businessState].filter(Boolean).length ? ' · ' + esc([h.businessCity, h.businessState].filter(Boolean).join(', ')) : '') + '</span></td>' +
+        ([h.businessCity, h.businessState].filter(Boolean).length ? ' · ' + esc([h.businessCity, h.businessState].filter(Boolean).join(', ')) : '') +
+        (h.cnda ? '<br><span class="chip ' + (h.cnda.status === 'signed' ? 'signed' : 'pending') + '">CNDA ' + esc(h.cnda.status) + (h.cnda.signedAt ? ' ' + esc(String(h.cnda.signedAt).slice(0, 10)) : '') + '</span>' : '') + '</span></td>' +
         '<td>' + esc(h.ownerName) + ' · ' + esc(h.ownerEmail) + '</td>' +
         '<td>' + esc(p ? p.email : h.contractorId) + '<br><span style="font-size:12px;color:var(--dim)">code ' + esc(h.clientCode || '') + '</span></td>' +
         '<td><span class="chip">' + esc(h.reason || '') + '</span></td>' +
         '<td>' + esc(h.questionnaireSubmissionId || '—') + '</td>' +
         '<td>' + esc(String(h.createdAt || '').slice(0, 10) || '—') + '</td>' +
         '<td><button class="mini" data-hold-credit="' + esc(h.id) + '">Credit to partner</button> ' +
-        '<button class="mini danger" data-hold-dismiss="' + esc(h.id) + '">Dismiss</button><br>' +
+        '<button class="mini danger" data-hold-dismiss="' + esc(h.id) + '">Dismiss</button>' +
+        (h.cnda && h.cnda.status === 'signed' ? ' <button class="mini" data-cnda-view-hold="' + esc(h.id) + '">View executed CNDA</button>' : '') + '<br>' +
         '<span style="font-size:12px;color:var(--dim)">Credit works only while the partner is active and the company is still unregistered.</span></td></tr>';
     }).join('') : '<tr><td colspan="7">None — no link registrations are on hold.</td></tr>';
   }
 
   document.addEventListener('click', function (ev) {
-    var t = ev.target.closest('button[data-details],button[data-invite],button[data-email-invite],button[data-nda],button[data-agreement],button[data-status],button[data-reactivate],button[data-advance],button[data-padvance],button[data-unclaim],button[data-approved],button[data-approved-clear],button[data-hold-credit],button[data-hold-dismiss],button[data-taxform]');
+    var t = ev.target.closest('button[data-details],button[data-invite],button[data-email-invite],button[data-nda],button[data-agreement],button[data-status],button[data-reactivate],button[data-advance],button[data-padvance],button[data-unclaim],button[data-approved],button[data-approved-clear],button[data-hold-credit],button[data-hold-dismiss],button[data-taxform],button[data-cnda-view],button[data-cnda-view-hold],button[data-cnda-issue]');
     if (!t) return;
+    if (t.hasAttribute('data-cnda-view') || t.hasAttribute('data-cnda-view-hold')) {
+      /* The executed CNDA opens through the Desk-only API action
+         — the document is never at a public address. */
+      var q = t.hasAttribute('data-cnda-view')
+        ? 'referralId=' + encodeURIComponent(t.getAttribute('data-cnda-view'))
+        : 'holdId=' + encodeURIComponent(t.getAttribute('data-cnda-view-hold'));
+      t.disabled = true;
+      api('/api/contractors?action=admin-client-cnda&' + q).then(function (out) {
+        t.disabled = false;
+        var rec = out.body && out.body.cnda;
+        if (out.body && out.body.ok && rec && rec.documentHtml) {
+          var w = window.open('', '_blank');
+          if (w) { w.document.open(); w.document.write(rec.documentHtml); w.document.close(); }
+          else { document.getElementById('inviteResult').innerHTML = 'Popup blocked — allow popups to view the executed CNDA.'; }
+        } else {
+          document.getElementById('inviteResult').innerHTML = 'CNDA copy could not be loaded: ' + esc((out.body && out.body.error) || 'not signed yet');
+          banner.className = 'banner err';
+        }
+      }).catch(function () { t.disabled = false; });
+      return;
+    }
+    if (t.hasAttribute('data-cnda-issue')) {
+      t.disabled = true;
+      post('issue-client-cnda', { referralId: t.getAttribute('data-cnda-issue') }).then(function (out) {
+        t.disabled = false;
+        var el = document.getElementById('inviteResult');
+        if (out.body && out.body.ok) {
+          el.innerHTML = 'CNDA ' + (out.body.emailed ? 'issued and emailed to the owner' : 'issued (email not sent — mail channel not configured)') +
+            '. Signing link (fallback): <b>' + esc(out.body.signingUrl || '') + '</b>';
+        } else {
+          el.innerHTML = 'CNDA issue failed: ' + esc((out.body && out.body.error) || 'error');
+          banner.className = 'banner err';
+        }
+        load();
+      }).catch(function () { t.disabled = false; });
+      return;
+    }
     if (t.hasAttribute('data-details')) {
       var drow = document.getElementById('detail-' + t.getAttribute('data-details'));
       if (drow) drow.style.display = drow.style.display === 'none' ? '' : 'none';

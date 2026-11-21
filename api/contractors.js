@@ -108,8 +108,14 @@ import {
   readContractorByInviteCode, ensureContractorInviteCode,
   listContractorsByInviter,
   backfillPartnerClientCodes, listLinkHolds, normalizePartnerCode,
-  readLinkHold, deleteLinkHold, saveTaxForm, readTaxForm
+  readLinkHold, deleteLinkHold, saveTaxForm, readTaxForm,
+  readClientCndaByReferral, readClientCndaByHold, readClientCndaById,
+  listClientCndas, updateClientCnda
 } from './_contractors-store.js';
+import {
+  issueClientCnda, reissueClientCnda, resolveClientCndaToken,
+  publicCndaView, signClientCnda
+} from './_client-cnda.js';
 import { qrSvg } from './_qr.js';
 import { blocksToPdf } from './_data-assets-pdf.js';
 import { FEE_SCHEDULE, referralFee, feeExamples, formatUSD } from './_contractors-fees.js';
@@ -967,6 +973,32 @@ export default async function handler(req, res) {
     }, 200, headers);
   }
 
+  /* ---- public: the partner-link client's CNDA signing surface.
+     Token-bound to ONE client CNDA record (the owner's personal
+     signing link from the issuance email / the in-flow step).
+     No session of any kind authenticates here — the token is
+     the credential, hash-checked against the record exactly
+     like an activation link. The partner can never use this:
+     his session does not resolve a token, and no partner action
+     returns the record or the document. ---- */
+  if (req.method === 'GET' && action === 'client-cnda') {
+    if (!contractorsDbConfigured()) return json(res, { ok: false, error: 'not_configured' }, 503);
+    const rec = await resolveClientCndaToken(url.searchParams.get('token'));
+    if (!rec) return json(res, { ok: false, error: 'invalid_link' }, 401);
+    return json(res, { ok: true, ...publicCndaView(rec) });
+  }
+
+  if (req.method === 'POST' && action === 'client-cnda-sign') {
+    if (!contractorsDbConfigured()) return json(res, { ok: false, error: 'not_configured' }, 503);
+    const body = await readBody(req);
+    const rec = await resolveClientCndaToken(body.token);
+    if (!rec) return json(res, { ok: false, error: 'invalid_link' }, 401);
+    if (rec.status === 'signed') return json(res, { ok: false, error: 'already_signed' }, 409);
+    const result = await signClientCnda(rec, body);
+    if (result.error) return json(res, { ok: false, error: result.error }, 400);
+    return json(res, { ok: true, status: 'signed', signedAt: result.signedAt, documentHtml: result.documentHtml });
+  }
+
   /* ---- contractor session required below ---- */
   const contractorId = contractorFromRequest(req);
   const isAdmin = validDeskSession(req);
@@ -1394,6 +1426,19 @@ export default async function handler(req, res) {
     let linkHoldsError = false;
     try { holds = (await listLinkHolds()) || []; }
     catch { linkHoldsError = true; }
+    /* Client CNDA status rides along as STATUS ONLY (stage,
+       dates) — the record and its executed copy are served
+       solely by admin-client-cnda below. */
+    let cndaByReferral = {};
+    let cndaByHold = {};
+    try {
+      const cndas = (await listClientCndas()) || [];
+      const summary = (rec) => ({ status: rec.status, issuedAt: rec.issuedAt, signedAt: rec.signedAt, emailed: rec.emailed });
+      for (const rec of cndas) {
+        if (rec.referralId) cndaByReferral[rec.referralId] = summary(rec);
+        if (rec.holdId) cndaByHold[rec.holdId] = summary(rec);
+      }
+    } catch { cndaByReferral = {}; cndaByHold = {}; }
     const withTotals = (contractors || []).map(c => ({
       ...c,
       clientLink: clientLinkFor(c),
@@ -1401,9 +1446,9 @@ export default async function handler(req, res) {
     }));
     return json(res, {
       ok: true, contractors: withTotals,
-      referrals: (referrals || []).map(r => ({ ...r, questionnaireUrl: questionnaireUrl(r.industry) })),
+      referrals: (referrals || []).map(r => ({ ...r, questionnaireUrl: questionnaireUrl(r.industry), cnda: cndaByReferral[r.id] || null })),
       claims: claims || [],
-      linkHolds: holds,
+      linkHolds: holds.map(h => ({ ...h, cnda: cndaByHold[h.id] || null })),
       linkHoldsError,
       pipeline: CLIENT_PIPELINE
     });
@@ -1425,6 +1470,58 @@ export default async function handler(req, res) {
       contentType: form.contentType, sizeBytes: form.sizeBytes,
       uploadedAt: form.uploadedAt, dataBase64: form.contentBase64
     });
+  }
+
+  /* ---- admin: a client's CNDA record + executed copy. The
+     ONLY route that ever returns the document: Desk session
+     required (the guard above), one named client, nothing
+     enumerable — the same discipline as admin-tax-form. The
+     partner never receives the document or its contents; his
+     portal shows the cnda_signed stage label only. ---- */
+  if (req.method === 'GET' && action === 'admin-client-cnda') {
+    const referralId = str(url.searchParams.get('referralId') || '', 64);
+    const holdId = str(url.searchParams.get('holdId') || '', 64);
+    const recordId = str(url.searchParams.get('recordId') || '', 64);
+    let rec = null;
+    if (recordId) rec = await readClientCndaById(recordId);
+    else if (referralId) rec = await readClientCndaByReferral(referralId);
+    else if (holdId) rec = await readClientCndaByHold(holdId);
+    if (!rec) return json(res, { ok: false, error: 'not_found' }, 404);
+    return json(res, { ok: true, cnda: rec });
+  }
+
+  /* ---- admin: issue / re-issue a link client's CNDA (the
+     issuance email goes to the OWNER from the portal; the Desk
+     gets the signing URL back as a fallback, like invite). ---- */
+  if (req.method === 'POST' && action === 'issue-client-cnda') {
+    const body = await readBody(req);
+    const lang = body.lang === 'es' ? 'es' : 'en';
+    const referralId = str(body.referralId, 64);
+    const holdId = str(body.holdId, 64);
+    let target = null;
+    let existing = null;
+    if (referralId) {
+      const r = await readReferral(referralId);
+      if (!r) return json(res, { ok: false, error: 'not_found' }, 404);
+      if (r.source !== 'link') return json(res, { ok: false, error: 'not_a_link_client' }, 409);
+      existing = await readClientCndaByReferral(r.id);
+      target = { referralId: r.id, holdId: null, contractorId: r.contractorId, businessName: r.businessName, ownerName: r.ownerName, ownerEmail: r.ownerEmail, businessCity: r.businessCity || '', businessState: r.businessState || '', industry: r.industry || '' };
+    } else if (holdId) {
+      const h = await readLinkHold(holdId);
+      if (!h) return json(res, { ok: false, error: 'not_found' }, 404);
+      existing = await readClientCndaByHold(h.id);
+      target = { referralId: null, holdId: h.id, contractorId: h.contractorId, businessName: h.businessName, ownerName: h.ownerName, ownerEmail: h.ownerEmail, businessCity: h.businessCity || '', businessState: h.businessState || '', industry: h.industry || '' };
+    } else {
+      return json(res, { ok: false, error: 'invalid_fields' }, 400);
+    }
+    if (existing && existing.status === 'signed') {
+      return json(res, { ok: false, error: 'already_signed' }, 409);
+    }
+    const issued = existing
+      ? await reissueClientCnda(existing, { lang })
+      : await issueClientCnda({ ...target, lang });
+    if (!issued) return json(res, { ok: false, error: 'not_configured' }, 503);
+    return json(res, { ok: true, cndaId: issued.id, emailed: issued.emailed, signingUrl: issued.url });
   }
 
   if (req.method === 'POST' && action === 'invite') {
@@ -1664,6 +1761,30 @@ export default async function handler(req, res) {
       partnerCode: hold.clientCode || partner.clientCode || '',
       businessCity: hold.businessCity || '', businessState: hold.businessState || ''
     });
+    /* A CNDA issued against this hold follows the client onto
+       the referral: an unsigned record stays issuable under the
+       referral; a SIGNED record satisfies the evidence gate at
+       once and its dated cnda_signed entry lands on the new
+       client's timeline with the ORIGINAL signing date — the
+       real event, not the ruling date. A failure here never
+       blocks the ruling itself. */
+    try {
+      const cndaRec = await readClientCndaByHold(hold.id);
+      if (cndaRec) {
+        await updateClientCnda(cndaRec.id, { referralId, holdId: null });
+        if (cndaRec.status === 'signed') {
+          const fresh = await readReferral(referralId);
+          if (fresh && !(fresh.pipelineHistory || []).some(h => h.status === 'cnda_signed')) {
+            await updateReferral(referralId, {
+              pipelineHistory: [...(fresh.pipelineHistory || []),
+                { status: 'cnda_signed', at: cndaRec.signedAt || new Date().toISOString(), note: null }]
+            });
+          }
+        }
+      }
+    } catch (e) {
+      console.error(`[contractors] resolve-hold CNDA carry-over FAILED for hold ${hold.id}: ${e && e.message}`);
+    }
     await deleteLinkHold(hold.id);
     const created = await readReferral(referralId);
     return json(res, { ok: true, credited: referralId, client: created ? publicClient(created) : null });
@@ -1690,7 +1811,28 @@ export default async function handler(req, res) {
       pipelineStatus: target,
       pipelineUpdatedAt: new Date().toISOString()
     };
-    if (PIPELINE_EVIDENCE[target]) {
+    /* The portal-CNDA gate (link clients only): the countersigned
+       CNDA recorded by the portal signing flow IS the evidence
+       for cnda_signed, and no link client moves to `presented`
+       or beyond without that signed record — sign first, then
+       the client proceeds. Desk-added and partner-entered
+       clients keep the existing typed-evidence discipline. */
+    let cndaSatisfied = false;
+    if (r.source === 'link' && (target === 'cnda_signed' || to >= CLIENT_PIPELINE.indexOf('presented'))) {
+      let cndaRec = null;
+      try { cndaRec = await readClientCndaByReferral(r.id); } catch { cndaRec = null; }
+      cndaSatisfied = !!(cndaRec && cndaRec.status === 'signed');
+      if (to >= CLIENT_PIPELINE.indexOf('presented') && !cndaSatisfied) {
+        return json(res, {
+          ok: false, error: 'cnda_required',
+          requires: 'the client\u2019s countersigned IEC CNDA, recorded by the portal signing flow'
+        }, 409);
+      }
+      if (target === 'cnda_signed' && cndaSatisfied) {
+        patch.pipelineNote = `Portal CNDA countersignature recorded ${String(cndaRec.signedAt || '').slice(0, 10)}`;
+      }
+    }
+    if (PIPELINE_EVIDENCE[target] && !cndaSatisfied) {
       const evidence = str(body.evidence, 500);
       if (!evidence) {
         return json(res, {
@@ -1703,14 +1845,18 @@ export default async function handler(req, res) {
         const subId = str(body.submissionId, 120) || evidence;
         patch.questionnaireSubmissionId = subId;
       }
-    } else if (body.evidence !== undefined) {
+    } else if (body.evidence !== undefined && !cndaSatisfied) {
       patch.pipelineNote = str(body.evidence, 500) || null;
     }
     /* Every advance lands on the client's dated timeline — the
        partner's "process time table" is built from exactly
        these entries, so a step that is not recorded here never
-       appears there. */
-    patch.pipelineHistory = appendHistory(r, target, patch.pipelineNote || null);
+       appears there. A cnda_signed entry already landed by the
+       countersignature itself is never duplicated. */
+    patch.pipelineHistory = (target === 'cnda_signed' && cndaSatisfied &&
+      (r.pipelineHistory || []).some(h => h.status === 'cnda_signed'))
+      ? (r.pipelineHistory || [])
+      : appendHistory(r, target, patch.pipelineNote || null);
     await updateReferral(r.id, patch);
     const updated = await readReferral(r.id);
     return json(res, { ok: true, client: publicClient(updated), referral: updated });

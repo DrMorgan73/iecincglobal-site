@@ -39,6 +39,9 @@
       done_credited: 'Your company is registered and your questionnaire is in IEC\u2019s review queue. IEC follows up with the next steps directly.',
       done_held: 'IEC has received your registration and questionnaire and will review them directly. IEC follows up with the next steps.',
       done_plain: 'IEC has your questionnaire and will follow up with the next steps directly.',
+      cnda_t: 'Next step: sign your IEC CNDA',
+      cnda_p: 'Before your registration proceeds, there is one signature: the IEC Confidentiality and Non-Disclosure Agreement. IEC has already signed its side, and the agreement is pre-filled with your business\u2019s information from your registration. IEC also emailed the signing link to you.',
+      cnda_btn: 'Review and sign the CNDA',
       need_profile: 'This questionnaire follows the registration step. Please start from the registration page so IEC can connect your answers to your company.'
     },
     es: {
@@ -59,6 +62,9 @@
       done_credited: 'Su empresa está registrada y su cuestionario está en la fila de revisión de IEC. IEC le dará seguimiento directamente con los próximos pasos.',
       done_held: 'IEC recibió su registro y su cuestionario y los revisará directamente. IEC le dará seguimiento con los próximos pasos.',
       done_plain: 'IEC tiene su cuestionario y le dará seguimiento directamente con los próximos pasos.',
+      cnda_t: 'Siguiente paso: firme su CNDA de IEC',
+      cnda_p: 'Antes de que su registro continúe, hay una firma: el Acuerdo de Confidencialidad y No Divulgación de IEC. IEC ya firmó su parte, y el acuerdo viene precompletado con la información de su empresa tomada de su registro. IEC también le envió el enlace de firma por correo.',
+      cnda_btn: 'Revisar y firmar el CNDA',
       need_profile: 'Este cuestionario sigue al paso de registro. Comience desde la página de registro para que IEC pueda conectar sus respuestas con su empresa.'
     }
   };
@@ -220,11 +226,23 @@
     render(current);
   });
 
-  function showDone(kind) {
+  function showDone(kind, cnda) {
     try { sessionStorage.removeItem('iecPartnerLinkProfile'); } catch (e) {}
     var msg = kind === 'credited' ? t('done_credited') : kind === 'held' ? t('done_held') : t('done_plain');
+    /* The CNDA step, presented in the flow itself: the SAME
+       signing surface the emailed link opens (one surface, not
+       two). The link is built absolute from this origin — the
+       hand-off rule — so it works on the portal host, the main
+       host, and previews alike. */
+    var cndaCard = '';
+    if (cnda && cnda.issued && cnda.token) {
+      var href = PREFIX + '/partners/cnda.html?token=' + encodeURIComponent(cnda.token);
+      cndaCard = '<div class="pp-card"><h2 class="pp-h2">' + esc(t('cnda_t')) + '</h2>' +
+        '<p class="pp-p">' + esc(t('cnda_p')) + '</p>' +
+        '<p style="margin-top:14px"><a class="pp-btn" href="' + esc(href) + '">' + esc(t('cnda_btn')) + '</a></p></div>';
+    }
     root.innerHTML = '<div class="pp-qwrap"><div class="pp-front-hero"><img class="pp-front-logo" src="/assets/iec-logo.png" alt="IEC, Inc."></div><div class="pp-card"><h1 class="pp-h1">' + esc(t('done_t')) + '</h1>' +
-      '<p class="pp-p">' + esc(msg) + '</p></div>' +
+      '<p class="pp-p">' + esc(msg) + '</p></div>' + cndaCard +
       '<div class="pp-front-foot"><strong>IEC, Inc.</strong> · <a href="https://iecincglobal.com">iecincglobal.com</a> · <a href="mailto:info@iecincglobal.com">info@iecincglobal.com</a></div></div>';
   }
   document.getElementById('pp-q-form').addEventListener('submit', function (ev) {
@@ -240,6 +258,7 @@
     btn.textContent = t('sending');
     var payload = {
       segment: current,
+      lang: LANG,
       contact: {
         name: name,
         business: document.getElementById('pp-c-business').value.trim(),
@@ -265,7 +284,7 @@
         btn.textContent = t('submit');
         if (res.status === 200 && res.body.ok) {
           var st = res.body.attribution && res.body.attribution.status;
-          showDone(st === 'credited' ? 'credited' : st === 'held' ? 'held' : 'plain');
+          showDone(st === 'credited' ? 'credited' : st === 'held' ? 'held' : 'plain', res.body.cnda || null);
           return;
         }
         var e = (res.body && res.body.error) || '';

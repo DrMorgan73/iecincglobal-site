@@ -223,6 +223,34 @@ async function ensureTables() {
     size_bytes integer NOT NULL DEFAULT 0,
     content_base64 text NOT NULL DEFAULT '',
     uploaded_at timestamptz NOT NULL DEFAULT now())`);
+  await neonQuery(`CREATE TABLE IF NOT EXISTS client_cnda_records (
+    id text PRIMARY KEY, referral_id text, hold_id text,
+    contractor_id text NOT NULL,
+    token_hash text NOT NULL DEFAULT '',
+    status text NOT NULL DEFAULT 'issued',
+    business_name text NOT NULL DEFAULT '',
+    signer_name text NOT NULL DEFAULT '',
+    signer_email text NOT NULL DEFAULT '',
+    business_city text NOT NULL DEFAULT '',
+    business_state text NOT NULL DEFAULT '',
+    industry text NOT NULL DEFAULT '',
+    iec_signed_name text NOT NULL DEFAULT '',
+    iec_signed_title text NOT NULL DEFAULT '',
+    iec_signed_at timestamptz,
+    signed_name text NOT NULL DEFAULT '',
+    signed_title text NOT NULL DEFAULT '',
+    signed_date text NOT NULL DEFAULT '',
+    effective_date text NOT NULL DEFAULT '',
+    entity_type_state text NOT NULL DEFAULT '',
+    address text NOT NULL DEFAULT '',
+    purpose text NOT NULL DEFAULT '',
+    iec_state text NOT NULL DEFAULT '',
+    typed_signature text NOT NULL DEFAULT '',
+    signed_values jsonb,
+    document_html text NOT NULL DEFAULT '',
+    emailed boolean NOT NULL DEFAULT false,
+    issued_at timestamptz NOT NULL DEFAULT now(),
+    signed_at timestamptz)`);
   /* Upgrades for databases created before the Partner Portal
      extension: every added column, IF NOT EXISTS. */
   for (const stmt of [
@@ -834,4 +862,130 @@ export async function readTaxForm(contractorId) {
   return rows.length ? rowToTaxForm(rows[0]) : null;
 }
 
-export const _internals = { businessKey, rowToContractor, rowToReferral, rowToLinkHold, rowToTaxForm, CODE_BACKFILL_STATUSES };
+/* ---------------------------------------------------------------- */
+/* client_cnda_records — the partner-link client's IEC CNDA.
+   Issued by the portal the moment a link owner's credentials are
+   captured (questionnaire submitted): PRE-FILLED from the
+   registration profile and PRE-SIGNED on the IEC side by
+   Mohammed Morgan, MD. The owner countersigns on the portal's
+   own signing surface (token-bound, one record per client); the
+   executed copy (document_html, rendered server-side from the
+   central instrument's text) lives HERE and nowhere else — the
+   partner never sees it (his timeline shows the cnda_signed
+   stage label only), and the only content route is the
+   Desk-authenticated admin action, exactly like the tax form.
+   A record attaches to a referral (credited) OR to a link hold
+   (frozen partner — the signing waits with the hold, flagged
+   for the Desk's ruling, never silently credited).            */
+/* ---------------------------------------------------------------- */
+
+function rowToClientCnda(r) {
+  if (!r) return null;
+  let signedValues = r.signed_values ?? null;
+  if (typeof signedValues === 'string') {
+    try { signedValues = JSON.parse(signedValues); } catch { signedValues = null; }
+  }
+  return {
+    id: r.id,
+    referralId: r.referral_id || null,
+    holdId: r.hold_id || null,
+    contractorId: r.contractor_id,
+    tokenHash: r.token_hash || '',
+    status: r.status || 'issued',
+    businessName: r.business_name || '',
+    signerName: r.signer_name || '',
+    signerEmail: r.signer_email || '',
+    businessCity: r.business_city || '',
+    businessState: r.business_state || '',
+    industry: r.industry || '',
+    iecSignedName: r.iec_signed_name || '',
+    iecSignedTitle: r.iec_signed_title || '',
+    iecSignedAt: r.iec_signed_at || null,
+    signedName: r.signed_name || '',
+    signedTitle: r.signed_title || '',
+    signedDate: r.signed_date || '',
+    effectiveDate: r.effective_date || '',
+    entityTypeState: r.entity_type_state || '',
+    address: r.address || '',
+    purpose: r.purpose || '',
+    iecState: r.iec_state || '',
+    typedSignature: r.typed_signature || '',
+    signedValues,
+    documentHtml: r.document_html || '',
+    emailed: !!r.emailed,
+    issuedAt: r.issued_at || null,
+    signedAt: r.signed_at || null
+  };
+}
+
+export async function createClientCnda(rec) {
+  if (!contractorsDbConfigured()) return false;
+  await ensureTables();
+  await neonQuery(
+    `INSERT INTO client_cnda_records (id, referral_id, hold_id, contractor_id, token_hash, status,
+       business_name, signer_name, signer_email, business_city, business_state, industry,
+       iec_signed_name, iec_signed_title, iec_signed_at, emailed, issued_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
+    [rec.id, rec.referralId ?? null, rec.holdId ?? null, rec.contractorId, rec.tokenHash || '',
+     rec.status || 'issued', rec.businessName || '', rec.signerName || '', rec.signerEmail || '',
+     rec.businessCity || '', rec.businessState || '', rec.industry || '',
+     rec.iecSignedName || '', rec.iecSignedTitle || '', rec.iecSignedAt || null,
+     !!rec.emailed, rec.issuedAt || new Date().toISOString()]);
+  return true;
+}
+
+export async function readClientCndaById(id) {
+  if (!contractorsDbConfigured()) return undefined;
+  await ensureTables();
+  const rows = await neonQuery(`SELECT * FROM client_cnda_records WHERE id = $1`, [id]);
+  return rows.length ? rowToClientCnda(rows[0]) : null;
+}
+
+export async function readClientCndaByReferral(referralId) {
+  if (!contractorsDbConfigured()) return undefined;
+  await ensureTables();
+  const rows = await neonQuery(`SELECT * FROM client_cnda_records WHERE referral_id = $1`, [referralId]);
+  return rows.length ? rowToClientCnda(rows[0]) : null;
+}
+
+export async function readClientCndaByHold(holdId) {
+  if (!contractorsDbConfigured()) return undefined;
+  await ensureTables();
+  const rows = await neonQuery(`SELECT * FROM client_cnda_records WHERE hold_id = $1`, [holdId]);
+  return rows.length ? rowToClientCnda(rows[0]) : null;
+}
+
+export async function listClientCndas() {
+  if (!contractorsDbConfigured()) return null;
+  await ensureTables();
+  const rows = await neonQuery(`SELECT * FROM client_cnda_records ORDER BY issued_at DESC LIMIT 500`);
+  return rows.map(rowToClientCnda);
+}
+
+export async function updateClientCnda(id, patch) {
+  if (!contractorsDbConfigured()) return false;
+  await ensureTables();
+  const sets = [];
+  const params = [];
+  const map = {
+    referralId: 'referral_id', holdId: 'hold_id', tokenHash: 'token_hash', status: 'status',
+    iecSignedAt: 'iec_signed_at', signedName: 'signed_name', signedTitle: 'signed_title',
+    signedDate: 'signed_date', effectiveDate: 'effective_date', entityTypeState: 'entity_type_state',
+    address: 'address', purpose: 'purpose', iecState: 'iec_state', typedSignature: 'typed_signature',
+    documentHtml: 'document_html', emailed: 'emailed', signedAt: 'signed_at'
+  };
+  for (const [k, col] of Object.entries(map)) {
+    if (patch[k] !== undefined) { params.push(patch[k]); sets.push(`${col} = $${params.length}`); }
+  }
+  if (patch.signedValues !== undefined) {
+    params.push(patch.signedValues ? JSON.stringify(patch.signedValues) : null);
+    sets.push(`signed_values = $${params.length}`);
+  }
+  if (!sets.length) return false;
+  params.push(id);
+  const rows = await neonQuery(
+    `UPDATE client_cnda_records SET ${sets.join(', ')} WHERE id = $${params.length} RETURNING *`, params);
+  return rows.length > 0;
+}
+
+export const _internals = { businessKey, rowToContractor, rowToReferral, rowToLinkHold, rowToTaxForm, rowToClientCnda, CODE_BACKFILL_STATUSES };
