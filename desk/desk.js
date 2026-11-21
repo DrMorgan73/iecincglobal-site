@@ -42,7 +42,7 @@ const NAV_GROUPS = [
     { id: 'news',     href: '/desk/news.html',           icon: '📰', label: 'News',         page: 'news',     desc: "What's new in the Suite, plus Piper's daily WIIFM digest." },
     { id: 'growth',   href: '/desk/growth.html',         icon: '🚀', label: 'Growth 24/7',  page: 'growth',   desc: 'The always-on growth board — campaigns and funnels.' },
     { id: 'strategy', href: '/desk/strategy.html',       icon: '🎯', label: 'Strategy',     page: 'strategy', desc: 'Growth strategy and positioning, written down.' },
-    { id: 'trade',    href: '/desk/trade.html',          icon: '📈', label: 'Trade Pilot',  page: 'trade',    desc: "Sasha's paper-trading pilot — paper only." },
+    { id: 'trade',    href: '/desk/trade.html',          icon: '📈', label: 'Trade — PILOT Bot',  page: 'trade',    desc: "The PILOT trade bot — live crypto desk on Coinbase; stocks desk (Candidate A via Alpaca) in build. Sasha watches it." },
   ]},
   { sec: 'Records', items: [
     { id: 'yt-archive', href: '/desk/yt-archive.html',  icon: '📺', label: 'YT Archive', page: 'yt-archive', desc: 'The YouTube archive — library and download jobs.' },

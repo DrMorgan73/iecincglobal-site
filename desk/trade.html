@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Trade Pilot — IEC Suite</title>
+<title>Trade — PILOT Bot — IEC Suite</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -42,25 +42,33 @@
   </aside>
 
   <main>
-    <div class="section-head"><h2>Trade pilot</h2><span class="hint"><span class="tag red">PRIVATE</span> DrMorgan &amp; Muse only</span></div>
+    <div class="section-head"><h2>Trade — PILOT Bot</h2><span class="hint"><span class="tag red">PRIVATE</span> DrMorgan &amp; Muse only</span></div>
 
-    <div class="card"><h3>Status</h3>
-      <p><b>Strategy v2 selected — paper pilot pending your word.</b> No live capital, no real orders. Paper only until you explicitly authorize otherwise.</p>
+    <div class="card"><h3>Open the bot</h3>
+      <p>The PILOT bot runs on its own dashboard, behind its own login. Live balances, positions and controls live there — this page only links and summarizes.</p>
+      <p><a class="btn" style="display:block;text-align:center;text-decoration:none" href="https://claude-coinbase-auto-trade.vercel.app" target="_blank" rel="noopener">Open the PILOT bot dashboard →</a></p>
     </div>
 
-    <div class="card"><h3>Why v1 failed</h3>
-      <p>Aggressive intraday bot lost <b>-10.4%</b> in every backtest window (profit factor 0.02–0.15). Causes: entries with no edge, average win $6.67 vs average loss $28, fees burned 4–7% on 41–69 trades per window, no regime awareness — it lost money inside a +34% BTC rally.</p>
+    <div class="card"><h3>Crypto desk — Coinbase <span class="tag gold">LIVE</span></h3>
+      <p><b>Live trading, real orders.</b> The bot trades on Coinbase Advanced Trade on DrMorgan's own account, under his name — keys connected and approved by him (confirmed Nov 21, 2026). Modes: dip-buying modes plus the v17 breakout mode, with daily-loss halts and a drawdown breaker. It runs on its external schedule (cron-job.org) and DrMorgan's word was: keep it trading while the rebuild goes on around it.</p>
+      <p class="hint">Opening the dashboard itself runs take-profit / stop-loss checks — treat every visit as a live visit. Live figures are shown only inside the bot dashboard.</p>
     </div>
 
-    <div class="card"><h3>Strategy v2 — Slow Dual-Momentum <span class="tag gold">Sasha's pick</span></h3>
-      <p><b>Rule:</b> hold BTC only when the daily close is above the 200-day moving average; otherwise sit in cash. One parameter, ~5 trades a year, fee-immune.</p>
-      <p><b>12-month backtest (real Coinbase data):</b> +1.47% return, profit factor 1.10, max drawdown -22.3% — vs buy-and-hold <b>-27.41%</b> with -53.1% drawdown. Captured +19.5% of the big rally leg.</p>
-      <p><b>Build spec:</b> daily check 00:05 UTC · all-in per signal · <b>-25% kill-switch</b> with 30-day halt · monthly review vs buy-and-hold · 6-month paper run.</p>
-      <p class="hint">Runners-up: Connors RSI(2) dip-buying (+1.57%, PF 3.79, tiny sample) and wide-stop 50-day breakout (+3.25%, 2 trades). All beat buy-and-hold; all reported with honest thin samples.</p>
+    <div class="card"><h3>Stocks desk — Candidate A <span class="tag">IN BUILD</span></h3>
+      <p><b>Strategy:</b> Candidate A trend — hold a stock only while its daily close is above its 200-day average; otherwise sit in cash. Watchlist: SPY, QQQ, MSFT, AAPL, NVDA, AMZN, WMT, AMD, MU.</p>
+      <p><b>Route:</b> Coinbase's API lists no stocks at all (847 products, all crypto), so real stock execution goes through Alpaca. The connector is being built paper-first; the <b>LIVE flag is OFF</b> and stays off until the stock backtest passes the standing bar and DrMorgan turns it on himself.</p>
     </div>
 
-    <div class="card"><h3>Next step</h3>
-      <p>Your call: start the 6-month paper pilot tracking, or sit on it. Nothing moves without your word.</p>
+    <div class="card"><h3>MSFT $1,000 staged buy — price watch <span class="tag gold">ACTIVE NOV 23–27</span></h3>
+      <p>Sasha is watching MSFT for DrMorgan's $1,000 staged buy, <b>Mon Nov 23 – Fri Nov 27, 2026</b> (market closed Thu Nov 26, Thanksgiving; early close Fri Nov 27). Alerts only — DrMorgan buys himself.</p>
+      <p><b>Tranche 1 — $400:</b> Monday's open, limit near Friday's $484.52 close.<br>
+      <b>Tranche 2 — $350:</b> a dip into $460–465, or after Wednesday's PCE release if MSFT holds above $470.<br>
+      <b>Tranche 3 — $250:</b> only on a test of the 200-day average, $443–448.<br>
+      <b>Invalidation:</b> a daily close below <b>$440</b> ends the thesis.</p>
+    </div>
+
+    <div class="card"><h3>Record</h3>
+      <p><b>Sasha's audit (Nov 21, 2026)</b> found the deployed bot is live-money code — real Coinbase order path, multi-account support, no paper/live switch on the main modes — and DrMorgan confirmed the keys and the live operation are his. The earlier intraday design (Sep 2026) failed every backtest window (≈ −10.4% each) and stays shelved; the v17 breakout backtest is also negative (−12.2% recorded; −15.2% on Sasha's Nov 21 re-run). Candidate A is the one design that made money in testing: +1.47% over 12 months on BTC vs −27.41% for buy-and-hold — which is why the stocks desk is being built on it.</p>
     </div>
 
     <footer>© 2026 International Empire Consultants, Inc. · IEC Suite</footer>
