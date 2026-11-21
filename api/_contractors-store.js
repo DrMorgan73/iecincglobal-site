@@ -36,6 +36,19 @@
                           office-recorded signature leaves
                           agreement_accepted_via empty; 'portal' is
                           the in-portal evidence of record.
+     contractor_tax_forms one row per contractor (contractor_id
+                          PK): the partner's tax form (W-9 or
+                          W-8BEN) ON FILE — the uploaded file itself
+                          (base64), its type, file name, content
+                          type, size and upload time. Server-side
+                          store ONLY: the content is never written
+                          to any static/public path and is served
+                          back solely through the Desk-authenticated
+                          admin action in api/contractors.js.
+                          contractors.w9_on_file / w9_uploaded_at /
+                          tax_form_type carry the status the portal
+                          displays (kept under their original column
+                          names; the form on file may be a W-8BEN).
      contractor_referrals one row per registered client (id PK)
      client_claims        companies IEC itself has registered —
                           the office-maintained half of the
@@ -152,6 +165,7 @@ async function ensureTables() {
     payout_last4 text NOT NULL DEFAULT '',
     w9_on_file boolean NOT NULL DEFAULT false,
     w9_uploaded_at timestamptz,
+    tax_form_type text NOT NULL DEFAULT '',
     source text NOT NULL DEFAULT 'office-invite',
     phone text NOT NULL DEFAULT '',
     address_street text NOT NULL DEFAULT '',
@@ -201,6 +215,14 @@ async function ensureTables() {
     id text PRIMARY KEY, business_name text NOT NULL, business_key text NOT NULL,
     owner_email text NOT NULL DEFAULT '', note text NOT NULL DEFAULT '',
     created_at timestamptz NOT NULL DEFAULT now())`);
+  await neonQuery(`CREATE TABLE IF NOT EXISTS contractor_tax_forms (
+    contractor_id text PRIMARY KEY,
+    form_type text NOT NULL DEFAULT 'W-9',
+    file_name text NOT NULL DEFAULT '',
+    content_type text NOT NULL DEFAULT 'application/pdf',
+    size_bytes integer NOT NULL DEFAULT 0,
+    content_base64 text NOT NULL DEFAULT '',
+    uploaded_at timestamptz NOT NULL DEFAULT now())`);
   /* Upgrades for databases created before the Partner Portal
      extension: every added column, IF NOT EXISTS. */
   for (const stmt of [
@@ -238,6 +260,7 @@ async function ensureTables() {
     `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS payout_last4 text NOT NULL DEFAULT ''`,
     `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS w9_on_file boolean NOT NULL DEFAULT false`,
     `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS w9_uploaded_at timestamptz`,
+    `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS tax_form_type text NOT NULL DEFAULT ''`,
     `ALTER TABLE contractor_referrals ADD COLUMN IF NOT EXISTS pipeline_history jsonb`,
     `ALTER TABLE contractor_referrals ADD COLUMN IF NOT EXISTS approved_amount numeric`,
     `ALTER TABLE contractor_referrals ADD COLUMN IF NOT EXISTS approved_at timestamptz`,
@@ -283,6 +306,7 @@ function rowToContractor(r) {
     payoutLast4: r.payout_last4 || '',
     w9OnFile: !!r.w9_on_file,
     w9UploadedAt: r.w9_uploaded_at || null,
+    taxFormType: r.tax_form_type || '',
     activatedAt: r.activated_at || null, createdAt: r.created_at || null,
     invitationSentAt: r.invitation_sent_at || null,
     invitationFrom: r.invitation_from || '',
@@ -418,7 +442,7 @@ export async function updateContractor(id, patch) {
   await ensureTables();
   const sets = [];
   const params = [];
-  const map = { status: 'status', ndaStatus: 'nda_status', agreementStatus: 'agreement_status', agreementSignedAt: 'agreement_signed_at', agreementAcceptedName: 'agreement_accepted_name', agreementAcceptedVersion: 'agreement_accepted_version', agreementAcceptedVia: 'agreement_accepted_via', activationTokenHash: 'activation_token_hash', clientCode: 'client_code', inviteCode: 'invite_code', activatedAt: 'activated_at', invitationSentAt: 'invitation_sent_at', invitationFrom: 'invitation_from', payoutMethod: 'payout_method', payoutLast4: 'payout_last4', w9OnFile: 'w9_on_file', w9UploadedAt: 'w9_uploaded_at', phone: 'phone', name: 'name', company: 'company', faststartWebinarAt: 'faststart_webinar_at', addressStreet: 'address_street', addressCity: 'address_city', addressState: 'address_state', addressZip: 'address_zip', website: 'website' };
+  const map = { status: 'status', ndaStatus: 'nda_status', agreementStatus: 'agreement_status', agreementSignedAt: 'agreement_signed_at', agreementAcceptedName: 'agreement_accepted_name', agreementAcceptedVersion: 'agreement_accepted_version', agreementAcceptedVia: 'agreement_accepted_via', activationTokenHash: 'activation_token_hash', clientCode: 'client_code', inviteCode: 'invite_code', activatedAt: 'activated_at', invitationSentAt: 'invitation_sent_at', invitationFrom: 'invitation_from', payoutMethod: 'payout_method', payoutLast4: 'payout_last4', w9OnFile: 'w9_on_file', w9UploadedAt: 'w9_uploaded_at', taxFormType: 'tax_form_type', phone: 'phone', name: 'name', company: 'company', faststartWebinarAt: 'faststart_webinar_at', addressStreet: 'address_street', addressCity: 'address_city', addressState: 'address_state', addressZip: 'address_zip', website: 'website' };
   for (const [k, col] of Object.entries(map)) {
     if (patch[k] !== undefined) { params.push(patch[k]); sets.push(`${col} = $${params.length}`); }
   }
@@ -768,4 +792,46 @@ export async function deleteClientClaim(id) {
   return true;
 }
 
-export const _internals = { businessKey, rowToContractor, rowToReferral, rowToLinkHold, CODE_BACKFILL_STATUSES };
+/* ---------------------------------------------------------------- */
+/* contractor_tax_forms — the partner's tax form ON FILE (W-9 or
+   W-8BEN), the same shape as DataSupply's payout tax-form upload:
+   the file itself lives here, in the server-side store, and
+   nowhere else. A re-upload replaces the row (one form on file
+   per partner). readTaxForm returns the content and is called
+   ONLY by the Desk-authenticated admin action — no partner-facing
+   or public path ever serves the file.                          */
+/* ---------------------------------------------------------------- */
+
+function rowToTaxForm(r) {
+  if (!r) return null;
+  return {
+    contractorId: r.contractor_id,
+    formType: r.form_type || 'W-9',
+    fileName: r.file_name || '',
+    contentType: r.content_type || 'application/pdf',
+    sizeBytes: r.size_bytes ?? 0,
+    contentBase64: r.content_base64 || '',
+    uploadedAt: r.uploaded_at || null
+  };
+}
+
+export async function saveTaxForm(contractorId, form) {
+  if (!contractorsDbConfigured()) return false;
+  await ensureTables();
+  await neonQuery(`DELETE FROM contractor_tax_forms WHERE contractor_id = $1`, [contractorId]);
+  await neonQuery(
+    `INSERT INTO contractor_tax_forms (contractor_id, form_type, file_name, content_type, size_bytes, content_base64, uploaded_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+    [contractorId, form.formType || 'W-9', form.fileName || '', form.contentType || 'application/pdf',
+     form.sizeBytes || 0, form.contentBase64 || '', form.uploadedAt || new Date().toISOString()]);
+  return true;
+}
+
+export async function readTaxForm(contractorId) {
+  if (!contractorsDbConfigured()) return undefined;
+  await ensureTables();
+  const rows = await neonQuery(`SELECT * FROM contractor_tax_forms WHERE contractor_id = $1`, [contractorId]);
+  return rows.length ? rowToTaxForm(rows[0]) : null;
+}
+
+export const _internals = { businessKey, rowToContractor, rowToReferral, rowToLinkHold, rowToTaxForm, CODE_BACKFILL_STATUSES };

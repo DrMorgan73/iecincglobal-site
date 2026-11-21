@@ -240,6 +240,10 @@
         '<span><b>Website:</b> ' + fv(c.website) + '</span>' +
         '<span><b>Heard about IEC:</b> ' + fv(c.heardAbout) + '</span>' +
         '<span><b>Notes:</b> ' + fv(c.notes) + '</span>' +
+        '<span><b>Payout:</b> ' + (c.payoutMethod ? esc(c.payoutMethod) + ' ····' + esc(c.payoutLast4 || '') : 'not set') + '</span>' +
+        (c.w9OnFile
+          ? '<span><b>Tax form:</b> on file — ' + esc(c.taxFormType || 'W-9') + (c.w9UploadedAt ? ' · uploaded ' + esc(String(c.w9UploadedAt).slice(0, 10)) : '') + ' <button class="mini" data-taxform="' + esc(c.id) + '">Download tax form</button></span>'
+          : '<span><b>Tax form:</b> not on file</span>') +
         '</div></td></tr>';
       return mainRow + detailRow;
     }).join('') : '<tr><td colspan="6">No partners yet — registrations from /contractors.html appear here.</td></tr>';
@@ -307,11 +311,35 @@
   }
 
   document.addEventListener('click', function (ev) {
-    var t = ev.target.closest('button[data-details],button[data-invite],button[data-email-invite],button[data-nda],button[data-agreement],button[data-status],button[data-reactivate],button[data-advance],button[data-padvance],button[data-unclaim],button[data-approved],button[data-approved-clear],button[data-hold-credit],button[data-hold-dismiss]');
+    var t = ev.target.closest('button[data-details],button[data-invite],button[data-email-invite],button[data-nda],button[data-agreement],button[data-status],button[data-reactivate],button[data-advance],button[data-padvance],button[data-unclaim],button[data-approved],button[data-approved-clear],button[data-hold-credit],button[data-hold-dismiss],button[data-taxform]');
     if (!t) return;
     if (t.hasAttribute('data-details')) {
       var drow = document.getElementById('detail-' + t.getAttribute('data-details'));
       if (drow) drow.style.display = drow.style.display === 'none' ? '' : 'none';
+      return;
+    }
+    if (t.hasAttribute('data-taxform')) {
+      /* The tax form on file downloads through the Desk-only API
+         action — the file is never at a public address. */
+      t.disabled = true;
+      api('/api/contractors?action=admin-tax-form&contractorId=' + encodeURIComponent(t.getAttribute('data-taxform'))).then(function (out) {
+        t.disabled = false;
+        if (out.body && out.body.ok && out.body.dataBase64) {
+          var bin = atob(out.body.dataBase64);
+          var bytes = new Uint8Array(bin.length);
+          for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+          var blob = new Blob([bytes], { type: out.body.contentType || 'application/octet-stream' });
+          var a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = out.body.fileName || 'tax-form';
+          document.body.appendChild(a); a.click(); a.remove();
+          setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+        } else {
+          var el = document.getElementById('inviteResult');
+          el.innerHTML = 'Tax form could not be loaded: ' + esc((out.body && out.body.error) || 'error');
+          banner.className = 'banner err';
+        }
+      }).catch(function () { t.disabled = false; });
       return;
     }
     t.disabled = true;

@@ -27,7 +27,21 @@
        signature of record. A signature the office recorded (paper
        signed outside the portal) is equally valid and is never
        re-asked. The NDA is still verified by the office through
-       the CNDA route.
+       the CNDA route. The acceptance of record (version +
+       timestamp) is displayed back to the partner on his
+       Dashboard fast start, Earnings and Settings — the same
+       placement DataSupply uses — with the standing note that
+       receiving the agreement by email alone does not count as
+       acceptance.
+     - TAX FORM ON FILE: payout setup mirrors DataSupply's —
+       the partner uploads his W-9 (or W-8BEN) in Earnings or
+       Settings (PDF/PNG/JPG, 10 MB maximum); the file is stored
+       ON FILE in the server-side store (contractor_tax_forms),
+       never in any static or public path, and is retrievable
+       only through the Desk-authenticated admin action. Payout
+       setup is complete only when BOTH the payout method and
+       the tax form are on file; the fast-start payout step
+       reflects exactly that, server-verified.
      - PARTNER (cookie): own record, own clients ONLY (enforced
        server-side on every read and write), add-client with the
        counts-only questionnaire answers, client pipeline view,
@@ -94,7 +108,7 @@ import {
   readContractorByInviteCode, ensureContractorInviteCode,
   listContractorsByInviter,
   backfillPartnerClientCodes, listLinkHolds, normalizePartnerCode,
-  readLinkHold, deleteLinkHold
+  readLinkHold, deleteLinkHold, saveTaxForm, readTaxForm
 } from './_contractors-store.js';
 import { qrSvg } from './_qr.js';
 import { blocksToPdf } from './_data-assets-pdf.js';
@@ -239,6 +253,7 @@ function publicContractor(c) {
     payoutLast4: c.payoutLast4 || '',
     w9OnFile: !!c.w9OnFile,
     w9UploadedAt: c.w9UploadedAt || null,
+    taxFormType: c.taxFormType || '',
     invitedBy: c.invitedBy || '',
     createdAt: c.createdAt || null
   };
@@ -685,6 +700,18 @@ function agreementAcceptance(c) {
   };
 }
 
+/* The partner's tax-form state as the portal displays it: a
+   form (W-9 or W-8BEN) is on file once an upload stands in the
+   store. The file content itself never travels in a partner
+   payload — status, type and date only. */
+function taxFormState(c) {
+  return {
+    onFile: !!c.w9OnFile,
+    type: c.w9OnFile ? (c.taxFormType || 'W-9') : '',
+    uploadedAt: c.w9UploadedAt || null
+  };
+}
+
 /* Typed legal name vs the name on the partner's record: the
    partner types their full legal name; case and spacing are
    forgiven, the name itself is not. */
@@ -759,7 +786,7 @@ export default async function handler(req, res) {
     return json(res, {
       ok: true,
       version: agreementVersionId(),
-      contractor: { name: c.name, company: c.company, email: c.email },
+      contractor: { name: c.name, company: c.company, email: c.email, agreementSignedAt: c.agreementSignedAt || null },
       agreementStatus: c.agreementStatus || 'pending',
       ndaStatus: c.ndaStatus,
       acceptance: agreementAcceptance(c),
@@ -994,6 +1021,7 @@ export default async function handler(req, res) {
     return json(res, {
       ok: true,
       contractor: publicContractor(c),
+      agreementAccepted: agreementAcceptance(c),
       frozen: c.status !== 'active',
       referrals: clients,
       clients,
@@ -1002,6 +1030,7 @@ export default async function handler(req, res) {
       payout: {
         method: c.payoutMethod || '', last4: c.payoutLast4 || '',
         w9OnFile: !!c.w9OnFile, w9UploadedAt: c.w9UploadedAt || null,
+        taxForm: taxFormState(c),
         set: !!(c.payoutMethod && c.payoutLast4)
       },
       iecEmail: iecEmailFor(c),
@@ -1021,7 +1050,9 @@ export default async function handler(req, res) {
       })),
       fastStart: {
         agreementAccepted: (c.agreementStatus || 'pending') === 'signed' && c.ndaStatus === 'signed',
-        payoutsSet: !!(c.payoutMethod && c.payoutLast4)
+        /* Payout setup is complete only when the method AND the
+           tax form are both on file (DataSupply's rule, mirrored). */
+        payoutsSet: !!(c.payoutMethod && c.payoutLast4 && c.w9OnFile)
       }
     });
   }
@@ -1202,50 +1233,55 @@ export default async function handler(req, res) {
     await updateContractor(c.id, { payoutMethod: method, payoutLast4: method ? last4 : '' });
     return json(res, {
       ok: true,
-      payout: { method, last4: method ? last4 : '', w9OnFile: !!c.w9OnFile, w9UploadedAt: c.w9UploadedAt || null, set: !!method }
+      payout: { method, last4: method ? last4 : '', w9OnFile: !!c.w9OnFile, w9UploadedAt: c.w9UploadedAt || null, taxForm: taxFormState(c), set: !!method }
     });
   }
 
-  /* ---- partner: W-9 upload. The file itself is emailed to the
-     IEC office inbox as an attachment (the office's channel of
-     record) — the portal stores only the fact and the date, so
-     a tax document never sits in the portal's database or a
-     public file store. Active only; PDF only; honest failure:
-     if the mail channel is not configured, nothing is recorded. */
+  /* ---- partner: tax-form upload (W-9 / W-8BEN) — the same
+     shape as DataSupply's payout tax-form upload (DrMorgan's
+     order, 2026-11-21, replacing the earlier email-instead
+     design): the file is stored ON FILE on the partner's record
+     in the server-side store (contractor_tax_forms) — never in
+     a static or publicly fetchable path, never emailed — and is
+     retrievable only through the Desk action below. The partner
+     sees status only: form type + upload date. Accepted files:
+     PDF, PNG or JPG (a scan or photo of the completed form),
+     10 MB maximum, verified by content, not by file name.
+     Active only; a re-upload replaces the form on file. */
   if (req.method === 'POST' && action === 'upload-w9') {
     if (!contractorId) return json(res, { ok: false, error: 'unauthorized' }, 401);
     const c = await readContractorById(contractorId);
     if (!c || c.status !== 'active') return json(res, { ok: false, error: 'unauthorized' }, 401);
     const body = await readBody(req);
+    const formType = str(body.formType, 10) || 'W-9';
+    if (!['W-9', 'W-8BEN'].includes(formType)) {
+      return json(res, { ok: false, error: 'invalid_fields' }, 400);
+    }
     const b64 = String(body.dataBase64 || '');
-    if (!b64 || b64.length > 7_000_000) return json(res, { ok: false, error: 'invalid_file' }, 400);
+    if (!b64 || b64.length > 14_000_000) return json(res, { ok: false, error: 'invalid_file' }, 400);
     let buf;
     try { buf = Buffer.from(b64, 'base64'); } catch { return json(res, { ok: false, error: 'invalid_file' }, 400); }
-    if (buf.length < 5 || buf.subarray(0, 5).toString('latin1') !== '%PDF-') {
+    const TAX_FORM_MAX_BYTES = 10 * 1024 * 1024;
+    if (!buf.length || buf.length > TAX_FORM_MAX_BYTES) {
       return json(res, { ok: false, error: 'invalid_file' }, 400);
     }
-    const key = process.env.DEMO_ADMIN_RESEND_API_KEY || '';
-    if (!key) return json(res, { ok: false, error: 'not_configured' }, 503);
-    try {
-      const r = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          from: SIGNUP_MAIL_FROM,
-          to: [SIGNUP_NOTIFY_TO],
-          reply_to: c.email,
-          subject: `Partner W-9 received — ${c.company}`,
-          text: `${c.name} (${c.company}, ${c.email}) submitted the W-9 attached to this email through the IEC Partner Portal.\n\n${SIGNUP_SIGNATURE_TEXT}`,
-          attachments: [{ filename: 'w9.pdf', content: b64 }]
-        })
-      });
-      if (!r.ok) return json(res, { ok: false, error: 'send_failed' }, 502);
-    } catch {
-      return json(res, { ok: false, error: 'send_failed' }, 502);
-    }
+    let contentType = '';
+    if (buf.length >= 5 && buf.subarray(0, 5).toString('latin1') === '%PDF-') contentType = 'application/pdf';
+    else if (buf.length >= 8 && buf[0] === 0x89 && buf.subarray(1, 4).toString('latin1') === 'PNG') contentType = 'image/png';
+    else if (buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) contentType = 'image/jpeg';
+    if (!contentType) return json(res, { ok: false, error: 'invalid_file' }, 400);
+    const fileName = str(body.fileName, 120) || `tax-form-${formType.toLowerCase()}`;
     const at = new Date().toISOString();
-    await updateContractor(c.id, { w9OnFile: true, w9UploadedAt: at });
-    return json(res, { ok: true, w9OnFile: true, w9UploadedAt: at });
+    const saved = await saveTaxForm(c.id, {
+      formType, fileName, contentType, sizeBytes: buf.length,
+      contentBase64: buf.toString('base64'), uploadedAt: at
+    });
+    if (!saved) return json(res, { ok: false, error: 'not_configured' }, 503);
+    await updateContractor(c.id, { w9OnFile: true, w9UploadedAt: at, taxFormType: formType });
+    return json(res, {
+      ok: true, w9OnFile: true, w9UploadedAt: at,
+      taxForm: { onFile: true, type: formType, uploadedAt: at, fileName, sizeBytes: buf.length }
+    });
   }
 
   /* ---- partner: his client-link QR code (SVG). Active only —
@@ -1370,6 +1406,24 @@ export default async function handler(req, res) {
       linkHolds: holds,
       linkHoldsError,
       pipeline: CLIENT_PIPELINE
+    });
+  }
+
+  /* ---- admin: the partner's tax form ON FILE (W-9 / W-8BEN).
+     This is the ONLY route that ever returns the file's content:
+     Desk session required (the guard above), one named partner,
+     nothing enumerable. The partner himself never receives the
+     content back — his portal shows status, type and date. ---- */
+  if (req.method === 'GET' && action === 'admin-tax-form') {
+    const c = await readContractorById(str(url.searchParams.get('contractorId') || '', 64));
+    if (!c) return json(res, { ok: false, error: 'not_found' }, 404);
+    const form = await readTaxForm(c.id);
+    if (!form) return json(res, { ok: false, error: 'not_on_file' }, 404);
+    return json(res, {
+      ok: true, contractorId: c.id, name: c.name, company: c.company,
+      formType: form.formType, fileName: form.fileName,
+      contentType: form.contentType, sizeBytes: form.sizeBytes,
+      uploadedAt: form.uploadedAt, dataBase64: form.contentBase64
     });
   }
 

@@ -1,11 +1,15 @@
 /* Standalone Partner Portal test suite (Nov 21, 2026 build):
    the extended 20-stage client pipeline with dated history and
    evidence gates, the amount-approved unlock, earnings (Projected
-   from approved amounts only), payout settings, the W-9 hand-off,
-   flat invited partners, the qualification gate, host-aware
-   activation, the earnings downloads, the QR encoder, and the
-   partner-facing content rules (no channel name, no estimator,
-   owner-facing economics only on owner surfaces).
+   from approved amounts only), payout settings, the tax form on
+   file (W-9/W-8BEN stored server-side, Desk-only retrieval — the
+   DataSupply shape, replacing the email-instead design), the
+   agreement acceptance of record (version + timestamp carried to
+   the partner's own display), flat invited partners, the
+   qualification gate, host-aware activation, the earnings
+   downloads, the QR encoder, and the partner-facing content
+   rules (no channel name, no estimator, owner-facing economics
+   only on owner surfaces).
 
    fetch is mocked for the Neon HTTPS SQL endpoint (in-memory
    tables) and for Resend. No real database, no network.
@@ -22,7 +26,7 @@ process.env.CONTRACTORS_DATABASE_URL = 'https://neon-sql.test/sql';
 delete process.env.DEMO_ADMIN_RESEND_API_KEY;
 
 /* ---------------- mocked Neon SQL endpoint ---------------- */
-const TABLES = { contractors: new Map(), contractor_referrals: new Map(), client_claims: new Map(), contractor_link_holds: new Map() };
+const TABLES = { contractors: new Map(), contractor_referrals: new Map(), client_claims: new Map(), contractor_link_holds: new Map(), contractor_tax_forms: new Map() };
 
 function neonSql(query, params) {
   const q = query.replace(/\s+/g, ' ').trim();
@@ -267,27 +271,75 @@ const goodPayout = await call('POST', 'update-payout', { cookie: p1c(), body: { 
 check('payout saved (method + last 4 only)', goodPayout.statusCode === 200, goodPayout.payload);
 me = await call('GET', 'me', { cookie: p1c() });
 check('payout state in the me payload', me.payload.payout.set === true && me.payload.payout.method === 'wire' && me.payload.payout.last4 === '6789');
-check('fast-start payouts step done', me.payload.fastStart.payoutsSet === true);
+check('fast-start payouts step NOT done on the method alone — the tax form must also stand',
+  me.payload.fastStart.payoutsSet === false);
 check('IEC email derived in the ruled format', me.payload.iecEmail === 'p.one@iecincglobal.com', me.payload.iecEmail);
 const prof = await call('POST', 'update-profile', { cookie: p1c(), body: { phone: '617-555-0199', website: 'https://portal-one.example' } });
 check('profile update saved', prof.statusCode === 200 && prof.payload.contractor.phone === '617-555-0199', prof.payload);
 
-/* ================= W-9 ================= */
-console.log('W-9');
-const badW9 = await call('POST', 'upload-w9', { cookie: p1c(), body: { fileName: 'w9.pdf', dataBase64: Buffer.from('not a pdf').toString('base64') } });
-check('non-PDF W-9 refused', badW9.statusCode === 400, badW9.payload);
-const tinyPdf = Buffer.from('%PDF-1.4\n% test w9\n').toString('base64');
-const noMail = await call('POST', 'upload-w9', { cookie: p1c(), body: { fileName: 'w9.pdf', dataBase64: tinyPdf } });
-check('W-9 with no mail channel configured answers 503', noMail.statusCode === 503, noMail.payload);
+/* ================= tax form on file (W-9 / W-8BEN) ================= */
+console.log('tax form on file');
+const resendBefore = RESEND.calls.length;
+const badTax = await call('POST', 'upload-w9', { cookie: p1c(), body: { fileName: 'notes.txt', dataBase64: Buffer.from('not a form').toString('base64') } });
+check('a non-form file is refused', badTax.statusCode === 400, badTax.payload);
 me = await call('GET', 'me', { cookie: p1c() });
-check('failed W-9 recorded nothing', me.payload.payout.w9OnFile === false);
-process.env.DEMO_ADMIN_RESEND_API_KEY = 'test-key';
-RESEND.calls = [];
-const goodW9 = await call('POST', 'upload-w9', { cookie: p1c(), body: { fileName: 'w9.pdf', dataBase64: tinyPdf } });
-check('valid W-9 accepted', goodW9.statusCode === 200 && goodW9.payload.w9OnFile === true, goodW9.payload);
-check('W-9 emailed to the IEC office as an attachment, never stored',
-  RESEND.calls.length === 1 && RESEND.calls[0].to.includes('info@iecincglobal.com')
-  && Array.isArray(RESEND.calls[0].attachments) && RESEND.calls[0].attachments[0].content === tinyPdf, RESEND.calls.length);
+check('the refused upload recorded nothing', me.payload.payout.w9OnFile === false && me.payload.payout.taxForm.onFile === false);
+const tinyPdf = Buffer.from('%PDF-1.4\n% test w9\n').toString('base64');
+const bigPdf = Buffer.alloc(10 * 1024 * 1024 + 1, 0x20); bigPdf.write('%PDF-', 0, 'latin1');
+const bigTax = await call('POST', 'upload-w9', { cookie: p1c(), body: { fileName: 'big.pdf', dataBase64: bigPdf.toString('base64') } });
+check('a tax form over the 10 MB limit is refused', bigTax.statusCode === 400, bigTax.payload);
+const goodTax = await call('POST', 'upload-w9', { cookie: p1c(), body: { fileName: 'w9.pdf', formType: 'W-9', dataBase64: tinyPdf } });
+check('valid W-9 stored on file — no mail channel needed', goodTax.statusCode === 200 && goodTax.payload.w9OnFile === true
+  && goodTax.payload.taxForm.type === 'W-9' && !!goodTax.payload.taxForm.uploadedAt, goodTax.payload);
+check('the upload sends NO email — the email-instead path is gone', RESEND.calls.length === resendBefore, RESEND.calls.length);
+me = await call('GET', 'me', { cookie: p1c() });
+check('tax form state in the me payload (type + date)', me.payload.payout.taxForm.onFile === true
+  && me.payload.payout.taxForm.type === 'W-9' && !!me.payload.payout.taxForm.uploadedAt, me.payload.payout.taxForm);
+check('fast-start payouts step done once method AND form stand', me.payload.fastStart.payoutsSet === true);
+const storedForm = await storeMod.readTaxForm(p1.id);
+check('the file itself stands in the server-side store', !!storedForm && storedForm.contentBase64 === tinyPdf && storedForm.formType === 'W-9',
+  storedForm && storedForm.formType);
+const appJsSrc = readFileSync(new URL('../partners/app.js', import.meta.url), 'utf8');
+check('the stored file appears in no partner-facing file', !appJsSrc.includes(tinyPdf));
+const partnerFetch = await call('GET', 'admin-tax-form', { cookie: p1c(), query: `contractorId=${p1.id}` });
+check('a partner session cannot fetch the file back', partnerFetch.statusCode === 401, partnerFetch.statusCode);
+const deskFetch = await call('GET', 'admin-tax-form', { cookie: deskCookie(), query: `contractorId=${p1.id}` });
+check('the Desk — and only the Desk — retrieves the form on file', deskFetch.statusCode === 200
+  && deskFetch.payload.dataBase64 === tinyPdf && deskFetch.payload.formType === 'W-9', deskFetch.payload && deskFetch.payload.formType);
+const pngScan = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.from('test scan')]).toString('base64');
+const replaced = await call('POST', 'upload-w9', { cookie: p1c(), body: { fileName: 'w8ben.png', formType: 'W-8BEN', dataBase64: pngScan } });
+check('re-upload replaces the form on file (W-8BEN scan)', replaced.statusCode === 200 && replaced.payload.taxForm.type === 'W-8BEN', replaced.payload);
+const deskFetch2 = await call('GET', 'admin-tax-form', { cookie: deskCookie(), query: `contractorId=${p1.id}` });
+check('the Desk now retrieves the replacement', deskFetch2.statusCode === 200 && deskFetch2.payload.dataBase64 === pngScan
+  && deskFetch2.payload.contentType === 'image/png', deskFetch2.payload && deskFetch2.payload.contentType);
+me = await call('GET', 'me', { cookie: p1c() });
+check('me shows the replacement form type', me.payload.payout.taxForm.type === 'W-8BEN', me.payload.payout.taxForm);
+
+/* ================= agreement acceptance of record ================= */
+console.log('agreement acceptance of record');
+await call('POST', 'register', { body: { name: 'Portal Accept', email: 'portal-accept@example.test', company: 'Accept LLC' } });
+const paId = (await storeMod.readContractorByEmail('portal-accept@example.test')).id;
+const invA = await call('POST', 'invite', { cookie: deskCookie(), body: { contractorId: paId } });
+const tokenA = invA.payload.activationUrl.split('token=')[1];
+const early = await call('GET', 'activate', { query: `token=${encodeURIComponent(tokenA)}` });
+check('an emailed link alone does NOT activate — it routes to the in-portal agreement step, no session',
+  early.statusCode === 302 && String(early.headers.Location || '').includes('contractors-agreement.html') && !early.headers['Set-Cookie'], early.headers);
+const agr = await call('GET', 'agreement', { query: `token=${encodeURIComponent(tokenA)}` });
+check('the agreement step serves the current version id, acceptance outstanding',
+  agr.statusCode === 200 && !!agr.payload.version && agr.payload.agreementStatus === 'pending' && agr.payload.acceptance === null, agr.payload && agr.payload.version);
+const badAccept = await call('POST', 'accept-agreement', { body: { token: tokenA, typedName: 'Not The Name', accept: true } });
+check('acceptance under the wrong name is refused', badAccept.statusCode === 400 && badAccept.payload.error === 'name_mismatch', badAccept.payload);
+const acc = await call('POST', 'accept-agreement', { body: { token: tokenA, typedName: 'Portal Accept', accept: true } });
+check('the in-portal acceptance records version + exact timestamp', acc.statusCode === 200
+  && acc.payload.acceptance.version === agr.payload.version && !!acc.payload.acceptance.at, acc.payload);
+await call('POST', 'set-nda', { cookie: deskCookie(), body: { contractorId: paId, signed: true } });
+const actA = await call('GET', 'activate', { query: `token=${encodeURIComponent(tokenA)}` });
+const cookieA = String(actA.headers['Set-Cookie'] || '').split(';')[0];
+const meA = await call('GET', 'me', { cookie: cookieA });
+check('me carries the acceptance of record for the partner display (version + time)',
+  !!meA.payload.agreementAccepted && meA.payload.agreementAccepted.version === agr.payload.version && !!meA.payload.agreementAccepted.at,
+  meA.payload.agreementAccepted);
+check('fast-start agreement step done for the accepted partner', meA.payload.fastStart.agreementAccepted === true);
 
 /* ================= invited partners (flat) ================= */
 console.log('invited partners');

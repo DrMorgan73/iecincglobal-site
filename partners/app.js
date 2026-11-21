@@ -88,9 +88,12 @@
       payout_title: 'Getting paid', payout_set: 'Payouts are set up: {method} · account ending {last4}.',
       payout_notset: 'Your payouts are not set up yet. Add your payout method in Settings so IEC can pay your fees without delay.',
       method_wire: 'Wire transfer', method_check: 'Check', go_settings: 'Open Settings',
-      w9_title: 'Tax form (W-9)', w9_on: 'Your W-9 is on file with IEC (received {date}). To replace it, upload a new one.',
-      w9_off: 'IEC needs your W-9 before your first fee can be paid. Upload the completed form (PDF) — it goes straight to the IEC office.',
-      w9_upload: 'Upload W-9 (PDF)', w9_uploading: 'Sending…', w9_ok: 'Your W-9 was sent to the IEC office.', w9_fail: 'That file could not be sent — please use a PDF under 5 MB and try again.',
+      tax_title: 'Tax form — W-9 / W-8BEN', tax_on: 'Tax form on file — {type}, uploaded {date}. To replace it, upload a new one.',
+      tax_off: 'IEC needs your tax form before your first fee can be paid. Upload your completed W-9 (or W-8BEN, if that is the form that applies to you) — PDF, PNG or JPG, up to 10 MB. IEC keeps it on file with your payout record.',
+      tax_type: 'Form type', tax_upload: 'Upload tax form', tax_uploading: 'Uploading…', tax_ok: 'Your tax form is on file with IEC.', tax_fail: 'That file could not be uploaded — please use a PDF, PNG or JPG under 10 MB and try again.',
+      agr_accepted_line: 'Agreement accepted — version {version}, {when}.',
+      agr_email_note: 'Receiving the agreement by email alone does not count as acceptance — acceptance happens here, in your portal, and IEC records the version and the exact time.',
+      agr_status_office: 'Agreement: signed — recorded by the IEC office {when}.',
       downloads: 'Downloads', dl_plan: 'Download plan summary (PDF)', dl_csv: 'Download earnings (CSV)',
       partners_title: 'Invited partners', partners_sub: 'Partners you personally invited to IEC. IEC\u2019s program is direct: you see only your own invitees — no levels, no network, and no partner ever sees another partner\u2019s earnings.',
       your_invite_link: 'Your invitation link', invite_expl: 'Send this link to someone who should become an IEC partner. His request arrives connected to you, and he appears in your list below once he asks for access.',
@@ -134,7 +137,7 @@
       agr_title: 'One step before your portal opens',
       agr_expl: 'Your activation link is valid. The IEC Contractor Referral Agreement below is your signature step: read it in full, type your full legal name exactly as it appears on your invitation record, and accept. IEC records your acceptance — name, time, and the agreement version — as your signature.',
       agr_for: 'Agreement for {name} · {company}',
-      agr_status_signed: 'Agreement: signed — recorded {when}.',
+      agr_status_signed: 'Agreement accepted — version {version}, recorded {when}.',
       agr_typed: 'Type your full legal name', agr_accept: 'I have read the agreement and I accept it — this is my signature',
       agr_sign_btn: 'Accept and sign', agr_name_mismatch: 'Type your full legal name exactly as it appears on your invitation record.',
       agr_fail: 'That acceptance could not be recorded — please try again.',
@@ -227,9 +230,12 @@
       payout_title: 'Cómo cobra', payout_set: 'Sus pagos están configurados: {method} · cuenta terminada en {last4}.',
       payout_notset: 'Sus pagos aún no están configurados. Agregue su método de pago en Configuración para que IEC pueda pagarle sus comisiones sin demora.',
       method_wire: 'Transferencia bancaria', method_check: 'Cheque', go_settings: 'Abrir Configuración',
-      w9_title: 'Formulario fiscal (W-9)', w9_on: 'Su W-9 está en archivo con IEC (recibido el {date}). Para reemplazarlo, suba uno nuevo.',
-      w9_off: 'IEC necesita su W-9 antes de poder pagar su primera comisión. Suba el formulario completo (PDF): va directo a la oficina de IEC.',
-      w9_upload: 'Subir W-9 (PDF)', w9_uploading: 'Enviando…', w9_ok: 'Su W-9 fue enviado a la oficina de IEC.', w9_fail: 'Ese archivo no pudo enviarse: use un PDF de menos de 5 MB e inténtelo de nuevo.',
+      tax_title: 'Formulario fiscal — W-9 / W-8BEN', tax_on: 'Formulario fiscal en archivo — {type}, subido el {date}. Para reemplazarlo, suba uno nuevo.',
+      tax_off: 'IEC necesita su formulario fiscal antes de poder pagar su primera comisión. Suba su W-9 completo (o el W-8BEN, si es el formulario que le aplica): PDF, PNG o JPG, hasta 10 MB. IEC lo guarda en archivo con su registro de pagos.',
+      tax_type: 'Tipo de formulario', tax_upload: 'Subir formulario fiscal', tax_uploading: 'Subiendo…', tax_ok: 'Su formulario fiscal está en archivo con IEC.', tax_fail: 'Ese archivo no pudo subirse: use un PDF, PNG o JPG de menos de 10 MB e inténtelo de nuevo.',
+      agr_accepted_line: 'Acuerdo aceptado — versión {version}, {when}.',
+      agr_email_note: 'Recibir el acuerdo por correo electrónico no cuenta como aceptación: la aceptación ocurre aquí, en su portal, e IEC registra la versión y la hora exacta.',
+      agr_status_office: 'Acuerdo: firmado — registrado por la oficina de IEC el {when}.',
       downloads: 'Descargas', dl_plan: 'Descargar resumen del plan (PDF)', dl_csv: 'Descargar ganancias (CSV)',
       partners_title: 'Socios invitados', partners_sub: 'Los socios que usted invitó personalmente a IEC. El programa de IEC es directo: usted ve solo a sus propios invitados — sin niveles, sin red, y ningún socio ve jamás las ganancias de otro.',
       your_invite_link: 'Su enlace de invitación', invite_expl: 'Envíe este enlace a alguien que debería convertirse en socio de IEC. Su solicitud llega conectada a usted, y aparece en su lista abajo cuando pide acceso.',
@@ -273,7 +279,7 @@
       agr_title: 'Un paso antes de que su portal se abra',
       agr_expl: 'Su enlace de activación es válido. El Acuerdo de Referidos de IEC a continuación es su paso de firma: léalo completo, escriba su nombre legal completo exactamente como aparece en su registro de invitación, y acepte. IEC registra su aceptación — nombre, hora y la versión del acuerdo — como su firma.',
       agr_for: 'Acuerdo para {name} · {company}',
-      agr_status_signed: 'Acuerdo: firmado — registrado el {when}.',
+      agr_status_signed: 'Acuerdo aceptado — versión {version}, registrado el {when}.',
       agr_typed: 'Escriba su nombre legal completo', agr_accept: 'He leído el acuerdo y lo acepto: esta es mi firma',
       agr_sign_btn: 'Aceptar y firmar', agr_name_mismatch: 'Escriba su nombre legal completo exactamente como aparece en su registro de invitación.',
       agr_fail: 'Esa aceptación no pudo registrarse: inténtelo de nuevo.',
@@ -339,7 +345,8 @@
         id: 'demo-test-audit', email: 'test-audit-2026-11-21@example.com',
         name: 'TEST AUDIT 2026-11-21', company: 'TEST AUDIT 2026-11-21 LLC',
         status: 'active', ndaStatus: 'signed', agreementStatus: 'signed',
-        agreementSignedAt: '2026-11-21T15:05:00Z', phone: '(617) 555-0100',
+        agreementSignedAt: '2026-11-21T15:05:00Z', agreementAcceptedName: 'TEST AUDIT 2026-11-21',
+        agreementAcceptedVersion: 'IEC-CRA-2026-11-12', agreementAcceptedVia: 'portal', phone: '(617) 555-0100',
         addressStreet: '100 Test Street', addressCity: 'Boston', addressState: 'MA', addressZip: '02136',
         website: '', source: 'public-signup', contractorType: 'Data network introductions',
         payoutMethod: 'wire', payoutLast4: '6789', w9OnFile: true, w9UploadedAt: '2026-11-21T15:20:00Z',
@@ -372,7 +379,8 @@
       ],
       feeTotals: { earned: 17500, paid: 7500, outstanding: 10000 },
       earnings: { projected: 6480, payable: 10000, paid: 7500, earned: 17500 },
-      payout: { method: 'wire', last4: '6789', w9OnFile: true, w9UploadedAt: '2026-11-21T15:20:00Z', set: true },
+      payout: { method: 'wire', last4: '6789', w9OnFile: true, w9UploadedAt: '2026-11-21T15:20:00Z', taxForm: { onFile: true, type: 'W-9', uploadedAt: '2026-11-21T15:20:00Z' }, set: true },
+      agreementAccepted: { name: 'TEST AUDIT 2026-11-21', at: '2026-11-21T15:05:00Z', version: 'IEC-CRA-2026-11-12', via: 'portal' },
       iecEmail: 't.audit@iecincglobal.com',
       pipeline: ['added', 'questionnaire_sent', 'questionnaire_answered', 'assessment_done', 'cnda_sent', 'cnda_signed', 'ready_to_register', 'registered', 'intake_review', 'valuation_packaging', 'presented', 'buyer_diligence', 'offer_received', 'negotiating_terms', 'license_sent', 'license_signed', 'data_delivery', 'acceptance_review', 'awaiting_payment', 'deal_closed'],
       questionnaireSections: [],
@@ -434,6 +442,23 @@
     var d = new Date(iso);
     if (isNaN(d.getTime())) return String(iso).slice(0, 10);
     return d.toLocaleDateString(LANG === 'es' ? 'es-US' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  }
+  function fmtDateTime(iso) {
+    if (!iso) return '—';
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return String(iso).slice(0, 16).replace('T', ' ');
+    return d.toLocaleString(LANG === 'es' ? 'es-US' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  }
+  /* The agreement line the portal shows back to the partner —
+     the acceptance of record (version + exact time) when he
+     accepted in-portal; the office-recorded line when the
+     agreement was signed on paper; empty while pending. */
+  function agreementLine(me) {
+    var a = me.agreementAccepted;
+    if (a && a.version) return tf('agr_accepted_line', { version: a.version, when: fmtDateTime(a.at) });
+    var c = me.contractor || {};
+    if ((c.agreementStatus || 'pending') === 'signed') return tf('agr_status_office', { when: fmtDate(c.agreementSignedAt) });
+    return '';
   }
   function toast(msg) {
     var el = document.getElementById('pp-toast');
@@ -598,7 +623,7 @@
         if (res.status === 200) { refresh(); } else toast(t('step_record_fail'));
       });
     });
-    bindQualification(); bindAddClient(); bindSettingsForms(); bindW9();
+    bindQualification(); bindAddClient(); bindSettingsForms(); bindTaxForm();
   }
   function refresh() {
     api({ action: 'me' }, 'GET').then(function (res) {
@@ -633,7 +658,9 @@
     var html = '<h1 class="pp-h1">' + esc(t('welcome')) + ', ' + esc(c.name) + '</h1>' +
       '<p class="pp-sub">' + esc(c.company || '') + ' · ' + esc(t('agreement')) + ': ' + esc(c.agreementStatus === 'signed' ? t('signed') : t('pending')) +
       ' · ' + esc(t('nda')) + ': ' + esc(c.ndaStatus === 'signed' ? t('signed') : t('pending')) + '</p>';
-    html += '<div class="pp-card"><h2 class="pp-h2">' + esc(t('fast_start')) + '</h2><ol class="pp-steps">' + stepsHtml + '</ol></div>';
+    var aLine = agreementLine(me);
+    html += '<div class="pp-card"><h2 class="pp-h2">' + esc(t('fast_start')) + '</h2><ol class="pp-steps">' + stepsHtml + '</ol>' +
+      (aLine ? '<p class="pp-p pp-muted">' + esc(aLine) + '</p>' : '') + '</div>';
     html += '<div class="pp-stats">' +
       statCard(t('stat_referrals'), String((me.clients || []).length)) +
       statCard(t('stat_projected'), fmtMoney(me.earnings.projected)) +
@@ -881,49 +908,67 @@
     var payout = me.payout && me.payout.set
       ? esc(tf('payout_set', { method: me.payout.method === 'wire' ? t('method_wire') : t('method_check'), last4: me.payout.last4 }))
       : esc(t('payout_notset'));
-    var w9 = me.payout && me.payout.w9OnFile
-      ? esc(tf('w9_on', { date: fmtDate(me.payout.w9UploadedAt) }))
-      : esc(t('w9_off'));
     var dl = DEMO ? '' :
       '<div class="pp-card"><h2 class="pp-h2">' + esc(t('downloads')) + '</h2>' +
       '<p class="pp-p"><a class="pp-btn" href="' + downloadHref('plan-summary') + '">' + esc(t('dl_plan')) + '</a> ' +
       '<a class="pp-btn pp-btn-ghost" href="' + downloadHref('earnings-csv') + '">' + esc(t('dl_csv')) + '</a></p></div>';
+    var aLine = agreementLine(me);
     return '<h1 class="pp-h1">' + esc(t('earnings_title')) + '</h1><p class="pp-sub">' + esc(t('earnings_sub')) + '</p>' +
       '<div class="pp-stats">' +
       statCard(t('stat_projected'), fmtMoney(e.projected), t('e_projected_n')) +
       statCard(t('stat_payable'), fmtMoney(e.payable), t('e_payable_n')) +
       statCard(t('stat_paid'), fmtMoney(e.paid), t('e_paid_n')) +
       statCard(t('e_earned'), fmtMoney(e.earned)) + '</div>' +
+      '<div class="pp-card"><h2 class="pp-h2">' + esc(t('agreement')) + '</h2>' +
+      '<p class="pp-p">' + esc(aLine || t('pending')) + '</p>' +
+      '<p class="pp-p pp-muted">' + esc(t('agr_email_note')) + '</p></div>' +
       '<div class="pp-card"><h2 class="pp-h2">' + esc(t('schedule_title')) + '</h2>' +
       '<p class="pp-p pp-muted">' + esc(t('schedule_adopted')) + ' ' + esc(me.schedule.adoptedOn) + '</p>' +
       '<table class="pp-table"><thead><tr><th>' + esc(t('col_gross')) + '</th><th>' + esc(t('col_fee')) + '</th></tr></thead><tbody>' + bands + '</tbody></table>' +
       '<p class="pp-p">' + esc(t('schedule_fine')) + '</p></div>' +
       '<div class="pp-card"><h2 class="pp-h2">' + esc(t('payout_title')) + '</h2><p class="pp-p">' + payout + '</p>' +
       '<p class="pp-p"><a class="pp-btn pp-btn-ghost" href="#/settings">' + esc(t('go_settings')) + '</a></p></div>' +
-      '<div class="pp-card"><h2 class="pp-h2">' + esc(t('w9_title')) + '</h2><p class="pp-p">' + w9 + '</p>' +
-      '<p class="pp-p"><input type="file" id="pp-w9-file" accept="application/pdf"> <button class="pp-btn" id="pp-w9-upload">' + esc(t('w9_upload')) + '</button></p>' +
-      '<p class="pp-error" id="pp-w9-err" hidden></p><p class="pp-ok" id="pp-w9-ok" hidden></p></div>' + dl;
+      taxFormCardHtml(me) + dl;
   }
-  function bindW9() {
-    var btn = document.getElementById('pp-w9-upload');
+  /* The tax-form card — the same block on Earnings and Settings:
+     status (form type + upload date) once a form stands on file,
+     the upload/replace control always. The file itself is kept
+     on file by IEC; the portal never shows it back. */
+  function taxFormCardHtml(me) {
+    var form = (me.payout && me.payout.taxForm) || {};
+    var status = form.onFile
+      ? esc(tf('tax_on', { type: form.type || 'W-9', date: fmtDate(form.uploadedAt) }))
+      : esc(t('tax_off'));
+    return '<div class="pp-card"><h2 class="pp-h2">' + esc(t('tax_title')) + '</h2><p class="pp-p">' + status + '</p>' +
+      '<p class="pp-p"><label class="pp-label" for="pp-tax-type">' + esc(t('tax_type')) + '</label> ' +
+      '<select class="pp-input" id="pp-tax-type" style="width:auto;display:inline-block">' +
+      '<option value="W-9"' + (form.type === 'W-8BEN' ? '' : ' selected') + '>W-9</option>' +
+      '<option value="W-8BEN"' + (form.type === 'W-8BEN' ? ' selected' : '') + '>W-8BEN</option></select></p>' +
+      '<p class="pp-p"><input type="file" id="pp-tax-file" accept="application/pdf,image/png,image/jpeg"> <button class="pp-btn" id="pp-tax-upload">' + esc(t('tax_upload')) + '</button></p>' +
+      '<p class="pp-error" id="pp-tax-err" hidden></p><p class="pp-ok" id="pp-tax-ok" hidden></p></div>';
+  }
+  function bindTaxForm() {
+    var btn = document.getElementById('pp-tax-upload');
     if (!btn) return;
     btn.addEventListener('click', function () {
       if (DEMO) { toast(t('demo_blocked')); return; }
-      var input = document.getElementById('pp-w9-file');
-      var err = document.getElementById('pp-w9-err');
-      var ok = document.getElementById('pp-w9-ok');
+      var input = document.getElementById('pp-tax-file');
+      var typeSel = document.getElementById('pp-tax-type');
+      var err = document.getElementById('pp-tax-err');
+      var ok = document.getElementById('pp-tax-ok');
       err.hidden = true; ok.hidden = true;
-      if (!input.files || !input.files[0]) { err.textContent = t('w9_fail'); err.hidden = false; return; }
+      if (!input.files || !input.files[0]) { err.textContent = t('tax_fail'); err.hidden = false; return; }
       var file = input.files[0];
+      if (file.size > 10 * 1024 * 1024) { err.textContent = t('tax_fail'); err.hidden = false; return; }
       var reader = new FileReader();
       reader.onload = function () {
         var b64 = String(reader.result).split(',')[1] || '';
-        btn.disabled = true; btn.textContent = t('w9_uploading');
-        api({ action: 'upload-w9', fileName: file.name, dataBase64: b64 }).then(function (res) {
-          btn.disabled = false; btn.textContent = t('w9_upload');
-          if (res.status === 200 && res.body.ok) { ok.textContent = t('w9_ok'); ok.hidden = false; refresh(); }
-          else { err.textContent = t('w9_fail'); err.hidden = false; }
-        }).catch(function () { btn.disabled = false; btn.textContent = t('w9_upload'); err.textContent = t('w9_fail'); err.hidden = false; });
+        btn.disabled = true; btn.textContent = t('tax_uploading');
+        api({ action: 'upload-w9', fileName: file.name, formType: typeSel ? typeSel.value : 'W-9', dataBase64: b64 }).then(function (res) {
+          btn.disabled = false; btn.textContent = t('tax_upload');
+          if (res.status === 200 && res.body.ok) { ok.textContent = t('tax_ok'); ok.hidden = false; refresh(); }
+          else { err.textContent = t('tax_fail'); err.hidden = false; }
+        }).catch(function () { btn.disabled = false; btn.textContent = t('tax_upload'); err.textContent = t('tax_fail'); err.hidden = false; });
       };
       reader.readAsDataURL(file);
     });
@@ -971,7 +1016,8 @@
     return '<h1 class="pp-h1">' + esc(t('settings_title')) + '</h1><p class="pp-sub">' + esc(t('settings_sub')) + '</p>' +
       '<div class="pp-card"><h2 class="pp-h2">' + esc(t('s_profile')) + '</h2>' +
       '<div class="pp-facts"><div class="pp-fact"><div class="pp-fact-k">' + esc(t('su_name')) + '</div><div class="pp-fact-v">' + esc(c.name) + '</div></div>' +
-      '<div class="pp-fact"><div class="pp-fact-k">Email</div><div class="pp-fact-v">' + esc(c.email) + '</div></div></div>' +
+      '<div class="pp-fact"><div class="pp-fact-k">Email</div><div class="pp-fact-v">' + esc(c.email) + '</div></div>' +
+      '<div class="pp-fact"><div class="pp-fact-k">' + esc(t('agreement')) + '</div><div class="pp-fact-v">' + esc(agreementLine(me) || t('pending')) + '</div></div></div>' +
       '<p class="pp-p pp-muted">' + esc(t('s_identity')) + '</p>' +
       '<div class="pp-form-grid">' +
       '<div><label class="pp-label">' + esc(t('s_company')) + '</label><input class="pp-input" id="pp-s-company" value="' + esc(c.company || '') + '"></div>' +
@@ -994,7 +1040,8 @@
       '<div><label class="pp-label">' + esc(t('s_last4')) + '</label><input class="pp-input" id="pp-s-last4" maxlength="4" inputmode="numeric" value="' + esc(c.payoutLast4 || '') + '"></div>' +
       '</div><p class="pp-p pp-muted">' + esc(t('s_last4_hint')) + '</p>' +
       '<p class="pp-ok" id="pp-payout-ok" hidden>' + esc(t('s_payout_saved')) + '</p>' +
-      '<button class="pp-btn" id="pp-payout-save">' + esc(t('s_save_payout')) + '</button></div>';
+      '<button class="pp-btn" id="pp-payout-save">' + esc(t('s_save_payout')) + '</button></div>' +
+      taxFormCardHtml(me);
   }
   function bindSettingsForms() {
     var ps = document.getElementById('pp-profile-save');
@@ -1111,7 +1158,9 @@
       var d = res.body;
       var bodyHtml = '';
       if (d.agreementStatus === 'signed') {
-        bodyHtml = '<p class="pp-ok">' + esc(tf('agr_status_signed', { when: fmtDate(d.acceptance ? d.acceptance.at : null) })) + '</p>';
+        bodyHtml = d.acceptance
+          ? '<p class="pp-ok">' + esc(tf('agr_status_signed', { version: d.acceptance.version || d.version, when: fmtDateTime(d.acceptance.at) })) + '</p>'
+          : '<p class="pp-ok">' + esc(tf('agr_status_office', { when: fmtDate(d.contractor ? d.contractor.agreementSignedAt : null) })) + '</p>';
         if (d.ndaStatus === 'signed') {
           /* Opening the portal runs through the activation step
              itself: it consumes the link, sets this device's
@@ -1130,7 +1179,8 @@
           '<div class="pp-signbox"><label class="pp-label">' + esc(t('agr_typed')) + '</label>' +
           '<input class="pp-input" id="pp-agr-name"><label class="pp-checkline"><input type="checkbox" id="pp-agr-check"> ' + esc(t('agr_accept')) + '</label>' +
           '<p class="pp-error" id="pp-agr-error" hidden></p>' +
-          '<button class="pp-btn" id="pp-agr-sign">' + esc(t('agr_sign_btn')) + '</button></div>';
+          '<button class="pp-btn" id="pp-agr-sign">' + esc(t('agr_sign_btn')) + '</button></div>' +
+          '<p class="pp-p pp-muted">' + esc(t('agr_email_note')) + '</p>';
       }
       root.innerHTML = '<div class="pp-front"><div class="pp-front-hero"><img class="pp-front-logo" src="/assets/iec-logo.png" alt="IEC, Inc."><div class="pp-front-k">' + esc(t('front_hero_k')) + '</div>' +
         '<h1 class="pp-front-h">' + esc(t('agr_title')) + '</h1><p class="pp-front-p">' + esc(t('agr_expl')) + '</p></div>' +
