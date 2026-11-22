@@ -142,74 +142,10 @@
 
 <section class="section nda-section" id="nda">
   <div class="wrap">
-    <div class="legal-intro">
-      <div>
-        <div class="eyebrow">Revisión guiada del NDA</div>
-        <h2>Comprenda cada sección antes de firmar.</h2>
-      </div>
-      <div>
-        <p>Revise el NDA mutuo de IEC una sección a la vez y haga preguntas al asistente. Cuando cada sección esté marcada como revisada, complete los datos del acuerdo y firme &mdash; la copia ejecutada es registrada por IEC y enviada por correo electrónico a usted y a IEC. Las páginas públicas son una descripción general; los detalles específicos sobre cualquier activo de IEC se comparten bajo NDA, y esta es la puerta de entrada.</p>
-        <div class="nda-lang-toggle" role="group" aria-label="Idioma del NDA">
-          <button type="button" id="nda-lang-en" class="active">EN</button>
-          <button type="button" id="nda-lang-es">ES</button>
-        </div>
-      </div>
-    </div>
-    <div class="legal-workspace">
-      <aside class="doc-nav" aria-label="NDA mutuo">
-        <p class="doc-nav-title" id="sections-label">Secciones del documento</p>
-        <div class="doc-nav-list" id="doc-nav-list"></div>
-        <div class="doc-progress-track" aria-hidden="true"><span id="progress-bar"></span></div>
-        <button class="step-button reset-matter" type="button" id="reset-matter">Restablecer (empezar de nuevo)</button>
-        <p class="reset-status" id="reset-status" role="status"></p>
-        <p class="public-scope">Este flujo público cubre únicamente el NDA mutuo de IEC. Otros acuerdos comerciales &mdash; incluidos los términos de BAA, MSO, SaaS, DPA y de contratistas &mdash; se gestionan directamente con IEC.</p>
-      </aside>
-
-      <article class="doc-reader" aria-live="polite">
-        <div class="doc-meta"><span class="doc-progress" id="doc-label">NDA mutuo &middot; Sección 1 de 12</span></div>
-        <h3 id="doc-title"></h3>
-        <p class="doc-purpose" id="doc-summary"></p>
-        <div class="doc-section" id="doc-copy"></div>
-        <div class="doc-controls">
-          <button class="step-button" id="prev-section" type="button">&larr; Anterior</button>
-          <button class="step-button primary" id="review-section" type="button">Marcar como revisado y continuar</button>
-        </div>
-        <section class="sign-form" id="signature-panel" aria-labelledby="signature-title">
-          <p class="doc-progress" id="signature-label">Paso final &middot; Copia del firmante</p>
-          <h4 id="signature-title">Complete el acuerdo y firme</h4>
-          <p id="signature-intro">Todas las secciones han sido revisadas. Complete cada dato del acuerdo y agregue la firma escrita de la contraparte firmante.</p>
-          <form id="signature-form">
-            <div class="sign-fields">
-              <div class="sign-field"><label for="effective-date" id="effective-date-label">Fecha de entrada en vigor</label><input id="effective-date" type="date" required /></div>
-              <div class="sign-field"><label for="iec-state" id="iec-state-label">Estado de constitución de IEC</label><input id="iec-state" required autocomplete="address-level1" placeholder="Massachusetts" /></div>
-              <div class="sign-field"><label for="party-name" id="party-label">Nombre legal de la contraparte</label><input id="party-name" required autocomplete="organization" /></div>
-              <div class="sign-field"><label for="entity-type-state" id="entity-type-state-label">Tipo de entidad y estado de la contraparte</label><input id="entity-type-state" required placeholder="Sociedad de responsabilidad limitada de Massachusetts" /></div>
-              <div class="sign-field full"><label for="counterparty-address" id="address-label">Dirección principal de la contraparte</label><input id="counterparty-address" required autocomplete="street-address" /></div>
-              <div class="sign-field full"><label for="agreement-purpose" id="purpose-label">Propósito</label><input id="agreement-purpose" required placeholder="una posible relación comercial con IEC, Inc." /></div>
-              <div class="sign-field"><label for="printed-name" id="printed-label">Nombre en letra de imprenta del firmante de la contraparte</label><input id="printed-name" required autocomplete="name" /></div>
-              <div class="sign-field"><label for="signer-email" id="signer-email-label">Correo electrónico del firmante para la copia ejecutada</label><input id="signer-email" type="email" required autocomplete="email" /></div>
-              <div class="sign-field"><label for="signature-date" id="date-label">Fecha de la firma</label><input id="signature-date" type="date" required /></div>
-              <div class="sign-field"><label for="signer-title" id="title-label">Cargo del firmante (opcional)</label><input id="signer-title" autocomplete="organization-title" /></div>
-              <div class="sign-field full"><label for="typed-signature" id="typed-label">Firma escrita</label><input class="signature-input" id="typed-signature" required placeholder="Escriba su nombre legal completo" /></div>
-            </div>
-            <button class="download-signed" type="submit" id="download-signed">Firmar el acuerdo</button>
-            <button class="step-button download-copy" type="button" id="download-copy" hidden>Descargar la copia firmada (PDF)</button>
-            <p class="form-note" id="form-status" role="status"></p>
-            <p class="fine-print" id="signature-fine">Cuando usted firma y envía, el NDA ejecutado es registrado por IEC, Inc., y una copia en PDF ejecutada se envía por correo electrónico a IEC a info@iecincglobal.com y a usted a la dirección de correo electrónico indicada arriba. También puede descargar el PDF firmado para sus propios registros.</p>
-          </form>
-        </section>
-      </article>
-
-      <aside class="assistant-panel" aria-label="Asistente del documento">
-        <div class="assistant-head"><strong id="assistant-name">Guía de documentos de IEC</strong><span id="assistant-limit">Explicaciones sección por sección basadas en este acuerdo</span></div>
-        <div class="chat-log" id="chat-log" aria-live="polite"></div>
-        <div class="quick-asks" id="quick-asks"></div>
-        <form class="chat-composer" id="chat-form">
-          <input id="chat-question" aria-label="Pregunte sobre este acuerdo" placeholder="Pregunte sobre confidencialidad, plazo&hellip;" autocomplete="off" />
-          <button class="chat-send" type="submit" id="chat-send">Preguntar</button>
-        </form>
-      </aside>
-    </div>
+    <div class="eyebrow">NDA — un solo acuerdo para todos los activos de IEC</div>
+    <h2>IEC firma un solo NDA central.</h2>
+    <p>International Empire Consultants, Inc. utiliza un único acuerdo mutuo de confidencialidad, que se firma únicamente en la página central de firma de IEC. Una sola firma cubre todos los activos y todas las conexiones de IEC.</p>
+    <p><a class="btn" href="https://iecincglobal.com/es/cnda.html?origin=iec">NDA</a></p>
   </div>
 </section>
 
@@ -229,7 +165,6 @@
   <p class="rd-small">&copy; 2026 International Empire Consultants, Inc. Todos los derechos reservados. &middot; <a href="privacy.html">Privacidad</a> &middot; <a href="/desk/login.html">Acceso del equipo</a> &middot; Desarrollado por IEC, Inc.</p>
 </footer>
 <script src="../nav.js" defer></script>
-<script src="../nda.js" defer></script>
 <script>
 /* Reception Desk film — brass play overlay; the film itself never autoplays. */
 (function(){
