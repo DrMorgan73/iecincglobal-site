@@ -110,7 +110,7 @@ const BANNED = ['client fee', "IEC's share", 'IEC share', "IEC's fees", "IEC's o
   '5%', '7%', 'milestone bonus', '$10,800', '$700,000',
   /* No channel is ever named in the partner's world (DrMorgan,
      2026-11-21): the agreement speaks of "any channel" only. */
-  'DataSupply', 'Chang Strategic'];
+  'DataSupply', 'Chang Strategic', 'NexMed', 'Tom Schaefer', 'DRAFT'];
 for (const b of BANNED) {
   if (norm(text).includes(b)) { console.error(`FAIL — scrubbed/stale phrasing present: ${b}`); process.exit(1); }
 }

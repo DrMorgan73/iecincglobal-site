@@ -179,6 +179,9 @@ async function ensureTables() {
     invitation_sent_at timestamptz,
     invitation_from text NOT NULL DEFAULT '',
     faststart_webinar_at timestamptz,
+    cnda_entry1_restatement_delivered_at timestamptz,
+    cnda_entry1_restatement_effective_at timestamptz,
+    cnda_entry1_restatement_objected boolean NOT NULL DEFAULT false,
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now())`);
   await neonQuery(`CREATE TABLE IF NOT EXISTS contractor_referrals (
@@ -298,7 +301,10 @@ async function ensureTables() {
     `ALTER TABLE contractor_referrals ADD COLUMN IF NOT EXISTS partner_code text NOT NULL DEFAULT ''`,
     `ALTER TABLE contractor_referrals ADD COLUMN IF NOT EXISTS business_city text NOT NULL DEFAULT ''`,
     `ALTER TABLE contractor_referrals ADD COLUMN IF NOT EXISTS business_state text NOT NULL DEFAULT ''`,
-    `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS faststart_webinar_at timestamptz`
+    `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS faststart_webinar_at timestamptz`,
+    `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS cnda_entry1_restatement_objected boolean NOT NULL DEFAULT false`,
+    `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS cnda_entry1_restatement_effective_at timestamptz`,
+    `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS cnda_entry1_restatement_delivered_at timestamptz`
   ]) {
     await neonQuery(stmt);
   }
@@ -339,6 +345,9 @@ function rowToContractor(r) {
     invitationSentAt: r.invitation_sent_at || null,
     invitationFrom: r.invitation_from || '',
     faststartWebinarAt: r.faststart_webinar_at || null,
+    cndaEntry1RestatementDeliveredAt: r.cnda_entry1_restatement_delivered_at || null,
+    cndaEntry1RestatementEffectiveAt: r.cnda_entry1_restatement_effective_at || null,
+    cndaEntry1RestatementObjected: !!r.cnda_entry1_restatement_objected,
     source: r.source || 'office-invite',
     contractorType: r.contractor_type || '',
     phone: r.phone || '',
@@ -470,7 +479,7 @@ export async function updateContractor(id, patch) {
   await ensureTables();
   const sets = [];
   const params = [];
-  const map = { status: 'status', ndaStatus: 'nda_status', agreementStatus: 'agreement_status', agreementSignedAt: 'agreement_signed_at', agreementAcceptedName: 'agreement_accepted_name', agreementAcceptedVersion: 'agreement_accepted_version', agreementAcceptedVia: 'agreement_accepted_via', activationTokenHash: 'activation_token_hash', clientCode: 'client_code', inviteCode: 'invite_code', activatedAt: 'activated_at', invitationSentAt: 'invitation_sent_at', invitationFrom: 'invitation_from', payoutMethod: 'payout_method', payoutLast4: 'payout_last4', w9OnFile: 'w9_on_file', w9UploadedAt: 'w9_uploaded_at', taxFormType: 'tax_form_type', phone: 'phone', name: 'name', company: 'company', faststartWebinarAt: 'faststart_webinar_at', addressStreet: 'address_street', addressCity: 'address_city', addressState: 'address_state', addressZip: 'address_zip', website: 'website' };
+  const map = { status: 'status', ndaStatus: 'nda_status', agreementStatus: 'agreement_status', agreementSignedAt: 'agreement_signed_at', agreementAcceptedName: 'agreement_accepted_name', agreementAcceptedVersion: 'agreement_accepted_version', agreementAcceptedVia: 'agreement_accepted_via', activationTokenHash: 'activation_token_hash', clientCode: 'client_code', inviteCode: 'invite_code', activatedAt: 'activated_at', invitationSentAt: 'invitation_sent_at', invitationFrom: 'invitation_from', payoutMethod: 'payout_method', payoutLast4: 'payout_last4', w9OnFile: 'w9_on_file', w9UploadedAt: 'w9_uploaded_at', taxFormType: 'tax_form_type', phone: 'phone', name: 'name', company: 'company', faststartWebinarAt: 'faststart_webinar_at', addressStreet: 'address_street', addressCity: 'address_city', addressState: 'address_state', addressZip: 'address_zip', website: 'website', cndaEntry1RestatementDeliveredAt: 'cnda_entry1_restatement_delivered_at', cndaEntry1RestatementEffectiveAt: 'cnda_entry1_restatement_effective_at', cndaEntry1RestatementObjected: 'cnda_entry1_restatement_objected' };
   for (const [k, col] of Object.entries(map)) {
     if (patch[k] !== undefined) { params.push(patch[k]); sets.push(`${col} = $${params.length}`); }
   }

@@ -35,6 +35,7 @@ import {
   CNDA_TEXTS, CNDA_TITLES, CNDA_SIGNATORY, CNDA_IEC_STATE,
   CNDA_DEFAULT_PURPOSE, fillCndaText, escapeHtml
 } from './_cnda-content.js';
+import { scheduleBForPartner } from './_cnda-restatement.js';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const pad2 = n => String(n).padStart(2, '0');
@@ -186,10 +187,18 @@ export function partnerCndaDocument(c, { iecSignatureImg = '' } = {}) {
      partner's copy. Trim §14 at the trailing-matter marker so
      every part of the instrument renders exactly once; no word
      of Articles 1–14 is touched. (Audit fix, 2026-11-22.) */
-  const bodyTexts = CNDA_TEXTS.slice(0, CNDA_TEXTS.length - 1).map((text) => {
+  const bodyTexts = CNDA_TEXTS.slice(0, CNDA_TEXTS.length - 1).map((text, idx) => {
     const marker = text.indexOf('\n\n---\n\nAGREED AND ACCEPTED');
-    return marker > 0 ? text.slice(0, marker) : text;
+    const trimmed = marker > 0 ? text.slice(0, marker) : text;
+    /* Schedule A (index 15) is complete in its own text; the copy
+       inside §14's trailing matter is trimmed above. */
+    if (idx === 15) return trimmed;
+    return trimmed;
   });
+  /* Schedule B (index 16) renders per this partner's Section 5.3
+     restatement state: as-signed before effectiveness, restated
+     + provenance line after it (Eleanor's ruling, Nov 22, 2026). */
+  if (bodyTexts[16]) bodyTexts[16] = scheduleBForPartner(bodyTexts[16], c);
 
   /* HTML fragment (the portal reader injects it, like the
      agreement's AGREEMENT_HTML fragment). */

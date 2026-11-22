@@ -127,8 +127,15 @@
       front_hero_t: 'The IEC Partner Portal',
       front_hero_p: 'The private portal for IEC\u2019s partners: register the companies you introduce, follow each one through the process, and track your referral fees. Everything here is IEC, Inc. — partners work with IEC directly.',
       front_enter_t: 'Enter your portal',
-      front_enter_p: 'Your portal is personal: it opens only through the one-time activation link IEC emailed you, and only once both of your signatures stand — the Contractor Referral Agreement and the NDA. The link sets your access for 30 days.',
+      front_enter_p: 'Your portal is personal: sign in below with the one-time activation code from the link IEC emailed you, once both of your signatures stand — the Contractor Referral Agreement and the NDA. Sign-in sets your access for 30 days.',
       front_enter_p2: 'Lost your link, or never received one? Write to info@iecincglobal.com and IEC will re-issue it.',
+      signin_t: 'Sign in',
+      signin_p: 'Enter the activation code from your IEC invitation link — or paste the full link — and your dashboard opens. The code works once, and only once both of your signatures stand.',
+      signin_label: 'Activation code or full sign-in link',
+      signin_btn: 'Sign in to my portal',
+      signin_working: 'Signing you in…',
+      signin_failed: 'That code or link did not work — it may have expired or already been used. Write to info@iecincglobal.com and IEC will re-issue your sign-in link.',
+      signin_first: 'Your sign-in link is valid. One signature step comes first — your portal opens as soon as both signatures stand.',
       front_req_t: 'Request access',
       front_req_p: 'Not a partner yet? Request access below. IEC reviews every request; signing the agreement and the NDA comes before any access opens.',
       invited_by_line: 'You were invited by {name} ({company}). Your request arrives connected to your inviter.',
@@ -274,8 +281,15 @@
       front_hero_t: 'El Portal de Socios de IEC',
       front_hero_p: 'El portal privado para los socios de IEC: registre las empresas que presenta, siga a cada una durante el proceso y controle sus comisiones por referidos. Todo aquí es IEC, Inc.: los socios trabajan directamente con IEC.',
       front_enter_t: 'Ingrese a su portal',
-      front_enter_p: 'Su portal es personal: se abre solo mediante el enlace de activación único que IEC le envió por correo, y solo cuando ambas firmas están registradas: el Acuerdo de Referidos y el NDA. El enlace establece su acceso por 30 días.',
+      front_enter_p: 'Su portal es personal: inicie sesión abajo con el código de activación único del enlace que IEC le envió por correo, cuando ambas firmas estén registradas: el Acuerdo de Referidos y el NDA. El acceso dura 30 días.',
       front_enter_p2: '¿Perdió su enlace o nunca lo recibió? Escriba a info@iecincglobal.com y IEC se lo reemitirá.',
+      signin_t: 'Iniciar sesión',
+      signin_p: 'Ingrese el código de activación de su enlace de invitación de IEC — o pegue el enlace completo — y se abrirá su panel. El código funciona una sola vez, y solo cuando ambas firmas están registradas.',
+      signin_label: 'Código de activación o enlace completo de acceso',
+      signin_btn: 'Ingresar a mi portal',
+      signin_working: 'Ingresando…',
+      signin_failed: 'Ese código o enlace no funcionó: puede haber vencido o ya haberse usado. Escriba a info@iecincglobal.com y IEC le reemitirá su enlace de acceso.',
+      signin_first: 'Su enlace de acceso es válido. Primero viene un paso de firma: su portal se abre en cuanto ambas firmas estén registradas.',
       front_req_t: 'Solicitar acceso',
       front_req_p: '¿Aún no es socio? Solicite acceso abajo. IEC revisa cada solicitud; la firma del acuerdo y del NDA viene antes de que se abra cualquier acceso.',
       invited_by_line: 'Usted fue invitado por {name} ({company}). Su solicitud llega conectada a quien lo invitó.',
@@ -1151,12 +1165,49 @@
       '<h1 class="pp-front-h">' + esc(t('front_hero_t')) + '</h1><p class="pp-front-p">' + esc(t('front_hero_p')) + '</p></div>' +
       '<div class="pp-front-grid">' +
       '<div class="pp-card"><h2 class="pp-h2">' + esc(t('front_enter_t')) + '</h2>' +
-      '<p class="pp-p">' + esc(t('front_enter_p')) + '</p><p class="pp-p">' + esc(t('front_enter_p2')) + '</p></div>' +
+      '<p class="pp-p">' + esc(t('front_enter_p')) + '</p>' + signinFormHtml() + '<p class="pp-p">' + esc(t('front_enter_p2')) + '</p></div>' +
       '<div class="pp-card"><h2 class="pp-h2">' + esc(t('front_req_t')) + '</h2>' +
       '<p class="pp-p">' + esc(t('front_req_p')) + '</p>' + signupFormHtml('') + '</div>' +
       '</div></div>' +
       '<div class="pp-front-foot"><strong>IEC, Inc.</strong> · ' + esc(t('product')) + ' · <a href="https://iecincglobal.com">iecincglobal.com</a></div>';
+    bindSignin();
     bindSignup('');
+  }
+  function signinFormHtml() {
+    return '<form id="pp-signin-form"><div><label class="pp-label" for="pp-signin-credential">' + esc(t('signin_label')) + '</label>' +
+      '<input class="pp-input" id="pp-signin-credential" autocomplete="off" spellcheck="false"></div>' +
+      '<p class="pp-error" id="pp-signin-error" hidden></p><p class="pp-ok" id="pp-signin-ok" hidden></p>' +
+      '<button class="pp-btn" type="submit" id="pp-signin-submit">' + esc(t('signin_btn')) + '</button></form>';
+  }
+  function bindSignin() {
+    var form = document.getElementById('pp-signin-form');
+    if (!form) return;
+    form.addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      if (DEMO) { toast(t('demo_blocked')); return; }
+      var err = document.getElementById('pp-signin-error');
+      var ok = document.getElementById('pp-signin-ok');
+      var btn = document.getElementById('pp-signin-submit');
+      err.hidden = true; ok.hidden = true;
+      btn.disabled = true; btn.textContent = t('signin_working');
+      api({ action: 'signin', credential: document.getElementById('pp-signin-credential').value }).then(function (res) {
+        btn.disabled = false; btn.textContent = t('signin_btn');
+        if (res.status === 200 && res.body && res.body.ok && res.body.next === 'dashboard') {
+          /* The session cookie is set — boot again and the
+             dashboard opens. */
+          boot();
+        } else if (res.status === 200 && res.body && res.body.ok && res.body.next === 'agreement' && res.body.token) {
+          ok.textContent = t('signin_first'); ok.hidden = false;
+          renderAgreement(res.body.token);
+        } else {
+          err.textContent = (res.body && res.body.message) || t('signin_failed');
+          err.hidden = false;
+        }
+      }).catch(function () {
+        btn.disabled = false; btn.textContent = t('signin_btn');
+        err.textContent = t('signin_failed'); err.hidden = false;
+      });
+    });
   }
   function signupFormHtml(inviteCode) {
     var typeOpts = ['Data network introductions', 'Clinical services', 'Consulting', 'Business services', 'Other']

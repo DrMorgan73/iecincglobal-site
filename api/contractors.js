@@ -130,6 +130,7 @@ import {
   mintAttributionToken, attributionCookieHeader
 } from './_contractors-auth.js';
 import { AGREEMENT_HTML, agreementVersionId } from './_agreement-content.js';
+import { addBusinessDays, buildRestatementNotice, restatementState } from './_cnda-restatement.js';
 
 /* ------------------------------------------------------------------ */
 /* Desk session verification — mirrors middleware.js / api/data-assets.js
@@ -779,6 +780,48 @@ export default async function handler(req, res) {
     res.setHeader('Set-Cookie', sessionCookieHeader(session));
     res.setHeader('Location', standalone ? '/' : '/contractors-portal.html');
     return res.end();
+  }
+
+  /* ---- sign-in card: the partner pastes his activation code
+     or his full activation link on the portal's front door and
+     signs in there (DrMorgan's order, Nov 22, 2026). This rides
+     the SAME one-time activation discipline as the emailed link:
+     the credential resolves only while it is live and unconsumed,
+     no session is issued and the link is NOT consumed until BOTH
+     signatures stand, and a partner with a signature outstanding
+     is routed to the agreement step with the same token. On
+     success the session cookie is set exactly as the emailed
+     link sets it, and the card opens the dashboard. Failures get
+     one plain-language answer — never a raw error, never a hint
+     about which part failed. ---- */
+  if (req.method === 'POST' && action === 'signin') {
+    const body = await readBody(req);
+    let credential = String(body.credential || body.token || '').trim();
+    /* A pasted full link: pull the token out of it. */
+    const m = credential.match(/[?&](?:token|t)=([^&\s]+)/);
+    if (m) { try { credential = decodeURIComponent(m[1]); } catch { credential = m[1]; } }
+    const c = credential ? await resolveActivationToken(credential) : null;
+    if (!c) {
+      return json(res, {
+        ok: false, error: 'signin_failed',
+        message: 'That code or link did not work — it may have expired or already been used. Write to info@iecincglobal.com and IEC will re-issue your sign-in link.'
+      }, 401);
+    }
+    if (c.ndaStatus !== 'signed' || (c.agreementStatus || 'pending') !== 'signed') {
+      return json(res, {
+        ok: true, next: 'agreement', token: credential,
+        message: 'Your sign-in link is valid. One signature step comes first — your portal opens as soon as both signatures stand.'
+      });
+    }
+    const session = mintSessionToken(c.id);
+    if (!session) return json(res, { ok: false, error: 'not_configured' }, 503);
+    await updateContractor(c.id, {
+      status: c.status === 'invited' ? 'active' : c.status,
+      activationTokenHash: '', activatedAt: new Date().toISOString()
+    });
+    await ensureContractorClientCode(c.id);
+    await ensureContractorInviteCode(c.id);
+    return json(res, { ok: true, next: 'dashboard' }, 200, { 'Set-Cookie': sessionCookieHeader(session) });
   }
 
   /* ---- the agreement step: full text + acceptance state for the
@@ -1494,6 +1537,44 @@ export default async function handler(req, res) {
 
   /* ---- admin: Desk session required below ---- */
   if (!isAdmin) return json(res, { ok: false, error: 'unauthorized' }, 401);
+
+  /* ---- admin: CNDA Schedule B Entry 1 restatement (Section
+     5.3) — record a delivery or an objection for one partner.
+     Recording a delivery computes the effective date
+     (delivered + 5 business days). This NEVER sends anything:
+     the notice itself is an office draft, sent only on
+     DrMorgan's word through the office mail route. ---- */
+  if (req.method === 'POST' && action === 'admin-cnda-restatement') {
+    const body = await readBody(req);
+    const target = await readContractorById(str(body.contractorId, 64));
+    if (!target) return json(res, { ok: false, error: 'not_found' }, 404);
+    if (body.objected === true) {
+      await updateContractor(target.id, { cndaEntry1RestatementObjected: true });
+    } else {
+      const delivered = str(body.deliveredDate, 10) || new Date().toISOString().slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(delivered)) return json(res, { ok: false, error: 'invalid_fields' }, 400);
+      await updateContractor(target.id, {
+        cndaEntry1RestatementDeliveredAt: delivered,
+        cndaEntry1RestatementEffectiveAt: addBusinessDays(delivered, 5),
+        cndaEntry1RestatementObjected: false
+      });
+    }
+    const fresh = await readContractorById(target.id);
+    return json(res, { ok: true, contractorId: target.id, restatement: restatementState(fresh) });
+  }
+
+  /* ---- admin: the Section 5.3 delivery notice for one partner
+     — the DRAFT package only (identifies the Agreement, states
+     delivery under Section 5.3, carries the restated entry
+     verbatim and the 5-business-day objection deadline). The
+     Desk shows it; sending stays gated on DrMorgan's word. ---- */
+  if (req.method === 'GET' && action === 'admin-cnda-restatement-notice') {
+    const target = await readContractorById(str(url.searchParams.get('contractorId'), 64));
+    if (!target) return json(res, { ok: false, error: 'not_found' }, 404);
+    const delivered = str(url.searchParams.get('deliveredDate'), 10) || new Date().toISOString().slice(0, 10);
+    const notice = buildRestatementNotice(target, delivered);
+    return json(res, { ok: true, contractorId: target.id, notice, restatement: restatementState(target) });
+  }
 
   if (req.method === 'GET' && action === 'admin-list') {
     // Lazy backfill: partners activated before the client link
