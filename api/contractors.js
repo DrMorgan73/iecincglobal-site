@@ -120,7 +120,8 @@ import { qrSvg } from './_qr.js';
 import { blocksToPdf } from './_data-assets-pdf.js';
 import { FEE_SCHEDULE, referralFee, feeExamples, formatUSD } from './_contractors-fees.js';
 import {
-  QUESTIONNAIRE_SECTIONS, validateQuestionnaireAnswers
+  QUESTIONNAIRE_SECTIONS, validateQuestionnaireAnswers,
+  _internals as questionnaireInternals
 } from './_partner-questionnaire.js';
 import {
   mintActivationToken, mintSessionToken, verifyToken, hashToken,
@@ -1105,14 +1106,18 @@ export default async function handler(req, res) {
     if (!businessName || !ownerName || !emailOk(ownerEmail) || !INDUSTRIES.includes(industry)) {
       return json(res, { ok: false, error: 'invalid_fields' }, 400);
     }
-    /* Qualification gate: the desk-staff band is optional for
-       legacy callers, but when it is supplied it must be a real
-       band, and a non-exempt industry under 20 desk staff does
-       not qualify — refused before anything is stored, with the
-       rule stated plainly (the portal form hides itself on the
-       same answer; this is the server-side half of the gate). */
+    /* Qualification gate (add-client audit, Nov 21, 2026): the
+       gate answers are REQUIRED. The band must be one of the real
+       bands — while it was optional, a direct API call that
+       simply omitted it slipped a sub-20 non-exempt business
+       past the gate entirely, so an absent or unknown band is
+       refused before anything is stored, exactly like an
+       unknown industry. A non-exempt industry under 20 desk
+       staff does not qualify (the portal form hides itself on
+       the same answer; this is the server-side half of the
+       gate, and the form always collects the answers first). */
     const deskStaffBand = str(body.deskStaffBand, 20);
-    if (deskStaffBand && !DESK_STAFF_BANDS.includes(deskStaffBand)) {
+    if (!DESK_STAFF_BANDS.includes(deskStaffBand)) {
       return json(res, { ok: false, error: 'invalid_fields' }, 400);
     }
     if (deskStaffBand === 'under-20' && !QUALIFICATION_EXEMPT_INDUSTRIES.includes(industry)) {
@@ -1126,6 +1131,16 @@ export default async function handler(req, res) {
     const yearsRecords = countOrNull(body.yearsRecords);
     const systems = body.systems === undefined || body.systems === null || body.systems === ''
       ? null : str(body.systems, 500);
+    /* Counts-only discipline covers the free-text fields too
+       (add-client audit, Nov 21, 2026): `systems` names the
+       systems a business runs — it never needs an email, a
+       phone number, an SSN or a birth date, and one carrying an
+       identifier pattern is refused before anything is stored
+       (the portal already had the 'identifier_in_field' error
+       mapped; the API now actually emits it). */
+    if (systems !== null && questionnaireInternals.valueHasIdentifier(systems)) {
+      return json(res, { ok: false, error: 'identifier_in_field' }, 400);
+    }
     if (locations === undefined || employees === undefined || yearsRecords === undefined) {
       return json(res, { ok: false, error: 'invalid_fields' }, 400);
     }
@@ -1182,7 +1197,13 @@ export default async function handler(req, res) {
     if (body.locations !== undefined) { const v = countOrNull(body.locations); if (v === undefined) return json(res, { ok: false, error: 'invalid_fields' }, 400); patch.locations = v; }
     if (body.employees !== undefined) { const v = countOrNull(body.employees); if (v === undefined) return json(res, { ok: false, error: 'invalid_fields' }, 400); patch.employees = v; }
     if (body.yearsRecords !== undefined) { const v = countOrNull(body.yearsRecords); if (v === undefined) return json(res, { ok: false, error: 'invalid_fields' }, 400); patch.yearsRecords = v; }
-    if (body.systems !== undefined) patch.systems = body.systems === null || body.systems === '' ? null : str(body.systems, 500);
+    if (body.systems !== undefined) {
+      const s = body.systems === null || body.systems === '' ? null : str(body.systems, 500);
+      if (s !== null && questionnaireInternals.valueHasIdentifier(s)) {
+        return json(res, { ok: false, error: 'identifier_in_field' }, 400);
+      }
+      patch.systems = s;
+    }
     if (body.questionnaireAnswers !== undefined) {
       const checked = validateQuestionnaireAnswers(body.questionnaireAnswers);
       if (!checked.ok) return json(res, { ok: false, error: checked.error }, 400);

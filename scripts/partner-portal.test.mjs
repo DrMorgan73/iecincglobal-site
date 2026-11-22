@@ -224,7 +224,7 @@ check('earnings after payout: paid 10000, payable 0', me.payload.earnings.paid =
 console.log('amount approved');
 const reg2 = await call('POST', 'register-referral', {
   cookie: p1c(),
-  body: { businessName: 'Amount Test Co', ownerName: 'Amy Owner', ownerEmail: 'amy@amount.test', industry: 'home-health' }
+  body: { businessName: 'Amount Test Co', ownerName: 'Amy Owner', ownerEmail: 'amy@amount.test', industry: 'home-health', deskStaffBand: '20-34' }
 });
 const rid2 = reg2.payload.referralId;
 me = await call('GET', 'me', { cookie: p1c() });

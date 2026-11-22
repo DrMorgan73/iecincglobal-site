@@ -353,7 +353,7 @@ console.log('resolve-hold — the Desk ruling');
      (direct add), then try to credit the revoked hold. */
   const reg = await call('POST', 'register-referral', {
     cookie: partnerCookie(active.id),
-    body: { businessName: 'Revoked Link Biz LLC', ownerName: 'Olivia Owner', ownerEmail: 'other@example.com', industry: 'pharmacy' }
+    body: { businessName: 'Revoked Link Biz LLC', ownerName: 'Olivia Owner', ownerEmail: 'other@example.com', industry: 'pharmacy', deskStaffBand: '20-34' }
   });
   check('control registration of the held business elsewhere succeeds', reg.statusCode === 200, reg.payload);
   await storeMod.updateContractor(revoked.id, { status: 'active' });

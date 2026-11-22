@@ -546,7 +546,7 @@ console.log('ES issuance, non-link submissions, partner-entered discipline');
   const desk = deskCookie();
   const reg = await call('POST', 'register-referral', {
     cookie: partnerCookie(active.id),
-    body: { businessName: 'Entered By Partner LLC', ownerName: 'Pat Owner', ownerEmail: 'pat@entered.example', industry: 'pharmacy', employees: 30 }
+    body: { businessName: 'Entered By Partner LLC', ownerName: 'Pat Owner', ownerEmail: 'pat@entered.example', industry: 'pharmacy', employees: 30, deskStaffBand: '20-34' }
   });
   check('partner-entered registration works', reg.statusCode === 200 && reg.payload.ok, reg.payload);
   const enteredId = reg.payload.referralId;

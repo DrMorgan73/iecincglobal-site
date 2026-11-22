@@ -253,7 +253,7 @@ const ck = () => contractorCookie(ctrId);
   // Referral registration is gated on the NDA being signed.
   const r = await call('POST', 'register-referral', {
     cookie: ck(),
-    body: { businessName: 'Acme Health LLC', ownerName: 'Ana Owner', ownerEmail: 'ana@acme.test', industry: 'home-health' }
+    body: { businessName: 'Acme Health LLC', ownerName: 'Ana Owner', ownerEmail: 'ana@acme.test', industry: 'home-health', deskStaffBand: '20-34' }
   });
   check('referral before NDA signed -> 403 nda_required', r.statusCode === 403 && r.payload.error === 'nda_required', r.payload);
 }
@@ -268,7 +268,7 @@ let refId = null;
 {
   const r = await call('POST', 'register-referral', {
     cookie: ck(),
-    body: { businessName: 'Acme Health LLC', ownerName: 'Ana Owner', ownerEmail: 'ana@acme.test', industry: 'home-health' }
+    body: { businessName: 'Acme Health LLC', ownerName: 'Ana Owner', ownerEmail: 'ana@acme.test', industry: 'home-health', deskStaffBand: '20-34' }
   });
   check('referral registers after NDA signed', r.statusCode === 200 && r.payload.ok && r.payload.status === 'registered', r.payload);
   refId = r.payload.referralId;
@@ -281,14 +281,14 @@ let refId = null;
   await storeMod.updateContractor(row2.id, { status: 'active', ndaStatus: 'signed', agreementStatus: 'signed' });
   const dup = await call('POST', 'register-referral', {
     cookie: contractorCookie(row2.id),
-    body: { businessName: 'ACME HEALTH, LLC', ownerName: 'Someone Else', ownerEmail: 'other@acme.test', industry: 'home-health' }
+    body: { businessName: 'ACME HEALTH, LLC', ownerName: 'Someone Else', ownerEmail: 'other@acme.test', industry: 'home-health', deskStaffBand: '20-34' }
   });
   check('duplicate business (normalised) -> 409 already_registered, no other contractor named',
     dup.statusCode === 409 && dup.payload.error === 'already_registered'
     && JSON.stringify(dup.payload).includes('Acme') === false, dup.payload);
   const dup2 = await call('POST', 'register-referral', {
     cookie: contractorCookie(row2.id),
-    body: { businessName: 'Different Business LLC', ownerName: 'Ana Owner', ownerEmail: 'ana@acme.test', industry: 'pharmacy' }
+    body: { businessName: 'Different Business LLC', ownerName: 'Ana Owner', ownerEmail: 'ana@acme.test', industry: 'pharmacy', deskStaffBand: '20-34' }
   });
   check('duplicate owner email -> 409 already_registered', dup2.statusCode === 409 && dup2.payload.error === 'already_registered');
   const bad = await call('POST', 'register-referral', {

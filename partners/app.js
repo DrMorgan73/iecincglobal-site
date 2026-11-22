@@ -794,6 +794,14 @@
       var err = document.getElementById('pp-add-error');
       var ok = document.getElementById('pp-add-ok');
       err.hidden = true; ok.hidden = true;
+      /* The qualification gate answers are required (the API
+         refuses an add without them) — never submit without
+         them; send the partner back to the gate instead. */
+      if (!state.qual) {
+        err.textContent = t('err_fields'); err.hidden = false;
+        document.getElementById('pp-add-card').hidden = true;
+        return;
+      }
       var answers = {};
       Array.prototype.forEach.call(document.querySelectorAll('[data-qkey]'), function (el) {
         if (el.value !== '') answers[el.getAttribute('data-qkey')] = el.value;

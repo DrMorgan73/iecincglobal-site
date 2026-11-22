@@ -192,7 +192,7 @@ let clientId = null;
     cookie: karim(),
     body: {
       businessName: 'Harbor Dental Group', ownerName: 'Lena Ortiz', ownerEmail: 'lena@harbordental.test',
-      industry: 'medical-practice', locations: 2, employees: 34,
+      industry: 'medical-practice', locations: 2, employees: 34, deskStaffBand: '20-34',
       systems: 'Dentrix, Microsoft 365, QuickBooks', yearsRecords: 14,
       questionnaireAnswers: { q8: '6,800', q9: '9,100', q14: 'English, Spanish' }
     }
@@ -210,7 +210,7 @@ let clientId = null;
   const r = await call('POST', 'register-referral', {
     cookie: karim(),
     body: {
-      businessName: 'Bad Data LLC', ownerName: 'Bob', ownerEmail: 'bob@baddata.test', industry: 'pharmacy',
+      businessName: 'Bad Data LLC', ownerName: 'Bob', ownerEmail: 'bob@baddata.test', industry: 'pharmacy', deskStaffBand: '20-34',
       questionnaireAnswers: { q8: 'patient SSN 123-45-6789' }
     }
   });
@@ -228,7 +228,7 @@ let claimId = null;
   claimId = a.payload.claimId;
   const r = await call('POST', 'register-referral', {
     cookie: karim(),
-    body: { businessName: 'GLOBEX RETAIL GROUP, INC', ownerName: 'Someone', ownerEmail: 'other@globex.test', industry: 'general-business' }
+    body: { businessName: 'GLOBEX RETAIL GROUP, INC', ownerName: 'Someone', ownerEmail: 'other@globex.test', industry: 'general-business', deskStaffBand: '20-34' }
   });
   check('partner add matching an IEC claim -> 409, no side named',
     r.statusCode === 409 && r.payload.error === 'already_registered'
@@ -238,7 +238,7 @@ let claimId = null;
   check('claim removal ok', rm.statusCode === 200 && rm.payload.ok);
   const r2 = await call('POST', 'register-referral', {
     cookie: karim(),
-    body: { businessName: 'Globex Retail Group', ownerName: 'Gus Globex', ownerEmail: 'ops@globex.test', industry: 'general-business' }
+    body: { businessName: 'Globex Retail Group', ownerName: 'Gus Globex', ownerEmail: 'ops@globex.test', industry: 'general-business', deskStaffBand: '20-34' }
   });
   check('after claim removal the add succeeds', r2.statusCode === 200 && r2.payload.ok, r2.payload);
 }
@@ -281,7 +281,7 @@ console.log('update + questionnaire step');
   // PT industry maps to the form's "pt" segment slug.
   const add = await call('POST', 'register-referral', {
     cookie: karim(),
-    body: { businessName: 'Summit Physical Therapy', ownerName: 'Pam Reed', ownerEmail: 'pam@summitpt.test', industry: 'physical-therapy' }
+    body: { businessName: 'Summit Physical Therapy', ownerName: 'Pam Reed', ownerEmail: 'pam@summitpt.test', industry: 'physical-therapy', deskStaffBand: '20-34' }
   });
   const s = await call('POST', 'send-questionnaire', { cookie: karim(), body: { clientId: add.payload.clientId } });
   check('physical-therapy questionnaire URL uses the pt segment',
