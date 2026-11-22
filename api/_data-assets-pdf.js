@@ -144,6 +144,20 @@ export function blocksToPdf(blocks, title, options = {}) {
     pages.push((wm ? `${wm}\n` : "") + ops.join("\n"));
   }
 
+  /* Optional footer, stamped AFTER layout — the total page count
+     is known only once every page exists, so "Page X of Y" can
+     only be stamped here, onto the finished page streams (the
+     house pattern for signed instruments: the plan summary and
+     the data-asset exports pass no footer and are unchanged). */
+  if (options.footer) {
+    const total = pages.length;
+    for (let i = 0; i < total; i++) {
+      const label = `${options.footer} - Page ${i + 1} of ${total}`;
+      const x = Math.max(PAGE.margin, (PAGE.w - label.length * 8 * 0.52) / 2);
+      pages[i] += `\nBT /F1 8 Tf 0.45 0.47 0.52 rg ${x.toFixed(1)} 30 Td (${escapePdfText(label)}) Tj ET`;
+    }
+  }
+
   /* assemble the PDF object graph */
   const objects = [];
   const add = body => { objects.push(body); return objects.length; };

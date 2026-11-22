@@ -130,6 +130,11 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;word-break
 .pp-front-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
 .pp-agreement{border:1px solid var(--line);border-radius:10px;padding:18px 20px;max-height:430px;overflow:auto;background:#FDFEFF;font-size:14.5px}
 .pp-signbox{margin-top:16px;border-top:1px solid var(--line);padding-top:14px}
+.pp-doc-full{max-height:none}
+.pp-doc-actions{margin-top:12px}
+.pp-doc-actions .pp-btn{margin:0 6px 6px 0}
+.pp-acceptance{margin-top:22px;border:1px solid var(--line);border-radius:10px;padding:14px 16px;background:#F7FAFD}
+.pp-acceptance h2{font-size:16px;margin:0 0 8px;color:var(--navy)}
 
 /* ---------- questionnaire (owner-facing) ---------- */
 .pp-loading{text-align:center;padding:3rem 1rem;color:var(--muted);font-size:16px}

@@ -94,6 +94,11 @@
       agr_accepted_line: 'Agreement accepted — version {version}, {when}.',
       agr_email_note: 'Receiving the agreement by email alone does not count as acceptance — acceptance happens here, in your portal, and IEC records the version and the exact time.',
       agr_status_office: 'Agreement: signed — recorded by the IEC office {when}.',
+      doc_view_agreement: 'View agreement', doc_view_cnda: 'View CNDA', doc_download_pdf: 'Download PDF',
+      doc_back: 'Back', doc_your_copy: 'Your signed copy',
+      doc_agr_heading: 'IEC Contractor Referral Agreement', doc_cnda_heading: 'Confidentiality Agreement (CNDA)',
+      doc_load_fail: 'This document could not be loaded — please try again.',
+      doc_ndaline: 'NDA: signed — recorded by IEC.',
       downloads: 'Downloads', dl_plan: 'Download plan summary (PDF)', dl_csv: 'Download earnings (CSV)',
       partners_title: 'Invited partners', partners_sub: 'Partners you personally invited to IEC. IEC\u2019s program is direct: you see only your own invitees — no levels, no network, and no partner ever sees another partner\u2019s earnings.',
       your_invite_link: 'Your invitation link', invite_expl: 'Send this link to someone who should become an IEC partner. His request arrives connected to you, and he appears in your list below once he asks for access.',
@@ -236,6 +241,11 @@
       agr_accepted_line: 'Acuerdo aceptado — versión {version}, {when}.',
       agr_email_note: 'Recibir el acuerdo por correo electrónico no cuenta como aceptación: la aceptación ocurre aquí, en su portal, e IEC registra la versión y la hora exacta.',
       agr_status_office: 'Acuerdo: firmado — registrado por la oficina de IEC el {when}.',
+      doc_view_agreement: 'Ver el acuerdo', doc_view_cnda: 'Ver el CNDA', doc_download_pdf: 'Descargar PDF',
+      doc_back: 'Volver', doc_your_copy: 'Su copia firmada',
+      doc_agr_heading: 'Acuerdo de Referidos de IEC', doc_cnda_heading: 'Acuerdo de Confidencialidad (CNDA)',
+      doc_load_fail: 'Este documento no pudo cargarse: inténtelo de nuevo.',
+      doc_ndaline: 'NDA: firmado — registrado por IEC.',
       downloads: 'Descargas', dl_plan: 'Descargar resumen del plan (PDF)', dl_csv: 'Descargar ganancias (CSV)',
       partners_title: 'Socios invitados', partners_sub: 'Los socios que usted invitó personalmente a IEC. El programa de IEC es directo: usted ve solo a sus propios invitados — sin niveles, sin red, y ningún socio ve jamás las ganancias de otro.',
       your_invite_link: 'Su enlace de invitación', invite_expl: 'Envíe este enlace a alguien que debería convertirse en socio de IEC. Su solicitud llega conectada a usted, y aparece en su lista abajo cuando pide acceso.',
@@ -460,6 +470,60 @@
     if ((c.agreementStatus || 'pending') === 'signed') return tf('agr_status_office', { when: fmtDate(c.agreementSignedAt) });
     return '';
   }
+  /* The signed-instruments row shown wherever an acceptance is
+     displayed: read the full document inside the portal, or
+     download the signed-copy PDF — for the agreement and for
+     the CNDA alike. Each pair appears only while that signature
+     stands. In the demo the buttons render (the layout is the
+     point of the preview) and answer with the demo notice, the
+     same pattern as the tax-form upload. */
+  function docButtons(me) {
+    var c = me.contractor || {};
+    var out = '';
+    if ((c.agreementStatus || 'pending') === 'signed') {
+      out += DEMO
+        ? '<button class="pp-btn" data-doc-demo>' + esc(t('doc_view_agreement')) + '</button> '
+        : '<a class="pp-btn" href="#/agreement">' + esc(t('doc_view_agreement')) + '</a> ';
+      out += DEMO
+        ? '<button class="pp-btn pp-btn-ghost" data-doc-demo>' + esc(t('doc_download_pdf')) + '</button> '
+        : '<a class="pp-btn pp-btn-ghost" href="' + downloadHref('my-agreement-pdf') + '">' + esc(t('doc_download_pdf')) + '</a> ';
+    }
+    if (c.ndaStatus === 'signed') {
+      out += DEMO
+        ? '<button class="pp-btn" data-doc-demo>' + esc(t('doc_view_cnda')) + '</button> '
+        : '<a class="pp-btn" href="#/cnda">' + esc(t('doc_view_cnda')) + '</a> ';
+      out += DEMO
+        ? '<button class="pp-btn pp-btn-ghost" data-doc-demo>' + esc(t('doc_download_pdf')) + '</button>'
+        : '<a class="pp-btn pp-btn-ghost" href="' + downloadHref('my-cnda-pdf') + '">' + esc(t('doc_download_pdf')) + '</a>';
+    }
+    return out ? '<p class="pp-p pp-doc-actions">' + out + '</p>' : '';
+  }
+  /* The in-portal document reader: the full signed instrument,
+     fetched from the partner's own session (the API builds it
+     from his record — there is nothing to name but his own). */
+  function viewDocument(me, kind) {
+    var isAgr = kind === 'agreement';
+    setTimeout(function () { loadDocument(kind); }, 0);
+    return '<p class="pp-p"><a class="pp-btn pp-btn-ghost" href="#/dashboard">' + esc(t('doc_back')) + '</a></p>' +
+      '<h1 class="pp-h1">' + esc(isAgr ? t('doc_agr_heading') : t('doc_cnda_heading')) + '</h1>' +
+      '<p class="pp-sub">' + esc(t('doc_your_copy')) + ' · ' + esc(isAgr ? (agreementLine(me) || t('pending')) : (me.contractor.ndaStatus === 'signed' ? t('doc_ndaline') : t('pending'))) + '</p>' +
+      '<p class="pp-p">' + (DEMO
+        ? '<button class="pp-btn" data-doc-demo>' + esc(t('doc_download_pdf')) + '</button>'
+        : '<a class="pp-btn" href="' + downloadHref(isAgr ? 'my-agreement-pdf' : 'my-cnda-pdf') + '">' + esc(t('doc_download_pdf')) + '</a>') + '</p>' +
+      '<div class="pp-card"><div class="pp-agreement pp-doc-full" id="pp-doc-body"><p class="pp-p pp-muted">' + esc(t('loading')) + '</p></div></div>';
+  }
+  function loadDocument(kind) {
+    if (!document.getElementById('pp-doc-body')) return;
+    api({ action: kind === 'agreement' ? 'my-agreement' : 'my-cnda' }, 'GET').then(function (res) {
+      var box = document.getElementById('pp-doc-body');
+      if (!box) return;
+      if (res.status === 200 && res.body && res.body.ok && res.body.html) box.innerHTML = res.body.html;
+      else box.innerHTML = '<p class="pp-error">' + esc(t('doc_load_fail')) + '</p>';
+    }).catch(function () {
+      var box = document.getElementById('pp-doc-body');
+      if (box) box.innerHTML = '<p class="pp-error">' + esc(t('doc_load_fail')) + '</p>';
+    });
+  }
   function toast(msg) {
     var el = document.getElementById('pp-toast');
     if (!el) { el = document.createElement('div'); el.id = 'pp-toast'; document.body.appendChild(el); }
@@ -512,7 +576,7 @@
     var h = (location.hash || '#/').replace(/^#\/?/, '');
     var parts = h.split('/');
     if (parts[0] === 'referrals' && parts[1]) return { route: 'client', id: parts[1] };
-    if (['dashboard', 'referrals', 'earnings', 'partners', 'resources', 'settings'].indexOf(parts[0]) >= 0) return { route: parts[0] };
+    if (['dashboard', 'referrals', 'earnings', 'partners', 'resources', 'settings', 'agreement', 'cnda'].indexOf(parts[0]) >= 0) return { route: parts[0] };
     return { route: 'dashboard' };
   }
   window.addEventListener('hashchange', function () { render(); });
@@ -583,6 +647,8 @@
     else if (r.route === 'partners') body = viewPartners(me);
     else if (r.route === 'resources') body = viewResources(me);
     else if (r.route === 'settings') body = viewSettings(me);
+    else if (r.route === 'agreement') body = viewDocument(me, 'agreement');
+    else if (r.route === 'cnda') body = viewDocument(me, 'cnda');
     root.innerHTML =
       (DEMO ? '<div class="pp-demo-ribbon">' + esc(t('demo_ribbon')) + '</div>' : '') +
       '<div class="pp-app"><aside class="pp-side">' +
@@ -600,6 +666,9 @@
     bindShell();
   }
   function bindShell() {
+    Array.prototype.forEach.call(document.querySelectorAll('[data-doc-demo]'), function (b) {
+      b.addEventListener('click', function () { toast(t('demo_blocked')); });
+    });
     var so = document.getElementById('pp-signout');
     if (so) so.addEventListener('click', function () {
       api({ action: 'logout' }).then(function () { location.hash = ''; location.reload(); });
@@ -660,7 +729,7 @@
       ' · ' + esc(t('nda')) + ': ' + esc(c.ndaStatus === 'signed' ? t('signed') : t('pending')) + '</p>';
     var aLine = agreementLine(me);
     html += '<div class="pp-card"><h2 class="pp-h2">' + esc(t('fast_start')) + '</h2><ol class="pp-steps">' + stepsHtml + '</ol>' +
-      (aLine ? '<p class="pp-p pp-muted">' + esc(aLine) + '</p>' : '') + '</div>';
+      (aLine ? '<p class="pp-p pp-muted">' + esc(aLine) + '</p>' : '') + docButtons(me) + '</div>';
     html += '<div class="pp-stats">' +
       statCard(t('stat_referrals'), String((me.clients || []).length)) +
       statCard(t('stat_projected'), fmtMoney(me.earnings.projected)) +
@@ -929,7 +998,7 @@
       statCard(t('e_earned'), fmtMoney(e.earned)) + '</div>' +
       '<div class="pp-card"><h2 class="pp-h2">' + esc(t('agreement')) + '</h2>' +
       '<p class="pp-p">' + esc(aLine || t('pending')) + '</p>' +
-      '<p class="pp-p pp-muted">' + esc(t('agr_email_note')) + '</p></div>' +
+      '<p class="pp-p pp-muted">' + esc(t('agr_email_note')) + '</p>' + docButtons(me) + '</div>' +
       '<div class="pp-card"><h2 class="pp-h2">' + esc(t('schedule_title')) + '</h2>' +
       '<p class="pp-p pp-muted">' + esc(t('schedule_adopted')) + ' ' + esc(me.schedule.adoptedOn) + '</p>' +
       '<table class="pp-table"><thead><tr><th>' + esc(t('col_gross')) + '</th><th>' + esc(t('col_fee')) + '</th></tr></thead><tbody>' + bands + '</tbody></table>' +
@@ -1026,7 +1095,7 @@
       '<div class="pp-facts"><div class="pp-fact"><div class="pp-fact-k">' + esc(t('su_name')) + '</div><div class="pp-fact-v">' + esc(c.name) + '</div></div>' +
       '<div class="pp-fact"><div class="pp-fact-k">Email</div><div class="pp-fact-v">' + esc(c.email) + '</div></div>' +
       '<div class="pp-fact"><div class="pp-fact-k">' + esc(t('agreement')) + '</div><div class="pp-fact-v">' + esc(agreementLine(me) || t('pending')) + '</div></div></div>' +
-      '<p class="pp-p pp-muted">' + esc(t('s_identity')) + '</p>' +
+      '<p class="pp-p pp-muted">' + esc(t('s_identity')) + '</p>' + docButtons(me) +
       '<div class="pp-form-grid">' +
       '<div><label class="pp-label">' + esc(t('s_company')) + '</label><input class="pp-input" id="pp-s-company" value="' + esc(c.company || '') + '"></div>' +
       '<div><label class="pp-label">' + esc(t('s_phone')) + '</label><input class="pp-input" id="pp-s-phone" value="' + esc(c.phone || '') + '"></div>' +

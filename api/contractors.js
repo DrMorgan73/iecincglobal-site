@@ -114,8 +114,9 @@ import {
 } from './_contractors-store.js';
 import {
   issueClientCnda, reissueClientCnda, resolveClientCndaToken,
-  publicCndaView, signClientCnda
+  publicCndaView, signClientCnda, loadIecSignatureDataUri
 } from './_client-cnda.js';
+import { partnerAgreementDocument, partnerCndaDocument } from './_partner-documents.js';
 import { qrSvg } from './_qr.js';
 import { blocksToPdf } from './_data-assets-pdf.js';
 import { FEE_SCHEDULE, referralFee, feeExamples, formatUSD } from './_contractors-fees.js';
@@ -1426,6 +1427,68 @@ export default async function handler(req, res) {
     res.status(200);
     res.setHeader('content-type', 'application/pdf');
     res.setHeader('content-disposition', 'attachment; filename="iec-partner-plan-summary.pdf"');
+    return res.send(pdf);
+  }
+
+  /* ---- partner: his own signed agreement, inside the portal —
+     the full text with his acceptance of record on it
+     (DataSupply's shape: read it in the portal, download the
+     signed copy). Session-only: the document is built from the
+     SESSION partner's record and the request carries no id, so
+     another partner's copy cannot be named or reached. ---- */
+  if (req.method === 'GET' && action === 'my-agreement') {
+    if (!contractorId) return json(res, { ok: false, error: 'unauthorized' }, 401);
+    const c = await readContractorById(contractorId);
+    if (!c) return json(res, { ok: false, error: 'unauthorized' }, 401);
+    const doc = partnerAgreementDocument(c);
+    if (!doc) return json(res, { ok: false, error: 'not_signed' }, 404);
+    return json(res, {
+      ok: true, kind: 'agreement', title: doc.title, version: doc.version,
+      acceptance: doc.acceptance, html: doc.html
+    });
+  }
+
+  /* ---- partner: his signed agreement as a PDF — generated on
+     request from the record (never a stored static file), with
+     his acceptance block rendered on it and the house footer
+     ("Page X of Y") stamped after layout. ---- */
+  if (req.method === 'GET' && action === 'my-agreement-pdf') {
+    if (!contractorId) return json(res, { ok: false, error: 'unauthorized' }, 401);
+    const c = await readContractorById(contractorId);
+    if (!c) return json(res, { ok: false, error: 'unauthorized' }, 401);
+    const doc = partnerAgreementDocument(c);
+    if (!doc) return json(res, { ok: false, error: 'not_signed' }, 404);
+    const pdf = blocksToPdf(doc.blocks, doc.title, { footer: doc.title });
+    res.status(200);
+    res.setHeader('content-type', 'application/pdf');
+    res.setHeader('content-disposition', 'attachment; filename="iec-contractor-referral-agreement.pdf"');
+    return res.send(pdf);
+  }
+
+  /* ---- partner: his own signed CNDA — the same treatment.
+     This is the PARTNER's activation NDA (signed on IEC's CNDA
+     signing page, recorded by IEC), NOT a client's CNDA: owner
+     countersignature records stay Desk-only (admin-client-cnda)
+     and are untouched by these actions. ---- */
+  if (req.method === 'GET' && action === 'my-cnda') {
+    if (!contractorId) return json(res, { ok: false, error: 'unauthorized' }, 401);
+    const c = await readContractorById(contractorId);
+    if (!c) return json(res, { ok: false, error: 'unauthorized' }, 401);
+    const doc = partnerCndaDocument(c, { iecSignatureImg: loadIecSignatureDataUri() || '' });
+    if (!doc) return json(res, { ok: false, error: 'not_signed' }, 404);
+    return json(res, { ok: true, kind: 'cnda', title: doc.title, html: doc.html });
+  }
+
+  if (req.method === 'GET' && action === 'my-cnda-pdf') {
+    if (!contractorId) return json(res, { ok: false, error: 'unauthorized' }, 401);
+    const c = await readContractorById(contractorId);
+    if (!c) return json(res, { ok: false, error: 'unauthorized' }, 401);
+    const doc = partnerCndaDocument(c);
+    if (!doc) return json(res, { ok: false, error: 'not_signed' }, 404);
+    const pdf = blocksToPdf(doc.blocks, doc.title, { footer: doc.title });
+    res.status(200);
+    res.setHeader('content-type', 'application/pdf');
+    res.setHeader('content-disposition', 'attachment; filename="iec-cnda.pdf"');
     return res.send(pdf);
   }
 
