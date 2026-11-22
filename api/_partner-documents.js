@@ -177,7 +177,19 @@ const CNDA_ACCEPTANCE_TEXT =
 export function partnerCndaDocument(c, { iecSignatureImg = '' } = {}) {
   if (!c || c.ndaStatus !== 'signed') return null;
   const values = cndaValues(c);
-  const bodyTexts = CNDA_TEXTS.slice(0, CNDA_TEXTS.length - 1);
+  /* The §14 text as extracted from cnda.html carries the page's
+     trailing matter inside it — the blank AGREED AND ACCEPTED
+     block and both Schedules — while Schedules A and B are also
+     their own texts below and the Execution section is
+     constructed here. Rendering §14 whole would print both
+     Schedules (and a second signature block) twice in the
+     partner's copy. Trim §14 at the trailing-matter marker so
+     every part of the instrument renders exactly once; no word
+     of Articles 1–14 is touched. (Audit fix, 2026-11-22.) */
+  const bodyTexts = CNDA_TEXTS.slice(0, CNDA_TEXTS.length - 1).map((text) => {
+    const marker = text.indexOf('\n\n---\n\nAGREED AND ACCEPTED');
+    return marker > 0 ? text.slice(0, marker) : text;
+  });
 
   /* HTML fragment (the portal reader injects it, like the
      agreement's AGREEMENT_HTML fragment). */

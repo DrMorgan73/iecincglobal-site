@@ -14,8 +14,8 @@
    OWNER GROSS (the gross amount the referred owner receives on the
    first closed license) on a two-tier scale — 3% of the first
    $250,000 of the Owner Gross, plus 1% of the Owner Gross above
-   $250,000 — with NO CAP. This supersedes the flat 5% standard
-   adopted 2026-11-12 (and its $10,000,000 milestone bonus, which is
+   $250,000 — with NO CAP. This supersedes the earlier flat-rate
+   standard adopted 2026-11-12 (and its milestone bonus, which is
    removed entirely). Renewals are unpaid (first closed license
    only) — an adopted term, not an open ruling. No rulings remain
    open on this schedule.
