@@ -136,6 +136,14 @@
       signin_working: 'Signing you in…',
       signin_failed: 'That code or link did not work — it may have expired or already been used. Write to info@iecincglobal.com and IEC will re-issue your sign-in link.',
       signin_first: 'Your sign-in link is valid. One signature step comes first — your portal opens as soon as both signatures stand.',
+      forgot_link: 'Forgot your sign-in link?',
+      forgot_p: 'Enter the email on your partner record and we will email you a fresh sign-in link. A fresh link replaces any sign-in link you were sent before.',
+      forgot_label: 'Email on your partner record',
+      forgot_btn: 'Email me a new sign-in link',
+      forgot_working: 'Sending…',
+      forgot_sent: 'If that email matches an active partner record, a new sign-in link is on its way. Check your inbox — the link works once.',
+      pointer_new: 'New to IEC?',
+      pointer_link: 'Request access on the Partner Portal page',
       front_req_t: 'Request access',
       front_req_p: 'Not a partner yet? Request access below. IEC reviews every request; signing the agreement and the NDA comes before any access opens.',
       invited_by_line: 'You were invited by {name} ({company}). Your request arrives connected to your inviter.',
@@ -290,6 +298,14 @@
       signin_working: 'Ingresando…',
       signin_failed: 'Ese código o enlace no funcionó: puede haber vencido o ya haberse usado. Escriba a info@iecincglobal.com y IEC le reemitirá su enlace de acceso.',
       signin_first: 'Su enlace de acceso es válido. Primero viene un paso de firma: su portal se abre en cuanto ambas firmas estén registradas.',
+      forgot_link: '¿Olvidó su enlace de acceso?',
+      forgot_p: 'Ingrese el correo de su registro de socio y le enviaremos un enlace de acceso nuevo. Un enlace nuevo reemplaza cualquier enlace que le hayamos enviado antes.',
+      forgot_label: 'Correo de su registro de socio',
+      forgot_btn: 'Enviarme un enlace nuevo',
+      forgot_working: 'Enviando…',
+      forgot_sent: 'Si ese correo coincide con un registro de socio activo, un nuevo enlace de acceso va en camino. Revise su bandeja de entrada: el enlace funciona una sola vez.',
+      pointer_new: '¿Nuevo en IEC?',
+      pointer_link: 'Solicite acceso en la página del Portal de Socios',
       front_req_t: 'Solicitar acceso',
       front_req_p: '¿Aún no es socio? Solicite acceso abajo. IEC revisa cada solicitud; la firma del acuerdo y del NDA viene antes de que se abra cualquier acceso.',
       invited_by_line: 'Usted fue invitado por {name} ({company}). Su solicitud llega conectada a quien lo invitó.',
@@ -450,6 +466,10 @@
   var root = document.getElementById('pp-root');
   var params = new URLSearchParams(location.search);
   var DEMO = params.get('demo') === '1';
+  /* The dedicated sign-in page (/signin, /es/signin) is for
+     registered partners only: it renders the sign-in card alone —
+     never the application form. The root door keeps both cards. */
+  var SIGNIN_PAGE = window.PARTNER_PORTAL_PAGE === 'signin';
   var state = { me: null, route: 'dashboard', clientId: null, qual: null };
   function demoSuffix() { return DEMO ? '?demo=1' : ''; }
   function esc(s) {
@@ -606,8 +626,8 @@
     if (DEMO) { state.me = demoMe(); render(); return; }
     api({ action: 'me' }, 'GET').then(function (res) {
       if (res.status === 200 && res.body && res.body.ok) { state.me = res.body; render(); }
-      else renderFront();
-    }).catch(function () { renderFront(); });
+      else renderDoor();
+    }).catch(function () { renderDoor(); });
   }
 
   /* The client link THIS portal presents: the standalone
@@ -1166,18 +1186,61 @@
       '<div class="pp-front-grid">' +
       '<div class="pp-card"><h2 class="pp-h2">' + esc(t('front_enter_t')) + '</h2>' +
       '<p class="pp-p">' + esc(t('front_enter_p')) + '</p>' + signinFormHtml() + '<p class="pp-p">' + esc(t('front_enter_p2')) + '</p></div>' +
-      '<div class="pp-card"><h2 class="pp-h2">' + esc(t('front_req_t')) + '</h2>' +
+      '<div class="pp-card" id="pp-request-card"><h2 class="pp-h2">' + esc(t('front_req_t')) + '</h2>' +
       '<p class="pp-p">' + esc(t('front_req_p')) + '</p>' + signupFormHtml('') + '</div>' +
       '</div></div>' +
       '<div class="pp-front-foot"><strong>IEC, Inc.</strong> · ' + esc(t('product')) + ' · <a href="https://iecincglobal.com">iecincglobal.com</a></div>';
     bindSignin();
     bindSignup('');
+    /* The application anchor: entrance points that send an
+       applicant here (…/#request) land on the request form
+       itself, not the top of the door. */
+    if (String(location.hash || '').indexOf('request') >= 0) {
+      var reqCard = document.getElementById('pp-request-card');
+      if (reqCard) setTimeout(function () {
+        reqCard.scrollIntoView();
+        var first = document.getElementById('pp-su-name');
+        if (first) first.focus({ preventScroll: true });
+      }, 0);
+    }
+  }
+  /* The unauthenticated door for THIS page: the root door shows
+     both cards; the dedicated sign-in page shows the sign-in
+     card alone (registered partners only — an applicant is
+     pointed back to the root door's application, never given
+     the form here). */
+  function renderDoor() {
+    if (SIGNIN_PAGE) renderSigninOnly();
+    else renderFront();
+  }
+  function renderSigninOnly() {
+    root.innerHTML = '<div class="pp-front">' +
+      '<div class="pp-front-hero"><img class="pp-front-logo" src="/assets/iec-logo.png" alt="IEC, Inc."><div class="pp-front-k">' + esc(t('front_hero_k')) + '</div>' +
+      '<h1 class="pp-front-h">' + esc(t('front_hero_t')) + '</h1><p class="pp-front-p">' + esc(t('front_hero_p')) + '</p></div>' +
+      '<div class="pp-card" style="max-width:760px;margin:0 auto"><h2 class="pp-h2">' + esc(t('front_enter_t')) + '</h2>' +
+      '<p class="pp-p">' + esc(t('front_enter_p')) + '</p>' + signinFormHtml() + '<p class="pp-p">' + esc(t('front_enter_p2')) + '</p>' +
+      '<p class="pp-p">' + esc(t('pointer_new')) + ' <a href="' + (LANG === 'es' ? '/es#request' : '/#request') + '">' + esc(t('pointer_link')) + '</a></p></div>' +
+      '</div>' +
+      '<div class="pp-front-foot"><strong>IEC, Inc.</strong> · ' + esc(t('product')) + ' · <a href="https://iecincglobal.com">iecincglobal.com</a></div>';
+    bindSignin();
   }
   function signinFormHtml() {
     return '<form id="pp-signin-form"><div><label class="pp-label" for="pp-signin-credential">' + esc(t('signin_label')) + '</label>' +
       '<input class="pp-input" id="pp-signin-credential" autocomplete="off" spellcheck="false"></div>' +
       '<p class="pp-error" id="pp-signin-error" hidden></p><p class="pp-ok" id="pp-signin-ok" hidden></p>' +
-      '<button class="pp-btn" type="submit" id="pp-signin-submit">' + esc(t('signin_btn')) + '</button></form>';
+      '<button class="pp-btn" type="submit" id="pp-signin-submit">' + esc(t('signin_btn')) + '</button></form>' +
+      /* Forgot-link recovery (the portal has no passwords by
+         design): the partner gives the email on his record and
+         the system emails a FRESH activation link. The answer
+         on screen is generic whether or not the email matched —
+         the card never confirms that an account exists. */
+      '<div class="pp-forgot"><p class="pp-p"><button class="pp-textlink" type="button" id="pp-forgot-toggle">' + esc(t('forgot_link')) + '</button></p>' +
+      '<form id="pp-forgot-form" hidden><p class="pp-p">' + esc(t('forgot_p')) + '</p>' +
+      '<div><label class="pp-label" for="pp-forgot-email">' + esc(t('forgot_label')) + '</label>' +
+      '<input class="pp-input" id="pp-forgot-email" type="email" autocomplete="email" spellcheck="false"></div>' +
+      '<p class="pp-error" id="pp-forgot-error" hidden></p>' +
+      '<button class="pp-btn pp-btn-ghost" type="submit" id="pp-forgot-submit">' + esc(t('forgot_btn')) + '</button></form>' +
+      '<p class="pp-ok" id="pp-forgot-ok" hidden></p></div>';
   }
   function bindSignin() {
     var form = document.getElementById('pp-signin-form');
@@ -1206,6 +1269,33 @@
       }).catch(function () {
         btn.disabled = false; btn.textContent = t('signin_btn');
         err.textContent = t('signin_failed'); err.hidden = false;
+      });
+    });
+    var fToggle = document.getElementById('pp-forgot-toggle');
+    var fForm = document.getElementById('pp-forgot-form');
+    if (fToggle && fForm) fToggle.addEventListener('click', function () {
+      fForm.hidden = !fForm.hidden;
+      if (!fForm.hidden) { var em = document.getElementById('pp-forgot-email'); if (em) em.focus(); }
+    });
+    if (fForm) fForm.addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      if (DEMO) { toast(t('demo_blocked')); return; }
+      var ok = document.getElementById('pp-forgot-ok');
+      var err = document.getElementById('pp-forgot-error');
+      var btn = document.getElementById('pp-forgot-submit');
+      ok.hidden = true; err.hidden = true;
+      btn.disabled = true; btn.textContent = t('forgot_working');
+      api({ action: 'recover', email: document.getElementById('pp-forgot-email').value }).then(function (res) {
+        btn.disabled = false; btn.textContent = t('forgot_btn');
+        if (res.status === 200 && res.body && res.body.ok) {
+          ok.textContent = t('forgot_sent'); ok.hidden = false;
+          fForm.reset();
+        } else {
+          err.textContent = t('err_generic'); err.hidden = false;
+        }
+      }).catch(function () {
+        btn.disabled = false; btn.textContent = t('forgot_btn');
+        err.textContent = t('err_generic'); err.hidden = false;
       });
     });
   }
@@ -1282,7 +1372,7 @@
     root.innerHTML = '<div class="pp-front"><div class="pp-front-hero"><img class="pp-front-logo" src="/assets/iec-logo.png" alt="IEC, Inc."><div class="pp-front-k">' + esc(t('front_hero_k')) + '</div>' +
       '<h1 class="pp-front-h">' + esc(t('agr_title')) + '</h1><p class="pp-front-p">' + esc(t('loading')) + '</p></div></div>';
     api({ action: 'agreement', token: token }, 'GET').then(function (res) {
-      if (res.status !== 200 || !res.body.ok) { renderFront(); return; }
+      if (res.status !== 200 || !res.body.ok) { renderDoor(); return; }
       var d = res.body;
       var bodyHtml = '';
       if (d.agreementStatus === 'signed') {
@@ -1326,7 +1416,7 @@
           }
         });
       });
-    }).catch(function () { renderFront(); });
+    }).catch(function () { renderDoor(); });
   }
 
   boot();

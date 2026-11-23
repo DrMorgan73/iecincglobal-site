@@ -441,14 +441,14 @@ function buildInvitationEmail(c, activationUrl) {
 }
 
 /* { sent:true, id } | { sent:false, reason } — never throws. */
-async function sendInvitationEmail(c, activationUrl) {
+async function sendPartnerEmail(payload) {
   const key = process.env.DEMO_ADMIN_RESEND_API_KEY || '';
   if (!key) return { sent: false, reason: 'not_configured' };
   try {
     const r = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(buildInvitationEmail(c, activationUrl))
+      body: JSON.stringify(payload)
     });
     const data = await r.json().catch(() => ({}));
     if (!r.ok) return { sent: false, reason: `resend_${r.status}` };
@@ -456,6 +456,58 @@ async function sendInvitationEmail(c, activationUrl) {
   } catch (e) {
     return { sent: false, reason: 'send_failed' };
   }
+}
+
+async function sendInvitationEmail(c, activationUrl) {
+  return sendPartnerEmail(buildInvitationEmail(c, activationUrl));
+}
+
+/* Sign-in link recovery email — the same channel, sender and
+   signature as the invitation. The portal has no passwords by
+   design, so "forgot" means a FRESH activation link: single-use,
+   7-day, and it supersedes the partner's previous unused link
+   (the stored token hash is replaced when this send succeeds). */
+const RECOVERY_SUBJECT = 'Your new IEC Partner Portal sign-in link';
+
+function buildRecoveryEmail(c, activationUrl) {
+  const first = String(c.name || '').trim().split(/\s+/)[0] || 'there';
+  const text = [
+    `Dear ${first},`,
+    '',
+    'You asked for a new sign-in link for the IEC Partner Portal — here it is.',
+    '',
+    'Sign in to your portal:',
+    activationUrl,
+    '',
+    'The link is yours alone — please do not forward it. It stays valid for 7 days, and it replaces any sign-in link you were sent before: only this newest link works.',
+    '',
+    'If you did not ask for a new link, write to info@iecincglobal.com and let us know.',
+    '',
+    'Best regards,',
+    INVITE_SIGNATURE_TEXT
+  ].join('\n');
+  const html = [
+    '<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#1a1a1a;line-height:1.55">',
+    `<p>Dear ${escapeHtml(first)},</p>`,
+    '<p>You asked for a new sign-in link for the <strong>IEC Partner Portal</strong> — here it is.</p>',
+    `<p style="margin:22px 0"><a href="${escapeHtml(activationUrl)}" style="background:#1a3a5c;color:#ffffff;padding:12px 22px;text-decoration:none;border-radius:4px;font-weight:bold">Sign in to your portal</a></p>`,
+    `<p style="font-size:12px;color:#555555">If the button does not open, use this link:<br><a href="${escapeHtml(activationUrl)}">${escapeHtml(activationUrl)}</a></p>`,
+    '<p>The link is yours alone — please do not forward it. It stays valid for 7 days, and it replaces any sign-in link you were sent before: only this newest link works.</p>',
+    '<p>If you did not ask for a new link, write to info@iecincglobal.com and let us know.</p>',
+    '<p>Best regards,<br>Mohammed Morgan, MD<br>Founder &amp; CEO, IEC, Inc.<br>923 Hyde Park Ave, Boston, MA 02136<br>info@iecincglobal.com</p>',
+    INVITE_SIGNATURE_HTML,
+    '</div>'
+  ].join('\n');
+  return {
+    from: INVITE_MAIL_FROM,
+    to: [c.email],
+    subject: RECOVERY_SUBJECT,
+    text, html
+  };
+}
+
+async function sendRecoveryEmail(c, activationUrl) {
+  return sendPartnerEmail(buildRecoveryEmail(c, activationUrl));
 }
 
 /* The client shape a partner may see: his own client's profile,
@@ -822,6 +874,44 @@ export default async function handler(req, res) {
     await ensureContractorClientCode(c.id);
     await ensureContractorInviteCode(c.id);
     return json(res, { ok: true, next: 'dashboard' }, 200, { 'Set-Cookie': sessionCookieHeader(session) });
+  }
+
+  /* ---- forgot-link recovery: the portal has no passwords, so
+     a partner who lost his sign-in link gives the email on his
+     record and the system emails him a FRESH activation link
+     (DrMorgan's order, Nov 23, 2026). The fresh link rides the
+     same token machinery as any activation — single-use, 7-day,
+     30-day session on use — and storing its hash supersedes the
+     partner's previous unused link. Eligible: an ACTIVE partner,
+     or an invited partner whose two signatures both stand (fully
+     registered, first activation not yet completed). Paused and
+     revoked records get nothing — the office handles those. The
+     response is IDENTICAL whether or not the email matched
+     (no account enumeration), and the stored hash is replaced
+     only when the email actually sends, mirroring the office
+     invitation discipline: a failed send leaves the old link
+     standing and the record untouched. ---- */
+  if (req.method === 'POST' && action === 'recover') {
+    const body = await readBody(req);
+    const email = String(body.email || '').trim().toLowerCase();
+    if (email && emailOk(email)) {
+      const c = await readContractorByEmail(email);
+      const eligible = !!c && (c.status === 'active'
+        || (c.status === 'invited' && c.ndaStatus === 'signed' && (c.agreementStatus || 'pending') === 'signed'));
+      if (eligible) {
+        const token = mintActivationToken(c.id);
+        if (token) {
+          const mail = await sendRecoveryEmail(c, activationUrlFor(token));
+          if (mail.sent) {
+            await updateContractor(c.id, { activationTokenHash: hashToken(token) });
+          }
+        }
+      }
+    }
+    return json(res, {
+      ok: true,
+      message: 'If that email matches an active partner record, a new sign-in link is on its way.'
+    });
   }
 
   /* ---- the agreement step: full text + acceptance state for the
