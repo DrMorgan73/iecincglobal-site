@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Set a new password — IEC Suite · IEC, Inc.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#070a12;--gold:#f0b942;--gold-deep:#c98f1f;--teal:#2dd4bf;--text:#eef1f7;--dim:#9aa3b8;--line:rgba(255,255,255,.09);--red:#f87171}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',system-ui,sans-serif;color:var(--text);background:var(--bg);min-height:100vh;
+  display:grid;place-items:center;padding:24px;line-height:1.55;-webkit-font-smoothing:antialiased}
+.orbs{position:fixed;inset:0;z-index:-1;overflow:hidden}
+.orb{position:absolute;border-radius:50%;filter:blur(110px);opacity:.5}
+.orb.gold{width:560px;height:560px;left:-160px;top:-160px;background:radial-gradient(circle,rgba(240,185,66,.34),transparent 65%)}
+.orb.teal{width:520px;height:520px;right:-140px;top:32%;background:radial-gradient(circle,rgba(45,212,191,.22),transparent 65%)}
+.card{width:min(420px,100%);background:rgba(255,255,255,.032);border:1px solid var(--line);border-radius:20px;
+  padding:38px 36px;backdrop-filter:blur(8px)}
+.brand{display:flex;align-items:center;gap:14px;margin-bottom:26px}
+.logo-img{width:52px;height:52px;border-radius:15px;object-fit:contain;background:#fff;padding:3px;flex:none;box-shadow:0 6px 24px rgba(240,185,66,.35)}
+.brand h1{font-family:'Space Grotesk';font-size:21px}
+.brand h1 span{background:linear-gradient(120deg,var(--gold),#ffe9b0);-webkit-background-clip:text;background-clip:text;color:transparent}
+.brand p{font-size:11.5px;color:var(--dim);letter-spacing:.04em}
+h2{font-family:'Space Grotesk';font-size:19px;margin-bottom:4px}
+.sub{font-size:13.5px;color:var(--dim);margin-bottom:24px}
+label{display:block;font-size:12.5px;font-weight:600;color:var(--dim);letter-spacing:.03em;margin-bottom:14px}
+input{width:100%;margin-top:6px;background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:11px;
+  color:var(--text);font:500 15px 'Inter';padding:12px 44px 12px 14px;outline:none;transition:border-color .2s,box-shadow .2s}
+input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(240,185,66,.15)}
+.pw-wrap{position:relative}
+.pw-eye{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:32px;height:32px;
+  display:grid;place-items:center;background:transparent;border:none;box-shadow:none;padding:0;margin:0;
+  color:var(--dim);cursor:pointer;border-radius:8px}
+.pw-eye:hover{color:var(--gold);transform:translateY(-50%)}
+.pw-eye svg{width:20px;height:20px}
+button.submit{width:100%;border:none;cursor:pointer;font:600 15px 'Space Grotesk';color:#0a0d14;padding:13px;
+  border-radius:12px;background:linear-gradient(135deg,#ffe9b0,var(--gold) 55%,var(--gold-deep));
+  box-shadow:0 8px 26px rgba(240,185,66,.3);transition:transform .2s,box-shadow .2s;margin-top:6px}
+button.submit:hover{transform:translateY(-2px)}
+button.submit:disabled{opacity:.6;cursor:wait;transform:none}
+.err{display:none;margin-top:16px;font-size:13.5px;color:var(--red);background:rgba(248,113,113,.08);
+  border:1px solid rgba(248,113,113,.3);border-radius:10px;padding:10px 14px}
+.err.show{display:block}
+.foot{margin-top:26px;text-align:center;font-size:12px;color:var(--dim)}
+.foot a{color:var(--dim);text-decoration:none}
+.foot a:hover{color:var(--gold)}
+</style>
+</head>
+<body>
+<div class="orbs" aria-hidden="true"><span class="orb gold"></span><span class="orb teal"></span></div>
+<div class="card">
+  <div class="brand">
+    <img class="logo-img" src="/assets/iec-logo.png" alt="IEC Inc.">
+    <div><h1>IEC <span>Suite</span></h1><p>International Empire Consultants, Inc.</p></div>
+  </div>
+  <h2>Set a new password</h2>
+  <p class="sub">Choose a new password for the Suite sign-in — at least 12 characters. This link works once.</p>
+  <form id="reset" autocomplete="off">
+    <label>New password
+      <span class="pw-wrap"><input id="p1" name="password" type="password" autocomplete="new-password" required minlength="12">
+      <button type="button" class="pw-eye" data-for="p1" aria-label="Show password" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></span>
+    </label>
+    <label>Confirm new password
+      <span class="pw-wrap"><input id="p2" name="password2" type="password" autocomplete="new-password" required minlength="12">
+      <button type="button" class="pw-eye" data-for="p2" aria-label="Show password" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></span>
+    </label>
+    <button type="submit" class="submit" id="go">Set password &amp; sign in →</button>
+  </form>
+  <div class="err" id="err"></div>
+  <div class="foot"><a href="/desk/login.html">← Back to sign-in</a></div>
+</div>
+<script>
+const token = new URLSearchParams(location.search).get('token') || '';
+const f = document.getElementById('reset'), err = document.getElementById('err'), go = document.getElementById('go');
+document.querySelectorAll('.pw-eye').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const input = document.getElementById(btn.dataset.for);
+    const show = input.type === 'password';
+    input.type = show ? 'text' : 'password';
+    btn.setAttribute('aria-pressed', String(show));
+    btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+  });
+});
+function fail(msg){ err.textContent = msg; err.classList.add('show'); }
+if(!token){ go.disabled = true; fail('This recovery link is incomplete. Request a new one from the sign-in page.'); }
+f.addEventListener('submit', async e => {
+  e.preventDefault();
+  err.classList.remove('show');
+  const p1 = document.getElementById('p1').value, p2 = document.getElementById('p2').value;
+  if(p1.length < 12){ fail('Use at least 12 characters.'); return; }
+  if(p1 !== p2){ fail('The two passwords do not match.'); return; }
+  go.disabled = true; go.textContent = 'Setting password…';
+  try{
+    const r = await fetch('/api/desk-reset', {
+      method: 'POST', headers: {'content-type':'application/json'},
+      body: JSON.stringify({ token, password: p1 })
+    });
+    if(r.ok){ location.href = '/'; return; }
+    const d = await r.json().catch(() => ({}));
+    if(d && d.error === 'password_too_short'){ fail('Use at least 12 characters.'); }
+    else { fail('This recovery link is invalid or has expired. Request a new one from the sign-in page.'); }
+  }catch{ fail('This recovery link is invalid or has expired. Request a new one from the sign-in page.'); }
+  go.disabled = false; go.textContent = 'Set password & sign in →';
+});
+</script>
+</body>
+</html>

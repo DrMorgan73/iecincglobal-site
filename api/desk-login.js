@@ -8,8 +8,19 @@
 //   DESK_PASS           - the sign-in password (plaintext; stored in Vercel env vars)
 //   DESK_SESSION_SECRET - HMAC key for the session cookie (long random string)
 //
+// Recovery override (Nov 23, 2026 sign-in standard): if a password has been
+// set through the forgot-password flow (api/desk-recover.js →
+// api/desk-reset.js), its hash sits in the desk_credential table and is
+// verified INSTEAD of DESK_PASS — a reset replaces the password, it does
+// not add a second one. No row = env credential governs, as before. A
+// database failure falls back to the env credential (previous behavior,
+// never an open door).
+//
 // Note: the Edge Runtime exposes WebCrypto (no Node crypto.timingSafeEqual),
 // so the constant-time comparison below is implemented on raw char codes.
+
+import { verifyPasswordHash } from './_desk-auth.js';
+import { getCredential } from './_desk-credential-store.js';
 
 export const config = { runtime: 'edge' };
 
@@ -47,7 +58,18 @@ export default async function handler(req) {
   const secret = process.env.DESK_SESSION_SECRET || '';
 
   let ok = false;
-  if (username && password && expUser && expPass && secret &&
+  let decided = false;
+  if (username && password && secret && /^[A-Za-z0-9_.@-]{1,64}$/.test(username)) {
+    try {
+      const cred = await getCredential(username);
+      if (cred && cred.pass_hash) {
+        ok = timingSafeEqual(username, expUser) &&
+          (await verifyPasswordHash(secret, cred.pass_salt, cred.pass_hash, password));
+        decided = true;
+      }
+    } catch { /* store unavailable: fall back to the env credential */ }
+  }
+  if (!decided && username && password && expUser && expPass && secret &&
       /^[A-Za-z0-9_.@-]{1,64}$/.test(username)) {
     ok = timingSafeEqual(username, expUser) && timingSafeEqual(password, expPass);
   }

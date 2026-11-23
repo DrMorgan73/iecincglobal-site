@@ -32,6 +32,23 @@ label{display:block;font-size:12.5px;font-weight:600;color:var(--dim);letter-spa
 input{width:100%;margin-top:6px;background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:11px;
   color:var(--text);font:500 15px 'Inter';padding:12px 14px;outline:none;transition:border-color .2s,box-shadow .2s}
 input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(240,185,66,.15)}
+.pw-wrap{position:relative;display:block}
+.pw-wrap input{padding-right:44px}
+.pw-eye{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:32px;height:32px;
+  display:grid;place-items:center;background:transparent;border:none;box-shadow:none;padding:0;margin:0;
+  color:var(--dim);cursor:pointer;border-radius:8px}
+.pw-eye:hover{color:var(--gold);transform:translateY(-50%);box-shadow:none}
+.pw-eye svg{width:20px;height:20px}
+.forgot{margin-top:18px;text-align:center}
+.forgot button.linklike{background:none;border:none;box-shadow:none;color:var(--dim);font:500 13px 'Inter';
+  cursor:pointer;padding:4px;margin:0;width:auto}
+.forgot button.linklike:hover{color:var(--gold);transform:none;box-shadow:none}
+.recover{display:none;margin-top:16px;border-top:1px solid var(--line);padding-top:18px}
+.recover.show{display:block}
+.recover p{font-size:13px;color:var(--dim);margin-bottom:12px}
+.recover .ok{display:none;margin-top:14px;font-size:13.5px;color:var(--teal);background:rgba(45,212,191,.08);
+  border:1px solid rgba(45,212,191,.3);border-radius:10px;padding:10px 14px}
+.recover .ok.show{display:block}
 button{width:100%;border:none;cursor:pointer;font:600 15px 'Space Grotesk';color:#0a0d14;padding:13px;
   border-radius:12px;background:linear-gradient(135deg,#ffe9b0,var(--gold) 55%,var(--gold-deep));
   box-shadow:0 8px 26px rgba(240,185,66,.3);transition:transform .2s,box-shadow .2s;margin-top:6px}
@@ -56,13 +73,53 @@ button:disabled{opacity:.6;cursor:wait;transform:none}
   <p class="sub">This desk is for the IEC team only.</p>
   <form id="login" autocomplete="on">
     <label>Username<input id="u" name="username" autocomplete="username" required maxlength="64"></label>
-    <label>Password<input id="p" name="password" type="password" autocomplete="current-password" required></label>
+    <label>Password
+      <span class="pw-wrap"><input id="p" name="password" type="password" autocomplete="current-password" required>
+      <button type="button" class="pw-eye" id="pwEye" aria-label="Show password" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></span>
+    </label>
     <button type="submit" id="go">Sign in →</button>
   </form>
+  <div class="forgot">
+    <button type="button" class="linklike" id="forgotToggle" aria-expanded="false">Forgot your password?</button>
+    <div class="recover" id="recover">
+      <p>Enter the Suite username. If it matches the account, a recovery link is emailed to the address on file — it works once and expires in 30 minutes.</p>
+      <form id="recoverForm" autocomplete="on">
+        <label>Username<input id="ru" name="username" autocomplete="username" maxlength="64"></label>
+        <button type="submit" id="rgo">Email me a recovery link</button>
+      </form>
+      <div class="ok" id="rok">If that username matches the Suite account, a recovery link has been sent to the email on file.</div>
+    </div>
+  </div>
   <div class="err" id="err">That didn't match. Check your username and password and try again.</div>
   <div class="foot"><a href="/welcome.html">← IEC public site</a></div>
 </div>
 <script>
+const pwEye = document.getElementById('pwEye'), pwInput = document.getElementById('p');
+pwEye.addEventListener('click', () => {
+  const show = pwInput.type === 'password';
+  pwInput.type = show ? 'text' : 'password';
+  pwEye.setAttribute('aria-pressed', String(show));
+  pwEye.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+});
+const forgotToggle = document.getElementById('forgotToggle'), recover = document.getElementById('recover');
+forgotToggle.addEventListener('click', () => {
+  const open = recover.classList.toggle('show');
+  forgotToggle.setAttribute('aria-expanded', String(open));
+  if(open) document.getElementById('ru').value = document.getElementById('u').value;
+});
+document.getElementById('recoverForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const rgo = document.getElementById('rgo');
+  rgo.disabled = true; rgo.textContent = 'Sending…';
+  try{
+    await fetch('/api/desk-recover', {
+      method: 'POST', headers: {'content-type':'application/json'},
+      body: JSON.stringify({ username: document.getElementById('ru').value.trim() })
+    });
+  }catch{ /* the confirmation below is shown either way, by design */ }
+  document.getElementById('rok').classList.add('show');
+  rgo.disabled = false; rgo.textContent = 'Email me a recovery link';
+});
 const f = document.getElementById('login'), err = document.getElementById('err'), go = document.getElementById('go');
 f.addEventListener('submit', async e => {
   e.preventDefault();

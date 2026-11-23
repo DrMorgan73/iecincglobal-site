@@ -86,6 +86,9 @@ export default async function middleware(request) {
   if (pathname === '/es' || pathname === '/es/') return undefined;
   // The sign-in page itself must stay public.
   if (pathname === '/desk/login.html') return undefined;
+  // The password-reset page (reached from the emailed recovery link)
+  // must stay public too; the reset itself is gated by the token.
+  if (pathname === '/desk/reset.html') return undefined;
   const session = getCookie(request.headers.get('cookie'), 'desk_session');
   if (session && (await validSession(session))) return undefined;
   // Public visitors get the public home page at the root.
