@@ -1321,10 +1321,13 @@
     });
   }
   function signinFormHtml() {
-    return /* Recurrent sign-in — the primary form (Nov 23, 2026):
+    /* Recurrent sign-in — the primary form (Nov 23, 2026):
        username + password, the credentials the partner created
-       at registration. */
-      '<form id="pp-login-form"><div><label class="pp-label" for="pp-login-username">' + esc(t('li_user')) + '</label>' +
+       at registration. (This comment must stay ABOVE the return:
+       a line terminator inside a comment placed after `return`
+       triggers automatic semicolon insertion and the function
+       silently returns undefined — the Nov 23, 2026 door bug.) */
+    return '<form id="pp-login-form"><div><label class="pp-label" for="pp-login-username">' + esc(t('li_user')) + '</label>' +
       '<input class="pp-input" id="pp-login-username" autocomplete="username" spellcheck="false"></div>' +
       pwFieldHtml('pp-login-password', t('li_pass'), 'current-password') +
       '<p class="pp-error" id="pp-login-error" hidden></p>' +
