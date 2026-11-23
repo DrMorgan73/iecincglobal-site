@@ -191,6 +191,7 @@ async function ensureTables() {
     password_reset_expires_at timestamptz,
     session_epoch integer NOT NULL DEFAULT 0,
     registration_type text NOT NULL DEFAULT '',
+    role text NOT NULL DEFAULT 'partner',
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now())`);
   await neonQuery(`CREATE TABLE IF NOT EXISTS contractor_referrals (
@@ -304,6 +305,12 @@ async function ensureTables() {
     `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS password_reset_expires_at timestamptz`,
     `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS session_epoch integer NOT NULL DEFAULT 0`,
     `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS registration_type text NOT NULL DEFAULT ''`,
+    /* Account role (Nov 23, 2026): 'partner' for every referral
+       partner; 'admin' for IEC's own office account (DrMorgan).
+       An admin record is NOT a partner: it holds no referral
+       book and no client/invite codes, and the API keeps it out
+       of every partner list and count. */
+    `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS role text NOT NULL DEFAULT 'partner'`,
     `ALTER TABLE contractor_referrals ADD COLUMN IF NOT EXISTS owner_gross numeric`,
     `ALTER TABLE contractor_referrals ADD COLUMN IF NOT EXISTS locations integer`,
     `ALTER TABLE contractor_referrals ADD COLUMN IF NOT EXISTS employees integer`,
@@ -397,7 +404,8 @@ function rowToContractor(r) {
     credentialsSet: !!r.password_hash,
     credentialsSetAt: r.credentials_set_at || null,
     sessionEpoch: r.session_epoch === null || r.session_epoch === undefined ? 0 : Number(r.session_epoch),
-    registrationType: r.registration_type || ''
+    registrationType: r.registration_type || '',
+    role: r.role || 'partner'
   };
 }
 
@@ -561,7 +569,7 @@ export async function updateContractor(id, patch) {
   await ensureTables();
   const sets = [];
   const params = [];
-  const map = { status: 'status', ndaStatus: 'nda_status', agreementStatus: 'agreement_status', agreementSignedAt: 'agreement_signed_at', agreementAcceptedName: 'agreement_accepted_name', agreementAcceptedVersion: 'agreement_accepted_version', agreementAcceptedVia: 'agreement_accepted_via', activationTokenHash: 'activation_token_hash', clientCode: 'client_code', inviteCode: 'invite_code', activatedAt: 'activated_at', invitationSentAt: 'invitation_sent_at', invitationFrom: 'invitation_from', payoutMethod: 'payout_method', payoutLast4: 'payout_last4', w9OnFile: 'w9_on_file', w9UploadedAt: 'w9_uploaded_at', taxFormType: 'tax_form_type', phone: 'phone', name: 'name', company: 'company', faststartWebinarAt: 'faststart_webinar_at', addressStreet: 'address_street', addressCity: 'address_city', addressState: 'address_state', addressZip: 'address_zip', website: 'website', cndaEntry1RestatementDeliveredAt: 'cnda_entry1_restatement_delivered_at', cndaEntry1RestatementEffectiveAt: 'cnda_entry1_restatement_effective_at', cndaEntry1RestatementObjected: 'cnda_entry1_restatement_objected', username: 'username', usernameNormalized: 'username_normalized', passwordHash: 'password_hash', passwordSalt: 'password_salt', credentialsSetAt: 'credentials_set_at', passwordResetTokenHash: 'password_reset_token_hash', passwordResetExpiresAt: 'password_reset_expires_at', sessionEpoch: 'session_epoch', registrationType: 'registration_type' };
+  const map = { status: 'status', ndaStatus: 'nda_status', agreementStatus: 'agreement_status', agreementSignedAt: 'agreement_signed_at', agreementAcceptedName: 'agreement_accepted_name', agreementAcceptedVersion: 'agreement_accepted_version', agreementAcceptedVia: 'agreement_accepted_via', activationTokenHash: 'activation_token_hash', clientCode: 'client_code', inviteCode: 'invite_code', activatedAt: 'activated_at', invitationSentAt: 'invitation_sent_at', invitationFrom: 'invitation_from', payoutMethod: 'payout_method', payoutLast4: 'payout_last4', w9OnFile: 'w9_on_file', w9UploadedAt: 'w9_uploaded_at', taxFormType: 'tax_form_type', phone: 'phone', name: 'name', company: 'company', faststartWebinarAt: 'faststart_webinar_at', addressStreet: 'address_street', addressCity: 'address_city', addressState: 'address_state', addressZip: 'address_zip', website: 'website', cndaEntry1RestatementDeliveredAt: 'cnda_entry1_restatement_delivered_at', cndaEntry1RestatementEffectiveAt: 'cnda_entry1_restatement_effective_at', cndaEntry1RestatementObjected: 'cnda_entry1_restatement_objected', username: 'username', usernameNormalized: 'username_normalized', passwordHash: 'password_hash', passwordSalt: 'password_salt', credentialsSetAt: 'credentials_set_at', passwordResetTokenHash: 'password_reset_token_hash', passwordResetExpiresAt: 'password_reset_expires_at', sessionEpoch: 'session_epoch', registrationType: 'registration_type', role: 'role' };
   for (const [k, col] of Object.entries(map)) {
     if (patch[k] !== undefined) { params.push(patch[k]); sets.push(`${col} = $${params.length}`); }
   }
@@ -715,6 +723,7 @@ export async function backfillPartnerClientCodes() {
   const all = await listContractors();
   let issued = 0;
   for (const c of all || []) {
+    if (c.role === 'admin') continue; /* the office account is not a partner — no client code, ever */
     if (!CODE_BACKFILL_STATUSES.includes(c.status) || c.clientCode) continue;
     const code = await ensureContractorClientCode(c.id);
     if (code) issued++;

@@ -52,6 +52,18 @@
        (`recover`) remains only for partners who never set
        credentials; for credentialed partners the password reset
        supersedes it.
+     - ADMIN ACCOUNT (Nov 23, 2026 — DrMorgan's order): IEC's own
+       office account (role 'admin' on the record, username
+       DrMorgan73, email info@iecincglobal.com) signs in through
+       the SAME username + password door as partners. It is not a
+       partner: no referral book, no client/invite codes, the
+       partner signature gates do not apply to it, and it never
+       appears in the Desk's partner list or counts. Its session
+       unlocks exactly one extra read — `admin-overview`, the
+       partners/states/referrals summary the Desk's admin-list
+       builds — inside the portal. Every office WRITE (invites,
+       signatures, pipeline steps) stays behind the Desk session;
+       the portal admin view is read-only.
      - TAX FORM ON FILE: payout setup mirrors DataSupply's —
        the partner uploads his W-9 (or W-8BEN) in Earnings or
        Settings (PDF/PNG/JPG, 10 MB maximum); the file is stored
@@ -294,8 +306,16 @@ function publicContractor(c) {
        itself is never in any payload. */
     username: c.username || '',
     credentialsSet: !!c.credentialsSet,
-    registrationType: c.registrationType || ''
+    registrationType: c.registrationType || '',
+    role: c.role || 'partner'
   };
+}
+
+/* IEC's own office account (role 'admin') — not a partner. See
+   the header note: no signature gates, no codes, no partner
+   lists; its session unlocks the read-only admin-overview. */
+function isAdminAccount(c) {
+  return !!c && (c.role || 'partner') === 'admin';
 }
 
 /* ------------------------------------------------------------------ */
@@ -875,6 +895,59 @@ const nameMatches = (typed, recorded) =>
   String(typed || '').trim().replace(/\s+/g, ' ').toLowerCase()
   === String(recorded || '').trim().replace(/\s+/g, ' ').toLowerCase();
 
+/* The office summary payload: every partner with his fee totals,
+   every referral, IEC's own claims, and the link holds board.
+   Built once and served through TWO doors — the Desk session
+   (admin-list, the office's working surface) and IEC's own admin
+   account session (admin-overview, the read-only portal view).
+   Admin-role records are EXCLUDED from the partner list: the
+   office account is not a partner and never appears in partner
+   lists or counts. */
+async function buildAdminListPayload() {
+  // Lazy backfill: partners activated before the client link
+  // existed receive their codes here (idempotent; 'invited'
+  // partners are issued theirs at activation; admin records are
+  // skipped inside the store).
+  await backfillPartnerClientCodes();
+  const contractors = (await listContractors()) || [];
+  const referrals = await listAllReferrals();
+  const claims = await listClientClaims();
+  /* The holds board is auxiliary: if its read ever fails, the
+     Desk still loads and the failure is flagged in the payload
+     (linkHoldsError) rather than hidden or fatal. */
+  let holds = [];
+  let linkHoldsError = false;
+  try { holds = (await listLinkHolds()) || []; }
+  catch { linkHoldsError = true; }
+  /* Client CNDA status rides along as STATUS ONLY (stage,
+     dates) — the record and its executed copy are served
+     solely by admin-client-cnda. */
+  let cndaByReferral = {};
+  let cndaByHold = {};
+  try {
+    const cndas = (await listClientCndas()) || [];
+    const summary = (rec) => ({ status: rec.status, issuedAt: rec.issuedAt, signedAt: rec.signedAt, emailed: rec.emailed });
+    for (const rec of cndas) {
+      if (rec.referralId) cndaByReferral[rec.referralId] = summary(rec);
+      if (rec.holdId) cndaByHold[rec.holdId] = summary(rec);
+    }
+  } catch { cndaByReferral = {}; cndaByHold = {}; }
+  const partners = contractors.filter(c => !isAdminAccount(c));
+  const withTotals = partners.map(c => ({
+    ...c,
+    clientLink: clientLinkFor(c),
+    feeTotals: feeTotals((referrals || []).filter(r => r.contractorId === c.id))
+  }));
+  return {
+    ok: true, contractors: withTotals,
+    referrals: (referrals || []).map(r => ({ ...r, questionnaireUrl: questionnaireUrl(r.industry), cnda: cndaByReferral[r.id] || null })),
+    claims: claims || [],
+    linkHolds: holds.map(h => ({ ...h, cnda: cndaByHold[h.id] || null })),
+    linkHoldsError,
+    pipeline: CLIENT_PIPELINE
+  };
+}
+
 export default async function handler(req, res) {
   const url = new URL(req.url, 'http://localhost');
   const action = String(url.searchParams.get('action') || (req.method === 'POST' ? '' : ''));
@@ -920,9 +993,12 @@ export default async function handler(req, res) {
     });
     // Activation issues the partner's client-link code (…/r/<code>)
     // and his partner-invite code — idempotent, collision-checked
-    // in the store.
-    await ensureContractorClientCode(c.id);
-    await ensureContractorInviteCode(c.id);
+    // in the store. The office (admin) account never receives
+    // codes: it is not a partner and has nothing to attribute.
+    if (!isAdminAccount(c)) {
+      await ensureContractorClientCode(c.id);
+      await ensureContractorInviteCode(c.id);
+    }
     res.status(302);
     res.setHeader('Set-Cookie', sessionCookieHeader(session));
     res.setHeader('Location', standalone ? '/' : '/contractors-portal.html');
@@ -966,8 +1042,10 @@ export default async function handler(req, res) {
       status: c.status === 'invited' ? 'active' : c.status,
       activationTokenHash: '', activatedAt: new Date().toISOString()
     });
-    await ensureContractorClientCode(c.id);
-    await ensureContractorInviteCode(c.id);
+    if (!isAdminAccount(c)) {
+      await ensureContractorClientCode(c.id);
+      await ensureContractorInviteCode(c.id);
+    }
     /* A partner with no credentials yet (the migration case) is
        routed by the portal through the set-credentials step
        before the Dashboard — `me` reports credentialsSet false
@@ -1041,7 +1119,10 @@ export default async function handler(req, res) {
     if (!c || !c.credentialsSet || c.status === 'revoked') return fail();
     const creds = await readContractorCredentials(c.id);
     if (!creds || !verifyPassword(password, creds.passwordSalt, creds.passwordHash)) return fail();
-    if (c.ndaStatus !== 'signed' || (c.agreementStatus || 'pending') !== 'signed') {
+    /* The partner signature gates do not apply to IEC's own
+       office (admin) account: it is the IEC side of those
+       instruments, not a partner under them. */
+    if (!isAdminAccount(c) && (c.ndaStatus !== 'signed' || (c.agreementStatus || 'pending') !== 'signed')) {
       return json(res, {
         ok: false, error: 'signatures_outstanding',
         message: 'Your portal opens once both of your signatures stand. Use the activation link from your invitation to finish the signing steps — after that, this username and password sign you in.'
@@ -1049,8 +1130,10 @@ export default async function handler(req, res) {
     }
     if (c.status === 'invited') {
       await updateContractor(c.id, { status: 'active', activatedAt: new Date().toISOString() });
-      await ensureContractorClientCode(c.id);
-      await ensureContractorInviteCode(c.id);
+      if (!isAdminAccount(c)) {
+        await ensureContractorClientCode(c.id);
+        await ensureContractorInviteCode(c.id);
+      }
     }
     const session = mintPartnerSessionToken(c.id, c.sessionEpoch || 0);
     if (!session) return json(res, { ok: false, error: 'not_configured' }, 503);
@@ -1063,13 +1146,21 @@ export default async function handler(req, res) {
      partner (no enumeration). Eligible: a partner WITH
      credentials whose record is active or paused. A partner who
      never completed activation holds no password to reset — his
-     path stays the activation link (recover above). ---- */
+     path stays the activation link (recover above). One extension
+     (Nov 23, 2026): an office-provisioned account whose USERNAME
+     the office assigned but which has no password yet — IEC's
+     own admin account is the first — receives the same link to
+     SET its first password. A username exists on a record only
+     when the partner set it with a password, or when the office
+     assigned it; so a username with no password is necessarily
+     office-provisioned, and the link goes only to the email on
+     record. ---- */
   if (req.method === 'POST' && action === 'forgot-password') {
     const body = await readBody(req);
     const email = String(body.email || '').trim().toLowerCase();
     if (email && emailOk(email)) {
       const c = await readContractorByEmail(email);
-      if (c && c.credentialsSet && (c.status === 'active' || c.status === 'paused')) {
+      if (c && (c.status === 'active' || c.status === 'paused') && (c.credentialsSet || c.username)) {
         await issuePasswordReset(c);
       }
     }
@@ -1483,7 +1574,7 @@ export default async function handler(req, res) {
     let portalClientLinkEmail = null;
     let inviteLink = '';
     let inviteMessage = null;
-    if (c.status === 'active') {
+    if (c.status === 'active' && !isAdminAccount(c)) {
       if (!c.clientCode) {
         const issued = await ensureContractorClientCode(c.id);
         if (issued) c.clientCode = issued;
@@ -1540,6 +1631,20 @@ export default async function handler(req, res) {
         payoutsSet: !!(c.payoutMethod && c.payoutLast4 && c.w9OnFile)
       }
     });
+  }
+
+  /* ---- admin overview: the office view inside the portal
+     (Nov 23, 2026). IEC's own admin account — and only that
+     account — reads the same partners/states/referrals summary
+     the Desk's admin-list builds, through its partner session.
+     READ-ONLY: every office write stays behind the Desk session
+     below. A partner session gets a 403; no session a 401. ---- */
+  if (req.method === 'GET' && action === 'admin-overview') {
+    if (!contractorId) return json(res, { ok: false, error: 'unauthorized' }, 401);
+    const c = await readContractorById(contractorId);
+    if (!c) return json(res, { ok: false, error: 'unauthorized' }, 401);
+    if (!isAdminAccount(c)) return json(res, { ok: false, error: 'forbidden' }, 403);
+    return json(res, await buildAdminListPayload());
   }
 
   /* ---- partner: add a client (sign-first gates, duplicate
@@ -1985,46 +2090,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'GET' && action === 'admin-list') {
-    // Lazy backfill: partners activated before the client link
-    // existed receive their codes here (idempotent; 'invited'
-    // partners are issued theirs at activation).
-    await backfillPartnerClientCodes();
-    const contractors = await listContractors();
-    const referrals = await listAllReferrals();
-    const claims = await listClientClaims();
-    /* The holds board is auxiliary: if its read ever fails, the
-       Desk still loads and the failure is flagged in the payload
-       (linkHoldsError) rather than hidden or fatal. */
-    let holds = [];
-    let linkHoldsError = false;
-    try { holds = (await listLinkHolds()) || []; }
-    catch { linkHoldsError = true; }
-    /* Client CNDA status rides along as STATUS ONLY (stage,
-       dates) — the record and its executed copy are served
-       solely by admin-client-cnda below. */
-    let cndaByReferral = {};
-    let cndaByHold = {};
-    try {
-      const cndas = (await listClientCndas()) || [];
-      const summary = (rec) => ({ status: rec.status, issuedAt: rec.issuedAt, signedAt: rec.signedAt, emailed: rec.emailed });
-      for (const rec of cndas) {
-        if (rec.referralId) cndaByReferral[rec.referralId] = summary(rec);
-        if (rec.holdId) cndaByHold[rec.holdId] = summary(rec);
-      }
-    } catch { cndaByReferral = {}; cndaByHold = {}; }
-    const withTotals = (contractors || []).map(c => ({
-      ...c,
-      clientLink: clientLinkFor(c),
-      feeTotals: feeTotals((referrals || []).filter(r => r.contractorId === c.id))
-    }));
-    return json(res, {
-      ok: true, contractors: withTotals,
-      referrals: (referrals || []).map(r => ({ ...r, questionnaireUrl: questionnaireUrl(r.industry), cnda: cndaByReferral[r.id] || null })),
-      claims: claims || [],
-      linkHolds: holds.map(h => ({ ...h, cnda: cndaByHold[h.id] || null })),
-      linkHoldsError,
-      pipeline: CLIENT_PIPELINE
-    });
+    return json(res, await buildAdminListPayload());
   }
 
   /* ---- admin: the partner's tax form ON FILE (W-9 / W-8BEN).

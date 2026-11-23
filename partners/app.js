@@ -25,6 +25,16 @@
       nav_dashboard: 'Dashboard', nav_referrals: 'My referrals', nav_earnings: 'Earnings',
       nav_partners: 'Invited partners', nav_resources: 'Resources', nav_settings: 'Settings',
       sign_out: 'Sign out', questions: 'Questions? Write to',
+      admin_title: 'Portal administration',
+      admin_sub: 'The office view: every partner, their state, and their referrals. Read-only — invitations, signatures and pipeline steps stay in the Desk Partners admin.',
+      admin_loading: 'Loading the office view…',
+      admin_partners: 'Partners', admin_active: 'Active partners', admin_referrals: 'Referrals',
+      admin_fees_earned: 'Fees earned (all partners)', admin_fees_paid: 'Fees paid (all partners)',
+      admin_col_partner: 'Partner', admin_col_signin: 'Sign-in', admin_col_clients: 'Clients',
+      admin_col_fees: 'Fees earned / paid', admin_username: 'Username',
+      admin_pw_set: 'password set', admin_pw_unset: 'no password yet',
+      admin_no_partners: 'No partner records yet.', admin_no_referrals: 'No referrals yet.',
+      admin_col_business: 'Business', admin_col_stage: 'Stage', admin_col_fee_status: 'Fee status',
       welcome: 'Welcome', status: 'Status',
       agreement: 'Referral Agreement', nda: 'NDA', signed: 'signed', pending: 'pending',
       frozen_paused: 'Your portal is paused. This is a read-only view of your clients — nothing can be added or changed while paused.',
@@ -215,6 +225,16 @@
       nav_dashboard: 'Panel', nav_referrals: 'Mis referidos', nav_earnings: 'Ganancias',
       nav_partners: 'Socios invitados', nav_resources: 'Recursos', nav_settings: 'Configuración',
       sign_out: 'Cerrar sesión', questions: '¿Preguntas? Escriba a',
+      admin_title: 'Administración del portal',
+      admin_sub: 'La vista de oficina: cada socio, su estado y sus referidos. Solo lectura: las invitaciones, las firmas y los pasos del proceso permanecen en la administración de Socios del Desk.',
+      admin_loading: 'Cargando la vista de oficina…',
+      admin_partners: 'Socios', admin_active: 'Socios activos', admin_referrals: 'Referidos',
+      admin_fees_earned: 'Comisiones generadas (todos los socios)', admin_fees_paid: 'Comisiones pagadas (todos los socios)',
+      admin_col_partner: 'Socio', admin_col_signin: 'Acceso', admin_col_clients: 'Clientes',
+      admin_col_fees: 'Comisiones generadas / pagadas', admin_username: 'Usuario',
+      admin_pw_set: 'contraseña creada', admin_pw_unset: 'sin contraseña aún',
+      admin_no_partners: 'Aún no hay registros de socios.', admin_no_referrals: 'Aún no hay referidos.',
+      admin_col_business: 'Negocio', admin_col_stage: 'Etapa', admin_col_fee_status: 'Estado de la comisión',
       welcome: 'Bienvenido', status: 'Estado',
       agreement: 'Acuerdo de Referidos', nda: 'NDA', signed: 'firmado', pending: 'pendiente',
       frozen_paused: 'Su portal está en pausa. Esta es una vista de solo lectura de sus clientes: nada puede agregarse ni cambiarse durante la pausa.',
@@ -721,6 +741,11 @@
   function render() {
     var me = state.me;
     if (!me) return;
+    /* Admin account (Nov 23, 2026): IEC's own office account
+       signs in through the same door but lands on the office
+       view — partners, their states and their referrals —
+       never on a partner dashboard (it has no book of its own). */
+    if (!DEMO && me.contractor && me.contractor.role === 'admin') { renderAdmin(); return; }
     /* Credentials gate (Nov 23, 2026 — the migration route): an
        active or paused partner holding a session but NO
        credentials yet is routed through the set-credentials step
@@ -805,6 +830,83 @@
   function refresh() {
     api({ action: 'me' }, 'GET').then(function (res) {
       if (res.status === 200 && res.body.ok) { state.me = res.body; render(); }
+    });
+  }
+
+  /* ------------------- admin (office) view -------------------
+     IEC's own admin account only: the partners, their states
+     and their referrals, read from admin-overview (the same
+     payload the Desk's admin-list builds). Read-only by design —
+     no office action is offered here; invitations, signatures
+     and pipeline steps stay in the Desk Partners admin. */
+  function renderAdmin() {
+    root.innerHTML = '<div class="pp-app"><main class="pp-main"><p class="pp-sub">' + esc(t('admin_loading')) + '</p></main></div>';
+    api({ action: 'admin-overview' }, 'GET').then(function (res) {
+      if (res.status !== 200 || !res.body || !res.body.ok) { renderDoor(); return; }
+      state.admin = res.body;
+      renderAdminView();
+    }).catch(function () { renderDoor(); });
+  }
+  function renderAdminView() {
+    var me = state.me;
+    var data = state.admin || {};
+    var c = me.contractor || {};
+    var partners = data.contractors || [];
+    var referrals = data.referrals || [];
+    var byPartner = {};
+    partners.forEach(function (p) { byPartner[p.id] = p; });
+    var clientCount = {};
+    referrals.forEach(function (r) { clientCount[r.contractorId] = (clientCount[r.contractorId] || 0) + 1; });
+    var activeCount = partners.filter(function (p) { return p.status === 'active'; }).length;
+    var feesEarned = 0, feesPaid = 0;
+    partners.forEach(function (p) { var ft = p.feeTotals || {}; feesEarned += Number(ft.earned) || 0; feesPaid += Number(ft.paid) || 0; });
+    var stats = '<div class="pp-stats">' +
+      statCard(t('admin_partners'), String(partners.length)) +
+      statCard(t('admin_active'), String(activeCount)) +
+      statCard(t('admin_referrals'), String(referrals.length)) +
+      statCard(t('admin_fees_earned'), fmtMoney(feesEarned)) +
+      statCard(t('admin_fees_paid'), fmtMoney(feesPaid)) + '</div>';
+    var partnerRows = partners.map(function (p) {
+      var signin = p.username
+        ? esc(t('admin_username')) + ': ' + esc(p.username) + ' · ' + esc(p.credentialsSet ? t('admin_pw_set') : t('admin_pw_unset'))
+        : '—';
+      var ft = p.feeTotals || {};
+      return '<tr><td>' + esc(p.name) + (p.company ? '<br><span class="pp-muted">' + esc(p.company) + '</span>' : '') + '</td>' +
+        '<td>' + esc(p.status) + '</td><td>' + signin + '</td>' +
+        '<td>' + String(clientCount[p.id] || 0) + '</td>' +
+        '<td>' + fmtMoney(ft.earned || 0) + ' / ' + fmtMoney(ft.paid || 0) + '</td>' +
+        '<td>' + fmtDate(p.createdAt) + '</td></tr>';
+    }).join('');
+    var partnersHtml = partners.length
+      ? '<div class="pp-card pp-card-table"><table class="pp-table"><thead><tr><th>' + esc(t('admin_col_partner')) + '</th><th>' + esc(t('status')) + '</th><th>' + esc(t('admin_col_signin')) + '</th><th>' + esc(t('admin_col_clients')) + '</th><th>' + esc(t('admin_col_fees')) + '</th><th>' + esc(t('col_date')) + '</th></tr></thead><tbody>' + partnerRows + '</tbody></table></div>'
+      : '<div class="pp-card"><p class="pp-sub">' + esc(t('admin_no_partners')) + '</p></div>';
+    var referralRows = referrals.map(function (r) {
+      var p = byPartner[r.contractorId] || {};
+      return '<tr><td>' + esc(r.businessName) + '</td><td>' + esc(p.name || '') + (p.company ? ' · ' + esc(p.company) : '') + '</td>' +
+        '<td>' + esc(r.pipelineStatus || 'added') + '</td><td>' + esc(r.status || '') + '</td>' +
+        '<td>' + fmtMoney(r.feeAmount) + '</td><td>' + fmtDate(r.createdAt) + '</td></tr>';
+    }).join('');
+    var referralsHtml = referrals.length
+      ? '<div class="pp-card pp-card-table"><table class="pp-table"><thead><tr><th>' + esc(t('admin_col_business')) + '</th><th>' + esc(t('admin_col_partner')) + '</th><th>' + esc(t('admin_col_stage')) + '</th><th>' + esc(t('admin_col_fee_status')) + '</th><th>' + esc(t('col_fee')) + '</th><th>' + esc(t('col_date')) + '</th></tr></thead><tbody>' + referralRows + '</tbody></table></div>'
+      : '<div class="pp-card"><p class="pp-sub">' + esc(t('admin_no_referrals')) + '</p></div>';
+    root.innerHTML =
+      '<div class="pp-app"><aside class="pp-side">' +
+      '<div class="pp-brand"><img class="pp-brand-logo" src="/assets/iec-logo-light.png" alt="IEC, Inc."><div><div class="pp-brand-name">IEC, Inc.</div><div class="pp-brand-sub">' + esc(t('product')) + '</div></div></div>' +
+      '<div class="pp-side-foot">' + esc(t('questions')) + ' <a href="mailto:info@iecincglobal.com">info@iecincglobal.com</a>' +
+      '<br><button class="pp-linklike" id="pp-signout">' + esc(t('sign_out')) + '</button></div>' +
+      '</aside><main class="pp-main">' +
+      '<div class="pp-topbar"><div class="pp-topbar-id"><span class="pp-topbar-name">' + esc(c.name) + '</span>' +
+      (c.company ? '<span class="pp-topbar-co">' + esc(c.company) + '</span>' : '') + '</div></div>' +
+      '<h1 class="pp-h1">' + esc(t('admin_title')) + '</h1>' +
+      '<p class="pp-sub">' + esc(t('admin_sub')) + '</p>' +
+      stats +
+      '<h2 class="pp-h2">' + esc(t('admin_partners')) + '</h2>' + partnersHtml +
+      '<h2 class="pp-h2">' + esc(t('admin_referrals')) + '</h2>' + referralsHtml +
+      '<footer class="pp-footer"><strong>IEC, Inc.</strong><span>· ' + esc(t('product')) + '</span><span>·</span><a href="https://iecincglobal.com">iecincglobal.com</a></footer>' +
+      '</main></div>';
+    var so = document.getElementById('pp-signout');
+    if (so) so.addEventListener('click', function () {
+      api({ action: 'logout' }).then(function () { location.hash = ''; location.reload(); });
     });
   }
 
