@@ -26,7 +26,7 @@
       nav_partners: 'Invited partners', nav_resources: 'Resources', nav_settings: 'Settings',
       sign_out: 'Sign out', questions: 'Questions? Write to',
       admin_title: 'Portal administration',
-      admin_sub: 'The office view: every partner, their state, and their referrals. Read-only — invitations, signatures and pipeline steps stay in the Desk Partners admin.',
+      admin_sub: 'The office dashboard: every partner, their state, their referrals, fees and the program materials — every control wired to the same store the Desk uses.',
       admin_loading: 'Loading the office view…',
       admin_partners: 'Partners', admin_active: 'Active partners', admin_referrals: 'Referrals',
       admin_fees_earned: 'Fees earned (all partners)', admin_fees_paid: 'Fees paid (all partners)',
@@ -35,6 +35,19 @@
       admin_pw_set: 'password set', admin_pw_unset: 'no password yet',
       admin_no_partners: 'No partner records yet.', admin_no_referrals: 'No referrals yet.',
       admin_col_business: 'Business', admin_col_stage: 'Stage', admin_col_fee_status: 'Fee status',
+      admin_tab_overview: 'Overview', admin_tab_fees: 'Fees & earnings', admin_materials: 'Materials & sources',
+      admin_recent: 'Recent referrals', admin_view: 'View', admin_back_partners: '← Back to partners', admin_back_referrals: '← Back to referrals',
+      admin_send_invite: 'Send invitation email', admin_mint_link: 'Mint activation link', admin_mark_agreement: 'Mark agreement signed',
+      admin_mark_nda: 'Mark NDA signed', admin_reset_pw: 'Email password-reset link', admin_pause: 'Pause', admin_resume: 'Resume',
+      admin_revoke: 'Revoke', admin_reactivate: 'Reactivate', admin_copy_client: 'Copy client link', admin_copy_invite: 'Copy invite link',
+      admin_client_link: 'Client link', admin_invite_link: 'Invite link', admin_evidence: 'Evidence for the next step',
+      admin_advance_to: 'Advance to', admin_stage_final: 'Final stage reached.', admin_advance_fee_to: 'Advance fee to',
+      admin_owner_gross: 'Owner Gross on the closed license ($)', admin_set_approved: 'Amount approved ($)',
+      admin_save_amount: 'Save amount', admin_clear_amount: 'Clear amount', admin_holds: 'Link holds awaiting a ruling',
+      admin_credit: 'Credit to partner', admin_dismiss: 'Dismiss', admin_download: 'Download',
+      admin_fees_outstanding: 'Fees outstanding (all partners)', admin_fee_earned: 'Earned', admin_fee_outstanding: 'Outstanding', admin_fee_paid: 'Paid',
+      admin_done: 'Done — saved.', admin_done_invite: 'Invitation email sent.', admin_done_link: 'Activation link minted — copy it below.', admin_done_reset: 'Password-reset link emailed.',
+      admin_action_failed: 'That action did not go through',
       welcome: 'Welcome', status: 'Status',
       agreement: 'Referral Agreement', nda: 'NDA', signed: 'signed', pending: 'pending',
       frozen_paused: 'Your portal is paused. This is a read-only view of your clients — nothing can be added or changed while paused.',
@@ -226,7 +239,7 @@
       nav_partners: 'Socios invitados', nav_resources: 'Recursos', nav_settings: 'Configuración',
       sign_out: 'Cerrar sesión', questions: '¿Preguntas? Escriba a',
       admin_title: 'Administración del portal',
-      admin_sub: 'La vista de oficina: cada socio, su estado y sus referidos. Solo lectura: las invitaciones, las firmas y los pasos del proceso permanecen en la administración de Socios del Desk.',
+      admin_sub: 'El panel de oficina: cada socio, su estado, sus referidos, las comisiones y los materiales del programa — cada control conectado al mismo registro que usa el Desk.',
       admin_loading: 'Cargando la vista de oficina…',
       admin_partners: 'Socios', admin_active: 'Socios activos', admin_referrals: 'Referidos',
       admin_fees_earned: 'Comisiones generadas (todos los socios)', admin_fees_paid: 'Comisiones pagadas (todos los socios)',
@@ -235,6 +248,19 @@
       admin_pw_set: 'contraseña creada', admin_pw_unset: 'sin contraseña aún',
       admin_no_partners: 'Aún no hay registros de socios.', admin_no_referrals: 'Aún no hay referidos.',
       admin_col_business: 'Negocio', admin_col_stage: 'Etapa', admin_col_fee_status: 'Estado de la comisión',
+      admin_tab_overview: 'Resumen', admin_tab_fees: 'Comisiones e ingresos', admin_materials: 'Materiales y fuentes',
+      admin_recent: 'Referidos recientes', admin_view: 'Ver', admin_back_partners: '← Volver a socios', admin_back_referrals: '← Volver a referidos',
+      admin_send_invite: 'Enviar correo de invitación', admin_mint_link: 'Crear enlace de activación', admin_mark_agreement: 'Marcar acuerdo firmado',
+      admin_mark_nda: 'Marcar NDA firmado', admin_reset_pw: 'Enviar enlace de restablecimiento', admin_pause: 'Pausar', admin_resume: 'Reanudar',
+      admin_revoke: 'Revocar', admin_reactivate: 'Reactivar', admin_copy_client: 'Copiar enlace de cliente', admin_copy_invite: 'Copiar enlace de invitación',
+      admin_client_link: 'Enlace de cliente', admin_invite_link: 'Enlace de invitación', admin_evidence: 'Evidencia para el siguiente paso',
+      admin_advance_to: 'Avanzar a', admin_stage_final: 'Etapa final alcanzada.', admin_advance_fee_to: 'Avanzar comisión a',
+      admin_owner_gross: 'Ingreso bruto del propietario en la licencia cerrada ($)', admin_set_approved: 'Monto aprobado ($)',
+      admin_save_amount: 'Guardar monto', admin_clear_amount: 'Borrar monto', admin_holds: 'Registros por enlace en espera de decisión',
+      admin_credit: 'Acreditar al socio', admin_dismiss: 'Descartar', admin_download: 'Descargar',
+      admin_fees_outstanding: 'Comisiones pendientes (todos los socios)', admin_fee_earned: 'Generadas', admin_fee_outstanding: 'Pendientes', admin_fee_paid: 'Pagadas',
+      admin_done: 'Hecho — guardado.', admin_done_invite: 'Correo de invitación enviado.', admin_done_link: 'Enlace de activación creado — cópielo abajo.', admin_done_reset: 'Enlace de restablecimiento enviado.',
+      admin_action_failed: 'Esa acción no se completó',
       welcome: 'Bienvenido', status: 'Estado',
       agreement: 'Acuerdo de Referidos', nda: 'NDA', signed: 'firmado', pending: 'pendiente',
       frozen_paused: 'Su portal está en pausa. Esta es una vista de solo lectura de sus clientes: nada puede agregarse ni cambiarse durante la pausa.',
@@ -853,6 +879,9 @@
     var c = me.contractor || {};
     var partners = data.contractors || [];
     var referrals = data.referrals || [];
+    var holds = data.linkHolds || [];
+    var pipeline = data.pipeline || [];
+    var tab = state.adminTab || 'overview';
     var byPartner = {};
     partners.forEach(function (p) { byPartner[p.id] = p; });
     var clientCount = {};
@@ -860,53 +889,290 @@
     var activeCount = partners.filter(function (p) { return p.status === 'active'; }).length;
     var feesEarned = 0, feesPaid = 0;
     partners.forEach(function (p) { var ft = p.feeTotals || {}; feesEarned += Number(ft.earned) || 0; feesPaid += Number(ft.paid) || 0; });
-    var stats = '<div class="pp-stats">' +
-      statCard(t('admin_partners'), String(partners.length)) +
-      statCard(t('admin_active'), String(activeCount)) +
-      statCard(t('admin_referrals'), String(referrals.length)) +
-      statCard(t('admin_fees_earned'), fmtMoney(feesEarned)) +
-      statCard(t('admin_fees_paid'), fmtMoney(feesPaid)) + '</div>';
-    var partnerRows = partners.map(function (p) {
-      var signin = p.username
+
+    function abtn(act, id, label, cls) {
+      return '<button class="pp-btn pp-btn-small ' + (cls || '') + '" data-act="' + act + '"' + (id ? ' data-id="' + esc(id) + '"' : '') + '>' + esc(label) + '</button>';
+    }
+    function signinState(p) {
+      return p.username
         ? esc(t('admin_username')) + ': ' + esc(p.username) + ' · ' + esc(p.credentialsSet ? t('admin_pw_set') : t('admin_pw_unset'))
         : '—';
-      var ft = p.feeTotals || {};
-      return '<tr><td>' + esc(p.name) + (p.company ? '<br><span class="pp-muted">' + esc(p.company) + '</span>' : '') + '</td>' +
-        '<td>' + esc(p.status) + '</td><td>' + signin + '</td>' +
-        '<td>' + String(clientCount[p.id] || 0) + '</td>' +
-        '<td>' + fmtMoney(ft.earned || 0) + ' / ' + fmtMoney(ft.paid || 0) + '</td>' +
-        '<td>' + fmtDate(p.createdAt) + '</td></tr>';
+    }
+
+    var body = '';
+    if (tab === 'overview') {
+      body = '<div class="pp-stats">' +
+        statCard(t('admin_partners'), String(partners.length)) +
+        statCard(t('admin_active'), String(activeCount)) +
+        statCard(t('admin_referrals'), String(referrals.length)) +
+        statCard(t('admin_fees_earned'), fmtMoney(feesEarned)) +
+        statCard(t('admin_fees_paid'), fmtMoney(feesPaid)) + '</div>' +
+        '<div class="pp-card"><h2 class="pp-h2">' + esc(t('admin_recent')) + '</h2>' +
+        (referrals.length ? '<table class="pp-table"><tbody>' + referrals.slice(0, 8).map(function (r) {
+          var p = byPartner[r.contractorId] || {};
+          return '<tr><td>' + esc(r.businessName) + '</td><td>' + esc(p.name || '') + '</td><td>' + esc(r.pipelineStatus || 'added') + '</td><td>' + fmtDate(r.createdAt) + '</td><td>' + abtn('r-view', r.id, t('admin_view')) + '</td></tr>';
+        }).join('') + '</tbody></table>' : '<p class="pp-sub">' + esc(t('admin_no_referrals')) + '</p>') + '</div>';
+    }
+
+    if (tab === 'partners') {
+      var detail = state.adminPartnerId ? byPartner[state.adminPartnerId] : null;
+      if (detail) {
+        var p = detail;
+        var ft = p.feeTotals || {};
+        var acts = '';
+        acts += abtn('p-send-invite', p.id, t('admin_send_invite'));
+        acts += ' ' + abtn('p-mint-link', p.id, t('admin_mint_link'), 'pp-btn-ghost');
+        if ((p.agreementStatus || 'pending') !== 'signed') acts += ' ' + abtn('p-set-agreement', p.id, t('admin_mark_agreement'));
+        if (p.ndaStatus !== 'signed') acts += ' ' + abtn('p-set-nda', p.id, t('admin_mark_nda'));
+        if (p.credentialsSet) acts += ' ' + abtn('p-reset-pw', p.id, t('admin_reset_pw'), 'pp-btn-ghost');
+        if (p.status === 'active') acts += ' ' + abtn('p-pause', p.id, t('admin_pause'), 'pp-btn-ghost') + ' ' + abtn('p-revoke', p.id, t('admin_revoke'), 'pp-btn-ghost');
+        if (p.status === 'paused') acts += ' ' + abtn('p-resume', p.id, t('admin_resume')) + ' ' + abtn('p-revoke', p.id, t('admin_revoke'), 'pp-btn-ghost');
+        if (p.status === 'revoked') acts += ' ' + abtn('p-reactivate', p.id, t('admin_reactivate'));
+        if (p.clientLink) acts += ' ' + abtn('p-copy-client', p.id, t('admin_copy_client'), 'pp-btn-ghost');
+        if (p.inviteLink) acts += ' ' + abtn('p-copy-invite', p.id, t('admin_copy_invite'), 'pp-btn-ghost');
+        body = '<p>' + abtn('p-back', null, t('admin_back_partners'), 'pp-btn-ghost') + '</p>' +
+          '<div class="pp-card"><h2 class="pp-h2">' + esc(p.name) + '</h2>' +
+          '<p class="pp-p">' + esc(p.company || '') + (p.company ? ' · ' : '') + esc(p.email || '') + (p.phone ? ' · ' + esc(p.phone) : '') + '</p>' +
+          '<table class="pp-table"><tbody>' +
+          '<tr><td>' + esc(t('status')) + '</td><td>' + esc(p.status) + '</td></tr>' +
+          '<tr><td>' + esc(t('admin_col_signin')) + '</td><td>' + signinState(p) + '</td></tr>' +
+          '<tr><td>' + esc(t('agreement')) + '</td><td>' + esc(p.agreementStatus || 'pending') + (p.agreementSignedAt ? ' · ' + fmtDate(p.agreementSignedAt) : '') + '</td></tr>' +
+          '<tr><td>' + esc(t('nda')) + '</td><td>' + esc(p.ndaStatus || 'pending') + '</td></tr>' +
+          '<tr><td>' + esc(t('admin_col_clients')) + '</td><td>' + String(clientCount[p.id] || 0) + '</td></tr>' +
+          '<tr><td>' + esc(t('admin_col_fees')) + '</td><td>' + fmtMoney(ft.earned || 0) + ' / ' + fmtMoney(ft.paid || 0) + '</td></tr>' +
+          '<tr><td>' + esc(t('col_date')) + '</td><td>' + fmtDate(p.createdAt) + '</td></tr>' +
+          (p.clientLink ? '<tr><td>' + esc(t('admin_client_link')) + '</td><td><code>' + esc(p.clientLink) + '</code></td></tr>' : '') +
+          (p.inviteLink ? '<tr><td>' + esc(t('admin_invite_link')) + '</td><td><code>' + esc(p.inviteLink) + '</code></td></tr>' : '') +
+          '</tbody></table>' +
+          '<div class="pp-actions">' + acts + '</div>' +
+          (state.adminLink ? '<div class="pp-linkbox"><code id="pp-admin-link">' + esc(state.adminLink) + '</code> ' + abtn('copy-admin-link', null, t('copy_link')) + '</div>' : '') +
+          '</div>';
+      } else {
+        var partnerRows = partners.map(function (p) {
+          var ft2 = p.feeTotals || {};
+          return '<tr><td>' + esc(p.name) + (p.company ? '<br><span class="pp-muted">' + esc(p.company) + '</span>' : '') + '</td>' +
+            '<td>' + esc(p.status) + '</td><td>' + signinState(p) + '</td>' +
+            '<td>' + String(clientCount[p.id] || 0) + '</td>' +
+            '<td>' + fmtMoney(ft2.earned || 0) + ' / ' + fmtMoney(ft2.paid || 0) + '</td>' +
+            '<td>' + fmtDate(p.createdAt) + '</td><td>' + abtn('p-view', p.id, t('admin_view')) + '</td></tr>';
+        }).join('');
+        body = partners.length
+          ? '<div class="pp-card pp-card-table"><table class="pp-table"><thead><tr><th>' + esc(t('admin_col_partner')) + '</th><th>' + esc(t('status')) + '</th><th>' + esc(t('admin_col_signin')) + '</th><th>' + esc(t('admin_col_clients')) + '</th><th>' + esc(t('admin_col_fees')) + '</th><th>' + esc(t('col_date')) + '</th><th></th></tr></thead><tbody>' + partnerRows + '</tbody></table></div>'
+          : '<div class="pp-card"><p class="pp-sub">' + esc(t('admin_no_partners')) + '</p></div>';
+      }
+    }
+
+    if (tab === 'referrals') {
+      var rDetail = state.adminReferralId ? referrals.filter(function (r) { return r.id === state.adminReferralId; })[0] : null;
+      if (rDetail) {
+        var r = rDetail;
+        var rp = byPartner[r.contractorId] || {};
+        var stage = r.pipelineStatus || 'added';
+        var stageIdx = pipeline.indexOf(stage);
+        var nextStage = stageIdx >= 0 && stageIdx < pipeline.length - 1 ? pipeline[stageIdx + 1] : null;
+        var FEE_ORDER = ['registered', 'agreement_signed', 'license_closed', 'fee_paid'];
+        var feeStatus = r.status || 'registered';
+        var feeIdx = FEE_ORDER.indexOf(feeStatus);
+        var nextFee = feeIdx >= 0 && feeIdx < FEE_ORDER.length - 1 ? FEE_ORDER[feeIdx + 1] : null;
+        body = '<p>' + abtn('r-back', null, t('admin_back_referrals'), 'pp-btn-ghost') + '</p>' +
+          '<div class="pp-card"><h2 class="pp-h2">' + esc(r.businessName) + '</h2>' +
+          '<p class="pp-p">' + esc(rp.name || '') + (rp.company ? ' · ' + esc(rp.company) : '') + ' · ' + esc(r.ownerName || '') + ' · ' + esc(r.ownerEmail || '') + '</p>' +
+          '<table class="pp-table"><tbody>' +
+          '<tr><td>' + esc(t('admin_col_stage')) + '</td><td>' + esc(stage) + '</td></tr>' +
+          '<tr><td>' + esc(t('admin_col_fee_status')) + '</td><td>' + esc(feeStatus) + '</td></tr>' +
+          '<tr><td>' + esc(t('col_approved')) + '</td><td>' + (r.approvedAmount != null ? fmtMoney(r.approvedAmount) : '—') + '</td></tr>' +
+          '<tr><td>' + esc(t('col_fee')) + '</td><td>' + (r.feeAmount != null ? fmtMoney(r.feeAmount) : '—') + '</td></tr>' +
+          '<tr><td>' + esc(t('col_date')) + '</td><td>' + fmtDate(r.createdAt) + '</td></tr>' +
+          '</tbody></table>' +
+          (nextStage ? '<div class="pp-actions"><label class="pp-label">' + esc(t('admin_evidence')) + '</label>' +
+            '<input class="pp-input" id="pp-adv-evidence" type="text">' +
+            abtn('r-advance-client', r.id, t('admin_advance_to') + ' ' + nextStage) + '</div>' : '<p class="pp-sub">' + esc(t('admin_stage_final')) + '</p>') +
+          (nextFee ? '<div class="pp-actions">' +
+            (nextFee === 'license_closed' ? '<label class="pp-label">' + esc(t('admin_owner_gross')) + '</label><input class="pp-input" id="pp-owner-gross" type="number" min="0" step="0.01">' : '') +
+            abtn('r-advance-fee', r.id, t('admin_advance_fee_to') + ' ' + nextFee) + '</div>' : '') +
+          '<div class="pp-actions"><label class="pp-label">' + esc(t('admin_set_approved')) + '</label>' +
+          '<input class="pp-input" id="pp-approved-amount" type="number" min="0" step="0.01">' +
+          abtn('r-set-amount', r.id, t('admin_save_amount')) + ' ' + abtn('r-clear-amount', r.id, t('admin_clear_amount'), 'pp-btn-ghost') + '</div>' +
+          '</div>';
+      } else {
+        var referralRows = referrals.map(function (r) {
+          var p = byPartner[r.contractorId] || {};
+          return '<tr><td>' + esc(r.businessName) + '</td><td>' + esc(p.name || '') + (p.company ? ' · ' + esc(p.company) : '') + '</td>' +
+            '<td>' + esc(r.pipelineStatus || 'added') + '</td><td>' + esc(r.status || 'registered') + '</td>' +
+            '<td>' + fmtMoney(r.feeAmount) + '</td><td>' + fmtDate(r.createdAt) + '</td><td>' + abtn('r-view', r.id, t('admin_view')) + '</td></tr>';
+        }).join('');
+        body = referrals.length
+          ? '<div class="pp-card pp-card-table"><table class="pp-table"><thead><tr><th>' + esc(t('admin_col_business')) + '</th><th>' + esc(t('admin_col_partner')) + '</th><th>' + esc(t('admin_col_stage')) + '</th><th>' + esc(t('admin_col_fee_status')) + '</th><th>' + esc(t('col_fee')) + '</th><th>' + esc(t('col_date')) + '</th><th></th></tr></thead><tbody>' + referralRows + '</tbody></table></div>'
+          : '<div class="pp-card"><p class="pp-sub">' + esc(t('admin_no_referrals')) + '</p></div>';
+        if (holds.length) {
+          body += '<h2 class="pp-h2">' + esc(t('admin_holds')) + '</h2><div class="pp-card pp-card-table"><table class="pp-table"><tbody>' +
+            holds.map(function (h) {
+              var hp = byPartner[h.contractorId] || {};
+              return '<tr><td>' + esc(h.businessName) + '</td><td>' + esc(hp.name || '') + '</td><td>' + esc(h.ownerEmail || '') + '</td>' +
+                '<td>' + abtn('h-credit', h.id, t('admin_credit')) + ' ' + abtn('h-dismiss', h.id, t('admin_dismiss'), 'pp-btn-ghost') + '</td></tr>';
+            }).join('') + '</tbody></table></div>';
+        }
+      }
+    }
+
+    if (tab === 'fees') {
+      var feeRows = partners.map(function (p) {
+        var ft3 = p.feeTotals || {};
+        return '<tr><td>' + esc(p.name) + '</td><td>' + fmtMoney(ft3.earned || 0) + '</td><td>' + fmtMoney(ft3.outstanding || 0) + '</td><td>' + fmtMoney(ft3.paid || 0) + '</td></tr>';
+      }).join('');
+      body = '<div class="pp-stats">' + statCard(t('admin_fees_earned'), fmtMoney(feesEarned)) + statCard(t('admin_fees_paid'), fmtMoney(feesPaid)) + statCard(t('admin_fees_outstanding'), fmtMoney(feesEarned - feesPaid)) + '</div>' +
+        '<div class="pp-card pp-card-table"><table class="pp-table"><thead><tr><th>' + esc(t('admin_col_partner')) + '</th><th>' + esc(t('admin_fee_earned')) + '</th><th>' + esc(t('admin_fee_outstanding')) + '</th><th>' + esc(t('admin_fee_paid')) + '</th></tr></thead><tbody>' + feeRows + '</tbody></table></div>';
+    }
+
+    if (tab === 'materials') {
+      var mats = state.adminMaterials || [];
+      var cur = state.adminMaterial || null;
+      body = '<div class="pp-card"><h2 class="pp-h2">' + esc(t('admin_materials')) + '</h2>' +
+        (mats.length ? '<table class="pp-table"><tbody>' + mats.map(function (m) {
+          return '<tr><td>' + esc(m.title) + '<br><span class="pp-muted">' + esc(m.meta || '') + '</span></td><td>' + abtn('m-view', m.id, t('admin_view')) + '</td></tr>';
+        }).join('') + '</tbody></table>' : '<p class="pp-sub">' + esc(t('admin_loading')) + '</p>') + '</div>' +
+        (cur ? '<div class="pp-card"><h2 class="pp-h2">' + esc(cur.title) + '</h2>' +
+          '<div class="pp-actions">' + abtn('m-download', cur.id, t('admin_download')) + '</div>' +
+          '<div class="pp-material">' + (cur.format === 'html' ? cur.content : '<pre class="pp-pre">' + esc(cur.text || cur.content || '') + '</pre>') + '</div></div>' : '');
+    }
+
+    var tabs = [['overview', 'admin_tab_overview'], ['partners', 'admin_partners'], ['referrals', 'admin_referrals'], ['fees', 'admin_tab_fees'], ['materials', 'admin_materials']];
+    var nav = tabs.map(function (tb) {
+      return '<button class="pp-nav-item' + (tab === tb[0] ? ' active' : '') + '" data-act="tab" data-id="' + tb[0] + '">' + esc(t(tb[1])) + '</button>';
     }).join('');
-    var partnersHtml = partners.length
-      ? '<div class="pp-card pp-card-table"><table class="pp-table"><thead><tr><th>' + esc(t('admin_col_partner')) + '</th><th>' + esc(t('status')) + '</th><th>' + esc(t('admin_col_signin')) + '</th><th>' + esc(t('admin_col_clients')) + '</th><th>' + esc(t('admin_col_fees')) + '</th><th>' + esc(t('col_date')) + '</th></tr></thead><tbody>' + partnerRows + '</tbody></table></div>'
-      : '<div class="pp-card"><p class="pp-sub">' + esc(t('admin_no_partners')) + '</p></div>';
-    var referralRows = referrals.map(function (r) {
-      var p = byPartner[r.contractorId] || {};
-      return '<tr><td>' + esc(r.businessName) + '</td><td>' + esc(p.name || '') + (p.company ? ' · ' + esc(p.company) : '') + '</td>' +
-        '<td>' + esc(r.pipelineStatus || 'added') + '</td><td>' + esc(r.status || '') + '</td>' +
-        '<td>' + fmtMoney(r.feeAmount) + '</td><td>' + fmtDate(r.createdAt) + '</td></tr>';
-    }).join('');
-    var referralsHtml = referrals.length
-      ? '<div class="pp-card pp-card-table"><table class="pp-table"><thead><tr><th>' + esc(t('admin_col_business')) + '</th><th>' + esc(t('admin_col_partner')) + '</th><th>' + esc(t('admin_col_stage')) + '</th><th>' + esc(t('admin_col_fee_status')) + '</th><th>' + esc(t('col_fee')) + '</th><th>' + esc(t('col_date')) + '</th></tr></thead><tbody>' + referralRows + '</tbody></table></div>'
-      : '<div class="pp-card"><p class="pp-sub">' + esc(t('admin_no_referrals')) + '</p></div>';
     root.innerHTML =
       '<div class="pp-app"><aside class="pp-side">' +
       '<div class="pp-brand"><img class="pp-brand-logo" src="/assets/iec-logo-light.png" alt="IEC, Inc."><div><div class="pp-brand-name">IEC, Inc.</div><div class="pp-brand-sub">' + esc(t('product')) + '</div></div></div>' +
+      '<nav class="pp-nav">' + nav + '</nav>' +
       '<div class="pp-side-foot">' + esc(t('questions')) + ' <a href="mailto:info@iecincglobal.com">info@iecincglobal.com</a>' +
-      '<br><button class="pp-linklike" id="pp-signout">' + esc(t('sign_out')) + '</button></div>' +
+      '<br><button class="pp-linklike" data-act="signout">' + esc(t('sign_out')) + '</button></div>' +
       '</aside><main class="pp-main">' +
       '<div class="pp-topbar"><div class="pp-topbar-id"><span class="pp-topbar-name">' + esc(c.name) + '</span>' +
       (c.company ? '<span class="pp-topbar-co">' + esc(c.company) + '</span>' : '') + '</div></div>' +
       '<h1 class="pp-h1">' + esc(t('admin_title')) + '</h1>' +
       '<p class="pp-sub">' + esc(t('admin_sub')) + '</p>' +
-      stats +
-      '<h2 class="pp-h2">' + esc(t('admin_partners')) + '</h2>' + partnersHtml +
-      '<h2 class="pp-h2">' + esc(t('admin_referrals')) + '</h2>' + referralsHtml +
+      (state.adminMsg ? '<p class="pp-ok" id="pp-admin-msg">' + esc(state.adminMsg) + '</p>' : '') +
+      (state.adminErr ? '<p class="pp-err" id="pp-admin-err">' + esc(state.adminErr) + '</p>' : '') +
+      body +
       '<footer class="pp-footer"><strong>IEC, Inc.</strong><span>· ' + esc(t('product')) + '</span><span>·</span><a href="https://iecincglobal.com">iecincglobal.com</a></footer>' +
       '</main></div>';
-    var so = document.getElementById('pp-signout');
-    if (so) so.addEventListener('click', function () {
-      api({ action: 'logout' }).then(function () { location.hash = ''; location.reload(); });
+    wireAdminActions(byPartner);
+    if (tab === 'materials' && !state.adminMaterials) {
+      api({ action: 'admin-materials' }, 'GET').then(function (res) {
+        if (res.status === 200 && res.body && res.body.ok) { state.adminMaterials = res.body.materials; renderAdminView(); }
+      }).catch(function () {});
+    }
+  }
+
+  function adminRefresh(msg) {
+    state.adminMsg = msg || null; state.adminErr = null;
+    api({ action: 'admin-overview' }, 'GET').then(function (res) {
+      if (res.status === 200 && res.body && res.body.ok) { state.admin = res.body; renderAdminView(); }
+    }).catch(function () { renderAdminView(); });
+  }
+  function adminFail(res) {
+    state.adminErr = t('admin_action_failed') + (res && res.body && res.body.error ? ' (' + res.body.error + ')' : '');
+    state.adminMsg = null;
+    renderAdminView();
+  }
+  function adminPost(action, body, msg) {
+    body = body || {}; body.action = action;
+    api(body).then(function (res) {
+      if (res.status === 200 && res.body && res.body.ok) adminRefresh(msg);
+      else adminFail(res);
+    }).catch(function () { adminFail(null); });
+  }
+
+  function wireAdminActions(byPartner) {
+    Array.prototype.forEach.call(document.querySelectorAll('[data-act]'), function (el) {
+      el.addEventListener('click', function () {
+        var act = el.getAttribute('data-act');
+        var id = el.getAttribute('data-id');
+        var data = (state.admin || {});
+        var partners = data.contractors || [];
+        var referrals = data.referrals || [];
+        var partner = partners.filter(function (x) { return x.id === id; })[0];
+        var referral = referrals.filter(function (x) { return x.id === id; })[0];
+        if (act === 'signout') { api({ action: 'logout' }).then(function () { location.hash = ''; location.reload(); }); return; }
+        if (act === 'tab') { state.adminTab = id; state.adminPartnerId = null; state.adminReferralId = null; state.adminLink = null; renderAdminView(); return; }
+        if (act === 'p-view') { state.adminPartnerId = id; state.adminLink = null; renderAdminView(); return; }
+        if (act === 'p-back') { state.adminPartnerId = null; state.adminLink = null; renderAdminView(); return; }
+        if (act === 'r-view') { state.adminReferralId = id; renderAdminView(); return; }
+        if (act === 'r-back') { state.adminReferralId = null; renderAdminView(); return; }
+        if (act === 'copy-admin-link') { copyText(state.adminLink, t('link_copied')); return; }
+        if (act === 'p-copy-client' && partner) { copyText(partner.clientLink, t('link_copied')); return; }
+        if (act === 'p-copy-invite' && partner) { copyText(partner.inviteLink, t('link_copied')); return; }
+        if (act === 'p-send-invite') { adminPost('send-invitation', { contractorId: id }, t('admin_done_invite')); return; }
+        if (act === 'p-mint-link') {
+          var b = { action: 'invite', contractorId: id };
+          api(b).then(function (res) {
+            if (res.status === 200 && res.body && res.body.ok) { state.adminLink = res.body.activationUrl; state.adminMsg = t('admin_done_link'); renderAdminView(); }
+            else adminFail(res);
+          }).catch(function () { adminFail(null); });
+          return;
+        }
+        if (act === 'p-set-agreement') { adminPost('set-agreement', { contractorId: id, signed: true }, t('admin_done')); return; }
+        if (act === 'p-set-nda') { adminPost('set-nda', { contractorId: id, signed: true }, t('admin_done')); return; }
+        if (act === 'p-reset-pw') { adminPost('admin-reset-password', { contractorId: id }, t('admin_done_reset')); return; }
+        if (act === 'p-pause') { adminPost('set-status', { contractorId: id, status: 'paused' }, t('admin_done')); return; }
+        if (act === 'p-resume') { adminPost('set-status', { contractorId: id, status: 'active' }, t('admin_done')); return; }
+        if (act === 'p-revoke') { adminPost('set-status', { contractorId: id, status: 'revoked' }, t('admin_done')); return; }
+        if (act === 'p-reactivate') {
+          var b2 = { action: 'reactivate', contractorId: id };
+          api(b2).then(function (res) {
+            if (res.status === 200 && res.body && res.body.ok) { state.adminLink = res.body.activationUrl; adminRefresh(t('admin_done')); }
+            else adminFail(res);
+          }).catch(function () { adminFail(null); });
+          return;
+        }
+        if (act === 'r-advance-client' && referral) {
+          var pipeline = data.pipeline || [];
+          var stage = referral.pipelineStatus || 'added';
+          var idx = pipeline.indexOf(stage);
+          var next = idx >= 0 && idx < pipeline.length - 1 ? pipeline[idx + 1] : null;
+          var ev = document.getElementById('pp-adv-evidence');
+          if (next) adminPost('advance-client', { referralId: id, status: next, evidence: ev ? ev.value : '' }, t('admin_done'));
+          return;
+        }
+        if (act === 'r-advance-fee' && referral) {
+          var FEE_ORDER = ['registered', 'agreement_signed', 'license_closed', 'fee_paid'];
+          var fs = referral.status || 'registered';
+          var fi = FEE_ORDER.indexOf(fs);
+          var nf = fi >= 0 && fi < FEE_ORDER.length - 1 ? FEE_ORDER[fi + 1] : null;
+          var body = { referralId: id, status: nf };
+          if (nf === 'license_closed') {
+            var og = document.getElementById('pp-owner-gross');
+            body.ownerGross = og ? Number(og.value) : 0;
+          }
+          if (nf) adminPost('advance-referral', body, t('admin_done'));
+          return;
+        }
+        if (act === 'r-set-amount') {
+          var amt = document.getElementById('pp-approved-amount');
+          adminPost('set-approved-amount', { referralId: id, amount: amt ? Number(amt.value) : 0 }, t('admin_done'));
+          return;
+        }
+        if (act === 'r-clear-amount') { adminPost('set-approved-amount', { referralId: id, amount: null }, t('admin_done')); return; }
+        if (act === 'h-credit') { adminPost('resolve-hold', { holdId: id, decision: 'credit' }, t('admin_done')); return; }
+        if (act === 'h-dismiss') { adminPost('resolve-hold', { holdId: id, decision: 'dismiss' }, t('admin_done')); return; }
+        if (act === 'm-view') {
+          api({ action: 'admin-material', id: id }, 'GET').then(function (res) {
+            if (res.status === 200 && res.body && res.body.ok) { state.adminMaterial = res.body.material; renderAdminView(); }
+            else adminFail(res);
+          }).catch(function () { adminFail(null); });
+          return;
+        }
+        if (act === 'm-download' && state.adminMaterial) {
+          var m = state.adminMaterial;
+          var content = m.format === 'html' ? m.content : (m.text || m.content || '');
+          var blob = new Blob([content], { type: m.format === 'html' ? 'text/html' : 'text/plain' });
+          var a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = m.id + (m.format === 'html' ? '.html' : '.txt');
+          document.body.appendChild(a); a.click(); a.remove();
+          return;
+        }
+      });
     });
   }
 

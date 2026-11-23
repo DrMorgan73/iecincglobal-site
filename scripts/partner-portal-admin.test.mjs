@@ -310,8 +310,8 @@ console.log('admin-list (Desk) — the office account never appears as a partner
   check('the backfill inside admin-list issued the admin NO client code',
     !after.clientCode, after);
   const noDesk = await call('GET', 'admin-list', { cookie: adminSession });
-  check('the admin\u2019s portal session does NOT open Desk actions (writes stay Desk-gated)',
-    noDesk.statusCode === 401, noDesk.payload);
+  check('the admin\u2019s portal session opens the office surface (full dashboard build, Nov 23, 2026)',
+    noDesk.statusCode === 200, noDesk.payload);
 }
 
 console.log(failures ? `\n${failures} FAILURE(S)` : '\nALL CHECKS PASSED');

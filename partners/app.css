@@ -237,3 +237,10 @@ textarea.pp-input{min-height:0}
   .pp-steps li{flex-wrap:wrap}
   .pp-steps li .pp-btn,.pp-steps li .pp-btn-small{margin-left:35px}
 }
+
+/* Admin dashboard (Nov 23, 2026): tab nav + action rows + materials */
+.pp-nav-item{display:block;width:100%;text-align:left;background:none;border:none;color:inherit;padding:10px 14px;cursor:pointer;font:inherit;border-radius:8px}
+.pp-nav-item.active{background:rgba(255,255,255,.14);font-weight:700}
+.pp-actions{margin-top:14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.pp-pre{white-space:pre-wrap;word-break:break-word;font-size:13px;line-height:1.5}
+.pp-material{max-height:60vh;overflow:auto}

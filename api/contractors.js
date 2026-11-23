@@ -59,11 +59,12 @@
        partner: no referral book, no client/invite codes, the
        partner signature gates do not apply to it, and it never
        appears in the Desk's partner list or counts. Its session
-       unlocks exactly one extra read — `admin-overview`, the
-       partners/states/referrals summary the Desk's admin-list
-       builds — inside the portal. Every office WRITE (invites,
-       signatures, pipeline steps) stays behind the Desk session;
-       the portal admin view is read-only.
+       unlocks the office surface inside the portal:
+       `admin-overview` (the partners/states/referrals summary
+       the Desk's admin-list builds) plus — since the full
+       dashboard build (Nov 23, 2026, DrMorgan's order) — the
+       same office writes the Desk performs, through the admin
+       gate below, and the admin-gated Materials library.
      - TAX FORM ON FILE: payout setup mirrors DataSupply's —
        the partner uploads his W-9 (or W-8BEN) in Earnings or
        Settings (PDF/PNG/JPG, 10 MB maximum); the file is stored
@@ -165,6 +166,8 @@ import {
 } from './_contractors-auth.js';
 import { AGREEMENT_HTML, agreementVersionId } from './_agreement-content.js';
 import { addBusinessDays, buildRestatementNotice, restatementState } from './_cnda-restatement.js';
+import { CNDA_TEXTS, CNDA_TITLES } from './_cnda-content.js';
+import { WEBINAR_SCRIPT_MD } from './_admin-materials-webinar.js';
 
 /* ------------------------------------------------------------------ */
 /* Desk session verification — mirrors middleware.js / api/data-assets.js
@@ -903,6 +906,47 @@ const nameMatches = (typed, recorded) =>
    Admin-role records are EXCLUDED from the partner list: the
    office account is not a partner and never appears in partner
    lists or counts. */
+
+/* ---- Admin Materials & Sources (Nov 23, 2026) ----------------
+   The program's source documents, served ONLY through the
+   admin-gated actions below (Desk session or IEC's portal admin
+   session) — never a public URL. Every text is the text of
+   record: the agreement as generated, the CNDA in its RESTATED
+   Schedule B Entry 1 form (the sealed identification record is
+   NOT a material and is never served), the adopted fee schedule,
+   the education webinar script, and the onboarding templates
+   rendered with bracketed placeholders. Partner-facing naming
+   discipline holds: no channel or intermediary is named. */
+function adminMaterials() {
+  const sched = publicSchedule();
+  const feeText = [
+    'IEC PARTNER REFERRAL FEE SCHEDULE',
+    'Version of record: ' + (sched.status || '') + ' (adopted ' + (sched.adoptedOn || '') + ')',
+    '',
+    'Basis: ' + (sched.basis || ''),
+    'Fee: ' + Math.round((sched.tierRate || 0) * 10000) / 100 + '% of the first ' + formatUSD(sched.tierThreshold || 0) + " of Owner's Gross, plus " + Math.round((sched.aboveRate || 0) * 10000) / 100 + "% of Owner's Gross above that amount.",
+    'Cap: ' + (sched.cap || 'none'),
+    'Paid within ' + (sched.paidWithinDays || 15) + ' days after IEC is paid on the license.',
+    '',
+    'Worked examples (fee on Owner Gross):',
+    ...(sched.examples || []).map(e => '  Owner Gross ' + formatUSD(e.ownerGross) + ' -> referral fee ' + formatUSD(e.fee))
+  ].join('\n');
+  const cndaText = CNDA_TITLES.map((title, i) => title + '\n\n' + (CNDA_TEXTS[i] || '')).join('\n\n');
+  const samplePartner = { name: '[Partner name]', company: '[Partner company]', email: 'partner@example.com' };
+  const inviteMail = buildInvitationEmail(samplePartner, 'https://partners.iecincglobal.com/signin?t=[activation link]');
+  const clientMail = buildClientLinkEmail(samplePartner, 'https://iecincglobal.com/r/[code]');
+  const inviteMsg = buildInviteMessage(samplePartner, 'https://iecincglobal.com/w/[code]');
+  return [
+    { id: 'agreement', title: 'Partner Agreement — Contractor Referral Agreement', meta: 'Version of record ' + agreementVersionId(), format: 'html', content: AGREEMENT_HTML },
+    { id: 'cnda', title: 'Representation + CNDA (incl. restated Schedule B Entry 1)', meta: 'Text of record, SHA-256 316ee737…aa4b', format: 'text', content: cndaText },
+    { id: 'fee-schedule', title: 'Fee Schedule', meta: '3% of first $250,000 of Owner\'s Gross + 1% above, no cap', format: 'text', content: feeText },
+    { id: 'webinar-script', title: 'Partner Education Webinar Script', meta: 'Maya — 2026-11-21', format: 'text', content: WEBINAR_SCRIPT_MD },
+    { id: 'invitation-template', title: 'Onboarding template — invitation email', meta: 'Sent from IEC, Inc. <info@iecincglobal.com> at send time; the activation link is minted per send', format: 'html', content: inviteMail.html, text: inviteMail.text },
+    { id: 'client-link-template', title: 'Onboarding template — client link email (partner to owner)', meta: 'The partner sends this himself with his own client link', format: 'text', content: (clientMail.subject ? 'Subject: ' + clientMail.subject + '\n\n' : '') + (clientMail.body || clientMail.text || '') },
+    { id: 'invite-message-template', title: 'Onboarding template — partner invite message', meta: 'The partner shares this with partners he invites', format: 'text', content: typeof inviteMsg === 'string' ? inviteMsg : ((inviteMsg.subject ? 'Subject: ' + inviteMsg.subject + '\n\n' : '') + (inviteMsg.body || inviteMsg.text || '')) }
+  ];
+}
+
 async function buildAdminListPayload() {
   // Lazy backfill: partners activated before the client link
   // existed receive their codes here (idempotent; 'invited'
@@ -936,6 +980,7 @@ async function buildAdminListPayload() {
   const withTotals = partners.map(c => ({
     ...c,
     clientLink: clientLinkFor(c),
+    inviteLink: inviteLinkFor(c),
     feeTotals: feeTotals((referrals || []).filter(r => r.contractorId === c.id))
   }));
   return {
@@ -1494,6 +1539,20 @@ export default async function handler(req, res) {
     if (sc && (sc.sessionEpoch || 0) === parsed.epoch) contractorId = sc.id;
   }
   const isAdmin = validDeskSession(req);
+  /* Portal admin session (Nov 23, 2026 — DrMorgan's order: the
+     full dashboard inside the portal): IEC's own admin account
+     (role 'admin') holds the SAME office authority in-portal as
+     the Desk session holds in the Desk. Computed lazily, once. */
+  let _portalAdmin = null;
+  async function isPortalAdmin() {
+    if (_portalAdmin !== null) return _portalAdmin;
+    _portalAdmin = false;
+    if (contractorId) {
+      const sc = await readContractorById(contractorId);
+      if (sc && isAdminAccount(sc)) _portalAdmin = true;
+    }
+    return _portalAdmin;
+  }
 
   /* ---- set credentials: the partner creates his username +
      password (Nov 23, 2026). Two doors, one step: (a) inside
@@ -2048,8 +2107,23 @@ export default async function handler(req, res) {
     return res.send(pdf);
   }
 
-  /* ---- admin: Desk session required below ---- */
-  if (!isAdmin) return json(res, { ok: false, error: 'unauthorized' }, 401);
+  /* ---- admin materials: Desk session OR portal admin ---- */
+  if (req.method === 'GET' && action === 'admin-materials') {
+    if (!isAdmin && !(await isPortalAdmin())) return json(res, { ok: false, error: 'unauthorized' }, 401);
+    return json(res, { ok: true, materials: adminMaterials().map(m => ({ id: m.id, title: m.title, meta: m.meta, format: m.format })) });
+  }
+  if (req.method === 'GET' && action === 'admin-material') {
+    if (!isAdmin && !(await isPortalAdmin())) return json(res, { ok: false, error: 'unauthorized' }, 401);
+    const m = adminMaterials().find(x => x.id === str(url.searchParams.get('id'), 40));
+    if (!m) return json(res, { ok: false, error: 'not_found' }, 404);
+    return json(res, { ok: true, material: m });
+  }
+
+  /* ---- admin: Desk session OR IEC's portal admin session
+     required below (Nov 23, 2026 — the full in-portal dashboard
+     DrMorgan ordered: every office write the Desk performs is
+     wired in the portal admin view against the same store). ---- */
+  if (!isAdmin && !(await isPortalAdmin())) return json(res, { ok: false, error: 'unauthorized' }, 401);
 
   /* ---- admin: CNDA Schedule B Entry 1 restatement (Section
      5.3) — record a delivery or an objection for one partner.
