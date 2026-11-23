@@ -5,8 +5,10 @@
    experience (front door, agreement step, and the six sections —
    Dashboard · My referrals · Earnings · Invited partners ·
    Resources · Settings). No marketing-site chrome, no Suite, no
-   Desk: a partner enters only through his own activation link
-   and sees only his own data, served by /api/contractors.
+   Desk: a partner's FIRST access opens through his one-time
+   activation link (registration -> credentials -> signatures);
+   from then on he signs in with his own username + password and
+   sees only his own data, served by /api/contractors.
 
    Preview mode: open with ?demo=1 to walk the whole portal on a
    built-in sample dataset (the TEST AUDIT test partner). Demo
@@ -76,7 +78,7 @@
       err_nda: 'Please complete both signatures first — clients open once IEC records them.',
       err_already: 'This business is already registered. A client can be registered by one partner only.',
       err_identifier: 'One of the answers contains an email address, a phone number or an ID number. Counts only — please remove it and save again. Nothing was saved.',
-      err_session: 'Your session ended — please use your activation link to sign in again.',
+      err_session: 'Your session ended — sign in again with your username and password.',
       err_fields: 'Please check the fields and try again.', err_generic: 'Something went wrong — please try again.',
       q_title: 'Client information — the counts-only questionnaire',
       q_expl: 'Answer with the owner what you already know; anything left blank can be completed by the owner on the questionnaire itself. Counts only — an answer containing an email address, a phone number or an ID number will be refused and nothing will be saved.',
@@ -127,21 +129,49 @@
       front_hero_t: 'The IEC Partner Portal',
       front_hero_p: 'The private portal for IEC\u2019s partners: register the companies you introduce, follow each one through the process, and track your referral fees. Everything here is IEC, Inc. — partners work with IEC directly.',
       front_enter_t: 'Enter your portal',
-      front_enter_p: 'Your portal is personal: sign in below with the one-time activation code from the link IEC emailed you, once both of your signatures stand — the Contractor Referral Agreement and the NDA. Sign-in sets your access for 30 days.',
-      front_enter_p2: 'Lost your link, or never received one? Write to info@iecincglobal.com and IEC will re-issue it.',
+      front_enter_p: 'Your portal is personal: sign in below with the username and password you created — sign-in sets your access for 30 days. First time here? Your first access opens through the one-time activation link from your invitation, once both of your signatures stand — the Contractor Referral Agreement and the NDA.',
+      front_enter_p2: 'Lost your invitation link, or never received one? Write to info@iecincglobal.com and IEC will re-issue it.',
       signin_t: 'Sign in',
-      signin_p: 'Enter the activation code from your IEC invitation link — or paste the full link — and your dashboard opens. The code works once, and only once both of your signatures stand.',
+      signin_p: 'Sign in with your username and password. First time here? Use the activation link from your invitation — it works once and takes you through registration and your signatures.',
       signin_label: 'Activation code or full sign-in link',
       signin_btn: 'Sign in to my portal',
       signin_working: 'Signing you in…',
       signin_failed: 'That code or link did not work — it may have expired or already been used. Write to info@iecincglobal.com and IEC will re-issue your sign-in link.',
-      signin_first: 'Your sign-in link is valid. One signature step comes first — your portal opens as soon as both signatures stand.',
-      forgot_link: 'Forgot your sign-in link?',
-      forgot_p: 'Enter the email on your partner record and we will email you a fresh sign-in link. A fresh link replaces any sign-in link you were sent before.',
+      signin_first: 'Your sign-in link is valid. Registration and your signature steps come first — your portal opens as soon as both signatures stand.',
+      li_user: 'Username', li_pass: 'Password',
+      li_failed: 'That username or password did not work — check both and try again.',
+      show_pw: 'Show password', hide_pw: 'Hide password',
+      ft_t: 'First time here?',
+      ft_p: 'Use the activation link from your invitation — it works once, and it walks you through registration, your username and password, and your signatures. After that first visit, you sign in with your username and password.',
+      ft_btn: 'Continue with my activation link',
+      forgot_link: 'Forgot your password?',
+      forgot_p: 'Enter the email on your partner record and we will email you a password-reset link. The link works once and expires in one hour. (No password yet? Your door in is the activation link from your invitation, above.)',
       forgot_label: 'Email on your partner record',
-      forgot_btn: 'Email me a new sign-in link',
+      forgot_btn: 'Email me a reset link',
       forgot_working: 'Sending…',
-      forgot_sent: 'If that email matches an active partner record, a new sign-in link is on its way. Check your inbox — the link works once.',
+      forgot_sent: 'If that email matches a partner record with a password set, a reset link is on its way. Check your inbox — the link works once and expires in one hour.',
+      reg_t: 'Register with IEC',
+      reg_type_t: 'How are you registering?',
+      reg_type_p: 'Choose the registration that matches you — IEC records your choice on your partner record.',
+      reg_individual: 'As an individual', reg_individual_d: 'You personally are the partner — your full legal name is your registration.',
+      reg_company: 'As a company', reg_company_d: 'Your company is the registered partner, and you are its contact person.',
+      reg_app_t: 'Your registration application',
+      reg_app_p: 'Confirm your details — what IEC already holds is filled in for you. Your email is your identity of record and does not change here.',
+      f_legal_name: 'Your full legal name', f_contact: 'Contact person — full legal name', f_company_legal: 'Company legal name',
+      reg_continue: 'Continue', reg_fail: 'That step could not be saved — check the fields and try again.',
+      cred_t: 'Create your username and password',
+      cred_p: 'This is how you sign in from now on. Choose a username, and a password of at least 12 characters.',
+      cred_user: 'Choose a username', cred_user_hint: '3–40 characters: letters, numbers, dots, dashes or underscores.',
+      cred_pass: 'Create a password', cred_pass2: 'Type the password again',
+      cred_btn: 'Save and continue', cred_match: 'The two passwords do not match.', cred_weak: 'Your password needs at least 12 characters.',
+      cred_gate_t: 'One step before your dashboard',
+      cred_gate_p: 'Your partnership is active. Create the username and password you will sign in with from now on — then your dashboard opens.',
+      cred_gate_btn: 'Save and open my dashboard',
+      reset_t: 'Reset your password',
+      reset_p: 'Choose a new password — at least 12 characters. Setting it signs out every other device signed in to your portal.',
+      reset_new: 'New password', reset_btn: 'Set my new password',
+      reset_ok: 'Your password is set.', reset_go: 'Go to sign in',
+      reset_fail: 'That reset link did not work — it may have expired or already been used. Ask for a fresh one from the sign-in page.',
       pointer_new: 'New to IEC?',
       pointer_link: 'Request access on the Partner Portal page',
       front_req_t: 'Request access',
@@ -238,7 +268,7 @@
       err_nda: 'Complete primero ambas firmas: los clientes se abren cuando IEC las registra.',
       err_already: 'Esta empresa ya está registrada. Un cliente solo puede ser registrado por un socio.',
       err_identifier: 'Una de las respuestas contiene un correo, un teléfono o un número de identificación. Solo conteos: quítelo y guarde de nuevo. No se guardó nada.',
-      err_session: 'Su sesión terminó: use su enlace de activación para ingresar de nuevo.',
+      err_session: 'Su sesión terminó: inicie sesión de nuevo con su nombre de usuario y contraseña.',
       err_fields: 'Revise los campos e inténtelo de nuevo.', err_generic: 'Algo salió mal: inténtelo de nuevo.',
       q_title: 'Información del cliente: el cuestionario de solo conteos',
       q_expl: 'Responda con el propietario lo que ya sabe; lo que quede en blanco puede completarlo el propietario en el propio cuestionario. Solo conteos: una respuesta con un correo, un teléfono o un número de identificación será rechazada y no se guardará nada.',
@@ -289,21 +319,49 @@
       front_hero_t: 'El Portal de Socios de IEC',
       front_hero_p: 'El portal privado para los socios de IEC: registre las empresas que presenta, siga a cada una durante el proceso y controle sus comisiones por referidos. Todo aquí es IEC, Inc.: los socios trabajan directamente con IEC.',
       front_enter_t: 'Ingrese a su portal',
-      front_enter_p: 'Su portal es personal: inicie sesión abajo con el código de activación único del enlace que IEC le envió por correo, cuando ambas firmas estén registradas: el Acuerdo de Referidos y el NDA. El acceso dura 30 días.',
-      front_enter_p2: '¿Perdió su enlace o nunca lo recibió? Escriba a info@iecincglobal.com y IEC se lo reemitirá.',
+      front_enter_p: 'Su portal es personal: inicie sesión abajo con el nombre de usuario y la contraseña que usted creó — el acceso dura 30 días. ¿Es su primera vez? Su primer acceso se abre con el enlace de activación único de su invitación, cuando ambas firmas estén registradas: el Acuerdo de Referidos y el NDA.',
+      front_enter_p2: '¿Perdió su enlace de invitación o nunca lo recibió? Escriba a info@iecincglobal.com y IEC se lo reemitirá.',
       signin_t: 'Iniciar sesión',
-      signin_p: 'Ingrese el código de activación de su enlace de invitación de IEC — o pegue el enlace completo — y se abrirá su panel. El código funciona una sola vez, y solo cuando ambas firmas están registradas.',
+      signin_p: 'Inicie sesión con su nombre de usuario y contraseña. ¿Es su primera vez? Use el enlace de activación de su invitación: funciona una sola vez y lo guía por el registro y sus firmas.',
       signin_label: 'Código de activación o enlace completo de acceso',
       signin_btn: 'Ingresar a mi portal',
       signin_working: 'Ingresando…',
       signin_failed: 'Ese código o enlace no funcionó: puede haber vencido o ya haberse usado. Escriba a info@iecincglobal.com y IEC le reemitirá su enlace de acceso.',
-      signin_first: 'Su enlace de acceso es válido. Primero viene un paso de firma: su portal se abre en cuanto ambas firmas estén registradas.',
-      forgot_link: '¿Olvidó su enlace de acceso?',
-      forgot_p: 'Ingrese el correo de su registro de socio y le enviaremos un enlace de acceso nuevo. Un enlace nuevo reemplaza cualquier enlace que le hayamos enviado antes.',
+      signin_first: 'Su enlace de acceso es válido. Primero vienen el registro y sus pasos de firma: su portal se abre en cuanto ambas firmas estén registradas.',
+      li_user: 'Nombre de usuario', li_pass: 'Contraseña',
+      li_failed: 'Ese nombre de usuario o contraseña no funcionó: verifique ambos e inténtelo de nuevo.',
+      show_pw: 'Mostrar contraseña', hide_pw: 'Ocultar contraseña',
+      ft_t: '¿Es su primera vez?',
+      ft_p: 'Use el enlace de activación de su invitación: funciona una sola vez y lo guía por el registro, su nombre de usuario y contraseña, y sus firmas. Después de esa primera visita, usted inicia sesión con su nombre de usuario y contraseña.',
+      ft_btn: 'Continuar con mi enlace de activación',
+      forgot_link: '¿Olvidó su contraseña?',
+      forgot_p: 'Ingrese el correo de su registro de socio y le enviaremos un enlace para restablecer su contraseña. El enlace funciona una sola vez y vence en una hora. (¿Aún no tiene contraseña? Su puerta de entrada es el enlace de activación de su invitación, arriba.)',
       forgot_label: 'Correo de su registro de socio',
-      forgot_btn: 'Enviarme un enlace nuevo',
+      forgot_btn: 'Enviarme un enlace de restablecimiento',
       forgot_working: 'Enviando…',
-      forgot_sent: 'Si ese correo coincide con un registro de socio activo, un nuevo enlace de acceso va en camino. Revise su bandeja de entrada: el enlace funciona una sola vez.',
+      forgot_sent: 'Si ese correo coincide con un registro de socio con contraseña, un enlace de restablecimiento va en camino. Revise su bandeja de entrada: el enlace funciona una sola vez y vence en una hora.',
+      reg_t: 'Regístrese con IEC',
+      reg_type_t: '¿Cómo se registra?',
+      reg_type_p: 'Elija el registro que le corresponde: IEC guarda su elección en su registro de socio.',
+      reg_individual: 'Como persona individual', reg_individual_d: 'Usted personalmente es el socio: su nombre legal completo es su registro.',
+      reg_company: 'Como empresa', reg_company_d: 'Su empresa es el socio registrado, y usted es su persona de contacto.',
+      reg_app_t: 'Su solicitud de registro',
+      reg_app_p: 'Confirme sus datos: lo que IEC ya tiene está completado por usted. Su correo es su identidad de registro y no cambia aquí.',
+      f_legal_name: 'Su nombre legal completo', f_contact: 'Persona de contacto: nombre legal completo', f_company_legal: 'Nombre legal de la empresa',
+      reg_continue: 'Continuar', reg_fail: 'Ese paso no se pudo guardar: verifique los campos e inténtelo de nuevo.',
+      cred_t: 'Cree su nombre de usuario y contraseña',
+      cred_p: 'Así iniciará sesión de ahora en adelante. Elija un nombre de usuario y una contraseña de al menos 12 caracteres.',
+      cred_user: 'Elija un nombre de usuario', cred_user_hint: 'De 3 a 40 caracteres: letras, números, puntos, guiones o guiones bajos.',
+      cred_pass: 'Cree una contraseña', cred_pass2: 'Escriba la contraseña de nuevo',
+      cred_btn: 'Guardar y continuar', cred_match: 'Las dos contraseñas no coinciden.', cred_weak: 'Su contraseña necesita al menos 12 caracteres.',
+      cred_gate_t: 'Un paso antes de su panel',
+      cred_gate_p: 'Su asociación está activa. Cree el nombre de usuario y la contraseña con los que iniciará sesión de ahora en adelante: luego se abre su panel.',
+      cred_gate_btn: 'Guardar y abrir mi panel',
+      reset_t: 'Restablezca su contraseña',
+      reset_p: 'Elija una contraseña nueva, de al menos 12 caracteres. Al guardarla se cierran las sesiones de su portal en todos los demás dispositivos.',
+      reset_new: 'Contraseña nueva', reset_btn: 'Guardar mi contraseña nueva',
+      reset_ok: 'Su contraseña está guardada.', reset_go: 'Ir a iniciar sesión',
+      reset_fail: 'Ese enlace de restablecimiento no funcionó: puede haber vencido o ya haberse usado. Pida uno nuevo desde la página de inicio de sesión.',
       pointer_new: '¿Nuevo en IEC?',
       pointer_link: 'Solicite acceso en la página del Portal de Socios',
       front_req_t: 'Solicitar acceso',
@@ -470,6 +528,10 @@
      registered partners only: it renders the sign-in card alone —
      never the application form. The root door keeps both cards. */
   var SIGNIN_PAGE = window.PARTNER_PORTAL_PAGE === 'signin';
+  /* The password-reset page (/reset-password, /es/reset-password):
+     reached only from the emailed reset link; renders the reset
+     form alone. */
+  var RESET_PAGE = window.PARTNER_PORTAL_PAGE === 'reset';
   var state = { me: null, route: 'dashboard', clientId: null, qual: null };
   function demoSuffix() { return DEMO ? '?demo=1' : ''; }
   function esc(s) {
@@ -620,9 +682,10 @@
 
   /* ------------------------- boot ------------------------- */
   function boot() {
+    if (RESET_PAGE) { renderResetPassword(); return; }
     if (location.pathname.indexOf('/join/') >= 0) { renderJoin(); return; }
     var token = params.get('t');
-    if (token) { renderAgreement(token); return; }
+    if (token) { renderOnboarding(token); return; }
     if (DEMO) { state.me = demoMe(); render(); return; }
     api({ action: 'me' }, 'GET').then(function (res) {
       if (res.status === 200 && res.body && res.body.ok) { state.me = res.body; render(); }
@@ -658,6 +721,17 @@
   function render() {
     var me = state.me;
     if (!me) return;
+    /* Credentials gate (Nov 23, 2026 — the migration route): an
+       active or paused partner holding a session but NO
+       credentials yet is routed through the set-credentials step
+       before the Dashboard, until credentials exist. His data,
+       referrals and client link are untouched — this is the one
+       screen between his link sign-in and his portal. */
+    if (!DEMO && me.contractor && me.contractor.credentialsSet === false
+      && (me.contractor.status === 'active' || me.contractor.status === 'paused')) {
+      renderSetCredentialsGate();
+      return;
+    }
     state.displayLink = standaloneLink(me);
     state.displayEmail = displayEmail(me, state.displayLink);
     var r = currentHash();
@@ -1224,28 +1298,86 @@
       '<div class="pp-front-foot"><strong>IEC, Inc.</strong> · ' + esc(t('product')) + ' · <a href="https://iecincglobal.com">iecincglobal.com</a></div>';
     bindSignin();
   }
+  /* A password field with the standing eye toggle (the sign-in
+     standard, Nov 23, 2026): every password field in the portal
+     carries a show/hide eye. */
+  var EYE_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+  function pwFieldHtml(id, label, autocomplete) {
+    return '<div><label class="pp-label" for="' + id + '">' + esc(label) + '</label>' +
+      '<span class="pp-pw-wrap"><input class="pp-input" id="' + id + '" type="password" autocomplete="' + autocomplete + '">' +
+      '<button type="button" class="pp-pw-eye" data-pw-eye="' + id + '" aria-label="' + esc(t('show_pw')) + '" aria-pressed="false">' + EYE_SVG + '</button></span></div>';
+  }
+  function bindPwToggles() {
+    Array.prototype.forEach.call(document.querySelectorAll('[data-pw-eye]'), function (b) {
+      b.addEventListener('click', function () {
+        var input = document.getElementById(b.getAttribute('data-pw-eye'));
+        if (!input) return;
+        var show = input.type === 'password';
+        input.type = show ? 'text' : 'password';
+        b.setAttribute('aria-pressed', show ? 'true' : 'false');
+        b.setAttribute('aria-label', show ? t('hide_pw') : t('show_pw'));
+        input.focus();
+      });
+    });
+  }
   function signinFormHtml() {
-    return '<form id="pp-signin-form"><div><label class="pp-label" for="pp-signin-credential">' + esc(t('signin_label')) + '</label>' +
-      '<input class="pp-input" id="pp-signin-credential" autocomplete="off" spellcheck="false"></div>' +
-      '<p class="pp-error" id="pp-signin-error" hidden></p><p class="pp-ok" id="pp-signin-ok" hidden></p>' +
-      '<button class="pp-btn" type="submit" id="pp-signin-submit">' + esc(t('signin_btn')) + '</button></form>' +
-      /* Forgot-link recovery (the portal has no passwords by
-         design): the partner gives the email on his record and
-         the system emails a FRESH activation link. The answer
-         on screen is generic whether or not the email matched —
-         the card never confirms that an account exists. */
+    return /* Recurrent sign-in — the primary form (Nov 23, 2026):
+       username + password, the credentials the partner created
+       at registration. */
+      '<form id="pp-login-form"><div><label class="pp-label" for="pp-login-username">' + esc(t('li_user')) + '</label>' +
+      '<input class="pp-input" id="pp-login-username" autocomplete="username" spellcheck="false"></div>' +
+      pwFieldHtml('pp-login-password', t('li_pass'), 'current-password') +
+      '<p class="pp-error" id="pp-login-error" hidden></p>' +
+      '<button class="pp-btn" type="submit" id="pp-login-submit">' + esc(t('signin_btn')) + '</button></form>' +
+      /* Forgot password: an emailed reset link (single-use, one
+         hour). The answer on screen is generic whether or not
+         the email matched — the card never confirms that an
+         account exists. */
       '<div class="pp-forgot"><p class="pp-p"><button class="pp-textlink" type="button" id="pp-forgot-toggle">' + esc(t('forgot_link')) + '</button></p>' +
       '<form id="pp-forgot-form" hidden><p class="pp-p">' + esc(t('forgot_p')) + '</p>' +
       '<div><label class="pp-label" for="pp-forgot-email">' + esc(t('forgot_label')) + '</label>' +
       '<input class="pp-input" id="pp-forgot-email" type="email" autocomplete="email" spellcheck="false"></div>' +
       '<p class="pp-error" id="pp-forgot-error" hidden></p>' +
       '<button class="pp-btn pp-btn-ghost" type="submit" id="pp-forgot-submit">' + esc(t('forgot_btn')) + '</button></form>' +
-      '<p class="pp-ok" id="pp-forgot-ok" hidden></p></div>';
+      '<p class="pp-ok" id="pp-forgot-ok" hidden></p></div>' +
+      /* First time only — clearly separated: the activation code
+         is a first-time signup mechanism, never a recurrent
+         login. */
+      '<div class="pp-firsttime"><h3 class="pp-h3">' + esc(t('ft_t')) + '</h3><p class="pp-p">' + esc(t('ft_p')) + '</p>' +
+      '<form id="pp-signin-form"><div><label class="pp-label" for="pp-signin-credential">' + esc(t('signin_label')) + '</label>' +
+      '<input class="pp-input" id="pp-signin-credential" autocomplete="off" spellcheck="false"></div>' +
+      '<p class="pp-error" id="pp-signin-error" hidden></p><p class="pp-ok" id="pp-signin-ok" hidden></p>' +
+      '<button class="pp-btn pp-btn-ghost" type="submit" id="pp-signin-submit">' + esc(t('ft_btn')) + '</button></form></div>';
   }
   function bindSignin() {
+    /* --- recurrent login: username + password --- */
+    var loginForm = document.getElementById('pp-login-form');
+    if (loginForm) loginForm.addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      if (DEMO) { toast(t('demo_blocked')); return; }
+      var err = document.getElementById('pp-login-error');
+      var btn = document.getElementById('pp-login-submit');
+      err.hidden = true;
+      btn.disabled = true; btn.textContent = t('signin_working');
+      api({ action: 'login', username: document.getElementById('pp-login-username').value,
+        password: document.getElementById('pp-login-password').value }).then(function (res) {
+        btn.disabled = false; btn.textContent = t('signin_btn');
+        if (res.status === 200 && res.body && res.body.ok && res.body.next === 'dashboard') {
+          /* The session cookie is set — boot again and the
+             dashboard opens. */
+          boot();
+        } else {
+          err.textContent = (res.body && res.body.message) || t('li_failed');
+          err.hidden = false;
+        }
+      }).catch(function () {
+        btn.disabled = false; btn.textContent = t('signin_btn');
+        err.textContent = t('li_failed'); err.hidden = false;
+      });
+    });
+    /* --- first-time: the activation code/link --- */
     var form = document.getElementById('pp-signin-form');
-    if (!form) return;
-    form.addEventListener('submit', function (ev) {
+    if (form) form.addEventListener('submit', function (ev) {
       ev.preventDefault();
       if (DEMO) { toast(t('demo_blocked')); return; }
       var err = document.getElementById('pp-signin-error');
@@ -1254,23 +1386,25 @@
       err.hidden = true; ok.hidden = true;
       btn.disabled = true; btn.textContent = t('signin_working');
       api({ action: 'signin', credential: document.getElementById('pp-signin-credential').value }).then(function (res) {
-        btn.disabled = false; btn.textContent = t('signin_btn');
+        btn.disabled = false; btn.textContent = t('ft_btn');
         if (res.status === 200 && res.body && res.body.ok && res.body.next === 'dashboard') {
-          /* The session cookie is set — boot again and the
-             dashboard opens. */
+          /* The session cookie is set — boot again; a partner
+             with no credentials yet lands on the set-credentials
+             step (the render gate), then the dashboard. */
           boot();
         } else if (res.status === 200 && res.body && res.body.ok && res.body.next === 'agreement' && res.body.token) {
           ok.textContent = t('signin_first'); ok.hidden = false;
-          renderAgreement(res.body.token);
+          renderOnboarding(res.body.token);
         } else {
           err.textContent = (res.body && res.body.message) || t('signin_failed');
           err.hidden = false;
         }
       }).catch(function () {
-        btn.disabled = false; btn.textContent = t('signin_btn');
+        btn.disabled = false; btn.textContent = t('ft_btn');
         err.textContent = t('signin_failed'); err.hidden = false;
       });
     });
+    /* --- forgot password: email a reset link --- */
     var fToggle = document.getElementById('pp-forgot-toggle');
     var fForm = document.getElementById('pp-forgot-form');
     if (fToggle && fForm) fToggle.addEventListener('click', function () {
@@ -1285,7 +1419,7 @@
       var btn = document.getElementById('pp-forgot-submit');
       ok.hidden = true; err.hidden = true;
       btn.disabled = true; btn.textContent = t('forgot_working');
-      api({ action: 'recover', email: document.getElementById('pp-forgot-email').value }).then(function (res) {
+      api({ action: 'forgot-password', email: document.getElementById('pp-forgot-email').value }).then(function (res) {
         btn.disabled = false; btn.textContent = t('forgot_btn');
         if (res.status === 200 && res.body && res.body.ok) {
           ok.textContent = t('forgot_sent'); ok.hidden = false;
@@ -1298,6 +1432,7 @@
         err.textContent = t('err_generic'); err.hidden = false;
       });
     });
+    bindPwToggles();
   }
   function signupFormHtml(inviteCode) {
     var typeOpts = ['Data network introductions', 'Clinical services', 'Consulting', 'Business services', 'Other']
@@ -1365,6 +1500,183 @@
     } else {
       document.getElementById('pp-join-inviter').textContent = t('front_hero_p');
     }
+  }
+
+  /* ------------------------- onboarding chain -------------------------
+     DrMorgan's specified sequence (Nov 23, 2026): activation code
+     -> register as individual or company -> the application ->
+     create username + password -> agreement -> NDA -> dashboard.
+     The chain state rides the agreement-step read: registration
+     type + credentials state + the stored profile, so a partner
+     who returns mid-chain resumes at the first unfinished step. */
+  function chainShell(title, p, inner, wide) {
+    root.innerHTML = '<div class="pp-front"><div class="pp-front-hero"><img class="pp-front-logo" src="/assets/iec-logo.png" alt="IEC, Inc."><div class="pp-front-k">' + esc(t('front_hero_k')) + '</div>' +
+      '<h1 class="pp-front-h">' + esc(title) + '</h1><p class="pp-front-p">' + esc(p) + '</p></div>' +
+      '<div class="pp-card" style="max-width:' + (wide || 760) + 'px;margin:0 auto">' + inner + '</div></div>' +
+      '<div class="pp-front-foot"><strong>IEC, Inc.</strong> · ' + esc(t('product')) + ' · <a href="https://iecincglobal.com">iecincglobal.com</a></div>';
+  }
+  function renderOnboarding(token) {
+    chainShell(t('reg_t'), t('loading'), '<p class="pp-p pp-muted">' + esc(t('loading')) + '</p>');
+    api({ action: 'agreement', token: token }, 'GET').then(function (res) {
+      if (res.status !== 200 || !res.body.ok) { renderDoor(); return; }
+      var d = res.body;
+      if (!d.registrationType) renderRegType(token, d);
+      else if (!d.credentialsSet) renderCredentialsStep(token, d);
+      else renderAgreement(token);
+    }).catch(function () { renderDoor(); });
+  }
+  function renderRegType(token, d) {
+    chainShell(t('reg_t'), t('reg_type_p'),
+      '<h2 class="pp-h2">' + esc(t('reg_type_t')) + '</h2>' +
+      '<div class="pp-type-grid">' +
+      '<button type="button" class="pp-type-card" id="pp-reg-individual"><span class="pp-type-name">' + esc(t('reg_individual')) + '</span><span class="pp-type-desc">' + esc(t('reg_individual_d')) + '</span></button>' +
+      '<button type="button" class="pp-type-card" id="pp-reg-company"><span class="pp-type-name">' + esc(t('reg_company')) + '</span><span class="pp-type-desc">' + esc(t('reg_company_d')) + '</span></button>' +
+      '</div>');
+    document.getElementById('pp-reg-individual').addEventListener('click', function () { renderRegApplication(token, d, 'individual'); });
+    document.getElementById('pp-reg-company').addEventListener('click', function () { renderRegApplication(token, d, 'company'); });
+  }
+  function regField(id, label, value, opts) {
+    opts = opts || {};
+    return '<div><label class="pp-label" for="' + id + '">' + esc(label) + '</label>' +
+      '<input class="pp-input" id="' + id + '" value="' + esc(value || '') + '"' +
+      (opts.type ? ' type="' + opts.type + '"' : '') + (opts.required ? ' required' : '') +
+      (opts.autocomplete ? ' autocomplete="' + opts.autocomplete + '"' : '') + ' spellcheck="false"></div>';
+  }
+  function renderRegApplication(token, d, type) {
+    var c = d.contractor || {};
+    var p = d.profile || {};
+    var isCompany = type === 'company';
+    var fields = '';
+    if (isCompany) fields += regField('pp-reg-company', t('f_company_legal'), c.company, { required: true });
+    fields += regField('pp-reg-name', isCompany ? t('f_contact') : t('f_legal_name'), c.name, { required: true, autocomplete: 'name' });
+    fields += '<div><label class="pp-label">' + esc(t('su_email')) + '</label><p class="pp-p" style="margin:4px 0 0"><strong>' + esc(c.email || '') + '</strong></p></div>';
+    fields += regField('pp-reg-phone', t('su_phone'), p.phone, { required: true, type: 'tel', autocomplete: 'tel' });
+    fields += regField('pp-reg-street', t('su_street'), p.addressStreet, { required: true, autocomplete: 'street-address' });
+    fields += regField('pp-reg-city', t('su_city'), p.addressCity, { required: true, autocomplete: 'address-level2' });
+    fields += regField('pp-reg-state', t('su_state'), p.addressState, { required: true, autocomplete: 'address-level1' });
+    fields += regField('pp-reg-zip', t('su_zip'), p.addressZip, { required: true, autocomplete: 'postal-code' });
+    if (isCompany) fields += regField('pp-reg-website', t('su_website'), p.website, {});
+    chainShell(t('reg_t'), t('reg_app_p'),
+      '<h2 class="pp-h2">' + esc(t('reg_app_t')) + '</h2>' +
+      '<form id="pp-reg-form"><div class="pp-form-grid">' + fields + '</div>' +
+      '<p class="pp-error" id="pp-reg-error" hidden></p>' +
+      '<button class="pp-btn" type="submit" id="pp-reg-submit">' + esc(t('reg_continue')) + '</button></form>');
+    document.getElementById('pp-reg-form').addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      var err = document.getElementById('pp-reg-error');
+      var btn = document.getElementById('pp-reg-submit');
+      err.hidden = true; btn.disabled = true;
+      var val = function (id) { var n = document.getElementById(id); return n ? n.value : ''; };
+      api({ action: 'registration', token: token, registrationType: type,
+        name: val('pp-reg-name'), company: isCompany ? val('pp-reg-company') : '',
+        phone: val('pp-reg-phone'), addressStreet: val('pp-reg-street'), addressCity: val('pp-reg-city'),
+        addressState: val('pp-reg-state'), addressZip: val('pp-reg-zip'),
+        website: isCompany ? val('pp-reg-website') : '' }).then(function (res) {
+        btn.disabled = false;
+        if (res.status === 200 && res.body && res.body.ok) {
+          d.registrationType = type;
+          renderCredentialsStep(token, d);
+        } else {
+          err.textContent = (res.body && res.body.message) || t('reg_fail');
+          err.hidden = false;
+        }
+      }).catch(function () { btn.disabled = false; err.textContent = t('reg_fail'); err.hidden = false; });
+    });
+  }
+  function credentialsFormHtml(btnLabel) {
+    return '<form id="pp-cred-form"><div><label class="pp-label" for="pp-cred-username">' + esc(t('cred_user')) + '</label>' +
+      '<input class="pp-input" id="pp-cred-username" autocomplete="username" spellcheck="false">' +
+      '<p class="pp-p pp-muted" style="margin:4px 0 0;font-size:13px">' + esc(t('cred_user_hint')) + '</p></div>' +
+      pwFieldHtml('pp-cred-pass', t('cred_pass'), 'new-password') +
+      pwFieldHtml('pp-cred-pass2', t('cred_pass2'), 'new-password') +
+      '<p class="pp-error" id="pp-cred-error" hidden></p>' +
+      '<button class="pp-btn" type="submit" id="pp-cred-submit">' + esc(btnLabel) + '</button></form>';
+  }
+  function bindCredentialsForm(onSubmit) {
+    bindPwToggles();
+    var form = document.getElementById('pp-cred-form');
+    if (!form) return;
+    form.addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      if (DEMO) { toast(t('demo_blocked')); return; }
+      var err = document.getElementById('pp-cred-error');
+      var btn = document.getElementById('pp-cred-submit');
+      var username = document.getElementById('pp-cred-username').value;
+      var pass = document.getElementById('pp-cred-pass').value;
+      var pass2 = document.getElementById('pp-cred-pass2').value;
+      err.hidden = true;
+      if (pass.length < 12) { err.textContent = t('cred_weak'); err.hidden = false; return; }
+      if (pass !== pass2) { err.textContent = t('cred_match'); err.hidden = false; return; }
+      btn.disabled = true;
+      onSubmit({ username: username, password: pass }, function (msg) {
+        btn.disabled = false;
+        err.textContent = msg || t('err_fields');
+        err.hidden = false;
+      });
+    });
+  }
+  function renderCredentialsStep(token, d) {
+    chainShell(t('reg_t'), t('cred_p'),
+      '<h2 class="pp-h2">' + esc(t('cred_t')) + '</h2>' + credentialsFormHtml(t('cred_btn')));
+    bindCredentialsForm(function (creds, fail) {
+      api({ action: 'set-credentials', token: token, username: creds.username, password: creds.password }).then(function (res) {
+        if (res.status === 200 && res.body && res.body.ok) renderAgreement(token);
+        else fail(res.body && res.body.message);
+      }).catch(function () { fail(null); });
+    });
+  }
+  /* The migration gate: a signed-in partner with no credentials
+     yet creates them here, then the Dashboard opens. */
+  function renderSetCredentialsGate() {
+    chainShell(t('cred_gate_t'), t('cred_gate_p'),
+      '<h2 class="pp-h2">' + esc(t('cred_t')) + '</h2>' + credentialsFormHtml(t('cred_gate_btn')) +
+      '<p class="pp-p" style="margin-top:14px"><button class="pp-textlink" type="button" id="pp-gate-signout">' + esc(t('sign_out')) + '</button></p>');
+    bindCredentialsForm(function (creds, fail) {
+      api({ action: 'set-credentials', username: creds.username, password: creds.password }).then(function (res) {
+        if (res.status === 200 && res.body && res.body.ok) refresh();
+        else fail(res.body && res.body.message);
+      }).catch(function () { fail(null); });
+    });
+    var so = document.getElementById('pp-gate-signout');
+    if (so) so.addEventListener('click', function () {
+      api({ action: 'logout' }).then(function () { location.hash = ''; location.reload(); });
+    });
+  }
+
+  /* ------------------------- password reset page ------------------------- */
+  function renderResetPassword() {
+    var token = params.get('t') || '';
+    chainShell(t('reset_t'), t('reset_p'),
+      '<h2 class="pp-h2">' + esc(t('reset_t')) + '</h2>' +
+      '<form id="pp-reset-form">' +
+      pwFieldHtml('pp-reset-pass', t('reset_new'), 'new-password') +
+      pwFieldHtml('pp-reset-pass2', t('cred_pass2'), 'new-password') +
+      '<p class="pp-error" id="pp-reset-error" hidden></p><p class="pp-ok" id="pp-reset-ok" hidden></p>' +
+      '<button class="pp-btn" type="submit" id="pp-reset-submit">' + esc(t('reset_btn')) + '</button></form>');
+    bindPwToggles();
+    document.getElementById('pp-reset-form').addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      var err = document.getElementById('pp-reset-error');
+      var ok = document.getElementById('pp-reset-ok');
+      var btn = document.getElementById('pp-reset-submit');
+      var pass = document.getElementById('pp-reset-pass').value;
+      var pass2 = document.getElementById('pp-reset-pass2').value;
+      err.hidden = true; ok.hidden = true;
+      if (pass.length < 12) { err.textContent = t('cred_weak'); err.hidden = false; return; }
+      if (pass !== pass2) { err.textContent = t('cred_match'); err.hidden = false; return; }
+      btn.disabled = true;
+      api({ action: 'reset-password', token: token, password: pass }).then(function (res) {
+        btn.disabled = false;
+        if (res.status === 200 && res.body && res.body.ok) {
+          ok.innerHTML = esc(t('reset_ok')) + ' <a href="' + (LANG === 'es' ? '/es/signin' : '/signin') + '">' + esc(t('reset_go')) + '</a>';
+          ok.hidden = false;
+          document.getElementById('pp-reset-form').reset();
+        } else {
+          err.textContent = (res.body && res.body.message) || t('reset_fail');
+          err.hidden = false;
+        }
+      }).catch(function () { btn.disabled = false; err.textContent = t('reset_fail'); err.hidden = false; });
+    });
   }
 
   /* ------------------------- agreement step ------------------------- */

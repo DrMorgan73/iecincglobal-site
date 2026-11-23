@@ -72,6 +72,58 @@ export function mintSessionToken(contractorId) {
   return mintToken(contractorId, SESSION_DAYS * 24 * 3600);
 }
 
+/* ---- partner credentials (Nov 23, 2026) ----
+   The activation token above is a FIRST-TIME signup mechanism.
+   Recurrent sign-in is a username + password the partner sets
+   himself: the username is stored normalized (trimmed,
+   lowercased) and matched case-insensitively; the password is
+   a scrypt hash + per-partner salt, never stored or logged in
+   plaintext. Sessions minted for credential sign-ins carry the
+   partner's session epoch in the id slot ("<id>-x<epoch>") so a
+   password reset — which bumps the epoch — kills every
+   outstanding session for that partner. Tokens minted before
+   the epoch existed carry the bare id and parse as epoch 0:
+   they live only while the stored epoch is still 0. */
+
+export function normalizeUsername(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+export function usernameOk(value) {
+  return /^[a-z0-9][a-z0-9._-]{2,39}$/.test(normalizeUsername(value));
+}
+
+export function hashPassword(password) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.scryptSync(String(password), salt, 64).toString('hex');
+  return { salt, hash };
+}
+
+export function verifyPassword(password, salt, hash) {
+  if (!salt || !hash) return false;
+  let stored;
+  try { stored = Buffer.from(String(hash), 'hex'); } catch { return false; }
+  if (!stored.length) return false;
+  const calc = crypto.scryptSync(String(password), String(salt), stored.length);
+  return crypto.timingSafeEqual(calc, stored);
+}
+
+export function mintPartnerSessionToken(contractorId, epoch) {
+  const e = Number.isInteger(epoch) && epoch > 0 ? epoch : 0;
+  return mintToken(`${contractorId}-x${e}`, SESSION_DAYS * 24 * 3600);
+}
+
+/* Split a verified session token's id slot into the contractor
+   id and the epoch it was minted at. A bare id (a token minted
+   before epochs) parses as epoch 0. Contractor ids are UUIDs —
+   the "-x<digits>" suffix can only be the epoch marker. */
+export function parsePartnerSessionId(idSlot) {
+  const s = String(idSlot || '');
+  const m = s.match(/^(.*)-x(\d+)$/);
+  if (m) return { contractorId: m[1], epoch: Number(m[2]) };
+  return { contractorId: s, epoch: 0 };
+}
+
 /* Verify `<id>.<exp>.<sig>` and return the id, or null. Fails closed
    on a missing secret, a malformed token, an expired token, or a
    bad signature. Never throws. */

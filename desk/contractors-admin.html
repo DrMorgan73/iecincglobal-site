@@ -69,7 +69,7 @@
       <h2>Partners — Partner Portal Admin</h2>
       <button class="btn small ghost" id="refresh" type="button">↻ Refresh</button>
     </div>
-    <p class="hint" style="margin-bottom:16px">Partners work <b>under IEC</b> as IEC contractors on the referral-fee program. They are <b>not</b> producers and <b>not</b> under any channel: their pay is a performance-based referral fee, only when a license a client they added closes. Partners never hold a Desk login — they enter through a one-time activation link, and activation opens only once <b>both</b> signatures are recorded: the Contractor Referral Agreement and the NDA. A partner sees only his own clients. Client pipeline steps are recorded here, one at a time, from the real events — with the evidence noted.</p>
+    <p class="hint" style="margin-bottom:16px">Partners work <b>under IEC</b> as IEC contractors on the referral-fee program. They are <b>not</b> producers and <b>not</b> under any channel: their pay is a performance-based referral fee, only when a license a client they added closes. Partners never hold a Desk login — their FIRST access enters through a one-time activation link (registration, then their own username + password, then the signatures), and activation opens only once <b>both</b> signatures are recorded: the Contractor Referral Agreement and the NDA. From then on they sign in with their username and password; a locked-out partner gets a password-reset link from his record below. A partner sees only his own clients. Client pipeline steps are recorded here, one at a time, from the real events — with the evidence noted.</p>
 
     <div id="banner"></div>
 
@@ -235,6 +235,10 @@
         (c.invitationSentAt
           ? '<span><b>Invitation:</b> emailed ' + esc(String(c.invitationSentAt).slice(0, 16).replace('T', ' ')) + ' from ' + esc(c.invitationFrom || 'info@iecincglobal.com') + '</span>'
           : '<span><b>Invitation:</b> not emailed yet</span>') +
+        '<span><b>Registration:</b> ' + (c.registrationType ? esc(c.registrationType) : '— (not chosen yet)') + '</span>' +
+        '<span><b>Sign-in:</b> ' + (c.credentialsSet
+          ? 'username <b>' + esc(c.username || '') + '</b> · password set' + (c.credentialsSetAt ? ' (' + esc(String(c.credentialsSetAt).slice(0, 10)) + ')' : '') + ' <button class="mini" data-pwreset="' + esc(c.id) + '">Email password-reset link</button>'
+          : 'no username/password yet — first access runs through the activation link') + '</span>' +
         '<span><b>Phone:</b> ' + fv(c.phone) + '</span>' +
         '<span><b>Address:</b> ' + fv(addr) + '</span>' +
         '<span><b>Website:</b> ' + fv(c.website) + '</span>' +
@@ -322,7 +326,7 @@
   }
 
   document.addEventListener('click', function (ev) {
-    var t = ev.target.closest('button[data-details],button[data-invite],button[data-email-invite],button[data-nda],button[data-agreement],button[data-status],button[data-reactivate],button[data-advance],button[data-padvance],button[data-unclaim],button[data-approved],button[data-approved-clear],button[data-hold-credit],button[data-hold-dismiss],button[data-taxform],button[data-cnda-view],button[data-cnda-view-hold],button[data-cnda-issue]');
+    var t = ev.target.closest('button[data-details],button[data-invite],button[data-email-invite],button[data-nda],button[data-agreement],button[data-status],button[data-reactivate],button[data-advance],button[data-padvance],button[data-unclaim],button[data-approved],button[data-approved-clear],button[data-hold-credit],button[data-hold-dismiss],button[data-taxform],button[data-cnda-view],button[data-cnda-view-hold],button[data-cnda-issue],button[data-pwreset]');
     if (!t) return;
     if (t.hasAttribute('data-cnda-view') || t.hasAttribute('data-cnda-view-hold')) {
       /* The executed CNDA opens through the Desk-only API action
@@ -413,6 +417,12 @@
             ' UTC to ' + esc(out.body.email || '') + '. Fallback link: <b>' + esc(out.body.activationUrl) + '</b>');
         } else done('Invitation email failed: ' + esc((out.body && out.body.error) || 'error'), true);
       }).catch(function () { done('Invitation email failed.', true); });
+    } else if (t.hasAttribute('data-pwreset')) {
+      post('admin-reset-password', { contractorId: t.getAttribute('data-pwreset') }).then(function (out) {
+        done(out.body && out.body.ok
+          ? 'Password-reset link emailed from <b>info@iecincglobal.com</b> to ' + esc(out.body.name || '') + ' &lt;' + esc(out.body.email || '') + '&gt; — that record only. It works once and expires in one hour.'
+          : 'Password-reset email failed: ' + esc((out.body && out.body.error) || 'error'), !(out.body && out.body.ok));
+      }).catch(function () { done('Password-reset email failed.', true); });
     } else if (t.hasAttribute('data-nda')) {
       post('set-nda', { contractorId: t.getAttribute('data-nda'), signed: true }).then(function (out) {
         done(out.body && out.body.ok

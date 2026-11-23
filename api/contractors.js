@@ -33,6 +33,25 @@
        placement DataSupply uses — with the standing note that
        receiving the agreement by email alone does not count as
        acceptance.
+     - CREDENTIALS (Nov 23, 2026 — DrMorgan's correction: the
+       activation link is a FIRST-TIME signup mechanism, not a
+       recurrent login): following the activation link, the
+       partner first registers (individual or company — the
+       application, prefilled from his record), then creates his
+       own username + password (scrypt hash + salt, >= 12 chars),
+       then the agreement + NDA steps, then the Dashboard.
+       Recurrent sign-in is username + password (`login`); a
+       forgotten password is reset by an emailed single-use link
+       (`forgot-password` / `reset-password`, 1-hour expiry), and
+       a reset bumps the partner's session epoch, killing every
+       outstanding session. An already-active partner with no
+       credentials yet (the migration case) is routed through the
+       set-credentials step after a link sign-in, before the
+       Dashboard — his data, referrals and client link are
+       untouched. The morning's forgot-sign-in-link recovery
+       (`recover`) remains only for partners who never set
+       credentials; for credentialed partners the password reset
+       supersedes it.
      - TAX FORM ON FILE: payout setup mirrors DataSupply's —
        the partner uploads his W-9 (or W-8BEN) in Earnings or
        Settings (PDF/PNG/JPG, 10 MB maximum); the file is stored
@@ -100,7 +119,8 @@ import crypto from 'node:crypto';
 import {
   contractorsDbConfigured, createContractor, readContractorById,
   readContractorByEmail, listContractors, updateContractor,
-  readActivationHash,
+  readActivationHash, readContractorByUsername, readContractorCredentials,
+  readPasswordReset,
   findDuplicateReferral, createReferral, listReferralsByContractor,
   listAllReferrals, readReferral, updateReferral,
   createClientClaim, listClientClaims, deleteClientClaim, businessKey,
@@ -125,9 +145,11 @@ import {
   _internals as questionnaireInternals
 } from './_partner-questionnaire.js';
 import {
-  mintActivationToken, mintSessionToken, verifyToken, hashToken,
+  mintActivationToken, verifyToken, hashToken,
   contractorFromRequest, sessionCookieHeader, clearSessionCookieHeader,
-  mintAttributionToken, attributionCookieHeader
+  mintAttributionToken, attributionCookieHeader,
+  normalizeUsername, usernameOk, hashPassword, verifyPassword,
+  mintPartnerSessionToken, parsePartnerSessionId, mintToken
 } from './_contractors-auth.js';
 import { AGREEMENT_HTML, agreementVersionId } from './_agreement-content.js';
 import { addBusinessDays, buildRestatementNotice, restatementState } from './_cnda-restatement.js';
@@ -264,7 +286,15 @@ function publicContractor(c) {
     w9UploadedAt: c.w9UploadedAt || null,
     taxFormType: c.taxFormType || '',
     invitedBy: c.invitedBy || '',
-    createdAt: c.createdAt || null
+    createdAt: c.createdAt || null,
+    /* Credentials state (Nov 23, 2026): the partner's own
+       username and whether he has set credentials — the portal
+       routes a credential-less active partner through the
+       set-credentials step on this flag. The password material
+       itself is never in any payload. */
+    username: c.username || '',
+    credentialsSet: !!c.credentialsSet,
+    registrationType: c.registrationType || ''
   };
 }
 
@@ -508,6 +538,71 @@ function buildRecoveryEmail(c, activationUrl) {
 
 async function sendRecoveryEmail(c, activationUrl) {
   return sendPartnerEmail(buildRecoveryEmail(c, activationUrl));
+}
+
+/* Password-reset email (Nov 23, 2026) — the credentialed
+   partner's "forgot": a single-use reset link, 1-hour expiry,
+   same channel, sender and signature as the invitation. The
+   stored token hash is replaced ONLY when this send succeeds,
+   so a failed send leaves any outstanding reset untouched. */
+const PASSWORD_RESET_SUBJECT = 'Reset your IEC Partner Portal password';
+const PASSWORD_RESET_TTL_SECONDS = 3600;
+
+function passwordResetUrlFor(token) {
+  return `${partnersBase()}/reset-password?t=${encodeURIComponent(token)}`;
+}
+
+function buildPasswordResetEmail(c, resetUrl) {
+  const first = String(c.name || '').trim().split(/\s+/)[0] || 'there';
+  const text = [
+    `Dear ${first},`,
+    '',
+    'You asked to reset the password for your IEC Partner Portal sign-in — here is your reset link.',
+    '',
+    'Reset your password:',
+    resetUrl,
+    '',
+    'The link works once and expires in one hour. Setting a new password signs out every other device signed in to your portal.',
+    '',
+    'If you did not ask for a password reset, ignore this email — your password has not changed — and write to info@iecincglobal.com to let us know.',
+    '',
+    'Best regards,',
+    INVITE_SIGNATURE_TEXT
+  ].join('\n');
+  const html = [
+    '<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#1a1a1a;line-height:1.55">',
+    `<p>Dear ${escapeHtml(first)},</p>`,
+    '<p>You asked to reset the password for your <strong>IEC Partner Portal</strong> sign-in — here is your reset link.</p>',
+    `<p style="margin:22px 0"><a href="${escapeHtml(resetUrl)}" style="background:#1a3a5c;color:#ffffff;padding:12px 22px;text-decoration:none;border-radius:4px;font-weight:bold">Reset your password</a></p>`,
+    `<p style="font-size:12px;color:#555555">If the button does not open, use this link:<br><a href="${escapeHtml(resetUrl)}">${escapeHtml(resetUrl)}</a></p>`,
+    '<p>The link works once and expires in one hour. Setting a new password signs out every other device signed in to your portal.</p>',
+    '<p>If you did not ask for a password reset, ignore this email — your password has not changed — and write to info@iecincglobal.com to let us know.</p>',
+    '<p>Best regards,<br>Mohammed Morgan, MD<br>Founder &amp; CEO, IEC, Inc.<br>923 Hyde Park Ave, Boston, MA 02136<br>info@iecincglobal.com</p>',
+    INVITE_SIGNATURE_HTML,
+    '</div>'
+  ].join('\n');
+  return {
+    from: INVITE_MAIL_FROM,
+    to: [c.email],
+    subject: PASSWORD_RESET_SUBJECT,
+    text, html
+  };
+}
+
+/* Mint + email a password-reset link for one credentialed
+   partner; the stored hash/expiry are replaced ONLY on a
+   successful send. Shared by the partner's own forgot-password
+   request and the Desk's office action. */
+async function issuePasswordReset(c) {
+  const token = mintToken(c.id, PASSWORD_RESET_TTL_SECONDS);
+  if (!token) return { sent: false, reason: 'not_configured' };
+  const mail = await sendPartnerEmail(buildPasswordResetEmail(c, passwordResetUrlFor(token)));
+  if (!mail.sent) return mail;
+  await updateContractor(c.id, {
+    passwordResetTokenHash: hashToken(token),
+    passwordResetExpiresAt: new Date(Date.now() + PASSWORD_RESET_TTL_SECONDS * 1000).toISOString()
+  });
+  return { sent: true, id: mail.id };
 }
 
 /* The client shape a partner may see: his own client's profile,
@@ -817,7 +912,7 @@ export default async function handler(req, res) {
     }
     // Both signatures stand: consume the link (its hash was matched
     // by resolveActivationToken) and open the session.
-    const session = mintSessionToken(c.id);
+    const session = mintPartnerSessionToken(c.id, c.sessionEpoch || 0);
     if (!session) return json(res, { ok: false, error: 'not_configured' }, 503);
     await updateContractor(c.id, {
       status: c.status === 'invited' ? 'active' : c.status,
@@ -865,7 +960,7 @@ export default async function handler(req, res) {
         message: 'Your sign-in link is valid. One signature step comes first — your portal opens as soon as both signatures stand.'
       });
     }
-    const session = mintSessionToken(c.id);
+    const session = mintPartnerSessionToken(c.id, c.sessionEpoch || 0);
     if (!session) return json(res, { ok: false, error: 'not_configured' }, 503);
     await updateContractor(c.id, {
       status: c.status === 'invited' ? 'active' : c.status,
@@ -873,30 +968,37 @@ export default async function handler(req, res) {
     });
     await ensureContractorClientCode(c.id);
     await ensureContractorInviteCode(c.id);
+    /* A partner with no credentials yet (the migration case) is
+       routed by the portal through the set-credentials step
+       before the Dashboard — `me` reports credentialsSet false
+       and the app gates on it. His data is untouched. */
     return json(res, { ok: true, next: 'dashboard' }, 200, { 'Set-Cookie': sessionCookieHeader(session) });
   }
 
-  /* ---- forgot-link recovery: the portal has no passwords, so
-     a partner who lost his sign-in link gives the email on his
-     record and the system emails him a FRESH activation link
-     (DrMorgan's order, Nov 23, 2026). The fresh link rides the
-     same token machinery as any activation — single-use, 7-day,
-     30-day session on use — and storing its hash supersedes the
-     partner's previous unused link. Eligible: an ACTIVE partner,
-     or an invited partner whose two signatures both stand (fully
-     registered, first activation not yet completed). Paused and
-     revoked records get nothing — the office handles those. The
-     response is IDENTICAL whether or not the email matched
-     (no account enumeration), and the stored hash is replaced
-     only when the email actually sends, mirroring the office
-     invitation discipline: a failed send leaves the old link
-     standing and the record untouched. ---- */
+  /* ---- forgot-link recovery: a partner who never completed
+     activation (no credentials set) and lost his sign-in link
+     gives the email on his record and the system emails him a
+     FRESH activation link (DrMorgan's order, Nov 23, 2026). The
+     fresh link rides the same token machinery as any activation
+     — single-use, 7-day, 30-day session on use — and storing its
+     hash supersedes the partner's previous unused link.
+     Eligible: an ACTIVE partner with NO credentials set, or an
+     invited partner whose two signatures both stand (fully
+     registered, first activation not yet completed). A partner
+     WITH credentials is NOT served here — the password reset
+     below supersedes this recovery for him. Paused and revoked
+     records get nothing — the office handles those. The response
+     is IDENTICAL whether or not the email matched (no account
+     enumeration), and the stored hash is replaced only when the
+     email actually sends, mirroring the office invitation
+     discipline: a failed send leaves the old link standing and
+     the record untouched. ---- */
   if (req.method === 'POST' && action === 'recover') {
     const body = await readBody(req);
     const email = String(body.email || '').trim().toLowerCase();
     if (email && emailOk(email)) {
       const c = await readContractorByEmail(email);
-      const eligible = !!c && (c.status === 'active'
+      const eligible = !!c && !c.credentialsSet && (c.status === 'active'
         || (c.status === 'invited' && c.ndaStatus === 'signed' && (c.agreementStatus || 'pending') === 'signed'));
       if (eligible) {
         const token = mintActivationToken(c.id);
@@ -911,6 +1013,146 @@ export default async function handler(req, res) {
     return json(res, {
       ok: true,
       message: 'If that email matches an active partner record, a new sign-in link is on its way.'
+    });
+  }
+
+  /* ---- recurrent sign-in: username + password (Nov 23, 2026).
+     The activation code above is a FIRST-TIME mechanism only;
+     from the second visit on, the partner signs in with the
+     username and password he created during registration. One
+     generic failure for every miss — unknown username, wrong
+     password, no credentials set, revoked record — so the
+     response never says which part failed. A partner whose
+     signatures do not both stand yet is told to finish through
+     his activation link (he has proven his password, so this is
+     not an enumeration leak). A successful sign-in by an invited
+     partner whose signatures both stand completes his
+     activation, exactly as following the link does. ---- */
+  if (req.method === 'POST' && action === 'login') {
+    const body = await readBody(req);
+    const fail = () => json(res, {
+      ok: false, error: 'login_failed',
+      message: 'That username or password did not work — check both and try again.'
+    }, 401);
+    const username = normalizeUsername(body.username);
+    const password = String(body.password || '');
+    if (!username || !password) return fail();
+    const c = await readContractorByUsername(username);
+    if (!c || !c.credentialsSet || c.status === 'revoked') return fail();
+    const creds = await readContractorCredentials(c.id);
+    if (!creds || !verifyPassword(password, creds.passwordSalt, creds.passwordHash)) return fail();
+    if (c.ndaStatus !== 'signed' || (c.agreementStatus || 'pending') !== 'signed') {
+      return json(res, {
+        ok: false, error: 'signatures_outstanding',
+        message: 'Your portal opens once both of your signatures stand. Use the activation link from your invitation to finish the signing steps — after that, this username and password sign you in.'
+      });
+    }
+    if (c.status === 'invited') {
+      await updateContractor(c.id, { status: 'active', activatedAt: new Date().toISOString() });
+      await ensureContractorClientCode(c.id);
+      await ensureContractorInviteCode(c.id);
+    }
+    const session = mintPartnerSessionToken(c.id, c.sessionEpoch || 0);
+    if (!session) return json(res, { ok: false, error: 'not_configured' }, 503);
+    return json(res, { ok: true, next: 'dashboard' }, 200, { 'Set-Cookie': sessionCookieHeader(session) });
+  }
+
+  /* ---- forgot password: email a single-use reset link to the
+     partner's email ON RECORD (Nov 23, 2026). The response is
+     IDENTICAL whether or not the email matched a credentialed
+     partner (no enumeration). Eligible: a partner WITH
+     credentials whose record is active or paused. A partner who
+     never completed activation holds no password to reset — his
+     path stays the activation link (recover above). ---- */
+  if (req.method === 'POST' && action === 'forgot-password') {
+    const body = await readBody(req);
+    const email = String(body.email || '').trim().toLowerCase();
+    if (email && emailOk(email)) {
+      const c = await readContractorByEmail(email);
+      if (c && c.credentialsSet && (c.status === 'active' || c.status === 'paused')) {
+        await issuePasswordReset(c);
+      }
+    }
+    return json(res, {
+      ok: true,
+      message: 'If that email matches a partner record with a password set, a reset link is on its way.'
+    });
+  }
+
+  /* ---- reset password: the emailed link's token + a new
+     password (>= 12 chars). The token must match the stored hash
+     and be unexpired; using it consumes it. A successful reset
+     bumps the partner's session epoch — every outstanding
+     session for that partner dies here — and clears the stored
+     reset, so the link can never be replayed. ---- */
+  if (req.method === 'POST' && action === 'reset-password') {
+    const body = await readBody(req);
+    const token = String(body.token || '');
+    const invalid = () => json(res, {
+      ok: false, error: 'invalid_link',
+      message: 'That reset link did not work — it may have expired or already been used. Ask for a fresh one from the sign-in page.'
+    }, 401);
+    const id = token ? verifyToken(token) : null;
+    if (!id) return invalid();
+    const stored = await readPasswordReset(id);
+    if (!stored || !stored.tokenHash || stored.tokenHash !== hashToken(token)
+      || !stored.expiresAt || Date.parse(stored.expiresAt) <= Date.now()) return invalid();
+    const c = await readContractorById(id);
+    if (!c || c.status === 'revoked') return invalid();
+    const password = String(body.password || '');
+    if (password.length < 12) {
+      return json(res, {
+        ok: false, error: 'weak_password',
+        message: 'Your password needs at least 12 characters.'
+      }, 400);
+    }
+    const { salt, hash } = hashPassword(password);
+    await updateContractor(c.id, {
+      passwordHash: hash, passwordSalt: salt,
+      passwordResetTokenHash: '', passwordResetExpiresAt: null,
+      sessionEpoch: (c.sessionEpoch || 0) + 1
+    });
+    return json(res, { ok: true, message: 'Your password is set. Sign in with it now.' });
+  }
+
+  /* ---- registration: the first step after the activation code
+     (Nov 23, 2026 amendment — DrMorgan's specified sequence:
+     activation -> individual/company choice -> application ->
+     credentials -> agreement -> NDA -> dashboard). The partner
+     confirms/completes his application here: fields follow the
+     type he chose, everything the office already holds is
+     prefilled client-side from the agreement-step state, and
+     the record's email — his identity of record — never changes
+     here. The Desk record stores the registration type. ---- */
+  if (req.method === 'POST' && action === 'registration') {
+    const body = await readBody(req);
+    const token = String(body.token || url.searchParams.get('token') || '');
+    const c = await resolveActivationToken(token);
+    if (!c) return json(res, { ok: false, error: 'invalid_token' }, 401);
+    const type = str(body.registrationType, 20);
+    if (type !== 'individual' && type !== 'company') {
+      return json(res, { ok: false, error: 'invalid_fields', message: 'Choose whether you register as an individual or as a company.' }, 400);
+    }
+    const name = str(body.name, 160);
+    const company = str(body.company, 160);
+    const phone = str(body.phone, 40);
+    const addressStreet = str(body.addressStreet, 120);
+    const addressCity = str(body.addressCity, 80);
+    const addressState = str(body.addressState, 40);
+    const addressZip = str(body.addressZip, 20);
+    const website = str(body.website, 160);
+    if (!name || !phone || !addressStreet || !addressCity || !addressState || !addressZip
+      || (type === 'company' && !company)) {
+      return json(res, { ok: false, error: 'invalid_fields', message: 'Complete every field of the application and try again.' }, 400);
+    }
+    await updateContractor(c.id, {
+      registrationType: type, name, company,
+      phone, addressStreet, addressCity, addressState, addressZip, website
+    });
+    const fresh = await readContractorById(c.id);
+    return json(res, {
+      ok: true, registrationType: type,
+      contractor: publicContractor(fresh || c)
     });
   }
 
@@ -931,6 +1173,18 @@ export default async function handler(req, res) {
       agreementStatus: c.agreementStatus || 'pending',
       ndaStatus: c.ndaStatus,
       acceptance: agreementAcceptance(c),
+      /* Registration-chain state (Nov 23, 2026): the portal's
+         onboarding screens read the partner's registration type,
+         his credentials state and his stored profile from here
+         to prefill the application and to resume the chain at
+         the first unfinished step. */
+      registrationType: c.registrationType || '',
+      credentialsSet: !!c.credentialsSet,
+      profile: {
+        phone: c.phone || '', addressStreet: c.addressStreet || '',
+        addressCity: c.addressCity || '', addressState: c.addressState || '',
+        addressZip: c.addressZip || '', website: c.website || ''
+      },
       html: AGREEMENT_HTML
     });
   }
@@ -1135,8 +1389,72 @@ export default async function handler(req, res) {
   }
 
   /* ---- contractor session required below ---- */
-  const contractorId = contractorFromRequest(req);
+  const sessionSlot = contractorFromRequest(req);
+  let contractorId = null;
+  if (sessionSlot) {
+    /* Sessions carry the epoch they were minted at (Nov 23,
+       2026): a password reset bumps the stored epoch, and any
+       session minted at an older epoch is dead — that is how a
+       reset kills the partner's other sessions. Tokens minted
+       before epochs parse as epoch 0 and live only while the
+       stored epoch is still 0. */
+    const parsed = parsePartnerSessionId(sessionSlot);
+    const sc = await readContractorById(parsed.contractorId);
+    if (sc && (sc.sessionEpoch || 0) === parsed.epoch) contractorId = sc.id;
+  }
   const isAdmin = validDeskSession(req);
+
+  /* ---- set credentials: the partner creates his username +
+     password (Nov 23, 2026). Two doors, one step: (a) inside
+     the first-time chain, holding his live activation token —
+     registration -> credentials -> agreement -> NDA; (b) signed
+     in on a session with no credentials yet — the migration
+     route for already-active partners, which the portal forces
+     before the Dashboard. Credentials are set exactly once
+     here; changing a password afterwards goes through the
+     emailed reset. The password is stored ONLY as a scrypt
+     hash + salt and never logged. ---- */
+  if (req.method === 'POST' && action === 'set-credentials') {
+    const body = await readBody(req);
+    let c = null;
+    if (contractorId) c = await readContractorById(contractorId);
+    if (!c && body.token) c = await resolveActivationToken(String(body.token));
+    if (!c || c.status === 'revoked') return json(res, { ok: false, error: 'unauthorized' }, 401);
+    if (c.credentialsSet) {
+      return json(res, {
+        ok: false, error: 'credentials_already_set',
+        message: 'Your username and password are already set. Sign in with them — or reset your password from the sign-in page.'
+      }, 409);
+    }
+    const username = str(body.username, 40);
+    if (!usernameOk(username)) {
+      return json(res, {
+        ok: false, error: 'invalid_username',
+        message: 'Choose a username of 3–40 characters: letters, numbers, dots, dashes or underscores, starting with a letter or number.'
+      }, 400);
+    }
+    const password = String(body.password || '');
+    if (password.length < 12) {
+      return json(res, {
+        ok: false, error: 'weak_password',
+        message: 'Your password needs at least 12 characters.'
+      }, 400);
+    }
+    const taken = await readContractorByUsername(normalizeUsername(username));
+    if (taken && taken.id !== c.id) {
+      return json(res, {
+        ok: false, error: 'username_taken',
+        message: 'That username is already taken — choose another.'
+      }, 409);
+    }
+    const { salt, hash } = hashPassword(password);
+    await updateContractor(c.id, {
+      username, usernameNormalized: normalizeUsername(username),
+      passwordHash: hash, passwordSalt: salt,
+      credentialsSetAt: new Date().toISOString()
+    });
+    return json(res, { ok: true, username });
+  }
 
   if (req.method === 'POST' && action === 'logout') {
     return json(res, { ok: true }, 200, { 'Set-Cookie': clearSessionCookieHeader() });
@@ -1818,6 +2136,29 @@ export default async function handler(req, res) {
       ok: true, emailed: true,
       from: INVITE_FROM_ADDRESS, invitationFrom: INVITE_FROM_ADDRESS,
       invitationSentAt, activationUrl,
+      contractorId: c.id, name: c.name, email: c.email
+    });
+  }
+
+  /* ---- admin: email a password-reset link to one partner
+     (Nov 23, 2026). The office's answer to a locked-out partner:
+     the same single-use, 1-hour reset the partner can request
+     himself, sent from the Desk. Only a partner WITH credentials
+     has a password to reset — a credential-less partner's door
+     stays the activation link. The response names the ONE record
+     emailed (id + email), the set-nda discipline. ---- */
+  if (req.method === 'POST' && action === 'admin-reset-password') {
+    const body = await readBody(req);
+    const c = await readContractorById(str(body.contractorId, 64));
+    if (!c) return json(res, { ok: false, error: 'not_found' }, 404);
+    if (!c.credentialsSet) return json(res, { ok: false, error: 'no_credentials' }, 409);
+    const mail = await issuePasswordReset(c);
+    if (!mail.sent) {
+      return json(res, { ok: false, error: mail.reason },
+        mail.reason === 'not_configured' ? 503 : 502);
+    }
+    return json(res, {
+      ok: true, emailed: true,
       contractorId: c.id, name: c.name, email: c.email
     });
   }

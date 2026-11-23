@@ -182,6 +182,15 @@ async function ensureTables() {
     cnda_entry1_restatement_delivered_at timestamptz,
     cnda_entry1_restatement_effective_at timestamptz,
     cnda_entry1_restatement_objected boolean NOT NULL DEFAULT false,
+    username text NOT NULL DEFAULT '',
+    username_normalized text NOT NULL DEFAULT '',
+    password_hash text NOT NULL DEFAULT '',
+    password_salt text NOT NULL DEFAULT '',
+    credentials_set_at timestamptz,
+    password_reset_token_hash text NOT NULL DEFAULT '',
+    password_reset_expires_at timestamptz,
+    session_epoch integer NOT NULL DEFAULT 0,
+    registration_type text NOT NULL DEFAULT '',
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now())`);
   await neonQuery(`CREATE TABLE IF NOT EXISTS contractor_referrals (
@@ -274,6 +283,27 @@ async function ensureTables() {
     `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS notes text NOT NULL DEFAULT ''`,
     `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS invitation_sent_at timestamptz`,
     `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS invitation_from text NOT NULL DEFAULT ''`,
+    /* Partner credentials (Nov 23, 2026): the activation link is
+       a FIRST-TIME signup mechanism only; recurrent sign-in is a
+       username + scrypt password the partner sets himself. The
+       password hash/salt and the reset-token hash stay OUT of
+       rowToContractor (dedicated readers below, like the
+       activation hash). session_epoch invalidates outstanding
+       sessions when it moves — a password reset bumps it, and
+       the session token carries the epoch it was minted at.
+       registration_type is the partner's own registration choice:
+       'individual' or 'company'. Username uniqueness is enforced
+       at the API layer (read-before-write), the same discipline
+       as the client/invite codes. */
+    `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS username text NOT NULL DEFAULT ''`,
+    `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS username_normalized text NOT NULL DEFAULT ''`,
+    `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS password_hash text NOT NULL DEFAULT ''`,
+    `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS password_salt text NOT NULL DEFAULT ''`,
+    `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS credentials_set_at timestamptz`,
+    `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS password_reset_token_hash text NOT NULL DEFAULT ''`,
+    `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS password_reset_expires_at timestamptz`,
+    `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS session_epoch integer NOT NULL DEFAULT 0`,
+    `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS registration_type text NOT NULL DEFAULT ''`,
     `ALTER TABLE contractor_referrals ADD COLUMN IF NOT EXISTS owner_gross numeric`,
     `ALTER TABLE contractor_referrals ADD COLUMN IF NOT EXISTS locations integer`,
     `ALTER TABLE contractor_referrals ADD COLUMN IF NOT EXISTS employees integer`,
@@ -357,7 +387,17 @@ function rowToContractor(r) {
     addressZip: r.address_zip || '',
     website: r.website || '',
     heardAbout: r.heard_about || '',
-    notes: r.notes || ''
+    notes: r.notes || '',
+    /* Credentials state (Nov 23, 2026): the username is public
+       record on the partner's own record; the password material
+       is NOT here — readContractorCredentials below is the only
+       reader, exactly like the activation hash. credentialsSet
+       is derived from the hash column without exposing it. */
+    username: r.username || '',
+    credentialsSet: !!r.password_hash,
+    credentialsSetAt: r.credentials_set_at || null,
+    sessionEpoch: r.session_epoch === null || r.session_epoch === undefined ? 0 : Number(r.session_epoch),
+    registrationType: r.registration_type || ''
   };
 }
 
@@ -467,6 +507,48 @@ export async function readActivationHash(contractorId) {
   return rows.length ? rows[0].activation_token_hash : null;
 }
 
+/* One partner by his username, matched on the normalized
+   (trimmed, lowercased) form — usernames are unique across
+   partners, enforced at the API layer on write. */
+export async function readContractorByUsername(normalized) {
+  if (!contractorsDbConfigured()) return undefined;
+  await ensureTables();
+  const rows = await neonQuery(`SELECT * FROM contractors WHERE username_normalized = $1`, [String(normalized || '')]);
+  return rows.length ? rowToContractor(rows[0]) : null;
+}
+
+/* The credential material for one contractor — the ONLY reader
+   of the password hash/salt. Kept out of the public row shape on
+   purpose: the hash and salt never leave the server. */
+export async function readContractorCredentials(contractorId) {
+  if (!contractorsDbConfigured()) return undefined;
+  await ensureTables();
+  const rows = await neonQuery(`SELECT * FROM contractors WHERE id = $1`, [contractorId]);
+  if (!rows.length) return null;
+  const r = rows[0];
+  return {
+    username: r.username || '',
+    usernameNormalized: r.username_normalized || '',
+    passwordHash: r.password_hash || '',
+    passwordSalt: r.password_salt || '',
+    credentialsSetAt: r.credentials_set_at || null
+  };
+}
+
+/* The outstanding password-reset token hash + expiry for one
+   contractor (the reset step compares against it). Hash only —
+   the raw token exists solely in the emailed link. */
+export async function readPasswordReset(contractorId) {
+  if (!contractorsDbConfigured()) return undefined;
+  await ensureTables();
+  const rows = await neonQuery(`SELECT * FROM contractors WHERE id = $1`, [contractorId]);
+  if (!rows.length) return null;
+  return {
+    tokenHash: rows[0].password_reset_token_hash || '',
+    expiresAt: rows[0].password_reset_expires_at || null
+  };
+}
+
 /* Patch one contractor's status fields. `patch` keys: status,
    ndaStatus, agreementStatus, agreementSignedAt,
    agreementAcceptedName, agreementAcceptedVersion,
@@ -479,7 +561,7 @@ export async function updateContractor(id, patch) {
   await ensureTables();
   const sets = [];
   const params = [];
-  const map = { status: 'status', ndaStatus: 'nda_status', agreementStatus: 'agreement_status', agreementSignedAt: 'agreement_signed_at', agreementAcceptedName: 'agreement_accepted_name', agreementAcceptedVersion: 'agreement_accepted_version', agreementAcceptedVia: 'agreement_accepted_via', activationTokenHash: 'activation_token_hash', clientCode: 'client_code', inviteCode: 'invite_code', activatedAt: 'activated_at', invitationSentAt: 'invitation_sent_at', invitationFrom: 'invitation_from', payoutMethod: 'payout_method', payoutLast4: 'payout_last4', w9OnFile: 'w9_on_file', w9UploadedAt: 'w9_uploaded_at', taxFormType: 'tax_form_type', phone: 'phone', name: 'name', company: 'company', faststartWebinarAt: 'faststart_webinar_at', addressStreet: 'address_street', addressCity: 'address_city', addressState: 'address_state', addressZip: 'address_zip', website: 'website', cndaEntry1RestatementDeliveredAt: 'cnda_entry1_restatement_delivered_at', cndaEntry1RestatementEffectiveAt: 'cnda_entry1_restatement_effective_at', cndaEntry1RestatementObjected: 'cnda_entry1_restatement_objected' };
+  const map = { status: 'status', ndaStatus: 'nda_status', agreementStatus: 'agreement_status', agreementSignedAt: 'agreement_signed_at', agreementAcceptedName: 'agreement_accepted_name', agreementAcceptedVersion: 'agreement_accepted_version', agreementAcceptedVia: 'agreement_accepted_via', activationTokenHash: 'activation_token_hash', clientCode: 'client_code', inviteCode: 'invite_code', activatedAt: 'activated_at', invitationSentAt: 'invitation_sent_at', invitationFrom: 'invitation_from', payoutMethod: 'payout_method', payoutLast4: 'payout_last4', w9OnFile: 'w9_on_file', w9UploadedAt: 'w9_uploaded_at', taxFormType: 'tax_form_type', phone: 'phone', name: 'name', company: 'company', faststartWebinarAt: 'faststart_webinar_at', addressStreet: 'address_street', addressCity: 'address_city', addressState: 'address_state', addressZip: 'address_zip', website: 'website', cndaEntry1RestatementDeliveredAt: 'cnda_entry1_restatement_delivered_at', cndaEntry1RestatementEffectiveAt: 'cnda_entry1_restatement_effective_at', cndaEntry1RestatementObjected: 'cnda_entry1_restatement_objected', username: 'username', usernameNormalized: 'username_normalized', passwordHash: 'password_hash', passwordSalt: 'password_salt', credentialsSetAt: 'credentials_set_at', passwordResetTokenHash: 'password_reset_token_hash', passwordResetExpiresAt: 'password_reset_expires_at', sessionEpoch: 'session_epoch', registrationType: 'registration_type' };
   for (const [k, col] of Object.entries(map)) {
     if (patch[k] !== undefined) { params.push(patch[k]); sets.push(`${col} = $${params.length}`); }
   }
