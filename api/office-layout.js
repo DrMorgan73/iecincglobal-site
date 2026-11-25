@@ -58,7 +58,7 @@ const MODULE_IDS = [
   "projects", "team", "meeting",
   "office", "virtual",
   "news", "growth", "strategy", "trade",
-  "yt-archive", "docs", "vault"
+  "yt-archive", "docs", "zipform", "vault"
 ];
 
 /* ------------------------------------------------------------------ */

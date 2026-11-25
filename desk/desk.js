@@ -47,6 +47,7 @@ const NAV_GROUPS = [
   { sec: 'Records', items: [
     { id: 'yt-archive', href: '/desk/yt-archive.html',  icon: '📺', label: 'YT Archive', page: 'yt-archive', desc: 'The YouTube archive — library and download jobs.' },
     { id: 'docs',       href: '/desk/documents.html',   icon: '📄', label: 'Documents',  page: 'docs',       desc: 'Suite documents and files.' },
+    { id: 'zipform',    href: '/desk/zipform.html',     icon: '📋', label: 'ZipForm',    page: 'zipform',    desc: 'Blank ZipForm forms library — all 251 MassForms (MAOR) and GBAR forms, in ZipForm order.' },
     { id: 'vault',      href: '/desk/vault.html',       icon: '🔒', label: 'PDF Vault',  page: 'vault',      desc: 'The locked PDF vault.' },
   ]},
 ];
