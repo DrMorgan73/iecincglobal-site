@@ -18,29 +18,35 @@
    Meeting records (never tokens) persist in Vercel Blob at
    video-conference/meetings.json, same store as the Desk documents.
 
+   EDGE runtime on purpose: this project already carries 12 Node
+   serverless functions (the plan ceiling) — an Edge function does
+   not count against that limit. Same session scheme as
+   api/desk-login.js / api/demo-handoff.js (WebCrypto throughout).
+
    Env (this Vercel project — iecincglobal-site):
      DESK_SESSION_SECRET    HMAC key for the session cookie
      DAILY_API_KEY          Daily.co API key (fail-closed without it)
      BLOB_READ_WRITE_TOKEN  the Office Blob store (list persistence)
    ===================================================================== */
 
-import crypto from "node:crypto";
 import { put, list } from "@vercel/blob";
+
+export const config = { runtime: "edge" };
 
 const BLOB_PATH = "video-conference/meetings.json";
 const ROOM_TTL_SECONDS = 12 * 60 * 60;
 const MAX_MEETINGS = 50;
 
-/* ---- Session check (same scheme as api/demo-admin.js) ---- */
+/* ---- Session check (same scheme as api/demo-handoff.js) ---- */
 
 const enc = new TextEncoder();
 const hex = buf => [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, "0")).join("");
 
 async function hmacHex(secret, data) {
-  const key = await crypto.webcrypto.subtle.importKey(
+  const key = await crypto.subtle.importKey(
     "raw", enc.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
   );
-  return hex(await crypto.webcrypto.subtle.sign("HMAC", key, enc.encode(data)));
+  return hex(await crypto.subtle.sign("HMAC", key, enc.encode(data)));
 }
 
 function timingSafeEqual(a, b) {
@@ -62,7 +68,7 @@ function getCookie(header, name) {
 
 async function validSession(value) {
   const secret = process.env.DESK_SESSION_SECRET;
-  if (!secret) return false;
+  if (!secret || !value) return false;
   const parts = String(value).split(".");
   if (parts.length !== 3) return false;
   const [user, exp, sig] = parts;
@@ -73,30 +79,11 @@ async function validSession(value) {
   return timingSafeEqual(sig, expected);
 }
 
-/* ---- Small helpers (mirroring api/demo-admin.js) ---- */
-
-async function readBody(req) {
-  if (req.body && typeof req.body === "object") return req.body;
-  if (typeof req.body === "string" && req.body) {
-    try { return JSON.parse(req.body); } catch (e) { return {}; }
-  }
-  return new Promise(resolve => {
-    let data = "";
-    if (typeof req.on !== "function") return resolve({});
-    req.on("data", c => { data += c; });
-    req.on("end", () => { try { resolve(JSON.parse(data || "{}")); } catch (e) { resolve({}); } });
-    req.on("error", () => resolve({}));
+const json = (obj, status) =>
+  new Response(JSON.stringify(obj), {
+    status,
+    headers: { "content-type": "application/json", "cache-control": "no-store" }
   });
-}
-
-function reply(res, code, obj) {
-  if (typeof res.status === "function" && typeof res.json === "function") {
-    return res.status(code).json(obj);
-  }
-  res.statusCode = code;
-  res.setHeader("Content-Type", "application/json");
-  res.end(JSON.stringify(obj));
-}
 
 /* ---- Daily.co ---- */
 
@@ -175,13 +162,13 @@ async function saveMeetings(meetings) {
 
 function randomId() {
   const buf = new Uint8Array(6);
-  crypto.webcrypto.getRandomValues(buf);
+  crypto.getRandomValues(buf);
   return [...buf].map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
-async function actionCreate(res, body) {
+async function actionCreate(body) {
   if (!process.env.DAILY_API_KEY) {
-    return reply(res, 503, { ok: false, error: "not_configured", message: "Video provider is not configured yet (DAILY_API_KEY missing on this project)." });
+    return json({ ok: false, error: "not_configured", message: "Video provider is not configured yet (DAILY_API_KEY missing on this project)." }, 503);
   }
   const title = typeof body.title === "string" && body.title.trim()
     ? body.title.trim().slice(0, 120)
@@ -201,7 +188,7 @@ async function actionCreate(res, body) {
   });
   if (!created.ok || !created.data || !created.data.url) {
     console.error(`[video-conference] room create FAILED: ${created.status} ${JSON.stringify(created.data).slice(0, 200)}`);
-    return reply(res, 502, { ok: false, error: "provider_error", message: "Could not create the video room. Please try again." });
+    return json({ ok: false, error: "provider_error", message: "Could not create the video room. Please try again." }, 502);
   }
   const now = new Date();
   const meeting = {
@@ -218,14 +205,14 @@ async function actionCreate(res, body) {
   await saveMeetings(meetings);
   const links = await mintLinks(meeting);
   if (!links) {
-    return reply(res, 502, { ok: false, error: "provider_error", message: "Room created but invitation links could not be minted. Try Copy invite from the list." });
+    return json({ ok: false, error: "provider_error", message: "Room created but invitation links could not be minted. Try Copy invite from the list." }, 502);
   }
-  return reply(res, 201, { ok: true, meeting, ...links });
+  return json({ ok: true, meeting, ...links }, 201);
 }
 
-async function actionList(res) {
+async function actionList() {
   const meetings = await loadMeetings();
-  return reply(res, 200, { ok: true, meetings: meetings.slice(0, MAX_MEETINGS) });
+  return json({ ok: true, meetings: meetings.slice(0, MAX_MEETINGS) }, 200);
 }
 
 async function findMeeting(meetingId) {
@@ -233,19 +220,19 @@ async function findMeeting(meetingId) {
   return { meetings, meeting: meetings.find(m => m.meetingId === meetingId) || null };
 }
 
-async function actionLinks(res, body) {
+async function actionLinks(body) {
   const { meeting } = await findMeeting(String(body.meetingId || ""));
-  if (!meeting) return reply(res, 404, { ok: false, error: "not_found", message: "Meeting not found." });
-  if (meeting.status !== "open") return reply(res, 409, { ok: false, error: "ended", message: "This meeting has ended." });
+  if (!meeting) return json({ ok: false, error: "not_found", message: "Meeting not found." }, 404);
+  if (meeting.status !== "open") return json({ ok: false, error: "ended", message: "This meeting has ended." }, 409);
   const links = await mintLinks(meeting);
-  if (!links) return reply(res, 502, { ok: false, error: "provider_error", message: "Could not mint invitation links." });
-  return reply(res, 200, { ok: true, meeting, ...links });
+  if (!links) return json({ ok: false, error: "provider_error", message: "Could not mint invitation links." }, 502);
+  return json({ ok: true, meeting, ...links }, 200);
 }
 
-async function actionEnd(res, body) {
+async function actionEnd(body) {
   const { meetings, meeting } = await findMeeting(String(body.meetingId || ""));
-  if (!meeting) return reply(res, 404, { ok: false, error: "not_found", message: "Meeting not found." });
-  if (meeting.status !== "open") return reply(res, 409, { ok: false, error: "ended", message: "This meeting has already ended." });
+  if (!meeting) return json({ ok: false, error: "not_found", message: "Meeting not found." }, 404);
+  if (meeting.status !== "open") return json({ ok: false, error: "ended", message: "This meeting has already ended." }, 409);
   try {
     await daily("/v1/rooms/" + encodeURIComponent(meeting.roomName), "DELETE");
   } catch (e) {
@@ -254,24 +241,25 @@ async function actionEnd(res, body) {
   meeting.status = "ended";
   meeting.endedAt = new Date().toISOString();
   await saveMeetings(meetings);
-  return reply(res, 200, { ok: true, meeting });
+  return json({ ok: true, meeting }, 200);
 }
 
 /* ---- Handler ---- */
 
-export default async function handler(req, res) {
-  if (req.method !== "POST") return reply(res, 405, { ok: false, error: "method_not_allowed" });
+export default async function handler(req) {
+  if (req.method !== "POST") return json({ ok: false, error: "method_not_allowed" }, 405);
 
-  const session = getCookie(req.headers && req.headers.cookie, "desk_session");
-  if (!session || !(await validSession(session))) {
-    return reply(res, 401, { ok: false, error: "unauthorized" });
+  const session = getCookie(req.headers.get("cookie"), "desk_session");
+  if (!(await validSession(session))) {
+    return json({ ok: false, error: "unauthorized" }, 401);
   }
 
-  const body = await readBody(req);
-  const action = String(body.action || "");
-  if (action === "create") return actionCreate(res, body);
-  if (action === "list") return actionList(res);
-  if (action === "links") return actionLinks(res, body);
-  if (action === "end") return actionEnd(res, body);
-  return reply(res, 400, { ok: false, error: "unknown_action" });
+  let body;
+  try { body = await req.json(); } catch { return json({ ok: false, error: "bad_json" }, 400); }
+  const action = String((body && body.action) || "");
+  if (action === "create") return actionCreate(body);
+  if (action === "list") return actionList();
+  if (action === "links") return actionLinks(body);
+  if (action === "end") return actionEnd(body);
+  return json({ ok: false, error: "unknown_action" }, 400);
 }
