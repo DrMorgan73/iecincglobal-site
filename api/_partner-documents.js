@@ -70,6 +70,22 @@ export function acceptanceOf(c) {
   };
 }
 
+/* The CNDA mirror (Nov 25, 2026): the in-portal CNDA signing of
+   record for one contractor, or null when the CNDA was signed
+   outside the portal and recorded by the office (or is not
+   signed at all). Same rule as acceptanceOf — 'portal' only
+   when the partner signed it inside the portal. */
+export function ndaAcceptanceOf(c) {
+  if (!c || c.ndaStatus !== 'signed') return null;
+  if ((c.ndaAcceptedVia || '') !== 'portal') return null;
+  return {
+    name: c.ndaAcceptedName || '',
+    at: c.ndaSignedAt || null,
+    version: c.ndaVersion || '',
+    via: 'portal'
+  };
+}
+
 /* ---------------- the agreement ---------------- */
 
 /* AGREEMENT_TEXT (the plain-text render of the instrument) as
@@ -149,7 +165,7 @@ export function partnerAgreementDocument(c) {
    purpose is the instrument's own pre-filled default and IEC's
    state is the instrument's own fact (the same choices the
    owner-CNDA issuance makes). */
-function cndaValues(c) {
+export function cndaValues(c) {
   const address = [c.addressStreet, c.addressCity, c.addressState, c.addressZip]
     .filter(Boolean).join(', ');
   return {
@@ -197,8 +213,13 @@ export function partnerCndaDocument(c, { iecSignatureImg = '' } = {}) {
   });
   /* Schedule B (index 16) renders per this partner's Section 5.3
      restatement state: as-signed before effectiveness, restated
-     + provenance line after it (Eleanor's ruling, Nov 22, 2026). */
-  if (bodyTexts[16]) bodyTexts[16] = scheduleBForPartner(bodyTexts[16], c);
+     + provenance line after it (Eleanor's ruling, Nov 22, 2026).
+     EXCEPTION (Nov 25, 2026): a partner who signed the CNDA
+     INSIDE the portal signed the text of record — the restated
+     Entry 1 — so his copy renders it exactly as signed; the
+     as-signed swap would alter what he signed. */
+  const ndaAcc = ndaAcceptanceOf(c);
+  if (bodyTexts[16] && !ndaAcc) bodyTexts[16] = scheduleBForPartner(bodyTexts[16], c);
 
   /* HTML fragment (the portal reader injects it, like the
      agreement's AGREEMENT_HTML fragment). */
@@ -209,18 +230,36 @@ export function partnerCndaDocument(c, { iecSignatureImg = '' } = {}) {
   const iecSig = iecSignatureImg
     ? `<p>Signature: <img src="${iecSignatureImg}" alt="Mohammed Morgan, MD" style="height:44px;vertical-align:middle"></p>`
     : '<p>Signature: <em>Mohammed Morgan, MD</em></p>';
+  /* The Counterparty signature line carries the facts of
+     record: a portal signer shows his typed signature and the
+     date he signed (the same posture as the central CNDA
+     renderer); an office-recorded signature keeps the held-by-
+     IEC line — no portal evidence is invented for it. */
+  const counterpartySigHtml = ndaAcc
+    ? `<p>Signature: <em>${escapeHtml(ndaAcc.name)}</em></p>`
+      + `<p>Name: ${escapeHtml(ndaAcc.name)}</p>`
+      + (c.email ? `<p>Email: ${escapeHtml(c.email)}</p>` : '')
+      + `<p>Date: ${escapeHtml(fmtDateUtc(ndaAcc.at))}</p>`
+    : '<p>Signature: <em>signed electronically — the signature of record is held by IEC</em></p>'
+      + `<p>Name: ${escapeHtml(c.name || '')}</p>`
+      + (c.email ? `<p>Email: ${escapeHtml(c.email)}</p>` : '');
   const executionHtml = '<section class="execution"><h2>Execution</h2>'
     + '<p><strong>IN WITNESS WHEREOF</strong>, the Parties have executed this Agreement as of the Effective Date.</p>'
     + '<div class="signatures">'
     + '<div><h3>International Empire Consultants, Inc.</h3><p>(Pre-signed by IEC)</p>' + iecSig
     + '<p>Name: Mohammed Morgan, MD</p><p>Title: Founder &amp; CEO</p></div>'
     + `<div><h3>${escapeHtml(values.party)}</h3>`
-    + '<p>Signature: <em>signed electronically — the signature of record is held by IEC</em></p>'
-    + `<p>Name: ${escapeHtml(c.name || '')}</p>`
-    + (c.email ? `<p>Email: ${escapeHtml(c.email)}</p>` : '')
+    + counterpartySigHtml
     + '</div></div></section>';
-  const acceptanceHtml = '<div class="pp-acceptance"><h2>Acceptance of record</h2>'
-    + `<p>${escapeHtml(CNDA_ACCEPTANCE_TEXT)}</p></div>`;
+  const acceptanceHtml = ndaAcc
+    ? '<div class="pp-acceptance"><h2>Acceptance of record</h2>'
+      + `<p>Signed in the IEC Partner Portal by: <strong>${escapeHtml(ndaAcc.name)}</strong></p>`
+      + `<p>CNDA text version: <strong>${escapeHtml(ndaAcc.version)}</strong></p>`
+      + `<p>Date and time of signing (UTC): <strong>${escapeHtml(fmtUtc(ndaAcc.at))}</strong></p>`
+      + '<p>The typed legal name and the sign action in the Partner Portal are the signature of record. '
+      + 'Receiving the CNDA by email alone does not count as signing.</p></div>'
+    : '<div class="pp-acceptance"><h2>Acceptance of record</h2>'
+      + `<p>${escapeHtml(CNDA_ACCEPTANCE_TEXT)}</p></div>`;
   const html = '<header><h1>General CNDA and Procuring Party Agreement</h1>'
     + `<p>International Empire Consultants, Inc. and ${escapeHtml(values.party)}</p></header>`
     + sections + executionHtml + acceptanceHtml;
@@ -238,15 +277,32 @@ export function partnerCndaDocument(c, { iecSignatureImg = '' } = {}) {
   blocks.push({ t: 'p', text: '**International Empire Consultants, Inc.** (Pre-signed by IEC)' });
   blocks.push({ t: 'p', text: `Signature: ${CNDA_SIGNATORY.name} — Name: ${CNDA_SIGNATORY.name} — Title: Founder & CEO` });
   blocks.push({ t: 'p', text: `**${values.party}**` });
-  blocks.push({ t: 'p', text: `Signature: signed electronically — the signature of record is held by IEC. Name: ${c.name || ''}${c.email ? ` — Email: ${c.email}` : ''}` });
+  blocks.push({
+    t: 'p',
+    text: ndaAcc
+      ? `Signature: ${ndaAcc.name} — Name: ${ndaAcc.name}${c.email ? ` — Email: ${c.email}` : ''} — Date: ${fmtDateUtc(ndaAcc.at)}`
+      : `Signature: signed electronically — the signature of record is held by IEC. Name: ${c.name || ''}${c.email ? ` — Email: ${c.email}` : ''}`
+  });
   blocks.push({ t: 'h2', text: 'Acceptance of record' });
-  blocks.push({ t: 'p', text: CNDA_ACCEPTANCE_TEXT });
+  if (ndaAcc) {
+    blocks.push({ t: 'p', text: `Signed in the IEC Partner Portal by: **${ndaAcc.name}**` });
+    blocks.push({ t: 'p', text: `CNDA text version: **${ndaAcc.version}**` });
+    blocks.push({ t: 'p', text: `Date and time of signing (UTC): **${fmtUtc(ndaAcc.at)}**` });
+    blocks.push({
+      t: 'p',
+      text: 'The typed legal name and the sign action in the Partner Portal are the signature of record. '
+        + 'Receiving the CNDA by email alone does not count as signing.'
+    });
+  } else {
+    blocks.push({ t: 'p', text: CNDA_ACCEPTANCE_TEXT });
+  }
 
   return {
     title: 'IEC General CNDA and Procuring Party Agreement',
+    acceptance: ndaAcc,
     html,
     blocks
   };
 }
 
-export const _internals = { fmtUtc, fmtDateUtc, acceptanceOf, agreementTextBlocks, cndaValues };
+export const _internals = { fmtUtc, fmtDateUtc, acceptanceOf, ndaAcceptanceOf, agreementTextBlocks, cndaValues };

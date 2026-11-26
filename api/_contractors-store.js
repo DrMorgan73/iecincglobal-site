@@ -152,6 +152,11 @@ async function ensureTables() {
     company text NOT NULL, status text NOT NULL DEFAULT 'invited',
     contractor_type text NOT NULL DEFAULT '',
     nda_status text NOT NULL DEFAULT 'pending',
+    nda_signed_at timestamptz,
+    nda_accepted_name text NOT NULL DEFAULT '',
+    nda_accepted_via text NOT NULL DEFAULT '',
+    nda_version text NOT NULL DEFAULT '',
+    signing_token_hash text NOT NULL DEFAULT '',
     agreement_status text NOT NULL DEFAULT 'pending',
     agreement_signed_at timestamptz,
     agreement_accepted_name text NOT NULL DEFAULT '',
@@ -272,6 +277,20 @@ async function ensureTables() {
     `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS agreement_accepted_name text NOT NULL DEFAULT ''`,
     `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS agreement_accepted_version text NOT NULL DEFAULT ''`,
     `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS agreement_accepted_via text NOT NULL DEFAULT ''`,
+    /* Partner CNDA acceptance evidence + the sign-from-link
+       signing token (Nov 25, 2026): the CNDA mirror of the
+       agreement evidence columns above. nda_accepted_via is
+       'portal' only when the partner signed the CNDA inside
+       the portal (typed name + timestamp + text version);
+       office-recorded signatures keep it ''. signing_token_hash
+       holds the hash of the 24h single-purpose signing token
+       and, like the activation hash, stays OUT of
+       rowToContractor (dedicated reader below). */
+    `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS nda_signed_at timestamptz`,
+    `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS nda_accepted_name text NOT NULL DEFAULT ''`,
+    `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS nda_accepted_via text NOT NULL DEFAULT ''`,
+    `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS nda_version text NOT NULL DEFAULT ''`,
+    `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS signing_token_hash text NOT NULL DEFAULT ''`,
     `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS source text NOT NULL DEFAULT 'office-invite'`,
     `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS contractor_type text NOT NULL DEFAULT ''`,
     `ALTER TABLE contractors ADD COLUMN IF NOT EXISTS phone text NOT NULL DEFAULT ''`,
@@ -365,6 +384,10 @@ function rowToContractor(r) {
   return {
     id: r.id, email: r.email, name: r.name, company: r.company,
     status: r.status, ndaStatus: r.nda_status,
+    ndaSignedAt: r.nda_signed_at || null,
+    ndaAcceptedName: r.nda_accepted_name || '',
+    ndaAcceptedVia: r.nda_accepted_via || '',
+    ndaVersion: r.nda_version || '',
     agreementStatus: r.agreement_status || 'pending',
     agreementSignedAt: r.agreement_signed_at || null,
     agreementAcceptedName: r.agreement_accepted_name || '',
@@ -515,6 +538,16 @@ export async function readActivationHash(contractorId) {
   return rows.length ? rows[0].activation_token_hash : null;
 }
 
+/* The stored signing-token hash for one contractor (the
+   sign-from-link steps compare against it). Same discipline as
+   the activation hash: the hash never leaves the server. */
+export async function readSigningHash(contractorId) {
+  if (!contractorsDbConfigured()) return undefined;
+  await ensureTables();
+  const rows = await neonQuery(`SELECT signing_token_hash FROM contractors WHERE id = $1`, [contractorId]);
+  return rows.length ? rows[0].signing_token_hash : null;
+}
+
 /* One partner by his username, matched on the normalized
    (trimmed, lowercased) form — usernames are unique across
    partners, enforced at the API layer on write. */
@@ -569,7 +602,7 @@ export async function updateContractor(id, patch) {
   await ensureTables();
   const sets = [];
   const params = [];
-  const map = { status: 'status', ndaStatus: 'nda_status', agreementStatus: 'agreement_status', agreementSignedAt: 'agreement_signed_at', agreementAcceptedName: 'agreement_accepted_name', agreementAcceptedVersion: 'agreement_accepted_version', agreementAcceptedVia: 'agreement_accepted_via', activationTokenHash: 'activation_token_hash', clientCode: 'client_code', inviteCode: 'invite_code', activatedAt: 'activated_at', invitationSentAt: 'invitation_sent_at', invitationFrom: 'invitation_from', payoutMethod: 'payout_method', payoutLast4: 'payout_last4', w9OnFile: 'w9_on_file', w9UploadedAt: 'w9_uploaded_at', taxFormType: 'tax_form_type', phone: 'phone', name: 'name', company: 'company', faststartWebinarAt: 'faststart_webinar_at', addressStreet: 'address_street', addressCity: 'address_city', addressState: 'address_state', addressZip: 'address_zip', website: 'website', cndaEntry1RestatementDeliveredAt: 'cnda_entry1_restatement_delivered_at', cndaEntry1RestatementEffectiveAt: 'cnda_entry1_restatement_effective_at', cndaEntry1RestatementObjected: 'cnda_entry1_restatement_objected', username: 'username', usernameNormalized: 'username_normalized', passwordHash: 'password_hash', passwordSalt: 'password_salt', credentialsSetAt: 'credentials_set_at', passwordResetTokenHash: 'password_reset_token_hash', passwordResetExpiresAt: 'password_reset_expires_at', sessionEpoch: 'session_epoch', registrationType: 'registration_type', role: 'role' };
+  const map = { status: 'status', ndaStatus: 'nda_status', ndaSignedAt: 'nda_signed_at', ndaAcceptedName: 'nda_accepted_name', ndaAcceptedVia: 'nda_accepted_via', ndaVersion: 'nda_version', signingTokenHash: 'signing_token_hash', agreementStatus: 'agreement_status', agreementSignedAt: 'agreement_signed_at', agreementAcceptedName: 'agreement_accepted_name', agreementAcceptedVersion: 'agreement_accepted_version', agreementAcceptedVia: 'agreement_accepted_via', activationTokenHash: 'activation_token_hash', clientCode: 'client_code', inviteCode: 'invite_code', activatedAt: 'activated_at', invitationSentAt: 'invitation_sent_at', invitationFrom: 'invitation_from', payoutMethod: 'payout_method', payoutLast4: 'payout_last4', w9OnFile: 'w9_on_file', w9UploadedAt: 'w9_uploaded_at', taxFormType: 'tax_form_type', phone: 'phone', name: 'name', company: 'company', faststartWebinarAt: 'faststart_webinar_at', addressStreet: 'address_street', addressCity: 'address_city', addressState: 'address_state', addressZip: 'address_zip', website: 'website', cndaEntry1RestatementDeliveredAt: 'cnda_entry1_restatement_delivered_at', cndaEntry1RestatementEffectiveAt: 'cnda_entry1_restatement_effective_at', cndaEntry1RestatementObjected: 'cnda_entry1_restatement_objected', username: 'username', usernameNormalized: 'username_normalized', passwordHash: 'password_hash', passwordSalt: 'password_salt', credentialsSetAt: 'credentials_set_at', passwordResetTokenHash: 'password_reset_token_hash', passwordResetExpiresAt: 'password_reset_expires_at', sessionEpoch: 'session_epoch', registrationType: 'registration_type', role: 'role' };
   for (const [k, col] of Object.entries(map)) {
     if (patch[k] !== undefined) { params.push(patch[k]); sets.push(`${col} = $${params.length}`); }
   }

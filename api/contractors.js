@@ -132,7 +132,7 @@ import crypto from 'node:crypto';
 import {
   contractorsDbConfigured, createContractor, readContractorById,
   readContractorByEmail, listContractors, updateContractor,
-  readActivationHash, readContractorByUsername, readContractorCredentials,
+  readActivationHash, readSigningHash, readContractorByUsername, readContractorCredentials,
   readPasswordReset,
   findDuplicateReferral, createReferral, listReferralsByContractor,
   listAllReferrals, readReferral, updateReferral,
@@ -149,7 +149,7 @@ import {
   issueClientCnda, reissueClientCnda, resolveClientCndaToken,
   publicCndaView, signClientCnda, loadIecSignatureDataUri
 } from './_client-cnda.js';
-import { partnerAgreementDocument, partnerCndaDocument } from './_partner-documents.js';
+import { partnerAgreementDocument, partnerCndaDocument, cndaValues } from './_partner-documents.js';
 import { qrSvg } from './_qr.js';
 import { blocksToPdf } from './_data-assets-pdf.js';
 import { FEE_SCHEDULE, referralFee, feeExamples, formatUSD } from './_contractors-fees.js';
@@ -162,11 +162,12 @@ import {
   contractorFromRequest, sessionCookieHeader, clearSessionCookieHeader,
   mintAttributionToken, attributionCookieHeader,
   normalizeUsername, usernameOk, hashPassword, verifyPassword,
-  mintPartnerSessionToken, parsePartnerSessionId, mintToken
+  mintPartnerSessionToken, parsePartnerSessionId, mintToken,
+  mintSigningToken, parseSigningId
 } from './_contractors-auth.js';
 import { AGREEMENT_HTML, agreementVersionId } from './_agreement-content.js';
 import { addBusinessDays, buildRestatementNotice, restatementState } from './_cnda-restatement.js';
-import { CNDA_TEXTS, CNDA_TITLES } from './_cnda-content.js';
+import { CNDA_TEXTS, CNDA_TITLES, CNDA_TEXT_SHA256, CNDA_DEFAULT_PURPOSE, CNDA_IEC_STATE, fillCndaText } from './_cnda-content.js';
 import { WEBINAR_SCRIPT_MD } from './_admin-materials-webinar.js';
 
 /* ------------------------------------------------------------------ */
@@ -279,6 +280,10 @@ function publicContractor(c) {
   return {
     id: c.id, email: c.email, name: c.name, company: c.company,
     status: c.status, ndaStatus: c.ndaStatus,
+    ndaSignedAt: c.ndaSignedAt || null,
+    ndaAcceptedName: c.ndaAcceptedName || '',
+    ndaAcceptedVia: c.ndaAcceptedVia || '',
+    ndaVersion: c.ndaVersion || '',
     agreementStatus: c.agreementStatus || 'pending',
     agreementSignedAt: c.agreementSignedAt || null,
     agreementAcceptedName: c.agreementAcceptedName || '',
@@ -561,6 +566,107 @@ function buildRecoveryEmail(c, activationUrl) {
 
 async function sendRecoveryEmail(c, activationUrl) {
   return sendPartnerEmail(buildRecoveryEmail(c, activationUrl));
+}
+
+/* Sign-from-link completion email (Nov 25, 2026): the partner
+   signed the CNDA and the Agreement on the public /sign page;
+   this email carries his activation link. The link travels by
+   email ONLY — receiving it is the mailbox-ownership proof
+   that sign-start (a typed email address) cannot give. Same
+   channel, sender and signature as the invitation. No fee or
+   percentage content — economics live in the signed agreement. */
+const SIGN_COMPLETE_SUBJECT = 'Your IEC Partner Portal is ready — activate your account';
+
+function buildSignCompleteEmail(c, activationUrl) {
+  const first = String(c.name || '').trim().split(/\s+/)[0] || 'there';
+  const text = [
+    `Dear ${first},`,
+    '',
+    'Thank you — your signatures are recorded: the IEC confidentiality agreement (CNDA) and the IEC Contractor Referral Agreement are both signed on your record.',
+    '',
+    'Your IEC Partner Portal account is ready. Activate it with your personal link below — it opens your portal: your dashboard, your client registrations, and your pipeline.',
+    '',
+    'Activate your portal:',
+    activationUrl,
+    '',
+    'The link is yours alone — please do not forward it. It stays valid for 7 days.',
+    '',
+    'Welcome aboard.',
+    '',
+    'Best regards,',
+    INVITE_SIGNATURE_TEXT
+  ].join('\n');
+  const html = [
+    '<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#1a1a1a;line-height:1.55">',
+    `<p>Dear ${escapeHtml(first)},</p>`,
+    '<p>Thank you — your signatures are recorded: the IEC confidentiality agreement (CNDA) and the IEC Contractor Referral Agreement are both signed on your record.</p>',
+    '<p>Your <strong>IEC Partner Portal</strong> account is ready. Activate it with your personal link below — it opens your portal: your dashboard, your client registrations, and your pipeline.</p>',
+    `<p style="margin:22px 0"><a href="${escapeHtml(activationUrl)}" style="background:#1a3a5c;color:#ffffff;padding:12px 22px;text-decoration:none;border-radius:4px;font-weight:bold">Activate your Partner Portal</a></p>`,
+    `<p style="font-size:12px;color:#555555">If the button does not open, use this link:<br><a href="${escapeHtml(activationUrl)}">${escapeHtml(activationUrl)}</a></p>`,
+    '<p>The link is yours alone — please do not forward it. It stays valid for 7 days.</p>',
+    '<p>Welcome aboard.</p>',
+    '<p>Best regards,<br>Mohammed Morgan, MD<br>Founder &amp; CEO, IEC, Inc.<br>923 Hyde Park Ave, Boston, MA 02136<br>info@iecincglobal.com</p>',
+    INVITE_SIGNATURE_HTML,
+    '</div>'
+  ].join('\n');
+  return {
+    from: INVITE_MAIL_FROM,
+    to: [c.email],
+    subject: SIGN_COMPLETE_SUBJECT,
+    text, html
+  };
+}
+
+async function sendSignCompleteEmail(c, activationUrl) {
+  return sendPartnerEmail(buildSignCompleteEmail(c, activationUrl));
+}
+
+/* Office notification for a completed sign-from-link signing
+   (Nov 25, 2026): the signup-notification pattern — the full
+   profile to info@ — with the signing facts: both signatures
+   recorded in-portal, activation link emailed (or not). */
+async function sendSignCompleteNotification(p, emailed) {
+  const key = process.env.DEMO_ADMIN_RESEND_API_KEY || '';
+  if (!key) return { sent: false, reason: 'not_configured' };
+  const rows = signupProfileLines(p);
+  const nextStep = emailed
+    ? 'Both signatures are recorded (signed in the portal, from the sign link) and the activation link was emailed to the partner. The portal opens when he activates.'
+    : 'Both signatures are recorded (signed in the portal, from the sign link) but the activation email did NOT go out — send the invitation from the Desk Partners admin so the partner can activate.';
+  const text = [
+    `Partner signed from the sign link — ${p.company}.`,
+    '',
+    ...rows.map(([k, v]) => `${k}: ${v}`),
+    '',
+    nextStep,
+    '',
+    SIGNUP_SIGNATURE_TEXT
+  ].join('\n');
+  const html = [
+    `<p style="font-family:Arial,Helvetica,sans-serif;font-size:14px">Partner signed from the sign link — <strong>${escapeHtml(p.company)}</strong>.</p>`,
+    '<table cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;max-width:640px">',
+    rows.map(([k, v]) => `<tr><td style="padding:6px 10px;border:1px solid #e4e0d6;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#5a6b7d">${escapeHtml(k)}</td><td style="padding:6px 10px;border:1px solid #e4e0d6;font-family:Arial,Helvetica,sans-serif;font-size:13px">${escapeHtml(v)}</td></tr>`).join(''),
+    '</table>',
+    `<p style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#5a6b7d">${escapeHtml(nextStep)}</p>`,
+    SIGNUP_SIGNATURE_HTML
+  ].join('\n');
+  try {
+    const r = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: SIGNUP_MAIL_FROM,
+        to: [SIGNUP_NOTIFY_TO],
+        reply_to: p.email,
+        subject: `Partner signed from the sign link — ${p.company}`,
+        text, html
+      })
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) return { sent: false, reason: `resend_${r.status}` };
+    return { sent: true, id: data.id || null };
+  } catch (e) {
+    return { sent: false, reason: 'send_failed' };
+  }
 }
 
 /* Password-reset email (Nov 23, 2026) — the credentialed
@@ -865,6 +971,24 @@ async function resolveActivationToken(token) {
   return c;
 }
 
+/* Resolve a signing token (Nov 25, 2026 — sign-from-link) to
+   its contractor. The token's id slot carries the '-sgn'
+   suffix (see mintSigningToken): it resolves ONLY here, only
+   against signing_token_hash, and only for a live (not
+   revoked) record. It never activates the portal and never
+   reads partner data — the signing steps are its whole world.
+   Never consumes the token; sign-complete consumes it. */
+async function resolveSigningToken(token) {
+  const slot = verifyToken(token);
+  const contractorId = parseSigningId(slot);
+  if (!contractorId) return null;
+  const c = await readContractorById(contractorId);
+  if (!c || c.status === 'revoked') return null;
+  const stored = await readSigningHash(contractorId);
+  if (!stored || stored !== hashToken(token)) return null;
+  return c;
+}
+
 /* The in-portal acceptance of record for one contractor, or null
    when the agreement was signed on paper and recorded by the
    office (or is not signed at all). */
@@ -877,6 +1001,76 @@ function agreementAcceptance(c) {
     version: c.agreementAcceptedVersion || '',
     via: 'portal'
   };
+}
+
+/* The CNDA mirror (Nov 25, 2026): the in-portal CNDA signing of
+   record, or null when the CNDA was signed outside the portal
+   and recorded by the office (or is not signed at all). */
+function ndaAcceptance(c) {
+  if (c.ndaStatus !== 'signed') return null;
+  if ((c.ndaAcceptedVia || '') !== 'portal') return null;
+  return {
+    name: c.ndaAcceptedName || '',
+    at: c.ndaSignedAt || null,
+    version: c.ndaVersion || '',
+    via: 'portal'
+  };
+}
+
+/* The version stamp recorded when a partner signs the CNDA in
+   the portal: the SHA-256 of the exact central text of record
+   he was shown (CNDA_TEXT_SHA256 in _cnda-content.js). */
+function cndaVersionId() { return CNDA_TEXT_SHA256; }
+
+/* The CNDA signing view for one contractor: the central text,
+   filled with the record's own identity values, section by
+   section — what the signing page renders for reading before
+   the typed signature. §14 is trimmed at the same marker the
+   partner's own signed copy uses (_partner-documents.js), so
+   what he signs is exactly what his copy shows. Served only
+   to the holder of his own signing or activation token. */
+function cndaSignView(c) {
+  const values = cndaValues(c);
+  /* The last text is the blank execution block; the typed
+     signature on the signing page IS the execution, so it is
+     not served for reading (the same slice the partner's own
+     signed copy makes). */
+  const sections = CNDA_TEXTS.slice(0, CNDA_TEXTS.length - 1).map((text, index) => {
+    const marker = text.indexOf('\n\n---\n\nAGREED AND ACCEPTED');
+    const trimmed = marker > 0 ? text.slice(0, marker) : text;
+    return { title: CNDA_TITLES[index] || '', text: fillCndaText(trimmed, values) };
+  });
+  return {
+    version: cndaVersionId(),
+    contractor: { name: c.name || '', company: c.company || '', email: c.email || '' },
+    ndaStatus: c.ndaStatus || 'pending',
+    agreementStatus: c.agreementStatus || 'pending',
+    acceptance: ndaAcceptance(c),
+    sections
+  };
+}
+
+/* Basic sign-start throttle (Nov 25, 2026): the portal's first
+   rate limit. In-memory per instance — on serverless each
+   instance keeps its own counters, so this is a brake, not a
+   wall; it still stops a single client hammering the public
+   signing door. Keyed per email and per client IP. */
+const signStartHits = new Map();
+const SIGN_START_WINDOW_MS = 3600 * 1000;
+const SIGN_START_MAX_PER_EMAIL = 5;
+const SIGN_START_MAX_PER_IP = 60;
+function signStartThrottled(req, email) {
+  const now = Date.now();
+  const ip = String((req.headers && (req.headers['x-forwarded-for'] || req.headers['x-real-ip'])) || 'unknown').split(',')[0].trim() || 'unknown';
+  const keys = [['email:' + email, SIGN_START_MAX_PER_EMAIL], ['ip:' + ip, SIGN_START_MAX_PER_IP]];
+  for (const [key, max] of keys) {
+    const hits = (signStartHits.get(key) || []).filter((t) => now - t < SIGN_START_WINDOW_MS);
+    if (hits.length >= max) { signStartHits.set(key, hits); return true; }
+    hits.push(now);
+    signStartHits.set(key, hits);
+  }
+  if (signStartHits.size > 5000) signStartHits.clear();
+  return false;
 }
 
 /* The partner's tax-form state as the portal displays it: a
@@ -1370,6 +1564,61 @@ export default async function handler(req, res) {
     });
   }
 
+  /* ---- the CNDA signing step, invitation door (Nov 25, 2026):
+     the mirror of the agreement pair above, riding the same
+     activation link. GET serves the central CNDA text filled
+     with the partner's record values; POST records the typed
+     signature as portal evidence. Before this, the invited
+     partner was sent out to the central CNDA page and the
+     office recorded the signature by hand (set-nda) with no
+     portal evidence — the central page stays as the public
+     instrument and set-nda stays for paper. ---- */
+  if (req.method === 'GET' && action === 'nda') {
+    const token = String(url.searchParams.get('token') || '');
+    const c = await resolveActivationToken(token);
+    if (!c) return json(res, { ok: false, error: 'invalid_token' }, 401);
+    return json(res, { ok: true, ...cndaSignView(c) });
+  }
+
+  if (req.method === 'POST' && action === 'accept-nda') {
+    const body = await readBody(req);
+    const token = String(body.token || url.searchParams.get('token') || '');
+    const c = await resolveActivationToken(token);
+    if (!c) return json(res, { ok: false, error: 'invalid_token' }, 401);
+    if (c.ndaStatus === 'signed') {
+      return json(res, {
+        ok: true, alreadySigned: true, ndaStatus: 'signed',
+        agreementStatus: c.agreementStatus || 'pending',
+        acceptance: ndaAcceptance(c),
+        next: (c.agreementStatus || 'pending') === 'signed' ? 'activate' : 'agreement'
+      });
+    }
+    const typedName = str(body.typedName, 160);
+    if (body.accept !== true || !typedName) {
+      return json(res, { ok: false, error: 'invalid_fields' }, 400);
+    }
+    if (!nameMatches(typedName, c.name)) {
+      return json(res, {
+        ok: false, error: 'name_mismatch',
+        message: 'Type your full legal name exactly as it appears on your invitation record.'
+      }, 400);
+    }
+    const version = cndaVersionId();
+    const at = new Date().toISOString();
+    await updateContractor(c.id, {
+      ndaStatus: 'signed', ndaSignedAt: at,
+      ndaAcceptedName: typedName,
+      ndaAcceptedVia: 'portal',
+      ndaVersion: version
+    });
+    return json(res, {
+      ok: true, alreadySigned: false, ndaStatus: 'signed',
+      agreementStatus: c.agreementStatus || 'pending', version,
+      acceptance: { name: typedName, at, version, via: 'portal' },
+      next: (c.agreementStatus || 'pending') === 'signed' ? 'activate' : 'agreement'
+    });
+  }
+
   /* ---- public: partner registration (thin, legacy shape — kept
      for the original request-access flow; returns no enumeration
      signal for an existing email) ---- */
@@ -1450,6 +1699,256 @@ export default async function handler(req, res) {
     });
     const mail = await sendSignupNotification(profile);
     return json(res, { ok: true, emailed: mail.sent, next: '/cnda.html' });
+  }
+
+  /* ---- public: SIGN FROM LINK (Nov 25, 2026 — DrMorgan's
+     order: "either they can sign from link or I can send
+     invitation"). The second door beside the Desk invitation:
+     a partner who was sent the /sign link signs BOTH
+     instruments there — CNDA first, then the Contractor
+     Referral Agreement — and the activation link is emailed
+     to him. The flow rides a 24h single-purpose signing token
+     (mintSigningToken): it authorizes only the two signing
+     steps for its own record, never activates the portal and
+     never reads partner data. Activation still requires the
+     emailed link — mailbox ownership — so knowing an email
+     address is never enough to take over an account. The
+     no-introduction-without-agreement gate does not move:
+     nothing activates until BOTH signatures stand, exactly as
+     on the invitation door. ---- */
+  if (req.method === 'POST' && action === 'sign-start') {
+    const body = await readBody(req);
+    /* Honeypot: a real applicant never sees this field. */
+    if (str(body.company_site_hp, 200)) {
+      return json(res, { ok: false, error: 'rejected' }, 400);
+    }
+    const name = str(body.name, 120);
+    const email = str(body.email, 120).toLowerCase();
+    const company = str(body.company, 160);
+    const contractorType = str(body.contractorType, 60);
+    if (!name || !emailOk(email) || !company || !CONTRACTOR_TYPES.includes(contractorType)) {
+      return json(res, { ok: false, error: 'invalid_fields' }, 400);
+    }
+    if (signStartThrottled(req, email)) {
+      return json(res, {
+        ok: false, error: 'rate_limited',
+        message: 'Too many attempts for now — wait a little and try again, or write to info@iecincglobal.com.'
+      }, 429);
+    }
+    const profile = {
+      name, company, email, contractorType,
+      phone: str(body.phone, 40),
+      addressStreet: str(body.street, 200),
+      addressCity: str(body.city, 120),
+      addressState: str(body.state, 80),
+      addressZip: str(body.zip, 20),
+      website: str(body.website, 300),
+      heardAbout: str(body.heardAbout, 500),
+      notes: str(body.notes, 2000)
+    };
+    const existing = await readContractorByEmail(email);
+    if (existing) {
+      const bothSigned = existing.ndaStatus === 'signed'
+        && (existing.agreementStatus || 'pending') === 'signed';
+      /* Fully signed, or revoked (the office handles
+         revocations): the existing already-registered answer —
+         no new enumeration signal. */
+      if (bothSigned || existing.status === 'revoked') {
+        return json(res, {
+          ok: false, error: 'already_registered',
+          message: 'This email is already registered with the IEC partner program. If that is you, write to info@iecincglobal.com and we will take it from there.'
+        }, 409);
+      }
+      /* Resume: signatures still pending on this record. The
+         identity of record (name, company) is NOT overwritten —
+         the typed-name check at each signing step keeps its
+         meaning — while the contact profile refreshes from
+         what the signer just entered. A fresh signing token
+         supersedes any earlier one. */
+      const token = mintSigningToken(existing.id);
+      if (!token) return json(res, { ok: false, error: 'not_configured' }, 503);
+      await updateContractor(existing.id, {
+        contractorType: profile.contractorType,
+        phone: profile.phone, addressStreet: profile.addressStreet,
+        addressCity: profile.addressCity, addressState: profile.addressState,
+        addressZip: profile.addressZip, website: profile.website,
+        heardAbout: profile.heardAbout, notes: profile.notes,
+        signingTokenHash: hashToken(token)
+      });
+      return json(res, {
+        ok: true, resumed: true, token,
+        contractor: { name: existing.name, company: existing.company, email: existing.email },
+        ndaStatus: existing.ndaStatus || 'pending',
+        agreementStatus: existing.agreementStatus || 'pending',
+        next: existing.ndaStatus === 'signed'
+          ? ((existing.agreementStatus || 'pending') === 'signed' ? 'complete' : 'agreement')
+          : 'cnda'
+      });
+    }
+    /* New record: same invited/pending state an office invite
+       creates, source 'sign-link', with the same flat
+       partner-invite attribution as signup. */
+    let invitedBy = '';
+    const inviteCode = normalizePartnerCode(body.inviteCode);
+    if (inviteCode) {
+      const inviter = await readContractorByInviteCode(inviteCode);
+      if (inviter && inviter.status !== 'revoked') invitedBy = inviter.id;
+    }
+    const id = crypto.randomUUID();
+    const token = mintSigningToken(id);
+    if (!token) return json(res, { ok: false, error: 'not_configured' }, 503);
+    await createContractor({
+      id, email, name, company, activationTokenHash: '',
+      source: 'sign-link', invitedBy, ...profile
+    });
+    await updateContractor(id, { signingTokenHash: hashToken(token) });
+    return json(res, {
+      ok: true, resumed: false, token,
+      contractor: { name, company, email },
+      ndaStatus: 'pending', agreementStatus: 'pending',
+      next: 'cnda'
+    });
+  }
+
+  if (req.method === 'GET' && action === 'sign-cnda') {
+    const token = String(url.searchParams.get('token') || '');
+    const c = await resolveSigningToken(token);
+    if (!c) return json(res, { ok: false, error: 'invalid_token' }, 401);
+    return json(res, { ok: true, ...cndaSignView(c) });
+  }
+
+  if (req.method === 'POST' && action === 'sign-cnda') {
+    const body = await readBody(req);
+    const token = String(body.token || url.searchParams.get('token') || '');
+    const c = await resolveSigningToken(token);
+    if (!c) return json(res, { ok: false, error: 'invalid_token' }, 401);
+    if (c.ndaStatus === 'signed') {
+      return json(res, {
+        ok: true, alreadySigned: true, ndaStatus: 'signed',
+        agreementStatus: c.agreementStatus || 'pending',
+        acceptance: ndaAcceptance(c),
+        next: (c.agreementStatus || 'pending') === 'signed' ? 'complete' : 'agreement'
+      });
+    }
+    const typedName = str(body.typedName, 160);
+    if (body.accept !== true || !typedName) {
+      return json(res, { ok: false, error: 'invalid_fields' }, 400);
+    }
+    if (!nameMatches(typedName, c.name)) {
+      return json(res, {
+        ok: false, error: 'name_mismatch',
+        message: 'Type your full legal name exactly as it appears on your record.'
+      }, 400);
+    }
+    const version = cndaVersionId();
+    const at = new Date().toISOString();
+    await updateContractor(c.id, {
+      ndaStatus: 'signed', ndaSignedAt: at,
+      ndaAcceptedName: typedName,
+      ndaAcceptedVia: 'portal',
+      ndaVersion: version
+    });
+    return json(res, {
+      ok: true, alreadySigned: false, ndaStatus: 'signed',
+      agreementStatus: c.agreementStatus || 'pending', version,
+      acceptance: { name: typedName, at, version, via: 'portal' },
+      next: (c.agreementStatus || 'pending') === 'signed' ? 'complete' : 'agreement'
+    });
+  }
+
+  if (req.method === 'GET' && action === 'sign-agreement') {
+    const token = String(url.searchParams.get('token') || '');
+    const c = await resolveSigningToken(token);
+    if (!c) return json(res, { ok: false, error: 'invalid_token' }, 401);
+    return json(res, {
+      ok: true,
+      version: agreementVersionId(),
+      contractor: { name: c.name, company: c.company, email: c.email, agreementSignedAt: c.agreementSignedAt || null },
+      agreementStatus: c.agreementStatus || 'pending',
+      ndaStatus: c.ndaStatus,
+      acceptance: agreementAcceptance(c),
+      schedule: publicSchedule(),
+      html: AGREEMENT_HTML
+    });
+  }
+
+  if (req.method === 'POST' && action === 'sign-agreement') {
+    const body = await readBody(req);
+    const token = String(body.token || url.searchParams.get('token') || '');
+    const c = await resolveSigningToken(token);
+    if (!c) return json(res, { ok: false, error: 'invalid_token' }, 401);
+    if ((c.agreementStatus || 'pending') === 'signed') {
+      return json(res, {
+        ok: true, alreadySigned: true, agreementStatus: 'signed',
+        ndaStatus: c.ndaStatus, acceptance: agreementAcceptance(c),
+        next: c.ndaStatus === 'signed' ? 'complete' : 'cnda'
+      });
+    }
+    const typedName = str(body.typedName, 160);
+    if (body.accept !== true || !typedName) {
+      return json(res, { ok: false, error: 'invalid_fields' }, 400);
+    }
+    if (!nameMatches(typedName, c.name)) {
+      return json(res, {
+        ok: false, error: 'name_mismatch',
+        message: 'Type your full legal name exactly as it appears on your record.'
+      }, 400);
+    }
+    const version = agreementVersionId();
+    const at = new Date().toISOString();
+    await updateContractor(c.id, {
+      agreementStatus: 'signed', agreementSignedAt: at,
+      agreementAcceptedName: typedName,
+      agreementAcceptedVersion: version,
+      agreementAcceptedVia: 'portal'
+    });
+    return json(res, {
+      ok: true, alreadySigned: false, agreementStatus: 'signed',
+      ndaStatus: c.ndaStatus, version,
+      acceptance: { name: typedName, at, version, via: 'portal' },
+      next: c.ndaStatus === 'signed' ? 'complete' : 'cnda'
+    });
+  }
+
+  /* Both signatures stand: mint the activation token and email
+     the link — the mailbox-ownership proof. The activation
+     hash is stored ONLY when the send succeeds (the invitation
+     discipline); the signing token is consumed on success and
+     stays alive on failure so the partner can retry. The
+     activation URL itself never returns to the browser. */
+  if (req.method === 'POST' && action === 'sign-complete') {
+    const body = await readBody(req);
+    const token = String(body.token || url.searchParams.get('token') || '');
+    const c = await resolveSigningToken(token);
+    if (!c) return json(res, { ok: false, error: 'invalid_token' }, 401);
+    if (c.ndaStatus !== 'signed' || (c.agreementStatus || 'pending') !== 'signed') {
+      return json(res, {
+        ok: false, error: 'signatures_pending',
+        ndaStatus: c.ndaStatus || 'pending',
+        agreementStatus: c.agreementStatus || 'pending',
+        next: c.ndaStatus !== 'signed' ? 'cnda' : 'agreement'
+      }, 409);
+    }
+    const activationToken = mintActivationToken(c.id);
+    if (!activationToken) return json(res, { ok: false, error: 'not_configured' }, 503);
+    const mail = await sendSignCompleteEmail(c, activationUrlFor(activationToken));
+    if (!mail.sent) {
+      return json(res, { ok: false, error: mail.reason },
+        mail.reason === 'not_configured' ? 503 : 502);
+    }
+    await updateContractor(c.id, {
+      activationTokenHash: hashToken(activationToken),
+      signingTokenHash: ''
+    });
+    const profile = {
+      name: c.name, company: c.company, email: c.email,
+      contractorType: c.contractorType || '', phone: c.phone || '',
+      addressStreet: c.addressStreet || '', addressCity: c.addressCity || '',
+      addressState: c.addressState || '', addressZip: c.addressZip || '',
+      website: c.website || '', heardAbout: c.heardAbout || '', notes: c.notes || ''
+    };
+    await sendSignCompleteNotification(profile, true);
+    return json(res, { ok: true, emailed: true, next: 'activate' });
   }
 
   /* ---- public: resolve a partner invitation link (/join/<code>)
@@ -1657,6 +2156,7 @@ export default async function handler(req, res) {
       ok: true,
       contractor: publicContractor(c),
       agreementAccepted: agreementAcceptance(c),
+      ndaAccepted: ndaAcceptance(c),
       frozen: c.status !== 'active',
       referrals: clients,
       clients,
@@ -2091,7 +2591,7 @@ export default async function handler(req, res) {
     if (!c) return json(res, { ok: false, error: 'unauthorized' }, 401);
     const doc = partnerCndaDocument(c, { iecSignatureImg: loadIecSignatureDataUri() || '' });
     if (!doc) return json(res, { ok: false, error: 'not_signed' }, 404);
-    return json(res, { ok: true, kind: 'cnda', title: doc.title, html: doc.html });
+    return json(res, { ok: true, kind: 'cnda', title: doc.title, acceptance: doc.acceptance || null, html: doc.html });
   }
 
   if (req.method === 'GET' && action === 'my-cnda-pdf') {
@@ -2634,7 +3134,8 @@ export const _internals = {
   INDUSTRIES, REFERRAL_ORDER, CONTRACTOR_ORDER, CLIENT_PIPELINE,
   DESK_STAFF_BANDS, QUALIFICATION_EXEMPT_INDUSTRIES,
   PIPELINE_EVIDENCE, SEGMENT_BY_INDUSTRY, questionnaireUrl, formatUSD,
-  resolveActivationToken, agreementAcceptance, nameMatches,
+  resolveActivationToken, resolveSigningToken, agreementAcceptance, ndaAcceptance,
+  cndaVersionId, cndaSignView, nameMatches,
   INVITE_FROM_ADDRESS, INVITE_MAIL_FROM, INVITE_SUBJECT,
   buildInvitationEmail, activationUrlFor,
   clientLinkFor, buildClientLinkEmail,

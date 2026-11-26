@@ -124,6 +124,29 @@ export function parsePartnerSessionId(idSlot) {
   return { contractorId: s, epoch: 0 };
 }
 
+/* Signing token (Nov 25, 2026 — sign-from-link): the 24h
+   single-purpose token a new partner holds while he signs the
+   CNDA and the Agreement on the public /sign page. Purpose
+   isolation is structural, not a flag: the token's id slot
+   carries a '-sgn' suffix, so it can never resolve as a
+   session (the session lookup reads a contractor id that does
+   not exist) and never as an activation token (the activation
+   resolver compares against a different stored hash AND reads
+   a contractor id that does not exist). Only the signing
+   resolver — which strips the suffix and compares against
+   signing_token_hash — accepts it. */
+export function mintSigningToken(contractorId, ttlSeconds = 24 * 3600) {
+  /* The random nonce makes every mint unique — two sign-starts
+     inside the same second must still rotate the credential,
+     so a superseded signing token is always dead. */
+  const nonce = crypto.randomBytes(4).toString('hex');
+  return mintToken(`${contractorId}-sgn-${nonce}`, ttlSeconds);
+}
+export function parseSigningId(idSlot) {
+  const m = /^(.*)-sgn-[0-9a-f]{8}$/.exec(String(idSlot || ''));
+  return m ? (m[1] || null) : null;
+}
+
 /* Verify `<id>.<exp>.<sig>` and return the id, or null. Fails closed
    on a missing secret, a malformed token, an expired token, or a
    bad signature. Never throws. */

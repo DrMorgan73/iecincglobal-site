@@ -124,6 +124,7 @@
       doc_agr_heading: 'IEC Contractor Referral Agreement', doc_cnda_heading: 'Confidentiality Agreement (CNDA)',
       doc_load_fail: 'This document could not be loaded — please try again.',
       doc_ndaline: 'NDA: signed — recorded by IEC.',
+      nda_accepted_line: 'CNDA signed in the portal — recorded {when}.',
       downloads: 'Downloads', dl_plan: 'Download plan summary (PDF)', dl_csv: 'Download earnings (CSV)',
       partners_title: 'Invited partners', partners_sub: 'Partners you personally invited to IEC. IEC\u2019s program is direct: you see only your own invitees — no levels, no network, and no partner ever sees another partner\u2019s earnings.',
       your_invite_link: 'Your invitation link', invite_expl: 'Send this link to someone who should become an IEC partner. His request arrives connected to you, and he appears in your list below once he asks for access.',
@@ -221,8 +222,12 @@
       agr_sign_btn: 'Accept and sign', agr_name_mismatch: 'Type your full legal name exactly as it appears on your invitation record.',
       agr_fail: 'That acceptance could not be recorded — please try again.',
       nda_step_t: 'The confidentiality step',
-      nda_step_p: 'One signature remains: IEC\u2019s confidentiality agreement (NDA). Sign it, and once IEC has recorded it your portal opens through this same activation link.',
+      nda_step_p: 'One signature remains: IEC\u2019s confidentiality agreement (CNDA). Read it in full below, type your full legal name exactly as it appears on your invitation record, and sign. IEC records your signature — name, time, and the CNDA version — and your portal opens through this same activation link.',
       nda_open: 'Open the NDA to sign',
+      nda_typed: 'Type your full legal name', nda_accept: 'I have read the confidentiality agreement and I sign it — this is my signature',
+      nda_sign_btn: 'Sign the CNDA', nda_name_mismatch: 'Type your full legal name exactly as it appears on your invitation record.',
+      nda_fail: 'That signature could not be recorded — please try again.',
+      nda_email_note: 'Receiving the CNDA by email alone does not count as signing — signing happens here, in your portal, and IEC records the version and the exact time.',
       agr_done_t: 'Both signatures stand',
       agr_done_p: 'Your agreement and your NDA are both recorded. Open your portal:',
       agr_open_btn: 'Open my portal',
@@ -343,6 +348,7 @@
       doc_agr_heading: 'Acuerdo de Referidos de IEC', doc_cnda_heading: 'Acuerdo de Confidencialidad (CNDA)',
       doc_load_fail: 'Este documento no pudo cargarse: inténtelo de nuevo.',
       doc_ndaline: 'NDA: firmado — registrado por IEC.',
+      nda_accepted_line: 'CNDA firmado en el portal — registrado el {when}.',
       downloads: 'Descargas', dl_plan: 'Descargar resumen del plan (PDF)', dl_csv: 'Descargar ganancias (CSV)',
       partners_title: 'Socios invitados', partners_sub: 'Los socios que usted invitó personalmente a IEC. El programa de IEC es directo: usted ve solo a sus propios invitados — sin niveles, sin red, y ningún socio ve jamás las ganancias de otro.',
       your_invite_link: 'Su enlace de invitación', invite_expl: 'Envíe este enlace a alguien que debería convertirse en socio de IEC. Su solicitud llega conectada a usted, y aparece en su lista abajo cuando pide acceso.',
@@ -440,8 +446,12 @@
       agr_sign_btn: 'Aceptar y firmar', agr_name_mismatch: 'Escriba su nombre legal completo exactamente como aparece en su registro de invitación.',
       agr_fail: 'Esa aceptación no pudo registrarse: inténtelo de nuevo.',
       nda_step_t: 'El paso de confidencialidad',
-      nda_step_p: 'Queda una firma: el acuerdo de confidencialidad (NDA) de IEC. Fírmelo, y cuando IEC lo haya registrado su portal se abre con este mismo enlace de activación.',
+      nda_step_p: 'Queda una firma: el acuerdo de confidencialidad (CNDA) de IEC. Léalo completo a continuación, escriba su nombre legal completo exactamente como aparece en su registro de invitación, y firme. IEC registra su firma — nombre, hora y la versión del CNDA — y su portal se abre con este mismo enlace de activación.',
       nda_open: 'Abrir el NDA para firmar',
+      nda_typed: 'Escriba su nombre legal completo', nda_accept: 'He leído el acuerdo de confidencialidad y lo firmo: esta es mi firma',
+      nda_sign_btn: 'Firmar el CNDA', nda_name_mismatch: 'Escriba su nombre legal completo exactamente como aparece en su registro de invitación.',
+      nda_fail: 'Esa firma no pudo registrarse: inténtelo de nuevo.',
+      nda_email_note: 'Recibir el CNDA por correo electrónico no cuenta como firma: la firma ocurre aquí, en su portal, e IEC registra la versión y la hora exacta.',
       agr_done_t: 'Ambas firmas están registradas',
       agr_done_p: 'Su acuerdo y su NDA están registrados. Abra su portal:',
       agr_open_btn: 'Abrir mi portal',
@@ -624,6 +634,13 @@
     if ((c.agreementStatus || 'pending') === 'signed') return tf('agr_status_office', { when: fmtDate(c.agreementSignedAt) });
     return '';
   }
+  function ndaLine(me) {
+    var a = me.ndaAccepted;
+    if (a && a.version) return tf('nda_accepted_line', { when: fmtDateTime(a.at) });
+    var c = me.contractor || {};
+    if (c.ndaStatus === 'signed') return t('doc_ndaline');
+    return '';
+  }
   /* The signed-instruments row shown wherever an acceptance is
      displayed: read the full document inside the portal, or
      download the signed-copy PDF — for the agreement and for
@@ -660,7 +677,7 @@
     setTimeout(function () { loadDocument(kind); }, 0);
     return '<p class="pp-p"><a class="pp-btn pp-btn-ghost" href="#/dashboard">' + esc(t('doc_back')) + '</a></p>' +
       '<h1 class="pp-h1">' + esc(isAgr ? t('doc_agr_heading') : t('doc_cnda_heading')) + '</h1>' +
-      '<p class="pp-sub">' + esc(t('doc_your_copy')) + ' · ' + esc(isAgr ? (agreementLine(me) || t('pending')) : (me.contractor.ndaStatus === 'signed' ? t('doc_ndaline') : t('pending'))) + '</p>' +
+      '<p class="pp-sub">' + esc(t('doc_your_copy')) + ' · ' + esc(isAgr ? (agreementLine(me) || t('pending')) : (ndaLine(me) || t('pending'))) + '</p>' +
       '<p class="pp-p">' + (DEMO
         ? '<button class="pp-btn" data-doc-demo>' + esc(t('doc_download_pdf')) + '</button>'
         : '<a class="pp-btn" href="' + downloadHref(isAgr ? 'my-agreement-pdf' : 'my-cnda-pdf') + '">' + esc(t('doc_download_pdf')) + '</a>') + '</p>' +
@@ -2123,8 +2140,14 @@
           bodyHtml += '<h2 class="pp-h2">' + esc(t('agr_done_t')) + '</h2><p class="pp-p">' + esc(t('agr_done_p')) + '</p>' +
             '<p><a class="pp-btn" href="/api/contractors?action=activate&amp;token=' + encodeURIComponent(token) + '">' + esc(t('agr_open_btn')) + '</a></p>';
         } else {
+          /* The confidentiality step signs IN the portal
+             (Nov 25, 2026): the full CNDA text, filled with the
+             partner's record values, and a typed signature —
+             recorded as portal evidence by accept-nda, the same
+             discipline as the agreement step above. The central
+             CNDA page remains the public instrument. */
           bodyHtml += '<h2 class="pp-h2">' + esc(t('nda_step_t')) + '</h2><p class="pp-p">' + esc(t('nda_step_p')) + '</p>' +
-            '<p><a class="pp-btn" href="/cnda.html" target="_blank" rel="noopener">' + esc(t('nda_open')) + '</a></p>';
+            '<div id="pp-nda-step"><p class="pp-p pp-muted">' + esc(t('loading')) + '</p></div>';
         }
       } else {
         bodyHtml = '<p class="pp-p">' + esc(tf('agr_for', { name: d.contractor.name, company: d.contractor.company || '' })) + '</p>' +
@@ -2151,7 +2174,53 @@
           }
         });
       });
+      loadNdaStep(token);
     }).catch(function () { renderDoor(); });
+  }
+
+  /* The in-portal CNDA signing step (Nov 25, 2026): fetches the
+     central text filled with the partner's record values and
+     renders it with the typed-signature box. A signature
+     already standing renders as its recorded line — never
+     re-asked. */
+  function loadNdaStep(token) {
+    var box = document.getElementById('pp-nda-step');
+    if (!box) return;
+    api({ action: 'nda', token: token }, 'GET').then(function (res) {
+      var el = document.getElementById('pp-nda-step');
+      if (!el) return;
+      if (res.status !== 200 || !res.body.ok) {
+        el.innerHTML = '<p class="pp-error">' + esc(t('nda_fail')) + '</p>';
+        return;
+      }
+      var d = res.body;
+      if (d.ndaStatus === 'signed') { renderAgreement(token); return; }
+      var docHtml = (d.sections || []).map(function (s, i) {
+        return (i === 0 ? '' : '<h2>' + esc(s.title) + '</h2>') + '<p>' + esc(s.text) + '</p>';
+      }).join('');
+      el.innerHTML = '<div class="pp-agreement pp-cnda-doc">' + docHtml + '</div>' +
+        '<div class="pp-signbox"><label class="pp-label">' + esc(t('nda_typed')) + '</label>' +
+        '<input class="pp-input" id="pp-nda-name"><label class="pp-checkline"><input type="checkbox" id="pp-nda-check"> ' + esc(t('nda_accept')) + '</label>' +
+        '<p class="pp-error" id="pp-nda-error" hidden></p>' +
+        '<button class="pp-btn" id="pp-nda-sign">' + esc(t('nda_sign_btn')) + '</button></div>' +
+        '<p class="pp-p pp-muted">' + esc(t('nda_email_note')) + '</p>';
+      var nbtn = document.getElementById('pp-nda-sign');
+      if (nbtn) nbtn.addEventListener('click', function () {
+        var err = document.getElementById('pp-nda-error');
+        err.hidden = true;
+        api({ action: 'accept-nda', token: token, typedName: document.getElementById('pp-nda-name').value,
+          accept: document.getElementById('pp-nda-check').checked === true }).then(function (r2) {
+          if (r2.status === 200 && r2.body.ok) renderAgreement(token);
+          else {
+            err.textContent = r2.body && r2.body.error === 'name_mismatch' ? t('nda_name_mismatch') : t('nda_fail');
+            err.hidden = false;
+          }
+        });
+      });
+    }).catch(function () {
+      var el = document.getElementById('pp-nda-step');
+      if (el) el.innerHTML = '<p class="pp-error">' + esc(t('nda_fail')) + '</p>';
+    });
   }
 
   boot();

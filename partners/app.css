@@ -146,6 +146,9 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;word-break
 .pp-front-p{color:var(--muted);max-width:720px;margin:0 auto}
 .pp-front-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
 .pp-agreement{border:1px solid var(--line);border-radius:10px;padding:18px 20px;max-height:430px;overflow:auto;background:#FDFEFF;font-size:14.5px}
+.pp-cnda-doc h2{font-size:16.5px;margin:18px 0 6px}
+.pp-cnda-doc h2:first-child{margin-top:0}
+.pp-cnda-doc p{white-space:pre-wrap;margin:0 0 10px;line-height:1.6}
 .pp-signbox{margin-top:16px;border-top:1px solid var(--line);padding-top:14px}
 .pp-doc-full{max-height:none}
 .pp-doc-actions{margin-top:12px}
