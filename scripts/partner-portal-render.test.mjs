@@ -77,6 +77,9 @@ const REQUIRED = [
   ['password eye toggle', 'data-pw-eye="pp-login-password"'],
   ['forgot-password toggle', 'id="pp-forgot-toggle"'],
   ['forgot-password form', 'id="pp-forgot-form"'],
+  ['forgot-sign-in-link toggle', 'id="pp-recover-toggle"'],
+  ['forgot-sign-in-link form', 'id="pp-recover-form"'],
+  ['forgot-sign-in-link field', 'id="pp-recover-email"'],
   ['first-time section', 'pp-firsttime'],
   ['activation form (pp-signin-form)', 'id="pp-signin-form"'],
   ['activation field', 'id="pp-signin-credential"'],
@@ -96,6 +99,13 @@ for (const s of scenarios) {
   for (const [label, needle] of REQUIRED) check('renders ' + label, html.includes(needle));
   check('no literal "undefined" rendered', !html.includes('undefined'));
 }
+
+/* The forgot-sign-in-link form must post to the `recover` action —
+   the endpoint that emails a fresh activation link to a partner
+   who never set credentials. (The endpoint's behavior is proven
+   in partner-portal-recovery.test.mjs; this guards the wiring.) */
+check('recover form posts to action recover', src.includes("action: 'recover'"));
+check('forgot form still posts to action forgot-password', src.includes("action: 'forgot-password'"));
 
 console.log(failures === 0 ? '\npartner-portal-render.test.mjs: ALL GREEN' : `\npartner-portal-render.test.mjs: ${failures} FAILURES`);
 process.exit(failures === 0 ? 0 : 1);

@@ -168,11 +168,17 @@
       ft_p: 'Use the activation link from your invitation — it works once, and it walks you through registration, your username and password, and your signatures. After that first visit, you sign in with your username and password.',
       ft_btn: 'Continue with my activation link',
       forgot_link: 'Forgot your password?',
-      forgot_p: 'Enter the email on your partner record and we will email you a password-reset link. The link works once and expires in one hour. (No password yet? Your door in is the activation link from your invitation, above.)',
+      forgot_p: 'Enter the email on your partner record and we will email you a password-reset link. The link works once and expires in one hour. (No password yet? Use “Forgot your sign-in link?” below.)',
       forgot_label: 'Email on your partner record',
       forgot_btn: 'Email me a reset link',
       forgot_working: 'Sending…',
       forgot_sent: 'If that email matches a partner record with a password set, a reset link is on its way. Check your inbox — the link works once and expires in one hour.',
+      recover_link: 'Forgot your sign-in link?',
+      recover_p: 'First time here, or lost the activation link from your invitation? Enter the email on your partner record and we will email you a fresh sign-in link. A fresh link replaces any sign-in link you were sent before.',
+      recover_label: 'Email on your partner record',
+      recover_btn: 'Email me a new sign-in link',
+      recover_working: 'Sending…',
+      recover_sent: 'If that email matches an active partner record, a new sign-in link is on its way. Check your inbox — the link works once.',
       reg_t: 'Register with IEC',
       reg_type_t: 'How are you registering?',
       reg_type_p: 'Choose the registration that matches you — IEC records your choice on your partner record.',
@@ -381,11 +387,17 @@
       ft_p: 'Use el enlace de activación de su invitación: funciona una sola vez y lo guía por el registro, su nombre de usuario y contraseña, y sus firmas. Después de esa primera visita, usted inicia sesión con su nombre de usuario y contraseña.',
       ft_btn: 'Continuar con mi enlace de activación',
       forgot_link: '¿Olvidó su contraseña?',
-      forgot_p: 'Ingrese el correo de su registro de socio y le enviaremos un enlace para restablecer su contraseña. El enlace funciona una sola vez y vence en una hora. (¿Aún no tiene contraseña? Su puerta de entrada es el enlace de activación de su invitación, arriba.)',
+      forgot_p: 'Ingrese el correo de su registro de socio y le enviaremos un enlace para restablecer su contraseña. El enlace funciona una sola vez y vence en una hora. (¿Aún no tiene contraseña? Use «¿Olvidó su enlace de acceso?» abajo.)',
       forgot_label: 'Correo de su registro de socio',
       forgot_btn: 'Enviarme un enlace de restablecimiento',
       forgot_working: 'Enviando…',
       forgot_sent: 'Si ese correo coincide con un registro de socio con contraseña, un enlace de restablecimiento va en camino. Revise su bandeja de entrada: el enlace funciona una sola vez y vence en una hora.',
+      recover_link: '¿Olvidó su enlace de acceso?',
+      recover_p: '¿Es su primera vez, o perdió el enlace de activación de su invitación? Ingrese el correo de su registro de socio y le enviaremos un enlace de acceso nuevo. Un enlace nuevo reemplaza cualquier enlace que le hayamos enviado antes.',
+      recover_label: 'Correo de su registro de socio',
+      recover_btn: 'Enviarme un enlace nuevo',
+      recover_working: 'Enviando…',
+      recover_sent: 'Si ese correo coincide con un registro de socio activo, un enlace de acceso nuevo va en camino. Revise su bandeja de entrada: el enlace funciona una sola vez.',
       reg_t: 'Regístrese con IEC',
       reg_type_t: '¿Cómo se registra?',
       reg_type_p: 'Elija el registro que le corresponde: IEC guarda su elección en su registro de socio.',
@@ -1711,6 +1723,18 @@
       '<p class="pp-error" id="pp-forgot-error" hidden></p>' +
       '<button class="pp-btn pp-btn-ghost" type="submit" id="pp-forgot-submit">' + esc(t('forgot_btn')) + '</button></form>' +
       '<p class="pp-ok" id="pp-forgot-ok" hidden></p></div>' +
+      /* Forgot sign-in link: a partner who never set credentials
+         (office-provisioned, signatures recorded) has no password
+         to reset — his door is a fresh activation link, emailed
+         by the `recover` action. The answer on screen is generic
+         whether or not the email matched. */
+      '<div class="pp-recover"><p class="pp-p"><button class="pp-textlink" type="button" id="pp-recover-toggle">' + esc(t('recover_link')) + '</button></p>' +
+      '<form id="pp-recover-form" hidden><p class="pp-p">' + esc(t('recover_p')) + '</p>' +
+      '<div><label class="pp-label" for="pp-recover-email">' + esc(t('recover_label')) + '</label>' +
+      '<input class="pp-input" id="pp-recover-email" type="email" autocomplete="email" spellcheck="false"></div>' +
+      '<p class="pp-error" id="pp-recover-error" hidden></p>' +
+      '<button class="pp-btn pp-btn-ghost" type="submit" id="pp-recover-submit">' + esc(t('recover_btn')) + '</button></form>' +
+      '<p class="pp-ok" id="pp-recover-ok" hidden></p></div>' +
       /* First time only — clearly separated: the activation code
          is a first-time signup mechanism, never a recurrent
          login. */
@@ -1800,6 +1824,34 @@
         }
       }).catch(function () {
         btn.disabled = false; btn.textContent = t('forgot_btn');
+        err.textContent = t('err_generic'); err.hidden = false;
+      });
+    });
+    /* --- forgot sign-in link: email a fresh activation link --- */
+    var rToggle = document.getElementById('pp-recover-toggle');
+    var rForm = document.getElementById('pp-recover-form');
+    if (rToggle && rForm) rToggle.addEventListener('click', function () {
+      rForm.hidden = !rForm.hidden;
+      if (!rForm.hidden) { var em = document.getElementById('pp-recover-email'); if (em) em.focus(); }
+    });
+    if (rForm) rForm.addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      if (DEMO) { toast(t('demo_blocked')); return; }
+      var ok = document.getElementById('pp-recover-ok');
+      var err = document.getElementById('pp-recover-error');
+      var btn = document.getElementById('pp-recover-submit');
+      ok.hidden = true; err.hidden = true;
+      btn.disabled = true; btn.textContent = t('recover_working');
+      api({ action: 'recover', email: document.getElementById('pp-recover-email').value }).then(function (res) {
+        btn.disabled = false; btn.textContent = t('recover_btn');
+        if (res.status === 200 && res.body && res.body.ok) {
+          ok.textContent = t('recover_sent'); ok.hidden = false;
+          rForm.reset();
+        } else {
+          err.textContent = t('err_generic'); err.hidden = false;
+        }
+      }).catch(function () {
+        btn.disabled = false; btn.textContent = t('recover_btn');
         err.textContent = t('err_generic'); err.hidden = false;
       });
     });
