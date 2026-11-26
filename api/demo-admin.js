@@ -168,6 +168,7 @@ import {
   stampNdaInviteEmail,
   markNdaInviteSigned
 } from "./_demo-invites-store.js";
+import { videoConferenceAction } from "./_video-conference.js";
 
 /* ------------------------------------------------------------------ */
 /* Org signatures for system mail (copied from the assets' own single */
@@ -1380,6 +1381,13 @@ export default async function handler(req, res) {
 
   const body = await readBody(req);
   const action = String(body.action || "");
+  /* IEC Suite Video Conference (api/_video-conference.js) — dispatched
+     here because the project is at its Vercel function ceiling. */
+  if (action.startsWith("vc-")) {
+    const handled = await videoConferenceAction(action, body, res, reply);
+    if (handled) return;
+    return reply(res, 400, { ok: false, error: "unknown_action" });
+  }
   if (action === "list") return actionList(res);
   if (action === "invite") return actionInvite(res, body);
   if (action === "resend") return actionResend(res, body);

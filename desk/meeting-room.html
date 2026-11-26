@@ -187,16 +187,18 @@ document.querySelectorAll('.mode-toggle button').forEach(b =>
 })();
 </script>
 <script>
-/* ---- IEC Suite Video Conference (api/video-conference.js) ---- */
+/* ---- IEC Suite Video Conference (api/_video-conference.js via
+   /api/demo-admin vc-* actions — the project is at its Vercel
+   function ceiling, so no new route file) ---- */
 function vcBanner(html, isErr){
   $('vc-banner').innerHTML = html ? `<div class="banner${isErr ? ' err' : ''}">${html}</div>` : '';
 }
 async function vcCall(action, extra){
-  const r = await fetch('/api/video-conference', {
+  const r = await fetch('/api/demo-admin', {
     method: 'POST',
     credentials: 'same-origin',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ action, ...(extra || {}) })
+    body: JSON.stringify({ action: 'vc-' + action, ...(extra || {}) })
   });
   const data = await r.json().catch(() => ({}));
   if(!r.ok || !data.ok) throw new Error(data.message || data.error || ('Request failed (' + r.status + ')'));
