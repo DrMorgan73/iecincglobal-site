@@ -3,11 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Meeting Room — IEC Suite</title>
+<title>IEC Suite Video Conference — IEC Suite</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/desk/desk.css">
+<style>
+  .banner{border:1px solid rgba(240,185,66,.45);background:rgba(240,185,66,.07);border-radius:14px;padding:12px 16px;margin-bottom:14px;font-size:13.5px}
+  .banner.err{border-color:rgba(248,113,113,.5);background:rgba(248,113,113,.07)}
+  .table-wrap{overflow-x:auto}
+  table.vc{width:100%;border-collapse:collapse;font-size:13.5px}
+  table.vc th,table.vc td{padding:9px 12px;border-bottom:1px solid var(--line-soft);text-align:left;vertical-align:top}
+  table.vc th{font-family:'Space Grotesk';font-size:13px;letter-spacing:.03em;white-space:nowrap}
+</style>
 </head>
 <body data-page="meeting">
 <div class="orbs" aria-hidden="true"><span class="orb gold"></span><span class="orb teal"></span><span class="orb violet"></span></div>
@@ -42,7 +50,24 @@
   </aside>
 
   <main>
-    <div class="section-head"><h2>Meeting Room</h2><span class="live"><i></i>reserved</span></div>
+    <div class="section-head"><h2>🎥 IEC Suite Video Conference</h2><span class="live"><i></i>video</span></div>
+
+    <div id="vc-banner"></div>
+
+    <form class="card form-card" id="vc-form" style="margin-bottom:16px">
+      <h3>New video conference</h3>
+      <p class="hint" style="margin-bottom:12px">Start a meeting and send guests an invitation link — no account needed to join. Rooms are private, recording off, links live 12 hours.</p>
+      <label>Meeting title (optional)<input id="vc-title" maxlength="120" placeholder="e.g. Partner call"></label>
+      <button type="submit" class="btn" id="vc-start">Start meeting</button>
+      <div id="vc-active" style="margin-top:14px"></div>
+    </form>
+
+    <div class="card" style="margin-bottom:16px">
+      <h3>Recent conferences</h3>
+      <div class="table-wrap"><div id="vc-list"><div class="empty">Loading conferences…</div></div></div>
+    </div>
+
+    <div class="section-head"><h2>Boardroom</h2><span class="live"><i></i>reserved</span></div>
 
     <div class="boardroom">
       <div class="mode-row">
@@ -160,6 +185,98 @@ document.querySelectorAll('.mode-toggle button').forEach(b =>
   tickCountdown();
   setInterval(tickCountdown, 1000);
 })();
+</script>
+<script>
+/* ---- IEC Suite Video Conference (api/video-conference.js) ---- */
+function vcBanner(html, isErr){
+  $('vc-banner').innerHTML = html ? `<div class="banner${isErr ? ' err' : ''}">${html}</div>` : '';
+}
+async function vcCall(action, extra){
+  const r = await fetch('/api/video-conference', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ action, ...(extra || {}) })
+  });
+  const data = await r.json().catch(() => ({}));
+  if(!r.ok || !data.ok) throw new Error(data.message || data.error || ('Request failed (' + r.status + ')'));
+  return data;
+}
+function vcInviteText(meeting, guestUrl){
+  const title = meeting.title ? ' — ' + meeting.title : '';
+  return `You're invited to an IEC Suite Video Conference${title}.\nJoin here: ${guestUrl}`;
+}
+async function vcCopy(text, btn){
+  try{
+    await navigator.clipboard.writeText(text);
+    if(btn){ const old = btn.textContent; btn.textContent = 'Copied ✓'; setTimeout(() => { btn.textContent = old; }, 2500); }
+  }catch{ vcBanner('Copy failed — select the link and copy it manually.', true); }
+}
+function vcFmt(iso){
+  try{ return new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); }
+  catch{ return iso; }
+}
+function vcShowActive(meeting, links){
+  $('vc-active').innerHTML =
+    `<p style="margin-bottom:8px"><b>Your meeting is open</b> in a new tab. Send guests this invitation:</p>` +
+    `<p style="word-break:break-all;margin-bottom:10px">${esc(links.guestUrl)}</p>` +
+    `<div style="display:flex;gap:8px;flex-wrap:wrap">` +
+    `<button type="button" class="btn small" id="vc-copy-invite">Copy invitation</button>` +
+    `<button type="button" class="btn small ghost" id="vc-copy-link">Copy link only</button>` +
+    `<a class="btn small ghost" href="mailto:?subject=${encodeURIComponent('IEC Suite Video Conference invitation' + (meeting.title ? ' — ' + meeting.title : ''))}&body=${encodeURIComponent(vcInviteText(meeting, links.guestUrl))}">Email invitation</a>` +
+    `</div>`;
+  $('vc-copy-invite').addEventListener('click', e => vcCopy(vcInviteText(meeting, links.guestUrl), e.currentTarget));
+  $('vc-copy-link').addEventListener('click', e => vcCopy(links.guestUrl, e.currentTarget));
+}
+async function vcLoad(){
+  try{
+    const data = await vcCall('list');
+    const meetings = data.meetings || [];
+    if(!meetings.length){ $('vc-list').innerHTML = '<div class="empty">No conferences yet. Start one above.</div>'; return; }
+    $('vc-list').innerHTML =
+      '<table class="vc"><thead><tr><th>When</th><th>Title</th><th>Status</th><th></th></tr></thead><tbody>' +
+      meetings.map(m =>
+        `<tr><td>${esc(vcFmt(m.createdAt))}</td><td>${esc(m.title || '—')}</td><td>${m.status === 'open' ? 'Open' : 'Ended'}</td>` +
+        `<td>${m.status === 'open'
+          ? `<button type="button" class="btn small ghost" data-vc-join="${esc(m.meetingId)}">Join</button> ` +
+            `<button type="button" class="btn small ghost" data-vc-invite="${esc(m.meetingId)}">Copy invite</button> ` +
+            `<button type="button" class="btn small ghost" data-vc-end="${esc(m.meetingId)}">End</button>`
+          : ''}</td></tr>`
+      ).join('') + '</tbody></table>';
+    document.querySelectorAll('[data-vc-join]').forEach(b => b.addEventListener('click', async () => {
+      try{ const d = await vcCall('links', { meetingId: b.dataset.vcJoin }); window.open(d.hostUrl, '_blank', 'noopener'); }
+      catch(e){ vcBanner(esc(e.message), true); }
+    }));
+    document.querySelectorAll('[data-vc-invite]').forEach(b => b.addEventListener('click', async () => {
+      try{ const d = await vcCall('links', { meetingId: b.dataset.vcInvite }); await vcCopy(vcInviteText(d.meeting, d.guestUrl), b); }
+      catch(e){ vcBanner(esc(e.message), true); }
+    }));
+    document.querySelectorAll('[data-vc-end]').forEach(b => b.addEventListener('click', async () => {
+      try{ await vcCall('end', { meetingId: b.dataset.vcEnd }); vcLoad(); }
+      catch(e){ vcBanner(esc(e.message), true); }
+    }));
+  }catch(e){
+    $('vc-list').innerHTML = '<div class="empty">Conferences not loaded.</div>';
+    vcBanner(esc(e.message), true);
+  }
+}
+$('vc-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const btn = $('vc-start');
+  btn.disabled = true; btn.textContent = 'Starting…'; vcBanner('');
+  try{
+    const data = await vcCall('create', { title: $('vc-title').value.trim() || undefined });
+    $('vc-title').value = '';
+    vcShowActive(data.meeting, data);
+    window.open(data.hostUrl, '_blank', 'noopener');
+    vcLoad();
+  }catch(err){
+    vcBanner(esc(err.message), true);
+  }finally{
+    btn.disabled = false; btn.textContent = 'Start meeting';
+  }
+});
+vcLoad();
 </script>
 </body>
 </html>
