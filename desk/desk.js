@@ -33,6 +33,7 @@ const NAV_GROUPS = [
     { id: 'projects', href: '/desk/projects.html',     icon: '📁', label: 'Projects',     page: 'projects', desc: 'Every project, tracked in one place.' },
     { id: 'team',     href: '/desk/team.html',          icon: '👥', label: 'Team',         page: 'team',     desc: 'The virtual crew — departments, agents and their briefings.' },
     { id: 'meeting',  href: '/desk/meeting-room.html',  icon: '🎥', label: 'IEC Suite Video Conference', page: 'meeting', desc: 'Start a video conference and send guests an invitation link — plus the 8 AM standup boardroom.' },
+    { id: 'podcast-mixer', href: '/desk/podcast-mixer.html', icon: '🎙️', label: 'Podcast Mixer', page: 'podcast-mixer', desc: 'Audio-visual podcast board — two mic channels with volume, noise gate and EQ, camera switching, and recording with separate tracks.' },
   ]},
   { sec: 'Offices', items: [
     { id: 'office',    href: '/desk/office.html',        icon: '🏢', label: "Muse's Office", page: 'office',    desc: "Muse's desk — leave work, watch the notes, meet the team she runs." },
