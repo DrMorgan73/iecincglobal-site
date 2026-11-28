@@ -299,6 +299,9 @@
       <section class="panel" aria-label="Video switcher">
         <h2>Video — Cameras &amp; Program</h2>
         <p class="hint">Connect up to three cameras, pick a layout, and tap a preview to make it the main shot. When you hit Record, the program video is captured with the mixed audio, alongside each mic's own track.</p>
+        <div class="btn-row" style="margin-bottom:12px; max-width:360px;">
+          <button class="btn small" id="rescanBtn" type="button">Rescan cameras &amp; mics</button>
+        </div>
         <div class="video-grid">
           <div>
             <div class="program-wrap">
@@ -625,6 +628,7 @@
           var usedTrack = stream.getAudioTracks()[0];
           var usedId = usedTrack && usedTrack.getSettings ? usedTrack.getSettings().deviceId : null;
           refreshDevices().then(function () { if (usedId) devSel.value = usedId; });
+          refreshCameras();   // a mic grant also unlocks camera labels/IDs — refresh both lists
         }).catch(function (err) {
           showNotice("<strong>Microphone access was blocked.</strong> Allow mic permission for this page, or use the Test Tone source — every mixer control works with it.");
         });
@@ -923,6 +927,7 @@
     function refreshDevices() {
       if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return Promise.resolve();
       return navigator.mediaDevices.enumerateDevices().then(function (devs) {
+        lastDeviceSignature = deviceSignature(devs);
         var mics = devs.filter(function (d) { return d.kind === "audioinput"; });
         var micLabels = numberedLabels(mics, "Microphone");
         document.querySelectorAll(".strip select").forEach(function (sel) {
@@ -945,6 +950,46 @@
     if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) {
       navigator.mediaDevices.addEventListener("devicechange", function () { refreshDevices(); refreshCameras(); });
     }
+
+    /* Safari does not reliably fire devicechange when a Continuity Camera
+       (iPhone/iPad) appears or disappears, and its native select menu
+       snapshots the option list the moment it opens — so a camera connected
+       after page load can stay invisible even though a refresh was
+       triggered on pointerdown. Belt and braces: a manual Rescan button, a
+       refresh whenever the window regains focus or the tab becomes visible,
+       and a slow periodic check that rebuilds the lists only when the
+       device set actually changed. */
+    var lastDeviceSignature = "";
+    function deviceSignature(devs) {
+      return devs.map(function (d) { return d.kind + ":" + d.deviceId + ":" + d.label; }).join("|");
+    }
+    function rescanDevices(manual) {
+      var done = Promise.all([refreshDevices(), refreshCameras()]);
+      if (manual) {
+        done.then(function () {
+          if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+          navigator.mediaDevices.enumerateDevices().then(function (devs) {
+            var cams = devs.filter(function (d) { return d.kind === "videoinput"; }).length;
+            var mics = devs.filter(function (d) { return d.kind === "audioinput"; }).length;
+            showNotice("<strong>Rescan complete:</strong> " + cams + (cams === 1 ? " camera" : " cameras") + " and " + mics + (mics === 1 ? " microphone" : " microphones") + " found. If a camera you connected isn't listed, this browser isn't being offered it by the system yet — for an iPhone/iPad Continuity Camera, keep it locked with the screen off, in landscape, still, with Wi-Fi and Bluetooth on, signed in to the same Apple Account as this Mac.");
+          }).catch(function () {});
+        });
+      }
+      return done;
+    }
+    document.getElementById("rescanBtn").addEventListener("click", function () { rescanDevices(true); });
+    window.addEventListener("focus", function () { rescanDevices(false); });
+    document.addEventListener("visibilitychange", function () { if (!document.hidden) rescanDevices(false); });
+    setInterval(function () {
+      if (document.hidden) return;
+      if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+      var ae = document.activeElement;
+      if (ae && ae.tagName === "SELECT") return;   // don't rebuild under an open menu
+      navigator.mediaDevices.enumerateDevices().then(function (devs) {
+        var sig = deviceSignature(devs);
+        if (sig && sig !== lastDeviceSignature) rescanDevices(false);
+      }).catch(function () {});
+    }, 5000);
 
     /* ---------------- Soundboard ---------------- */
 
@@ -1320,6 +1365,7 @@
     function refreshCameras() {
       if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return Promise.resolve();
       return navigator.mediaDevices.enumerateDevices().then(function (devs) {
+        lastDeviceSignature = deviceSignature(devs);
         var cams = devs.filter(function (d) { return d.kind === "videoinput"; });
         var camLabels = numberedLabels(cams, "Camera");
         cameras.forEach(function (cam) {

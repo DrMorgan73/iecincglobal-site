@@ -102,7 +102,10 @@ const INJECT = () => {
     const dest = ac.createMediaStreamDestination();
     osc.connect(g); g.connect(dest); osc.start();
     let on = false;
-    const iv = setInterval(() => { on = !on; g.gain.setTargetAtTime(on ? 0.15 : 0, ac.currentTime, 0.02); }, 600);
+    // 300ms toggle (600ms period): a 3s take averages ~5 burst cycles, so
+    // measured tone energy is stable run-to-run. At 600ms toggle the phase
+    // alignment of a short take swung measured energy 0.003–0.036.
+    const iv = setInterval(() => { on = !on; g.gain.setTargetAtTime(on ? 0.15 : 0, ac.currentTime, 0.02); }, 300);
     const s = dest.stream;
     s.getAudioTracks().forEach((tr) => tr.addEventListener("ended", () => clearInterval(iv)));
     synth.streams[id] = s;
@@ -123,13 +126,16 @@ const INJECT = () => {
     }
     throw new Error("no constraints");
   };
-  navigator.mediaDevices.enumerateDevices = async () => [
+  synth.devices = [
     { deviceId: "mic-a", kind: "audioinput", label: "Synthetic Mic A (300Hz)", groupId: "g1" },
     { deviceId: "mic-b", kind: "audioinput", label: "Synthetic Mic B (520Hz)", groupId: "g2" },
     { deviceId: "cam-a", kind: "videoinput", label: "Synthetic Cam A (red)", groupId: "g3" },
     { deviceId: "cam-b", kind: "videoinput", label: "Synthetic Cam B (green)", groupId: "g4" },
     { deviceId: "cam-c", kind: "videoinput", label: "Synthetic Cam C (blue)", groupId: "g5" },
   ];
+  navigator.mediaDevices.enumerateDevices = async () => synth.devices.slice();
+  synth.setDevices = (list) => { synth.devices = list; };
+  synth.fireDeviceChange = () => navigator.mediaDevices.dispatchEvent(new Event("devicechange"));
 
   // ---------- in-page probes ----------
   window.__probe = {
@@ -369,17 +375,22 @@ try {
 
   // ===== 4b. Live device switch: changing the dropdown on a live channel
   // must re-acquire the stream from the newly selected device =====
+  // Note on Goertzel floors below: the synthetic mics burst on/off every
+  // 600ms, so a 3s take's measured tone energy varies with burst phase
+  // (observed 0.008–0.031). The presence floor is 0.004 — well above the
+  // absent-frequency floor (~0.000) — and the 4x separation ratio is the
+  // real assertion. A 0.01 floor sat inside the variance band and flaked.
   await setSelect(`document.querySelectorAll(".strip")[0].querySelector('select[aria-label="Microphone device"]')`, "mic-b");
   await sleep(900);
   const tagAfterSwitch = await ev(() => document.querySelectorAll(".strip")[0].querySelector('[data-role="livetag"]').textContent);
   const takeSwitch = await recordTake(3);
   const hostSwitch = await analyzeAudio(takeSwitch.find(t => t.label === "Host").url);
-  check("live switch CH1 mic-a→mic-b: stream follows dropdown (520Hz on Host)", tagAfterSwitch === "Mic live" && hostSwitch.g520 > 0.01 && hostSwitch.g520 > hostSwitch.g300 * 4, `tag=${tagAfterSwitch} g300=${hostSwitch.g300.toFixed(3)} g520=${hostSwitch.g520.toFixed(3)}`);
+  check("live switch CH1 mic-a→mic-b: stream follows dropdown (520Hz on Host)", tagAfterSwitch === "Mic live" && hostSwitch.g520 > 0.004 && hostSwitch.g520 > hostSwitch.g300 * 4, `tag=${tagAfterSwitch} g300=${hostSwitch.g300.toFixed(3)} g520=${hostSwitch.g520.toFixed(3)}`);
   await setSelect(`document.querySelectorAll(".strip")[0].querySelector('select[aria-label="Microphone device"]')`, "mic-a");
   await sleep(900);
   const takeSwitchBack = await recordTake(3);
   const hostBack = await analyzeAudio(takeSwitchBack.find(t => t.label === "Host").url);
-  check("live switch back CH1 mic-b→mic-a: 300Hz restored on Host", hostBack.g300 > 0.01 && hostBack.g300 > hostBack.g520 * 4, `g300=${hostBack.g300.toFixed(3)} g520=${hostBack.g520.toFixed(3)}`);
+  check("live switch back CH1 mic-b→mic-a: 300Hz restored on Host", hostBack.g300 > 0.004 && hostBack.g300 > hostBack.g520 * 4, `g300=${hostBack.g300.toFixed(3)} g520=${hostBack.g520.toFixed(3)}`);
 
   // ===== 5. Full record: video + master + per-mic tracks =====
   await clickText("Side-by-Side");
@@ -388,11 +399,11 @@ try {
   check("take has Program video + Master mix + 2 mic tracks", take1.length === 4 && labels1.includes("Program video") && labels1.includes("Master mix"), JSON.stringify(labels1));
   const master1 = await analyzeAudio(take1.find(t => t.label === "Master mix").url);
   check("master mix non-silent, ~4s", master1.rms0 > 0.01 && master1.dur > 3 && master1.dur < 6, `rms=${master1.rms0.toFixed(3)} dur=${master1.dur.toFixed(1)}`);
-  check("master mix contains BOTH 300Hz and 520Hz", master1.g300 > 0.01 && master1.g520 > 0.01, `g300=${master1.g300.toFixed(3)} g520=${master1.g520.toFixed(3)}`);
+  check("master mix contains BOTH 300Hz and 520Hz", master1.g300 > 0.004 && master1.g520 > 0.004, `g300=${master1.g300.toFixed(3)} g520=${master1.g520.toFixed(3)}`);
   const host = await analyzeAudio(take1.find(t => t.label === "Host").url);
   const guest = await analyzeAudio(take1.find(t => t.label === "Guest").url);
-  check("Host track: 300Hz present, 520Hz absent (separation)", host.g300 > 0.01 && host.g300 > host.g520 * 4, `g300=${host.g300.toFixed(3)} g520=${host.g520.toFixed(3)}`);
-  check("Guest track: 520Hz present, 300Hz absent (separation)", guest.g520 > 0.01 && guest.g520 > guest.g300 * 4, `g520=${guest.g520.toFixed(3)} g300=${guest.g300.toFixed(3)}`);
+  check("Host track: 300Hz present, 520Hz absent (separation)", host.g300 > 0.004 && host.g300 > host.g520 * 4, `g300=${host.g300.toFixed(3)} g520=${host.g520.toFixed(3)}`);
+  check("Guest track: 520Hz present, 300Hz absent (separation)", guest.g520 > 0.004 && guest.g520 > guest.g300 * 4, `g520=${guest.g520.toFixed(3)} g300=${guest.g300.toFixed(3)}`);
   // video frame check
   const vidCheck = await ev(async (u) => {
     const v = document.createElement("video");
@@ -411,12 +422,12 @@ try {
   await stripBtn(0, "Mute");
   const takeMute = await recordTake(3);
   const masterMute = await analyzeAudio(takeMute.find(t => t.label === "Master mix").url);
-  check("Mute CH1: master keeps 520Hz, loses 300Hz", masterMute.g520 > 0.01 && masterMute.g520 > masterMute.g300 * 4, `g300=${masterMute.g300.toFixed(3)} g520=${masterMute.g520.toFixed(3)}`);
+  check("Mute CH1: master keeps 520Hz, loses 300Hz", masterMute.g520 > 0.004 && masterMute.g520 > masterMute.g300 * 4, `g300=${masterMute.g300.toFixed(3)} g520=${masterMute.g520.toFixed(3)}`);
   await stripBtn(0, "Mute"); // unmute
   await stripBtn(1, "Solo");
   const takeSolo = await recordTake(3);
   const masterSolo = await analyzeAudio(takeSolo.find(t => t.label === "Master mix").url);
-  check("Solo CH2: master has 520Hz only", masterSolo.g520 > 0.01 && masterSolo.g520 > masterSolo.g300 * 4, `g300=${masterSolo.g300.toFixed(3)} g520=${masterSolo.g520.toFixed(3)}`);
+  check("Solo CH2: master has 520Hz only", masterSolo.g520 > 0.004 && masterSolo.g520 > masterSolo.g300 * 4, `g300=${masterSolo.g300.toFixed(3)} g520=${masterSolo.g520.toFixed(3)}`);
   await stripBtn(1, "Solo"); // unsolo
   await setFader(0, -60); await setFader(1, -60);
   const takeFader = await recordTake(2.5);
@@ -605,8 +616,85 @@ try {
   }, url);
   const dupHost = await dupAnalyze(dupTakes.find(t => t.label === "Host").url);
   const dupGuest = await dupAnalyze(dupTakes.find(t => t.label === "Guest").url);
-  check("numbered entries bind right deviceId: Host=mic-b 520Hz, Guest=mic-a 300Hz", dupHost.g520 > 0.01 && dupHost.g520 > dupHost.g300 * 4 && dupGuest.g300 > 0.01 && dupGuest.g300 > dupGuest.g520 * 4 && errs3.length === 0, `host g300=${dupHost.g300.toFixed(3)} g520=${dupHost.g520.toFixed(3)} | guest g300=${dupGuest.g300.toFixed(3)} g520=${dupGuest.g520.toFixed(3)} errs=${errs3.length}`);
+  check("numbered entries bind right deviceId: Host=mic-b 520Hz, Guest=mic-a 300Hz", dupHost.g520 > 0.004 && dupHost.g520 > dupHost.g300 * 4 && dupGuest.g300 > 0.004 && dupGuest.g300 > dupGuest.g520 * 4 && errs3.length === 0, `host g300=${dupHost.g300.toFixed(3)} g520=${dupHost.g520.toFixed(3)} | guest g300=${dupGuest.g300.toFixed(3)} g520=${dupGuest.g520.toFixed(3)} errs=${errs3.length}`);
   await page3.close();
+
+  // ===== 18. Late-appearing devices (hot-plug after load): devicechange,
+  // manual Rescan, periodic signature rescan, and window-focus rescan =====
+  const page4 = await browser.newPage();
+  const errs4 = [];
+  page4.on("pageerror", (e) => errs4.push(e.message));
+  await page4.evaluateOnNewDocument(INJECT);
+  await page4.evaluateOnNewDocument(() => {
+    window.__synth.setDevices([
+      { deviceId: "mic-a", kind: "audioinput", label: "Synthetic Mic A (300Hz)", groupId: "g1" },
+      { deviceId: "mic-b", kind: "audioinput", label: "Synthetic Mic B (520Hz)", groupId: "g2" },
+      { deviceId: "cam-a", kind: "videoinput", label: "Synthetic Cam A (red)", groupId: "g3" },
+    ]);
+  });
+  await page4.goto("http://127.0.0.1:8931/desk/podcast-mixer.html", { waitUntil: "networkidle0" });
+  await sleep(600);
+  const camTexts4 = () => page4.evaluate(() => [...document.querySelectorAll(".cam-card select")].map(s => [...s.options].map(o => o.textContent)));
+  let opts4 = await camTexts4();
+  check("hot-plug: page starts with only Cam A listed", opts4[0].length === 2 && opts4[0][1] === "Synthetic Cam A (red)", JSON.stringify(opts4[0]));
+  // (a) device appears + devicechange fires
+  await page4.evaluate(() => {
+    window.__synth.setDevices([
+      { deviceId: "mic-a", kind: "audioinput", label: "Synthetic Mic A (300Hz)", groupId: "g1" },
+      { deviceId: "mic-b", kind: "audioinput", label: "Synthetic Mic B (520Hz)", groupId: "g2" },
+      { deviceId: "cam-a", kind: "videoinput", label: "Synthetic Cam A (red)", groupId: "g3" },
+      { deviceId: "cam-b", kind: "videoinput", label: "Synthetic Cam B (green)", groupId: "g4" },
+    ]);
+    window.__synth.fireDeviceChange();
+  });
+  await sleep(700);
+  opts4 = await camTexts4();
+  check("hot-plug: devicechange adds Cam B to all dropdowns", opts4.every(o => o.includes("Synthetic Cam B (green)")), JSON.stringify(opts4[0]));
+  // (b) device set changes with NO devicechange (Safari Continuity Camera
+  // case) -> manual Rescan button picks it up and reports counts
+  await page4.evaluate(() => {
+    window.__synth.setDevices([
+      { deviceId: "mic-a", kind: "audioinput", label: "Synthetic Mic A (300Hz)", groupId: "g1" },
+      { deviceId: "mic-b", kind: "audioinput", label: "Synthetic Mic B (520Hz)", groupId: "g2" },
+      { deviceId: "cam-a", kind: "videoinput", label: "Synthetic Cam A (red)", groupId: "g3" },
+      { deviceId: "cam-c", kind: "videoinput", label: "Synthetic Cam C (blue)", groupId: "g5" },
+    ]);
+  });
+  await page4.evaluate(() => document.getElementById("rescanBtn").click());
+  await sleep(800);
+  opts4 = await camTexts4();
+  const rescanNotice = await page4.evaluate(() => document.getElementById("notice").textContent);
+  check("hot-plug: Rescan button adds Cam C, drops Cam B, notice reports counts", opts4[0].includes("Synthetic Cam C (blue)") && !opts4[0].includes("Synthetic Cam B (green)") && /Rescan complete/.test(rescanNotice) && /2 cameras/.test(rescanNotice) && /2 microphones/.test(rescanNotice), JSON.stringify(opts4[0]) + " | " + rescanNotice.slice(0, 60));
+  // (c) device removed with NO event at all -> periodic signature rescan
+  // (5s interval) must pick it up on its own
+  await page4.evaluate(() => {
+    window.__synth.setDevices([
+      { deviceId: "mic-a", kind: "audioinput", label: "Synthetic Mic A (300Hz)", groupId: "g1" },
+      { deviceId: "mic-b", kind: "audioinput", label: "Synthetic Mic B (520Hz)", groupId: "g2" },
+      { deviceId: "cam-a", kind: "videoinput", label: "Synthetic Cam A (red)", groupId: "g3" },
+    ]);
+  });
+  let periodicOk = false;
+  for (let i = 0; i < 16; i++) {
+    await sleep(500);
+    opts4 = await camTexts4();
+    if (!opts4[0].includes("Synthetic Cam C (blue)")) { periodicOk = true; break; }
+  }
+  check("hot-plug: periodic rescan drops removed Cam C with no event fired", periodicOk, JSON.stringify(opts4[0]));
+  // (d) device appears with no devicechange -> window focus rescan picks it up
+  await page4.evaluate(() => {
+    window.__synth.setDevices([
+      { deviceId: "mic-a", kind: "audioinput", label: "Synthetic Mic A (300Hz)", groupId: "g1" },
+      { deviceId: "mic-b", kind: "audioinput", label: "Synthetic Mic B (520Hz)", groupId: "g2" },
+      { deviceId: "cam-a", kind: "videoinput", label: "Synthetic Cam A (red)", groupId: "g3" },
+      { deviceId: "cam-b", kind: "videoinput", label: "Synthetic Cam B (green)", groupId: "g4" },
+    ]);
+    window.dispatchEvent(new Event("focus"));
+  });
+  await sleep(800);
+  opts4 = await camTexts4();
+  check("hot-plug: window-focus rescan adds Cam B with no devicechange", opts4[0].includes("Synthetic Cam B (green)") && errs4.length === 0, JSON.stringify(opts4[0]) + ` errs=${errs4.length}`);
+  await page4.close();
 
   check("no console/page errors across full run", consoleErrors.length === 0, consoleErrors.slice(0, 3).join(" | "));
 } catch (err) {
