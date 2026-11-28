@@ -332,7 +332,7 @@
 
       <section class="panel" aria-label="Wireless cameras">
         <h2>Wireless Cameras — Phones as Cameras</h2>
-        <p class="hint">IEC's own camera system: each phone opens <b>iecincglobal.com/camera.html</b> in its browser and sends its camera straight into this mixer — no Mac camera sharing, no OBS, no extra apps. The Mac's camera stays Cam 1; up to four phones join as Cam 2–Cam 5. Start a session, then type each slot's code on its phone (or open the slot's link there).</p>
+        <p class="hint">IEC's own camera system: each phone opens <b>iecincglobal.com/camera-7rgiz4s1du.html</b> in its browser and sends its camera straight into this mixer — no Mac camera sharing, no OBS, no extra apps. The Mac's camera stays Cam 1; up to four phones join as Cam 2–Cam 5. Start a session, then type each slot's code on its phone (or open the slot's link there).</p>
         <div class="btn-row" style="margin-bottom:12px; max-width:520px;">
           <button class="btn primary small" id="wirelessStartBtn" type="button">Start wireless session</button>
           <button class="btn small" id="wirelessEndBtn" type="button" disabled>End session</button>
@@ -1853,7 +1853,7 @@
 
     /* ---------------- Wireless cameras (phones as cameras) ----------------
        IEC's own wireless camera system (2026-11-28): each phone opens
-       /camera.html in its browser and sends its camera into this mixer's
+       /camera-7rgiz4s1du.html in its browser and sends its camera into this mixer's
        Daily room (api/_podcast-cameras.js via /api/demo-admin cam-*
        actions). The mixer joins receive-only as room owner and slots each
        phone's video track into one of four wireless slots (Cam 2–Cam 5;
@@ -1955,10 +1955,10 @@
               slot.copyBtn.textContent = "Copied ✓";
               setTimeout(function () { slot.copyBtn.textContent = old; }, 2500);
             }).catch(function () {
-              showNotice("<strong>Copy failed.</strong> The link is shown on the card — type it on the phone, or just type the code at iecincglobal.com/camera.html.");
+              showNotice("<strong>Copy failed.</strong> The link is shown on the card — type it on the phone, or just type the code at iecincglobal.com/camera-7rgiz4s1du.html.");
             });
           } else {
-            showNotice("<strong>Copy isn't available here.</strong> The link is shown on the card — type it on the phone, or just type the code at iecincglobal.com/camera.html.");
+            showNotice("<strong>Copy isn't available here.</strong> The link is shown on the card — type it on the phone, or just type the code at iecincglobal.com/camera-7rgiz4s1du.html.");
           }
         });
         slot.dropBtn.addEventListener("click", function () {
@@ -1986,7 +1986,7 @@
 
     function wirelessJoinLink(slot) {
       if (!slot.code) return "";
-      return location.origin + "/camera.html?code=" + encodeURIComponent(slot.code);
+      return location.origin + "/camera-7rgiz4s1du.html?code=" + encodeURIComponent(slot.code);
     }
 
     function refreshMoveOptions() {
@@ -2139,7 +2139,7 @@
         /* Phones may already be in the room (rejoin after a mixer reload). */
         var parts = wirelessCall.participants();
         Object.keys(parts).forEach(function (k) { syncWirelessParticipant(parts[k]); });
-        setWirelessStatus("Session live — open iecincglobal.com/camera.html on each phone and type its code.", true);
+        setWirelessStatus("Session live — open iecincglobal.com/camera-7rgiz4s1du.html on each phone and type its code.", true);
         endBtn.disabled = false;
         updateCamTags();
       } catch (e) {

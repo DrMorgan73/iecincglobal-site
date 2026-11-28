@@ -6,7 +6,7 @@
    Why this exists: macOS camera sharing (Continuity Camera) would
    not offer the iPhone/iPad cameras to the Mac, and the OBS + NDI
    route proved fragile. This replaces both: each phone opens
-   /camera.html in its own browser and sends its camera straight
+   /camera-7rgiz4s1du.html in its own browser and sends its camera straight
    into the mixer's Daily room over the network. No macOS camera
    sharing, no OBS, no NDI, no third-party camera app, no Mac
    control. The mixer receives the feeds as ordinary video tracks

@@ -47,10 +47,10 @@ const wavPath = join(mkdtempSync(join(tmpdir(), "mixer-check-")), "test-tones.wa
   writeFileSync(wavPath, buf);
 }
 
-const cameraHtml = readFileSync(join(repoRoot, "camera.html"), "utf8");
+const cameraHtml = readFileSync(join(repoRoot, "camera-7rgiz4s1du.html"), "utf8");
 const server = http.createServer((req, res) => {
   res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-  res.end((req.url || "").startsWith("/camera.html") ? cameraHtml : html);
+  res.end((req.url || "").startsWith("/camera-7rgiz4s1du.html") ? cameraHtml : html);
 });
 await new Promise((r) => server.listen(8931, "127.0.0.1", r));
 
@@ -989,7 +989,7 @@ try {
     joinOpts: window.__daily.call._joinOpts,
     api: window.__camApi.map((b) => b.action),
   }));
-  check("wireless: start mints session, shows 4 codes + join links", eq(wStarted.codes, ["AAAA22", "BBBB33", "CCCC44", "DDDD55"]) && wStarted.links.every((l) => l.includes("/camera.html?code=")) && /Session live/.test(wStarted.session), JSON.stringify(wStarted.codes) + " | " + wStarted.session);
+  check("wireless: start mints session, shows 4 codes + join links", eq(wStarted.codes, ["AAAA22", "BBBB33", "CCCC44", "DDDD55"]) && wStarted.links.every((l) => l.includes("/camera-7rgiz4s1du.html?code=")) && /Session live/.test(wStarted.session), JSON.stringify(wStarted.codes) + " | " + wStarted.session);
   check("wireless: mixer joins receive-only with owner token", wStarted.joinOpts && wStarted.joinOpts.startVideoOff === true && wStarted.joinOpts.startAudioOff === true && wStarted.joinOpts.token === "owner-tok" && eq(wStarted.api, ["cam-create"]), JSON.stringify(wStarted.joinOpts));
   const wRecv = await page6.evaluate(() => window.__daily.call._recvSettings);
   check("wireless HD: mixer requests highest simulcast layer from phones", wRecv && wRecv["*"] && wRecv["*"].video && wRecv["*"].video.layer === 2, JSON.stringify(wRecv));
@@ -1139,7 +1139,7 @@ try {
   check("wireless: not-configured fails honestly, mixer intact", /not configured yet/.test(wNc.notice) && /Local cameras and recording still work/.test(wNc.notice) && wNc.startDisabled === false && wNc.strips === 4 && errs7.length === 0, wNc.notice.slice(0, 110));
   await page7.close();
 
-  // ===== 21. Phone camera page (/camera.html): code entry, join,
+  // ===== 21. Phone camera page (/camera-7rgiz4s1du.html): code entry, join,
   // LIVE badge, flip, leave — Daily transport stubbed at the SDK
   // boundary with a synthetic local track =====
   const PHONE_STUB = () => {
@@ -1218,7 +1218,7 @@ try {
   page8.on("pageerror", (e) => errs8.push(e.message));
   await page8.evaluateOnNewDocument(INJECT);
   await page8.evaluateOnNewDocument(PHONE_STUB);
-  await page8.goto("http://127.0.0.1:8931/camera.html", { waitUntil: "networkidle0" });
+  await page8.goto("http://127.0.0.1:8931/camera-7rgiz4s1du.html", { waitUntil: "networkidle0" });
   await sleep(600);
   await page8.evaluate(() => {
     document.getElementById("codeInput").value = "ZZZZZZ";
@@ -1274,7 +1274,7 @@ try {
   page9.on("pageerror", (e) => errs9.push(e.message));
   await page9.evaluateOnNewDocument(INJECT);
   await page9.evaluateOnNewDocument(PHONE_STUB);
-  await page9.goto("http://127.0.0.1:8931/camera.html?code=AAAA22", { waitUntil: "networkidle0" });
+  await page9.goto("http://127.0.0.1:8931/camera-7rgiz4s1du.html?code=AAAA22", { waitUntil: "networkidle0" });
   await sleep(1500);
   const phAuto = await page9.evaluate(() => ({
     badgeOn: document.getElementById("liveBadge").classList.contains("on"),
