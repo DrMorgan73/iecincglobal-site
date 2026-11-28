@@ -111,6 +111,35 @@ const INJECT = () => {
     synth.streams[id] = s;
     return s;
   }
+  // Synthetic macOS Aggregate Device ("Podcast Mics"): ONE stream whose
+  // channel 1 carries the 300Hz mic and channel 2 the 520Hz mic, merged
+  // with a ChannelMergerNode — the same shape the real aggregate presents.
+  // The mono variant is a 1-channel stream under an aggregate-style label,
+  // for the honest-labeling path (browser returns only one channel).
+  function makeAggStream(mono) {
+    const ac = actx();
+    const dest = ac.createMediaStreamDestination();
+    if (mono) { try { dest.channelCount = 1; } catch {} }
+    const merger = mono ? null : ac.createChannelMerger(2);
+    if (merger) merger.connect(dest);
+    const ivs = [];
+    const mk = (freq, outIdx) => {
+      const osc = ac.createOscillator();
+      osc.type = "sine"; osc.frequency.value = freq;
+      const g = ac.createGain(); g.gain.value = 0;
+      osc.connect(g);
+      if (merger) g.connect(merger, 0, outIdx); else g.connect(dest);
+      osc.start();
+      let on = false;
+      ivs.push(setInterval(() => { on = !on; g.gain.setTargetAtTime(on ? 0.15 : 0, ac.currentTime, 0.02); }, 300));
+    };
+    mk(300, 0);
+    if (!mono) mk(520, 1);
+    const s = dest.stream;
+    s.getAudioTracks().forEach((tr) => tr.addEventListener("ended", () => ivs.forEach(clearInterval)));
+    synth.streams[mono ? "agg-mono" : "agg-1"] = s;
+    return s;
+  }
   navigator.mediaDevices.getUserMedia = async (constraints) => {
     if (window.__denyMedia) {
       const e = new Error("Permission denied"); e.name = "NotAllowedError"; throw e;
@@ -122,6 +151,8 @@ const INJECT = () => {
     }
     if (constraints && constraints.audio) {
       const id = (constraints.audio.deviceId && constraints.audio.deviceId.exact) || "mic-a";
+      if (id === "agg-1") return makeAggStream(false);
+      if (id === "agg-mono") return makeAggStream(true);
       return makeMicStream(id);
     }
     throw new Error("no constraints");
@@ -129,6 +160,8 @@ const INJECT = () => {
   synth.devices = [
     { deviceId: "mic-a", kind: "audioinput", label: "Synthetic Mic A (300Hz)", groupId: "g1" },
     { deviceId: "mic-b", kind: "audioinput", label: "Synthetic Mic B (520Hz)", groupId: "g2" },
+    { deviceId: "agg-1", kind: "audioinput", label: "Podcast Mics", groupId: "g6" },
+    { deviceId: "agg-mono", kind: "audioinput", label: "Podcast Mics Mono", groupId: "g7" },
     { deviceId: "cam-a", kind: "videoinput", label: "Synthetic Cam A (red)", groupId: "g3" },
     { deviceId: "cam-b", kind: "videoinput", label: "Synthetic Cam B (green)", groupId: "g4" },
     { deviceId: "cam-c", kind: "videoinput", label: "Synthetic Cam C (blue)", groupId: "g5" },
@@ -695,6 +728,81 @@ try {
   opts4 = await camTexts4();
   check("hot-plug: window-focus rescan adds Cam B with no devicechange", opts4[0].includes("Synthetic Cam B (green)") && errs4.length === 0, JSON.stringify(opts4[0]) + ` errs=${errs4.length}`);
   await page4.close();
+
+  // ===== 19. Aggregate device split (macOS "Podcast Mics"): one 2-channel
+  // device feeds both mic strips through a ChannelSplitterNode, each strip
+  // keeping its own signal/track; a 1-channel stream under an aggregate
+  // label must be called out honestly, not shown as two live mics =====
+  const page5 = await browser.newPage();
+  const errs5 = [];
+  page5.on("pageerror", (e) => errs5.push(e.message));
+  await page5.evaluateOnNewDocument(INJECT);
+  await page5.goto("http://127.0.0.1:8931/desk/podcast-mixer.html", { waitUntil: "networkidle0" });
+  await sleep(600);
+  const aggOpt = await page5.evaluate(() => {
+    const sel = document.querySelectorAll(".strip")[0].querySelector('select[aria-label="Microphone device"]');
+    return [...sel.options].map(o => ({ v: o.value, t: o.textContent }));
+  });
+  check("aggregate device labeled '(aggregate — both mics)' in Mic 1 dropdown", aggOpt.some(o => o.v === "agg-1" && o.t === "Podcast Mics (aggregate — both mics)"), JSON.stringify(aggOpt));
+  await page5.evaluate(() => {
+    const sel = document.querySelectorAll(".strip")[0].querySelector('select[aria-label="Microphone device"]');
+    sel.value = "agg-1"; sel.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await sleep(300);
+  const splitArmed = await page5.evaluate(() => {
+    const sw = [...document.querySelectorAll(".strip")[0].querySelectorAll(".switch")].find(s => s.textContent.includes("Aggregate split"));
+    return sw ? sw.querySelector('input[type="checkbox"]').checked : null;
+  });
+  check("selecting the aggregate auto-arms the split switch on Mic 1", splitArmed === true, `checked=${splitArmed}`);
+  await page5.evaluate(() => {
+    [...document.querySelectorAll(".strip")[0].querySelectorAll("button")].find(b => b.textContent.includes("Enable Mic")).click();
+  });
+  await sleep(900);
+  const aggTags = await page5.evaluate(() => [...document.querySelectorAll(".strip")].slice(0, 2).map(s => s.querySelector('[data-role="livetag"]').textContent));
+  check("aggregate connect: Mic 1 live, Mic 2 live from aggregate ch 2", aggTags[0] === "Mic live" && /aggregate ch 2/.test(aggTags[1]), JSON.stringify(aggTags));
+  await page5.evaluate(() => document.getElementById("recBtn").click());
+  await sleep(3000);
+  await page5.evaluate(() => document.getElementById("recBtn").click());
+  for (let i = 0; i < 40; i++) { if (await page5.evaluate(() => document.querySelectorAll("#takes .take-group").length) > 0) break; await sleep(300); }
+  const aggTakes = await page5.evaluate(() => {
+    const g = document.querySelectorAll("#takes .take-group");
+    const last = g[g.length - 1];
+    return [...last.querySelectorAll(".take")].map(r => ({ label: r.querySelector(".meta b").textContent, url: r.querySelector("a").href }));
+  });
+  const aggAnalyze = async (url) => page5.evaluate(async (u) => {
+    const buf = await window.__probe.decode(u);
+    const P = window.__probe;
+    return { g300: P.goertzel(buf, 300), g520: P.goertzel(buf, 520) };
+  }, url);
+  const aggHost = await aggAnalyze(aggTakes.find(t => t.label === "Host").url);
+  const aggGuest = await aggAnalyze(aggTakes.find(t => t.label === "Guest").url);
+  const aggMaster = await aggAnalyze(aggTakes.find(t => t.label === "Master mix").url);
+  check("aggregate split: Host track = ch1 300Hz only, Guest track = ch2 520Hz only", aggHost.g300 > 0.004 && aggHost.g300 > aggHost.g520 * 4 && aggGuest.g520 > 0.004 && aggGuest.g520 > aggGuest.g300 * 4, `host g300=${aggHost.g300.toFixed(3)} g520=${aggHost.g520.toFixed(3)} | guest g300=${aggGuest.g300.toFixed(3)} g520=${aggGuest.g520.toFixed(3)}`);
+  check("aggregate split: master mix contains both aggregate channels", aggMaster.g300 > 0.004 && aggMaster.g520 > 0.004, `g300=${aggMaster.g300.toFixed(3)} g520=${aggMaster.g520.toFixed(3)}`);
+  // Disconnect on Mic 1 must release Mic 2's split feed too
+  await page5.evaluate(() => {
+    [...document.querySelectorAll(".strip")[0].querySelectorAll("button")].find(b => b.textContent.trim() === "Disconnect").click();
+  });
+  await sleep(500);
+  const tagsAfterDisc = await page5.evaluate(() => [...document.querySelectorAll(".strip")].slice(0, 2).map(s => s.querySelector('[data-role="livetag"]').textContent));
+  check("disconnecting Mic 1 releases Mic 2's aggregate feed", tagsAfterDisc.every(t => t === "Off"), JSON.stringify(tagsAfterDisc));
+  // Mono fallback: a 1-channel stream under an aggregate label must leave
+  // Mic 2 off and say so, not pretend both mics are live
+  await page5.evaluate(() => {
+    const sel = document.querySelectorAll(".strip")[0].querySelector('select[aria-label="Microphone device"]');
+    sel.value = "agg-mono"; sel.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await sleep(300);
+  await page5.evaluate(() => {
+    [...document.querySelectorAll(".strip")[0].querySelectorAll("button")].find(b => b.textContent.includes("Enable Mic")).click();
+  });
+  await sleep(900);
+  const monoState = await page5.evaluate(() => ({
+    tags: [...document.querySelectorAll(".strip")].slice(0, 2).map(s => s.querySelector('[data-role="livetag"]').textContent),
+    notice: document.getElementById("notice").textContent,
+  }));
+  check("mono aggregate: Mic 1 live, Mic 2 NOT fed, honest 1-channel notice", monoState.tags[0] === "Mic live" && monoState.tags[1] === "Off" && /only 1 channel/.test(monoState.notice) && errs5.length === 0, JSON.stringify(monoState).slice(0, 180));
+  await page5.close();
 
   check("no console/page errors across full run", consoleErrors.length === 0, consoleErrors.slice(0, 3).join(" | "));
 } catch (err) {

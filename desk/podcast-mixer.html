@@ -448,6 +448,25 @@
       return n;
     }
 
+    /* Create a voice channel's node chain on first use and apply its
+       stored control state. Used for the channel being connected and for
+       the partner channel an aggregate split feeds. */
+    function ensureVoiceNodes(ch) {
+      if (ch.nodes || !AC) return;
+      ch.nodes = makeNodes();
+      ch.buf = new Float32Array(ch.nodes.analyser.fftSize);
+      applyFader(ch);
+      applyVoiceState(ch);
+    }
+
+    /* The other voice channel (Mic 1 ↔ Mic 2), for aggregate-split feeds. */
+    function voicePartner(ch) {
+      for (var i = 0; i < channels.length; i++) {
+        if (channels[i] !== ch && channels[i].kind === "voice") return channels[i];
+      }
+      return null;
+    }
+
     /* Control state lives on the channel so moves made before a source is
        connected are applied when the nodes are created. */
     function applyVoiceState(ch) {
@@ -540,7 +559,7 @@
 
     /* ---------------- Mic / tone channel ---------------- */
 
-    function createVoiceChannel(num, name, defaultPan) {
+    function createVoiceChannel(num, name, defaultPan, opts) {
       var strip = buildStrip({ num: num, name: name });
       var body = strip.querySelector(".strip-body");
       var liveTag = strip.querySelector('[data-role="livetag"]');
@@ -550,6 +569,11 @@
         gateLevel: 0, gateHoldUntil: 0,
         state: { hpf: 70, low: 0, mid: 0, high: 0, pan: defaultPan, compOn: true },
         peak: 0, peakHold: 0, clipUntil: 0, buf: null, hasSource: false,
+        /* Aggregate split: splitOn/splitter live on the owning channel
+           (Mic 1); splitFeed/splitOwner live on the channel being fed
+           (Mic 2) while it takes channel 2 of the owner's stream. */
+        canSplit: !!(opts && opts.canSplit), splitOn: false, splitter: null,
+        splitFeed: null, splitOwner: null,
         label: function () { return strip.querySelector(".strip-name").value || name; }
       };
       channels.push(ch);
@@ -580,8 +604,34 @@
         if (ch.stream) showNotice("<strong>Cleanup settings apply on the next mic connection.</strong> Tap Enable Mic again on that channel to re-connect with the new settings.");
       }
 
+      /* Aggregate split (Mic 1 only): when on, this channel requests a
+         2-channel stream — e.g. the macOS "Podcast Mics" Aggregate Device
+         that combines both USB mics — and a ChannelSplitterNode feeds
+         channel 1 here and channel 2 to Mic 2, so both mics run from one
+         device while keeping separate strips, gates, and tracks. Picking
+         an aggregate-labeled device in the dropdown arms this switch. */
+      var splitBox = null;
+      if (ch.canSplit) {
+        var splitWrap = document.createElement("div");
+        splitWrap.style.marginTop = "6px";
+        srcSec.appendChild(splitWrap);
+        splitBox = switchEl(splitWrap, "Aggregate split (ch 2 → Mic 2)", false, function (on) {
+          ch.splitOn = on;
+          if (ch.stream) connectMic();
+        });
+      }
+
       function disconnectSource() {
         if (ch.sourceNode) { try { ch.sourceNode.disconnect(); } catch (e) {} ch.sourceNode = null; }
+        if (ch.splitter) {
+          /* This channel owns an aggregate split: tearing it down also
+             releases the partner channel fed from channel 2. */
+          try { ch.splitter.disconnect(); } catch (e) {}
+          ch.splitter = null;
+          var partner = voicePartner(ch);
+          if (partner && partner._clearSplitFeed) partner._clearSplitFeed();
+        }
+        if (ch.splitFeed) ch._clearSplitFeed();
         if (ch.toneOsc) { try { ch.toneOsc.stop(); } catch (e) {} try { ch.toneOsc.disconnect(); } catch (e) {} ch.toneOsc = null; }
         if (ch.stream) { ch.stream.getTracks().forEach(function (t) { t.stop(); }); ch.stream = null; }
         ch.hasSource = false;
@@ -590,30 +640,94 @@
       }
       ch.disconnectSource = disconnectSource;
 
+      /* Split-feed hooks, called by the partner channel that owns the
+         aggregate stream. _setSplitFeed marks this channel live on
+         channel 2 of the owner's device; _clearSplitFeed releases it
+         without touching the owner's stream. */
+      ch._setSplitFeed = function (splitter, owner) {
+        ch.splitFeed = splitter;
+        ch.splitOwner = owner;
+        ch.hasSource = true;
+        liveTag.textContent = "Mic live · aggregate ch 2"; liveTag.className = "live-tag on";
+        micBtn.textContent = "Disconnect";
+      };
+      ch._clearSplitFeed = function () {
+        if (!ch.splitFeed) return;
+        if (ch.nodes) { try { ch.splitFeed.disconnect(ch.nodes.trim); } catch (e) {} }
+        ch.splitFeed = null;
+        ch.splitOwner = null;
+        if (!ch.stream && !ch.toneOsc) {
+          ch.hasSource = false;
+          liveTag.textContent = "Off"; liveTag.className = "live-tag";
+          micBtn.textContent = "Enable Mic";
+        }
+      };
+
       /* Connect (or re-connect) this channel to the device currently picked
          in the dropdown. A dropdown change on a live channel calls this
-         directly so the stream always follows the selected device. */
+         directly so the stream always follows the selected device.
+         With Aggregate split on (Mic 1), the stream is requested with
+         channelCount 2 and raw (unprocessed) channels; a
+         ChannelSplitterNode then feeds channel 1 to this strip and
+         channel 2 to Mic 2's strip. If the browser hands back only one
+         channel, Mic 2 is left unfed and the notice says so plainly. */
       function connectMic() {
         ensureCtx();
-        if (!ch.nodes) { ch.nodes = makeNodes(); ch.buf = new Float32Array(ch.nodes.analyser.fftSize); applyFader(ch); applyVoiceState(ch); }
+        ensureVoiceNodes(ch);
         disconnectSource();
         micBtn.textContent = "Enable Mic";
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
           showNotice("<strong>Microphone isn't available in this browser view.</strong> The Test Tone source still drives every control on the channel.");
           return;
         }
-        var constraints = {
-          audio: {
+        var wantSplit = !!ch.splitOn;
+        function buildConstraints(exactChannels) {
+          var audio = {
             echoCancellation: ecBox.checked,
             noiseSuppression: nsBox.checked,
             autoGainControl: agcBox.checked
+          };
+          if (devSel.value) audio.deviceId = { exact: devSel.value };
+          if (wantSplit) {
+            /* The split needs the device's raw channels: browser cleanup
+               processing can downmix a 2-channel device to mono and would
+               process the two mics together, so it stays off here. */
+            audio.echoCancellation = false;
+            audio.noiseSuppression = false;
+            audio.autoGainControl = false;
+            audio.channelCount = exactChannels ? { exact: 2 } : { ideal: 2 };
           }
-        };
-        if (devSel.value) constraints.audio.deviceId = { exact: devSel.value };
-        navigator.mediaDevices.getUserMedia(constraints).then(function (stream) {
+          return { audio: audio };
+        }
+        function blockedNotice() {
+          showNotice("<strong>Microphone access was blocked.</strong> Allow mic permission for this page, or use the Test Tone source — every mixer control works with it.");
+        }
+        function onStream(stream) {
           ch.stream = stream; ch.hasSource = true;
           ch.sourceNode = AC.createMediaStreamSource(stream);
-          ch.sourceNode.connect(ch.nodes.trim);
+          var splitDone = false;
+          if (wantSplit) {
+            var track0 = stream.getAudioTracks()[0];
+            var settings = (track0 && track0.getSettings) ? track0.getSettings() : {};
+            var chans = settings.channelCount || ch.sourceNode.channelCount || 1;
+            var partner = voicePartner(ch);
+            if (partner && chans >= 2 && !partner.hasSource) {
+              ensureVoiceNodes(partner);
+              var splitter = AC.createChannelSplitter(2);
+              ch.sourceNode.connect(splitter);
+              splitter.connect(ch.nodes.trim, 0);
+              splitter.connect(partner.nodes.trim, 1);
+              ch.splitter = splitter;
+              partner._setSplitFeed(splitter, ch);
+              splitDone = true;
+              showNotice("<strong>Aggregate split live:</strong> channel 1 feeds Mic 1 and channel 2 feeds Mic 2 — each mic keeps its own fader, gate, meter, and recorded track.");
+            } else if (partner && chans >= 2) {
+              showNotice("<strong>Mic 2 already has its own source,</strong> so this device's channel 2 isn't feeding it. Disconnect Mic 2 first if you want both mics from this one device.");
+            } else if (partner) {
+              showNotice("<strong>This device gave the browser only 1 channel,</strong> so Mic 2 is <strong>not</strong> fed from it — the two mics can't be separated from a 1-channel stream. Mic 1 is live. Check the aggregate device in Audio MIDI Setup (both mics checked, 2 ins), or connect Mic 2 as its own device.");
+            }
+          }
+          if (!splitDone) ch.sourceNode.connect(ch.nodes.trim);
           liveTag.textContent = "Mic live"; liveTag.className = "live-tag on";
           micBtn.textContent = "Disconnect";
           stream.getAudioTracks().forEach(function (t) {
@@ -629,13 +743,21 @@
           var usedId = usedTrack && usedTrack.getSettings ? usedTrack.getSettings().deviceId : null;
           refreshDevices().then(function () { if (usedId) devSel.value = usedId; });
           refreshCameras();   // a mic grant also unlocks camera labels/IDs — refresh both lists
-        }).catch(function (err) {
-          showNotice("<strong>Microphone access was blocked.</strong> Allow mic permission for this page, or use the Test Tone source — every mixer control works with it.");
+        }
+        navigator.mediaDevices.getUserMedia(buildConstraints(true)).then(onStream).catch(function (err) {
+          if (wantSplit && err && err.name === "OverconstrainedError") {
+            /* The browser won't promise 2 channels up front — retry asking
+               for them as a preference; onStream then checks what actually
+               arrived and labels a 1-channel result honestly. */
+            navigator.mediaDevices.getUserMedia(buildConstraints(false)).then(onStream).catch(blockedNotice);
+            return;
+          }
+          blockedNotice();
         });
       }
 
       micBtn.addEventListener("click", function () {
-        if (ch.stream) { disconnectSource(); micBtn.textContent = "Enable Mic"; return; }
+        if (ch.stream || ch.splitFeed) { disconnectSource(); micBtn.textContent = "Enable Mic"; return; }
         connectMic();
       });
 
@@ -659,7 +781,15 @@
       });
 
       devSel.addEventListener("change", function () {
-        if (ch.stream) connectMic();
+        if (ch.canSplit && splitBox) {
+          /* Picking an aggregate device arms the split; picking a plain
+             mic disarms it. The switch can still be flipped by hand. */
+          var opt = devSel.options[devSel.selectedIndex];
+          var isAgg = !!(opt && /\(aggregate/i.test(opt.textContent));
+          splitBox.checked = isAgg;
+          ch.splitOn = isAgg;
+        }
+        if (ch.stream || ch.splitFeed) connectMic();
       });
 
       /* Preset */
@@ -940,7 +1070,10 @@
           mics.forEach(function (d, i) {
             var o = document.createElement("option");
             o.value = d.deviceId;
-            o.textContent = micLabels[i];
+            /* A macOS Aggregate Device (e.g. "Podcast Mics") presents both
+               USB mics as one 2-channel input — say so in the list so it
+               can be picked on Mic 1 with the Aggregate split switch. */
+            o.textContent = micLabels[i] + (/podcast mics|aggregate/i.test(d.label || "") ? " (aggregate — both mics)" : "");
             sel.appendChild(o);
           });
           if (cur) sel.value = cur;
@@ -1549,7 +1682,7 @@
     /* ---------------- Build the console ---------------- */
 
     buildCameras();
-    createVoiceChannel("CH 1", "Host", -12);
+    createVoiceChannel("CH 1", "Host", -12, { canSplit: true });
     createVoiceChannel("CH 2", "Guest", 12);
     createMusicChannel("CH 3");
     createMasterStrip();
