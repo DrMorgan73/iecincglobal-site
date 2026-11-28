@@ -47,9 +47,10 @@ const wavPath = join(mkdtempSync(join(tmpdir(), "mixer-check-")), "test-tones.wa
   writeFileSync(wavPath, buf);
 }
 
+const cameraHtml = readFileSync(join(repoRoot, "camera.html"), "utf8");
 const server = http.createServer((req, res) => {
   res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-  res.end(html);
+  res.end((req.url || "").startsWith("/camera.html") ? cameraHtml : html);
 });
 await new Promise((r) => server.listen(8931, "127.0.0.1", r));
 
@@ -307,6 +308,7 @@ async function meterSamples(stripIdx, ms = 2600) {
 async function programColor(fx, fy, fw, fh) {
   return ev((a, b, c, d) => window.__probe.regionColor(document.getElementById("program"), a, b, c, d), fx, fy, fw, fh);
 }
+const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const isRed = (c) => c[0] > 120 && c[1] < 110 && c[2] < 110;
 const isGreen = (c) => c[1] > 80 && c[0] < 110 && c[2] < 110;
 const isBlue = (c) => c[2] > 100 && c[0] < 110 && c[1] < 140;
@@ -352,7 +354,7 @@ try {
   check("page loads with no console errors", consoleErrors.length === 0, consoleErrors.slice(0, 3).join(" | "));
   const micOpts = await ev(() => [...document.querySelectorAll(".strip select")].filter(s => s.getAttribute("aria-label") === "Microphone device").map(s => [...s.options].map(o => o.textContent)));
   check("mic dropdowns enumerate labeled devices at load", micOpts.length === 2 && micOpts[0].some(t => t.includes("Synthetic Mic A")), JSON.stringify(micOpts[0]));
-  const camOpts = await ev(() => [...document.querySelectorAll(".cam-card select")].map(s => [...s.options].map(o => o.textContent)));
+  const camOpts = await ev(() => [...document.querySelectorAll("#camList .cam-card select")].map(s => [...s.options].map(o => o.textContent)));
   check("camera dropdowns enumerate 3 labeled cameras at load", camOpts.length === 3 && camOpts[0].filter(t => t.includes("Synthetic Cam")).length === 3, JSON.stringify(camOpts[0]));
 
   // ===== 1. Cameras on =====
@@ -361,7 +363,7 @@ try {
     await ev((idx) => document.querySelectorAll(".cam-card button")[idx].click(), i);
     await sleep(500);
   }
-  const camStates = await ev(() => [...document.querySelectorAll(".cam-card video")].map(v => ({ has: !!v.srcObject, w: v.videoWidth, paused: v.paused })));
+  const camStates = await ev(() => [...document.querySelectorAll("#camList .cam-card video")].map(v => ({ has: !!v.srcObject, w: v.videoWidth, paused: v.paused })));
   check("all 3 cameras live with video frames", camStates.every(c => c.has && c.w > 0), JSON.stringify(camStates));
   await sleep(400);
   let col = await programColor(0.35, 0.35, 0.3, 0.3);
@@ -617,7 +619,7 @@ try {
   await sleep(600);
   const dupMicOpts = await page3.evaluate(() => [...document.querySelectorAll(".strip select")].filter(s => s.getAttribute("aria-label") === "Microphone device").map(s => [...s.options].map(o => ({ v: o.value, t: o.textContent }))));
   check("duplicate mic labels numbered Microphone One/Two in enumeration order", dupMicOpts[0].length === 3 && dupMicOpts[0][1].t === "USB PnP Audio Device — Microphone One" && dupMicOpts[0][2].t === "USB PnP Audio Device — Microphone Two" && dupMicOpts[0][1].v === "mic-a" && dupMicOpts[0][2].v === "mic-b", JSON.stringify(dupMicOpts[0]));
-  const dupCamOpts = await page3.evaluate(() => [...document.querySelectorAll(".cam-card select")].map(s => [...s.options].map(o => o.textContent)));
+  const dupCamOpts = await page3.evaluate(() => [...document.querySelectorAll("#camList .cam-card select")].map(s => [...s.options].map(o => o.textContent)));
   check("duplicate cam labels numbered Camera One/Two; unique label unchanged", dupCamOpts[0].includes("USB Camera — Camera One") && dupCamOpts[0].includes("USB Camera — Camera Two") && dupCamOpts[0].includes("Synthetic Cam C (blue)"), JSON.stringify(dupCamOpts[0]));
   // Bind by deviceId: CH1 -> mic-b (520Hz), CH2 -> mic-a (300Hz); per-mic
   // tracks prove each numbered entry still maps to its own device.
@@ -667,7 +669,7 @@ try {
   });
   await page4.goto("http://127.0.0.1:8931/desk/podcast-mixer.html", { waitUntil: "networkidle0" });
   await sleep(600);
-  const camTexts4 = () => page4.evaluate(() => [...document.querySelectorAll(".cam-card select")].map(s => [...s.options].map(o => o.textContent)));
+  const camTexts4 = () => page4.evaluate(() => [...document.querySelectorAll("#camList .cam-card select")].map(s => [...s.options].map(o => o.textContent)));
   let opts4 = await camTexts4();
   check("hot-plug: page starts with only Cam A listed", opts4[0].length === 2 && opts4[0][1] === "Synthetic Cam A (red)", JSON.stringify(opts4[0]));
   // (a) device appears + devicechange fires
@@ -803,6 +805,400 @@ try {
   }));
   check("mono aggregate: Mic 1 live, Mic 2 NOT fed, honest 1-channel notice", monoState.tags[0] === "Mic live" && monoState.tags[1] === "Off" && /only 1 channel/.test(monoState.notice) && errs5.length === 0, JSON.stringify(monoState).slice(0, 180));
   await page5.close();
+
+  // ===== 20. Wireless cameras (phones as cameras): the mixer's Daily
+  // integration with the transport stubbed at the SDK boundary — the
+  // stub hands the mixer real synthetic canvas tracks as remote
+  // participants, so slot assignment, composite, and recording all run
+  // the production code paths. /api/demo-admin is stubbed at fetch. =====
+  const WIRELESS_STUB = () => {
+    window.__camApi = [];
+    const realFetch = window.fetch.bind(window);
+    window.fetch = async (url, opts) => {
+      const u = String(url);
+      if (u.includes("/api/demo-admin")) {
+        const body = JSON.parse((opts && opts.body) || "{}");
+        window.__camApi.push(body);
+        if (body.action === "cam-create") {
+          return new Response(JSON.stringify({
+            ok: true,
+            session: { sessionId: "cam_test", roomUrl: "https://curavia.daily.co/iec-cam_test", expiresAt: new Date(Date.now() + 3600000).toISOString() },
+            ownerToken: "owner-tok",
+            slots: [
+              { slot: 2, label: "Cam 2", code: "AAAA22" },
+              { slot: 3, label: "Cam 3", code: "BBBB33" },
+              { slot: 4, label: "Cam 4", code: "CCCC44" },
+              { slot: 5, label: "Cam 5", code: "DDDD55" },
+            ],
+          }), { status: 201, headers: { "content-type": "application/json" } });
+        }
+        if (body.action === "cam-end") {
+          return new Response(JSON.stringify({ ok: true, session: { sessionId: body.sessionId, status: "ended" } }),
+            { status: 200, headers: { "content-type": "application/json" } });
+        }
+        return new Response(JSON.stringify({ ok: false, error: "unknown_action" }), { status: 400, headers: { "content-type": "application/json" } });
+      }
+      return realFetch(url, opts);
+    };
+    // Daily SDK stub: event-emitter call object; test joins synthetic
+    // remote participants carrying canvas video tracks.
+    const handlers = {};
+    const parts = {};
+    const call = {
+      _joinOpts: null, _ejected: [],
+      on(ev, fn) { (handlers[ev] = handlers[ev] || []).push(fn); },
+      emit(ev, payload) { (handlers[ev] || []).forEach((fn) => fn(payload)); },
+      async join(opts) { call._joinOpts = opts; call.emit("joined-meeting", {}); return {}; },
+      participants() { return parts; },
+      eject(id) {
+        call._ejected.push(id);
+        const p = parts[id]; delete parts[id];
+        if (p) call.emit("participant-left", { participant: p });
+      },
+      async leave() { return {}; },
+      destroy() {},
+    };
+    window.DailyIframe = { createCallObject: () => call };
+    function phoneTrack(color, label) {
+      const c = document.createElement("canvas");
+      c.width = 640; c.height = 360;
+      const x = c.getContext("2d");
+      let t = 0;
+      (function draw() {
+        t++;
+        x.fillStyle = color; x.fillRect(0, 0, 640, 360);
+        x.fillStyle = "rgba(255,255,255,0.9)";
+        x.beginPath(); x.arc(60 + (t * 3) % 520, 40, 16, 0, 7); x.fill();
+        x.fillStyle = "#ffffff"; x.font = "bold 64px sans-serif";
+        x.fillText(label, 170, 210);
+        requestAnimationFrame(draw);
+      })();
+      return c.captureStream(30).getVideoTracks()[0];
+    }
+    window.__daily = {
+      call,
+      joinPhone(id, name, color) {
+        const p = {
+          session_id: id, user_name: name, local: false,
+          tracks: { video: { state: "playable", persistentTrack: phoneTrack(color, name) } },
+        };
+        parts[id] = p;
+        call.emit("participant-joined", { participant: p });
+        call.emit("track-started", { participant: p, track: p.tracks.video.persistentTrack });
+        return p;
+      },
+      leavePhone(id) {
+        const p = parts[id]; delete parts[id];
+        if (p) call.emit("participant-left", { participant: p });
+      },
+    };
+  };
+  const isPurple = (c) => c[0] > 80 && c[2] > 110 && c[1] < 90;
+  const isOrange = (c) => c[0] > 190 && c[1] > 70 && c[1] < 170 && c[2] < 70;
+  const isCyan = (c) => c[1] > 100 && c[2] > 100 && c[0] < 80;
+  const isMagenta = (c) => c[0] > 150 && c[2] > 60 && c[2] < 140 && c[1] < 80;
+
+  const page6 = await browser.newPage();
+  const errs6 = [];
+  page6.on("pageerror", (e) => errs6.push(e.message));
+  await page6.evaluateOnNewDocument(INJECT);
+  await page6.evaluateOnNewDocument(WIRELESS_STUB);
+  await page6.goto("http://127.0.0.1:8931/desk/podcast-mixer.html", { waitUntil: "networkidle0" });
+  await sleep(600);
+  const wCards = await page6.evaluate(() => [...document.querySelectorAll("#wirelessList .cam-card")].map((card) => ({
+    code: card.querySelector('[data-role="code"]').textContent,
+    status: card.querySelector('[data-role="status"]').textContent,
+  })));
+  check("wireless: 4 slot cards, codes hidden before session", wCards.length === 4 && wCards.every((c) => /––––––/.test(c.code)), JSON.stringify(wCards.map((c) => c.code)));
+  await page6.evaluate(() => document.getElementById("wirelessStartBtn").click());
+  await sleep(800);
+  const wStarted = await page6.evaluate(() => ({
+    codes: [...document.querySelectorAll("#wirelessList .cam-card")].map((c) => c.querySelector('[data-role="code"]').textContent),
+    links: [...document.querySelectorAll("#wirelessList .cam-card")].map((c) => c.querySelector('[data-role="link"]').textContent),
+    session: document.getElementById("wirelessSessionStatus").textContent,
+    joinOpts: window.__daily.call._joinOpts,
+    api: window.__camApi.map((b) => b.action),
+  }));
+  check("wireless: start mints session, shows 4 codes + join links", eq(wStarted.codes, ["AAAA22", "BBBB33", "CCCC44", "DDDD55"]) && wStarted.links.every((l) => l.includes("/camera.html?code=")) && /Session live/.test(wStarted.session), JSON.stringify(wStarted.codes) + " | " + wStarted.session);
+  check("wireless: mixer joins receive-only with owner token", wStarted.joinOpts && wStarted.joinOpts.startVideoOff === true && wStarted.joinOpts.startAudioOff === true && wStarted.joinOpts.token === "owner-tok" && eq(wStarted.api, ["cam-create"]), JSON.stringify(wStarted.joinOpts));
+  // Phone 1 (purple) joins -> first free slot (Cam 2), becomes main
+  await page6.evaluate(() => window.__daily.joinPhone("phone-1", "Cam 2", "#7b1fa2"));
+  await sleep(900);
+  const w1 = await page6.evaluate(() => {
+    const card = document.querySelectorAll("#wirelessList .cam-card")[0];
+    const v = card.querySelector("video");
+    return {
+      status: card.querySelector('[data-role="status"]').textContent,
+      tag: card.querySelector('[data-role="tag"]').textContent,
+      has: !!v.srcObject, w: v.videoWidth,
+      badge: document.getElementById("programBadgeText").textContent,
+    };
+  });
+  const w1col = await page6.evaluate(() => window.__probe.regionColor(document.getElementById("program"), 0.35, 0.35, 0.3, 0.3));
+  check("wireless: phone 1 takes Cam 2 slot, live, program shows it (purple)", /Live/.test(w1.status) && w1.has && w1.w > 0 && isPurple(w1col) && /Cam 2/.test(w1.badge), `status=${w1.status} tag=${w1.tag} col=${w1col} badge=${w1.badge}`);
+  // Phone 2 (orange) joins -> Cam 3; main unchanged
+  await page6.evaluate(() => window.__daily.joinPhone("phone-2", "Cam 3", "#ef6c00"));
+  await sleep(900);
+  const w2col = await page6.evaluate(() => window.__probe.regionColor(document.getElementById("program"), 0.35, 0.35, 0.3, 0.3));
+  const w2status = await page6.evaluate(() => document.querySelectorAll("#wirelessList .cam-card")[1].querySelector('[data-role="status"]').textContent);
+  check("wireless: phone 2 takes Cam 3, main stays Cam 2 (purple)", /Live/.test(w2status) && isPurple(w2col), `status=${w2status} col=${w2col}`);
+  // Tap Cam 3 thumb -> main switches to orange
+  await page6.evaluate(() => document.querySelectorAll("#wirelessList .cam-thumb")[1].click());
+  await sleep(600);
+  const w3col = await page6.evaluate(() => window.__probe.regionColor(document.getElementById("program"), 0.35, 0.35, 0.3, 0.3));
+  const w3badge = await page6.evaluate(() => document.getElementById("programBadgeText").textContent);
+  check("wireless: tap Cam 3 thumb makes it main (orange)", isOrange(w3col) && /Cam 3/.test(w3badge), `col=${w3col} badge=${w3badge}`);
+  // Rename Cam 3 slot
+  await page6.evaluate(() => {
+    const input = document.querySelectorAll("#wirelessList .cam-card")[1].querySelector('[data-role="name"]');
+    input.value = "Guest Wide";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await sleep(300);
+  const wTag = await page6.evaluate(() => document.querySelectorAll("#wirelessList .cam-card")[1].querySelector('[data-role="tag"]').textContent);
+  check("wireless: rename slot updates its tag", /Guest Wide/.test(wTag), wTag);
+  // Record: program video must contain the wireless (orange) feed
+  await page6.evaluate(() => document.getElementById("recBtn").click());
+  await sleep(2600);
+  await page6.evaluate(() => document.getElementById("recBtn").click());
+  for (let i = 0; i < 40; i++) { if (await page6.evaluate(() => document.querySelectorAll("#takes .take-group").length) > 0) break; await sleep(300); }
+  const wTake = await page6.evaluate(async () => {
+    const g = document.querySelectorAll("#takes .take-group");
+    const last = g[g.length - 1];
+    const rows = [...last.querySelectorAll(".take")].map((r) => ({ label: r.querySelector(".meta b").textContent, url: r.querySelector("a").href, isVideo: !!r.querySelector("video") }));
+    const vidRow = rows.find((r) => r.isVideo);
+    const v = document.createElement("video");
+    v.muted = true; v.src = vidRow.url; v.playsInline = true;
+    await v.play();
+    await new Promise((r) => setTimeout(r, 900));
+    const c = document.createElement("canvas"); c.width = v.videoWidth || 1280; c.height = v.videoHeight || 720;
+    c.getContext("2d").drawImage(v, 0, 0, c.width, c.height);
+    v.pause();
+    return { labels: rows.map((r) => r.label), col: window.__probe.regionColor(c, 0.35, 0.35, 0.3, 0.3) };
+  });
+  check("wireless: recorded program video contains the phone feed (orange)", wTake.labels.includes("Program video") && isOrange(wTake.col), `labels=${JSON.stringify(wTake.labels)} col=${wTake.col}`);
+  // Move/swap: move Cam 3's feed to the Cam 4 slot
+  await page6.evaluate(() => {
+    const sel = document.querySelectorAll("#wirelessList .cam-card")[1].querySelector('[data-role="move"]');
+    sel.value = "4";
+    sel.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await sleep(700);
+  const wSwap = await page6.evaluate(() => {
+    const cards = document.querySelectorAll("#wirelessList .cam-card");
+    const v3 = cards[1].querySelector("video"), v4 = cards[2].querySelector("video");
+    return {
+      s3: cards[1].querySelector('[data-role="status"]').textContent,
+      s4: cards[2].querySelector('[data-role="status"]').textContent,
+      has3: !!v3.srcObject, has4: !!v4.srcObject, w4: v4.videoWidth,
+    };
+  });
+  check("wireless: move feed swaps slots (Cam 3 empty, Cam 4 live)", !wSwap.has3 && wSwap.has4 && wSwap.w4 > 0 && /Live/.test(wSwap.s4), JSON.stringify(wSwap));
+  // Fill remaining slots, then a 5th phone must be refused honestly
+  await page6.evaluate(() => { window.__daily.joinPhone("phone-3", "Cam 5", "#00838f"); });
+  await sleep(700);
+  await page6.evaluate(() => { window.__daily.joinPhone("phone-4", "Extra", "#c2185b"); });
+  await sleep(700);
+  const wFull = await page6.evaluate(() => ({
+    live: [...document.querySelectorAll("#wirelessList .cam-card")].map((c) => c.querySelector('[data-role="status"]').textContent),
+  }));
+  check("wireless: phones fill all 4 slots", wFull.live.every((s) => /Live/.test(s)), JSON.stringify(wFull.live));
+  await page6.evaluate(() => window.__daily.joinPhone("phone-5", "Overflow", "#f9a825"));
+  await sleep(700);
+  const wOver = await page6.evaluate(() => ({
+    notice: document.getElementById("notice").textContent,
+    live: [...document.querySelectorAll("#wirelessList .cam-card")].map((c) => c.querySelector('[data-role="status"]').textContent),
+  }));
+  check("wireless: 5th phone refused with honest 'slots full' notice", /All 4 wireless camera slots are full/.test(wOver.notice) && wOver.live.every((s) => /Live/.test(s)), wOver.notice.slice(0, 90));
+  // Drop Cam 2 -> eject + slot freed
+  await page6.evaluate(() => document.querySelectorAll("#wirelessList .cam-card")[0].querySelector('[data-role="drop"]').click());
+  await sleep(600);
+  const wDrop = await page6.evaluate(() => ({
+    ejected: window.__daily.call._ejected,
+    status: document.querySelectorAll("#wirelessList .cam-card")[0].querySelector('[data-role="status"]').textContent,
+    has: !!document.querySelectorAll("#wirelessList .cam-card")[0].querySelector("video").srcObject,
+  }));
+  check("wireless: drop ejects the phone and frees the slot", eq(wDrop.ejected, ["phone-1"]) && !wDrop.has && /Waiting/.test(wDrop.status), JSON.stringify(wDrop));
+  // Participant-left frees its slot (phone-3 is in some slot)
+  await page6.evaluate(() => window.__daily.leavePhone("phone-3"));
+  await sleep(600);
+  const wLeft = await page6.evaluate(() => [...document.querySelectorAll("#wirelessList .cam-card")].map((c) => c.querySelector('[data-role="status"]').textContent));
+  check("wireless: phone leaving frees its slot", wLeft.filter((s) => /Waiting/.test(s)).length === 2, JSON.stringify(wLeft));
+  // End session
+  await page6.evaluate(() => document.getElementById("wirelessEndBtn").click());
+  await sleep(800);
+  const wEnd = await page6.evaluate(() => ({
+    codes: [...document.querySelectorAll("#wirelessList .cam-card")].map((c) => c.querySelector('[data-role="code"]').textContent),
+    session: document.getElementById("wirelessSessionStatus").textContent,
+    api: window.__camApi.map((b) => b.action),
+    startDisabled: document.getElementById("wirelessStartBtn").disabled,
+  }));
+  check("wireless: end session clears codes, calls cam-end, start re-enabled", wEnd.codes.every((c) => /––––––/.test(c)) && eq(wEnd.api, ["cam-create", "cam-end"]) && wEnd.startDisabled === false && errs6.length === 0, JSON.stringify(wEnd.api) + ` errs=${errs6.length}`);
+  await page6.close();
+
+  // ===== 20b. Wireless not-configured: server 503 -> honest notice,
+  // local mixer untouched =====
+  const page7 = await browser.newPage();
+  const errs7 = [];
+  page7.on("pageerror", (e) => errs7.push(e.message));
+  await page7.evaluateOnNewDocument(INJECT);
+  await page7.evaluateOnNewDocument(() => {
+    const realFetch = window.fetch.bind(window);
+    window.fetch = async (url, opts) => {
+      if (String(url).includes("/api/demo-admin")) {
+        return new Response(JSON.stringify({ ok: false, error: "not_configured", message: "Wireless cameras are not configured yet (DAILY_API_KEY missing on this project)." }),
+          { status: 503, headers: { "content-type": "application/json" } });
+      }
+      return realFetch(url, opts);
+    };
+  });
+  await page7.goto("http://127.0.0.1:8931/desk/podcast-mixer.html", { waitUntil: "networkidle0" });
+  await sleep(600);
+  await page7.evaluate(() => document.getElementById("wirelessStartBtn").click());
+  await sleep(800);
+  const wNc = await page7.evaluate(() => ({
+    notice: document.getElementById("notice").textContent,
+    session: document.getElementById("wirelessSessionStatus").textContent,
+    startDisabled: document.getElementById("wirelessStartBtn").disabled,
+    strips: document.querySelectorAll(".strip").length,
+  }));
+  check("wireless: not-configured fails honestly, mixer intact", /not configured yet/.test(wNc.notice) && /Local cameras and recording still work/.test(wNc.notice) && wNc.startDisabled === false && wNc.strips === 4 && errs7.length === 0, wNc.notice.slice(0, 110));
+  await page7.close();
+
+  // ===== 21. Phone camera page (/camera.html): code entry, join,
+  // LIVE badge, flip, leave — Daily transport stubbed at the SDK
+  // boundary with a synthetic local track =====
+  const PHONE_STUB = () => {
+    window.__joinCalls = [];
+    const realFetch = window.fetch.bind(window);
+    window.fetch = async (url, opts) => {
+      if (String(url).includes("/api/demo-admin")) {
+        const body = JSON.parse((opts && opts.body) || "{}");
+        window.__joinCalls.push(body);
+        if (body.action === "cam-join" && body.code === "AAAA22") {
+          return new Response(JSON.stringify({ ok: true, roomUrl: "https://curavia.daily.co/iec-cam_test", token: "cam-tok", slot: 2, label: "Cam 2" }),
+            { status: 200, headers: { "content-type": "application/json" } });
+        }
+        return new Response(JSON.stringify({ ok: false, error: "invalid_code", message: "That code was not recognized. Check the code in the mixer and try again." }),
+          { status: 404, headers: { "content-type": "application/json" } });
+      }
+      return realFetch(url, opts);
+    };
+    function phoneTrack(color) {
+      const c = document.createElement("canvas");
+      c.width = 640; c.height = 360;
+      const x = c.getContext("2d");
+      let t = 0;
+      (function draw() {
+        t++;
+        x.fillStyle = color; x.fillRect(0, 0, 640, 360);
+        x.fillStyle = "rgba(255,255,255,0.9)";
+        x.beginPath(); x.arc(60 + (t * 3) % 520, 40, 16, 0, 7); x.fill();
+        requestAnimationFrame(draw);
+      })();
+      return c.captureStream(30).getVideoTracks()[0];
+    }
+    const handlers = {};
+    const local = {
+      session_id: "local-1", user_name: "Cam 2", local: true,
+      tracks: { video: { state: "playable", persistentTrack: phoneTrack("#7b1fa2") } },
+    };
+    const call = {
+      _joinOpts: null, _switchedTo: null,
+      on(ev, fn) { (handlers[ev] = handlers[ev] || []).push(fn); },
+      emit(ev, payload) { (handlers[ev] || []).forEach((fn) => fn(payload)); },
+      async join(opts) {
+        call._joinOpts = opts;
+        call.emit("joined-meeting", {});
+        call.emit("participant-updated", { participant: local });
+        return {};
+      },
+      participants() { return { local }; },
+      async getInputDevices() {
+        return {
+          devices: [
+            { deviceId: "front-cam", kind: "videoinput", label: "Front" },
+            { deviceId: "back-cam", kind: "videoinput", label: "Back" },
+          ],
+          currentCam: { deviceId: "front-cam" },
+        };
+      },
+      async setInputDevicesAsync(opts) {
+        call._switchedTo = opts.videoDeviceId;
+        local.tracks.video.persistentTrack = phoneTrack("#ef6c00");
+        call.emit("participant-updated", { participant: local });
+        return {};
+      },
+      async leave() { call.emit("left-meeting", {}); return {}; },
+      destroy() {},
+    };
+    window.DailyIframe = { createCallObject: () => call };
+    window.__phoneCall = call;
+  };
+  const page8 = await browser.newPage();
+  const errs8 = [];
+  page8.on("pageerror", (e) => errs8.push(e.message));
+  await page8.evaluateOnNewDocument(INJECT);
+  await page8.evaluateOnNewDocument(PHONE_STUB);
+  await page8.goto("http://127.0.0.1:8931/camera.html", { waitUntil: "networkidle0" });
+  await sleep(600);
+  await page8.evaluate(() => {
+    document.getElementById("codeInput").value = "ZZZZZZ";
+    document.getElementById("joinBtn").click();
+  });
+  await sleep(800);
+  const phBad = await page8.evaluate(() => ({
+    status: document.getElementById("joinStatus").textContent,
+    liveHidden: document.getElementById("liveSection").classList.contains("hidden"),
+  }));
+  check("phone: bad code shows honest error, stays on join screen", /not recognized/.test(phBad.status) && phBad.liveHidden === true, phBad.status.slice(0, 80));
+  await page8.evaluate(() => {
+    document.getElementById("codeInput").value = "aaaa22";
+    document.getElementById("joinBtn").click();
+  });
+  await sleep(1200);
+  const phLive = await page8.evaluate(() => {
+    const v = document.getElementById("preview");
+    return {
+      badge: document.getElementById("liveBadgeText").textContent,
+      badgeOn: document.getElementById("liveBadge").classList.contains("on"),
+      slot: document.getElementById("slotTag").textContent,
+      has: !!v.srcObject, w: v.videoWidth,
+      joinOpts: window.__phoneCall._joinOpts,
+      api: window.__joinCalls.map((b) => b.action + ":" + (b.code || "")),
+    };
+  });
+  check("phone: good code joins video-on/mic-off, LIVE badge, preview frames", phLive.badgeOn && /Live/.test(phLive.badge) && phLive.slot === "Cam 2" && phLive.has && phLive.w > 0 && phLive.joinOpts.startAudioOff === true && phLive.joinOpts.startVideoOff === false && phLive.joinOpts.token === "cam-tok", JSON.stringify(phLive).slice(0, 200));
+  await page8.evaluate(() => document.getElementById("flipBtn").click());
+  await sleep(800);
+  const phFlip = await page8.evaluate(() => ({
+    switchedTo: window.__phoneCall._switchedTo,
+    status: document.getElementById("liveStatus").textContent,
+  }));
+  check("phone: flip switches to the other camera", phFlip.switchedTo === "back-cam" && /flipped/.test(phFlip.status), JSON.stringify(phFlip));
+  await page8.evaluate(() => document.getElementById("leaveBtn").click());
+  await sleep(600);
+  const phLeft = await page8.evaluate(() => ({
+    joinVisible: !document.getElementById("joinCard").classList.contains("hidden"),
+    liveHidden: document.getElementById("liveSection").classList.contains("hidden"),
+    has: !!document.getElementById("preview").srcObject,
+  }));
+  check("phone: leave returns to join screen, preview cleared", phLeft.joinVisible && phLeft.liveHidden && !phLeft.has && errs8.length === 0, JSON.stringify(phLeft) + ` errs=${errs8.length}`);
+  await page8.close();
+  // ?code= auto-join path
+  const page9 = await browser.newPage();
+  const errs9 = [];
+  page9.on("pageerror", (e) => errs9.push(e.message));
+  await page9.evaluateOnNewDocument(INJECT);
+  await page9.evaluateOnNewDocument(PHONE_STUB);
+  await page9.goto("http://127.0.0.1:8931/camera.html?code=AAAA22", { waitUntil: "networkidle0" });
+  await sleep(1500);
+  const phAuto = await page9.evaluate(() => ({
+    badgeOn: document.getElementById("liveBadge").classList.contains("on"),
+    has: !!document.getElementById("preview").srcObject,
+  }));
+  check("phone: ?code= link auto-joins", phAuto.badgeOn && phAuto.has && errs9.length === 0, JSON.stringify(phAuto) + ` errs=${errs9.length}`);
+  await page9.close();
 
   check("no console/page errors across full run", consoleErrors.length === 0, consoleErrors.slice(0, 3).join(" | "));
 } catch (err) {

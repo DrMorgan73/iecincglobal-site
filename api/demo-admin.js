@@ -169,6 +169,7 @@ import {
   markNdaInviteSigned
 } from "./_demo-invites-store.js";
 import { videoConferenceAction } from "./_video-conference.js";
+import { podcastCamerasAction } from "./_podcast-cameras.js";
 
 /* ------------------------------------------------------------------ */
 /* Org signatures for system mail (copied from the assets' own single */
@@ -1371,6 +1372,19 @@ async function actionMarkNdaSigned(res, body, operator) {
 export default async function handler(req, res) {
   if (req.method !== "POST") return reply(res, 405, { ok: false, error: "method_not_allowed" });
 
+  const body = await readBody(req);
+  const action = String(body.action || "");
+  /* Podcast Mixer wireless cameras (api/_podcast-cameras.js) — a phone
+     joining as a camera carries no desk_session cookie; its slot code
+     IS the credential (session-scoped, 12h, non-owner camera token
+     only), so cam-join is dispatched before the session gate. Every
+     other cam-* action stays behind the gate below. */
+  if (action === "cam-join") {
+    const handled = await podcastCamerasAction(action, body, res, reply);
+    if (handled) return;
+    return reply(res, 400, { ok: false, error: "unknown_action" });
+  }
+
   const session = getCookie(req.headers && req.headers.cookie, "desk_session");
   if (!session || !(await validSession(session))) {
     return reply(res, 401, { ok: false, error: "unauthorized" });
@@ -1379,12 +1393,17 @@ export default async function handler(req, res) {
      manual mark-signed (the session was just verified above). */
   const operator = String(session).split(".")[0] || "desk";
 
-  const body = await readBody(req);
-  const action = String(body.action || "");
   /* IEC Suite Video Conference (api/_video-conference.js) — dispatched
      here because the project is at its Vercel function ceiling. */
   if (action.startsWith("vc-")) {
     const handled = await videoConferenceAction(action, body, res, reply);
+    if (handled) return;
+    return reply(res, 400, { ok: false, error: "unknown_action" });
+  }
+  /* Podcast Mixer wireless cameras — desk_session-gated actions
+     (cam-create / cam-end; cam-join handled above). */
+  if (action.startsWith("cam-")) {
+    const handled = await podcastCamerasAction(action, body, res, reply);
     if (handled) return;
     return reply(res, 400, { ok: false, error: "unknown_action" });
   }

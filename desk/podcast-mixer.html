@@ -270,6 +270,18 @@
       .take-group:first-of-type { border-top: none; }
       .take-group > b { font-size: 15px; }
       .take-group .group-meta { font-size: 12px; color: var(--ink-faint); font-family: "IBM Plex Mono", monospace; margin-left: 8px; }
+
+      /* ---------- Wireless cameras ---------- */
+      .wireless-list { display: grid; gap: 10px; grid-template-columns: 1fr; }
+      @media (min-width: 700px) { .wireless-list { grid-template-columns: 1fr 1fr; } }
+      .wslot-code {
+        font-family: "IBM Plex Mono", monospace; font-size: 24px; font-weight: 600;
+        letter-spacing: .28em; color: var(--accent); line-height: 1.2;
+      }
+      .wslot-status { font-size: 12.5px; color: var(--ink-soft); }
+      .wslot-status.live { color: var(--ok); font-weight: 600; }
+      .wslot-link { font-size: 12px; color: var(--ink-faint); font-family: "IBM Plex Mono", monospace; word-break: break-all; }
+      .cam-thumb .tag.waiting { background: rgba(0,0,0,.6); color: var(--warn); }
     </style>
   </head>
   <body>
@@ -316,6 +328,17 @@
           </div>
           <div class="cam-list" id="camList"></div>
         </div>
+      </section>
+
+      <section class="panel" aria-label="Wireless cameras">
+        <h2>Wireless Cameras — Phones as Cameras</h2>
+        <p class="hint">IEC's own camera system: each phone opens <b>iecincglobal.com/camera.html</b> in its browser and sends its camera straight into this mixer — no Mac camera sharing, no OBS, no extra apps. The Mac's camera stays Cam 1; up to four phones join as Cam 2–Cam 5. Start a session, then type each slot's code on its phone (or open the slot's link there).</p>
+        <div class="btn-row" style="margin-bottom:12px; max-width:520px;">
+          <button class="btn primary small" id="wirelessStartBtn" type="button">Start wireless session</button>
+          <button class="btn small" id="wirelessEndBtn" type="button" disabled>End session</button>
+        </div>
+        <p class="wslot-status" id="wirelessSessionStatus" style="margin:0 0 12px;">No wireless session. Local cameras and recording work without one.</p>
+        <div class="wireless-list" id="wirelessList"></div>
       </section>
 
       <section class="console" id="console" aria-label="Mixer console"></section>
@@ -1412,6 +1435,7 @@
           var cam = {
             video: card.querySelector("video"),
             stream: null,
+            label: "Cam " + (idx + 1),
             thumb: card.querySelector('[data-role="thumb"]'),
             tag: card.querySelector('[data-role="tag"]'),
             sel: card.querySelector("select"),
@@ -1485,14 +1509,16 @@
     function updateCamTags() {
       cameras.forEach(function (c, i) {
         var isMain = i === mainCamIdx && !!c.stream;
+        var name = c.label || ("Cam " + (i + 1));
         c.thumb.classList.toggle("main", isMain);
-        c.tag.className = "tag" + (isMain ? " main" : "");
-        c.tag.textContent = isMain ? "Cam " + (i + 1) + " · Main" : "Cam " + (i + 1) + (c.stream ? "" : " · Off");
+        c.tag.className = "tag" + (isMain ? " main" : (c.wireless && !c.stream && wirelessSession ? " waiting" : ""));
+        c.tag.textContent = isMain ? name + " · Main" : name + (c.stream ? "" : (c.wireless && wirelessSession ? " · Waiting" : " · Off"));
       });
       var badgeText = document.getElementById("programBadgeText");
       var live = liveCams();
+      var mainName = cameras[mainCamIdx] ? (cameras[mainCamIdx].label || ("Cam " + (mainCamIdx + 1))) : "";
       badgeText.textContent = live.length
-        ? "Program · Cam " + (mainCamIdx + 1) + " · " + (programLayout === "single" ? "Single" : programLayout === "split" ? "Side-by-side" : "Picture-in-picture")
+        ? "Program · " + mainName + " · " + (programLayout === "single" ? "Single" : programLayout === "split" ? "Side-by-side" : "Picture-in-picture")
         : "Program · No camera";
     }
     function refreshCameras() {
@@ -1502,6 +1528,7 @@
         var cams = devs.filter(function (d) { return d.kind === "videoinput"; });
         var camLabels = numberedLabels(cams, "Camera");
         cameras.forEach(function (cam) {
+          if (!cam.sel) return;   // wireless slots have no device dropdown
           var cur = cam.sel.value;
           cam.sel.innerHTML = "";
           var def = document.createElement("option");
@@ -1555,19 +1582,19 @@
         drawCover(pctx, others[0].video, W / 2, 0, W / 2, H);
         pctx.fillStyle = "rgba(0,0,0,.85)";
         pctx.fillRect(W / 2 - 1, 0, 2, H);
-        camLabel("CAM " + (cameras.indexOf(main) + 1), 18, H - 18);
-        camLabel("CAM " + (cameras.indexOf(others[0]) + 1), W / 2 + 18, H - 18);
+        camLabel((main.label || ("Cam " + (cameras.indexOf(main) + 1))).toUpperCase(), 18, H - 18);
+        camLabel((others[0].label || ("Cam " + (cameras.indexOf(others[0]) + 1))).toUpperCase(), W / 2 + 18, H - 18);
       } else if (programLayout === "pip" && others.length) {
         drawCover(pctx, main.video, 0, 0, W, H);
         var pw = W * 0.26, ph = pw * 9 / 16, px = W - pw - 22, py = H - ph - 22;
         pctx.fillStyle = "#000";
         pctx.fillRect(px - 3, py - 3, pw + 6, ph + 6);
         drawCover(pctx, others[0].video, px, py, pw, ph);
-        camLabel("CAM " + (cameras.indexOf(main) + 1), 18, H - 18);
-        camLabel("CAM " + (cameras.indexOf(others[0]) + 1), px + 10, py + ph - 10);
+        camLabel((main.label || ("Cam " + (cameras.indexOf(main) + 1))).toUpperCase(), 18, H - 18);
+        camLabel((others[0].label || ("Cam " + (cameras.indexOf(others[0]) + 1))).toUpperCase(), px + 10, py + ph - 10);
       } else {
         drawCover(pctx, main.video, 0, 0, W, H);
-        camLabel("CAM " + (cameras.indexOf(main) + 1), 18, H - 18);
+        camLabel((main.label || ("Cam " + (cameras.indexOf(main) + 1))).toUpperCase(), 18, H - 18);
       }
       drawWatermark(W, H);
     }
@@ -1679,9 +1706,325 @@
       sctx.stroke();
     }
 
+    /* ---------------- Wireless cameras (phones as cameras) ----------------
+       IEC's own wireless camera system (2026-11-28): each phone opens
+       /camera.html in its browser and sends its camera into this mixer's
+       Daily room (api/_podcast-cameras.js via /api/demo-admin cam-*
+       actions). The mixer joins receive-only as room owner and slots each
+       phone's video track into one of four wireless slots (Cam 2–Cam 5;
+       the Mac's local camera stays Cam 1). Wireless slots are ordinary
+       entries in the cameras array, so the program composite and the
+       recording include them exactly like local cameras. The Daily SDK
+       loads lazily — only when a wireless session starts — so nothing
+       here can disturb the local mixer. */
+
+    var DAILY_SDK_URL = "https://unpkg.com/@daily-co/daily-js";
+    var wirelessSession = null;   // { sessionId, roomUrl } while a session is open
+    var wirelessCall = null;      // Daily call object (receive-only owner)
+    var wirelessSlots = [];       // the 4 slot objects (also in `cameras`)
+    var wirelessWaiting = {};     // participantId -> true once the "slots full" notice showed
+
+    function loadDailySdk() {
+      if (window.DailyIframe) return Promise.resolve();
+      return new Promise(function (resolve, reject) {
+        var s = document.createElement("script");
+        s.src = DAILY_SDK_URL;
+        s.onload = function () { window.DailyIframe ? resolve() : reject(new Error("sdk_missing")); };
+        s.onerror = function () { reject(new Error("sdk_load_failed")); };
+        document.head.appendChild(s);
+      });
+    }
+
+    async function camCall(action, extra) {
+      var r = await fetch("/api/demo-admin", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(Object.assign({ action: "cam-" + action }, extra || {}))
+      });
+      var data = await r.json().catch(function () { return {}; });
+      if (!r.ok || !data.ok) throw new Error(data.message || data.error || ("Request failed (" + r.status + ")"));
+      return data;
+    }
+
+    function buildWireless() {
+      var list = document.getElementById("wirelessList");
+      [2, 3, 4, 5].forEach(function (slotNum, i) {
+        var card = document.createElement("div");
+        card.className = "cam-card";
+        card.innerHTML =
+          '<div class="cam-thumb" data-role="thumb" title="Make this camera the main shot">' +
+            '<video muted playsinline autoplay></video>' +
+            '<span class="tag" data-role="tag">Cam ' + slotNum + ' · Off</span>' +
+          '</div>' +
+          '<div class="cam-ctl">' +
+            '<input type="text" data-role="name" value="Cam ' + slotNum + '" maxlength="24" aria-label="Wireless camera name">' +
+            '<div class="wslot-code" data-role="code">––––––</div>' +
+            '<span class="wslot-link" data-role="link"></span>' +
+            '<span class="wslot-status" data-role="status">Start a session to get this camera\'s code.</span>' +
+            '<div class="btn-row">' +
+              '<button class="btn small" type="button" data-role="copy" disabled>Copy link</button>' +
+              '<button class="btn small" type="button" data-role="drop" disabled>Drop</button>' +
+            '</div>' +
+            '<select data-role="move" aria-label="Move this feed to another slot" disabled></select>' +
+          '</div>';
+        list.appendChild(card);
+        var slot = {
+          video: card.querySelector("video"),
+          stream: null,
+          label: "Cam " + slotNum,
+          wireless: true,
+          slotNum: slotNum,
+          participantId: null,
+          participantName: "",
+          code: "",
+          thumb: card.querySelector('[data-role="thumb"]'),
+          tag: card.querySelector('[data-role="tag"]'),
+          nameInput: card.querySelector('[data-role="name"]'),
+          codeEl: card.querySelector('[data-role="code"]'),
+          linkEl: card.querySelector('[data-role="link"]'),
+          statusEl: card.querySelector('[data-role="status"]'),
+          copyBtn: card.querySelector('[data-role="copy"]'),
+          dropBtn: card.querySelector('[data-role="drop"]'),
+          moveSel: card.querySelector('[data-role="move"]')
+        };
+        wirelessSlots.push(slot);
+        cameras.push(slot);
+
+        slot.thumb.addEventListener("click", function () {
+          if (slot.stream) { mainCamIdx = cameras.indexOf(slot); updateCamTags(); }
+        });
+        slot.nameInput.addEventListener("input", function () {
+          slot.label = slot.nameInput.value.trim() || ("Cam " + slot.slotNum);
+          updateCamTags();
+          refreshMoveOptions();
+        });
+        slot.copyBtn.addEventListener("click", function () {
+          var link = wirelessJoinLink(slot);
+          if (!link) return;
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(link).then(function () {
+              var old = slot.copyBtn.textContent;
+              slot.copyBtn.textContent = "Copied ✓";
+              setTimeout(function () { slot.copyBtn.textContent = old; }, 2500);
+            }).catch(function () {
+              showNotice("<strong>Copy failed.</strong> The link is shown on the card — type it on the phone, or just type the code at iecincglobal.com/camera.html.");
+            });
+          } else {
+            showNotice("<strong>Copy isn't available here.</strong> The link is shown on the card — type it on the phone, or just type the code at iecincglobal.com/camera.html.");
+          }
+        });
+        slot.dropBtn.addEventListener("click", function () {
+          if (!slot.participantId) return;
+          if (wirelessCall && wirelessCall.eject) {
+            try { wirelessCall.eject(slot.participantId); } catch (e) {}
+          }
+          freeWirelessSlot(slot);
+          showNotice("<strong>" + slot.label + " dropped.</strong> The phone can rejoin with its code while the session is open.");
+        });
+        slot.moveSel.addEventListener("change", function () {
+          var targetNum = parseInt(slot.moveSel.value, 10);
+          slot.moveSel.value = "";
+          if (!targetNum) return;
+          var target = wirelessSlots.find(function (s) { return s.slotNum === targetNum; });
+          if (!target || target === slot) return;
+          swapWirelessSlots(slot, target);
+        });
+      });
+      refreshMoveOptions();
+
+      document.getElementById("wirelessStartBtn").addEventListener("click", startWirelessSession);
+      document.getElementById("wirelessEndBtn").addEventListener("click", endWirelessSession);
+    }
+
+    function wirelessJoinLink(slot) {
+      if (!slot.code) return "";
+      return location.origin + "/camera.html?code=" + encodeURIComponent(slot.code);
+    }
+
+    function refreshMoveOptions() {
+      wirelessSlots.forEach(function (slot) {
+        var cur = slot.moveSel.value;
+        slot.moveSel.innerHTML = '<option value="">Move feed to…</option>' +
+          wirelessSlots.filter(function (s) { return s !== slot; })
+            .map(function (s) { return '<option value="' + s.slotNum + '">' + (s.label || ("Cam " + s.slotNum)) + '</option>'; }).join("");
+        slot.moveSel.value = cur;
+      });
+    }
+
+    function setWirelessStatus(text, live) {
+      var el = document.getElementById("wirelessSessionStatus");
+      el.textContent = text;
+      el.className = "wslot-status" + (live ? " live" : "");
+    }
+
+    function setSlotStatus(slot, text, live) {
+      slot.statusEl.textContent = text;
+      slot.statusEl.className = "wslot-status" + (live ? " live" : "");
+    }
+
+    function freeWirelessSlot(slot) {
+      var wasMain = cameras[mainCamIdx] === slot;
+      slot.stream = null;
+      slot.video.srcObject = null;
+      slot.participantId = null;
+      slot.participantName = "";
+      slot.dropBtn.disabled = true;
+      slot.moveSel.disabled = true;
+      setSlotStatus(slot, wirelessSession ? "Waiting for phone…" : "Start a session to get this camera's code.", false);
+      if (wasMain) {
+        var next = cameras.findIndex(function (c) { return !!c.stream; });
+        mainCamIdx = next >= 0 ? next : 0;
+      }
+      updateCamTags();
+    }
+
+    function swapWirelessSlots(a, b) {
+      var keep = {
+        participantId: a.participantId, participantName: a.participantName,
+        stream: a.stream, src: a.video.srcObject
+      };
+      a.participantId = b.participantId; a.participantName = b.participantName;
+      a.stream = b.stream; a.video.srcObject = b.video.srcObject;
+      b.participantId = keep.participantId; b.participantName = keep.participantName;
+      b.stream = keep.stream; b.video.srcObject = keep.src;
+      [a, b].forEach(function (s) {
+        if (s.video.srcObject) s.video.play().catch(function () {});
+        s.dropBtn.disabled = !s.participantId;
+        s.moveSel.disabled = !s.participantId;
+        setSlotStatus(s, s.participantId ? "Live — " + (s.participantName || s.label) : "Waiting for phone…", !!s.participantId);
+      });
+      updateCamTags();
+    }
+
+    /* Attach (or refresh) a remote participant's video track on a slot. */
+    function attachWirelessTrack(slot, participant) {
+      var track = participant.tracks && participant.tracks.video && participant.tracks.video.persistentTrack;
+      if (!track) return false;
+      var current = slot.video.srcObject && slot.video.srcObject.getVideoTracks()[0];
+      if (current !== track) {
+        slot.stream = new MediaStream([track]);
+        slot.video.srcObject = slot.stream;
+        slot.video.play().catch(function () {});
+      } else {
+        slot.stream = slot.video.srcObject;
+      }
+      slot.participantId = participant.session_id;
+      slot.participantName = participant.user_name || slot.label;
+      slot.dropBtn.disabled = false;
+      slot.moveSel.disabled = false;
+      setSlotStatus(slot, "Live — " + slot.participantName, true);
+      return true;
+    }
+
+    function syncWirelessParticipant(participant) {
+      if (!participant || participant.local) return;
+      var existing = wirelessSlots.find(function (s) { return s.participantId === participant.session_id; });
+      if (existing) { attachWirelessTrack(existing, participant); updateCamTags(); return; }
+      var videoState = participant.tracks && participant.tracks.video && participant.tracks.video.state;
+      if (videoState !== "playable" && videoState !== "loading") return;
+      var free = wirelessSlots.find(function (s) { return !s.participantId; });
+      if (!free) {
+        if (!wirelessWaiting[participant.session_id]) {
+          wirelessWaiting[participant.session_id] = true;
+          showNotice("<strong>All 4 wireless camera slots are full.</strong> " + (participant.user_name || "Another phone") + " joined but has no slot — drop a camera to free one. Maximum 4 wireless cameras.");
+        }
+        return;
+      }
+      var hadLive = anyCameraLive();
+      if (attachWirelessTrack(free, participant)) {
+        if (!hadLive) mainCamIdx = cameras.indexOf(free);
+        updateCamTags();
+      }
+    }
+
+    async function startWirelessSession() {
+      var startBtn = document.getElementById("wirelessStartBtn");
+      var endBtn = document.getElementById("wirelessEndBtn");
+      startBtn.disabled = true;
+      setWirelessStatus("Starting session…", false);
+      try {
+        var data = await camCall("create");
+        wirelessSession = { sessionId: data.session.sessionId, roomUrl: data.session.roomUrl };
+        (data.slots || []).forEach(function (s) {
+          var slot = wirelessSlots.find(function (w) { return w.slotNum === s.slot; });
+          if (!slot) return;
+          slot.code = s.code;
+          slot.codeEl.textContent = s.code;
+          slot.linkEl.textContent = wirelessJoinLink(slot);
+          slot.copyBtn.disabled = false;
+          setSlotStatus(slot, "Waiting for phone…", false);
+        });
+        setWirelessStatus("Session open — connecting the mixer…", false);
+        await loadDailySdk();
+        wirelessCall = window.DailyIframe.createCallObject();
+        wirelessCall.on("participant-joined", function (ev) { syncWirelessParticipant(ev && ev.participant); });
+        wirelessCall.on("participant-updated", function (ev) { syncWirelessParticipant(ev && ev.participant); });
+        wirelessCall.on("track-started", function (ev) { syncWirelessParticipant(ev && ev.participant); });
+        wirelessCall.on("participant-left", function (ev) {
+          var p = ev && ev.participant;
+          if (!p) return;
+          delete wirelessWaiting[p.session_id];
+          var slot = wirelessSlots.find(function (s) { return s.participantId === p.session_id; });
+          if (slot) freeWirelessSlot(slot);
+        });
+        wirelessCall.on("error", function (ev) {
+          showNotice("<strong>Wireless camera connection problem:</strong> " + ((ev && ev.errorMsg) || "unknown error") + " Local cameras and recording are unaffected.");
+        });
+        await wirelessCall.join({
+          url: data.session.roomUrl,
+          token: data.ownerToken,
+          startVideoOff: true,
+          startAudioOff: true
+        });
+        /* Phones may already be in the room (rejoin after a mixer reload). */
+        var parts = wirelessCall.participants();
+        Object.keys(parts).forEach(function (k) { syncWirelessParticipant(parts[k]); });
+        setWirelessStatus("Session live — open iecincglobal.com/camera.html on each phone and type its code.", true);
+        endBtn.disabled = false;
+        updateCamTags();
+      } catch (e) {
+        var msg = (e && e.message) || "Could not start the wireless session.";
+        if (/sdk_/.test(msg)) msg = "The video library could not load. Check the connection and try again.";
+        showNotice("<strong>Wireless cameras didn't start:</strong> " + msg + " Local cameras and recording still work.");
+        setWirelessStatus("No wireless session. Local cameras and recording work without one.", false);
+        wirelessSession = null;
+        if (wirelessCall) { try { wirelessCall.destroy(); } catch (_) {} wirelessCall = null; }
+        startBtn.disabled = false;
+      }
+    }
+
+    async function endWirelessSession() {
+      var startBtn = document.getElementById("wirelessStartBtn");
+      var endBtn = document.getElementById("wirelessEndBtn");
+      endBtn.disabled = true;
+      var sessionId = wirelessSession && wirelessSession.sessionId;
+      wirelessSession = null;
+      if (wirelessCall) {
+        try { await wirelessCall.leave(); } catch (e) {}
+        try { wirelessCall.destroy(); } catch (e) {}
+        wirelessCall = null;
+      }
+      wirelessWaiting = {};
+      wirelessSlots.forEach(function (slot) {
+        slot.code = "";
+        slot.codeEl.textContent = "––––––";
+        slot.linkEl.textContent = "";
+        slot.copyBtn.disabled = true;
+        freeWirelessSlot(slot);
+      });
+      if (sessionId) {
+        try { await camCall("end", { sessionId: sessionId }); } catch (e) { /* room also expires on its own */ }
+      }
+      setWirelessStatus("No wireless session. Local cameras and recording work without one.", false);
+      startBtn.disabled = false;
+      updateCamTags();
+    }
+
     /* ---------------- Build the console ---------------- */
 
     buildCameras();
+    buildWireless();
     createVoiceChannel("CH 1", "Host", -12, { canSplit: true });
     createVoiceChannel("CH 2", "Guest", 12);
     createMusicChannel("CH 3");
