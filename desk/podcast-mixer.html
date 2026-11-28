@@ -356,6 +356,8 @@
     var master = null;           // { gain, limiter, analyserL, analyserR, splitter, dest, recDest }
     var channels = [];           // channel objects
     var takeCount = 0;
+    var masterPhonesPct = 90;    // monitor (phones) level, separate from the master fader
+    var stripMonitorBox = null;  // master-strip Monitor switch, kept in sync with the transport toggle
 
     function ensureCtx() {
       if (!AC) {
@@ -377,25 +379,28 @@
       var aR = AC.createAnalyser(); aR.fftSize = 2048;
       split.connect(aL, 0); split.connect(aR, 1);
       var recDest = AC.createMediaStreamDestination();
+      var phones = AC.createGain(); phones.gain.value = masterPhonesPct / 100;
       g.connect(lim);
       lim.connect(split);
       lim.connect(recDest);
-      master = { gain: g, limiter: lim, splitter: split, aL: aL, aR: aR, recDest: recDest, toSpeakers: null };
+      lim.connect(phones);
+      master = { gain: g, limiter: lim, splitter: split, aL: aL, aR: aR, recDest: recDest, phones: phones, toSpeakers: null };
       setMonitor(document.getElementById("monitorToggle").checked);
     }
 
     function setMonitor(on) {
       if (!master) return;
       if (on && !master.toSpeakers) {
-        master.limiter.connect(AC.destination);
+        master.phones.connect(AC.destination);
         master.toSpeakers = true;
       } else if (!on && master.toSpeakers) {
-        try { master.limiter.disconnect(AC.destination); } catch (e) {}
+        try { master.phones.disconnect(AC.destination); } catch (e) {}
         master.toSpeakers = null;
       }
     }
     document.getElementById("monitorToggle").addEventListener("change", function () {
       ensureCtx(); setMonitor(this.checked);
+      if (stripMonitorBox) stripMonitorBox.checked = this.checked;
     });
 
     function dbToLin(db) { return Math.pow(10, db / 20); }
@@ -424,19 +429,42 @@
       n.comp = AC.createDynamicsCompressor();
       n.comp.threshold.value = -18; n.comp.knee.value = 18; n.comp.ratio.value = 3;
       n.comp.attack.value = 0.004; n.comp.release.value = 0.24;
+      n.meter = AC.createAnalyser(); n.meter.fftSize = 2048;   // pre-gate tap: drives the meter + gate sidechain
       n.gate = AC.createGain();
       n.fader = AC.createGain();
       n.pan = AC.createStereoPanner ? AC.createStereoPanner() : null;
       n.analyser = AC.createAnalyser(); n.analyser.fftSize = 2048;
       n.recDest = AC.createMediaStreamDestination();
       n.trim.connect(n.hpf); n.hpf.connect(n.eqLow); n.eqLow.connect(n.eqMid);
-      n.eqMid.connect(n.eqHigh); n.eqHigh.connect(n.comp); n.comp.connect(n.gate);
+      n.eqMid.connect(n.eqHigh); n.eqHigh.connect(n.comp); n.comp.connect(n.meter); n.meter.connect(n.gate);
       n.gate.connect(n.fader);
       if (n.pan) { n.fader.connect(n.pan); n.pan.connect(n.analyser); }
       else { n.fader.connect(n.analyser); }
       n.analyser.connect(master.gain);
       n.analyser.connect(n.recDest);   // per-channel recording tap (post-fader)
       return n;
+    }
+
+    /* Control state lives on the channel so moves made before a source is
+       connected are applied when the nodes are created. */
+    function applyVoiceState(ch) {
+      if (!ch.nodes || !AC) return;
+      var n = ch.nodes, s = ch.state, t = AC.currentTime;
+      n.hpf.frequency.setTargetAtTime(s.hpf, t, 0.03);
+      n.eqLow.gain.setTargetAtTime(s.low, t, 0.03);
+      n.eqMid.gain.setTargetAtTime(s.mid, t, 0.03);
+      n.eqHigh.gain.setTargetAtTime(s.high, t, 0.03);
+      if (n.pan) n.pan.pan.setTargetAtTime(s.pan / 100, t, 0.03);
+      n.comp.ratio.setTargetAtTime(s.compOn ? 3 : 1, t, 0.03);
+      n.comp.threshold.setTargetAtTime(s.compOn ? -18 : 0, t, 0.03);
+    }
+    function applyMusicState(ch) {
+      if (!ch.nodes || !AC) return;
+      var n = ch.nodes, s = ch.state, t = AC.currentTime;
+      n.eqLow.gain.setTargetAtTime(s.low, t, 0.03);
+      n.eqMid.gain.setTargetAtTime(s.mid, t, 0.03);
+      n.eqHigh.gain.setTargetAtTime(s.high, t, 0.03);
+      if (n.pan) n.pan.pan.setTargetAtTime(s.pan / 100, t, 0.03);
     }
 
     var PRESETS = {
@@ -516,6 +544,8 @@
       var ch = {
         kind: "voice", nodes: null, stream: null, sourceNode: null, toneOsc: null,
         muted: false, solo: false, faderDb: -6, gateOn: true, gateDb: -42,
+        gateLevel: 0, gateHoldUntil: 0,
+        state: { hpf: 70, low: 0, mid: 0, high: 0, pan: defaultPan, compOn: true },
         peak: 0, peakHold: 0, clipUntil: 0, buf: null, hasSource: false,
         label: function () { return strip.querySelector(".strip-name").value || name; }
       };
@@ -527,6 +557,8 @@
       devSel.setAttribute("aria-label", "Microphone device");
       devSel.innerHTML = '<option value="">Microphone — tap Enable Mic</option>';
       srcSec.appendChild(devSel);
+      devSel.addEventListener("pointerdown", function () { refreshDevices(); });
+      devSel.addEventListener("focus", function () { refreshDevices(); });
       var srcBtns = document.createElement("div");
       srcBtns.className = "btn-row"; srcBtns.style.marginTop = "8px";
       var micBtn = document.createElement("button");
@@ -557,7 +589,7 @@
 
       micBtn.addEventListener("click", function () {
         ensureCtx();
-        if (!ch.nodes) { ch.nodes = makeNodes(); ch.buf = new Float32Array(ch.nodes.analyser.fftSize); applyFader(ch); }
+        if (!ch.nodes) { ch.nodes = makeNodes(); ch.buf = new Float32Array(ch.nodes.analyser.fftSize); applyFader(ch); applyVoiceState(ch); }
         var wantStop = !!ch.stream;
         disconnectSource();
         if (wantStop) { micBtn.textContent = "Enable Mic"; return; }
@@ -579,7 +611,18 @@
           ch.sourceNode.connect(ch.nodes.trim);
           liveTag.textContent = "Mic live"; liveTag.className = "live-tag on";
           micBtn.textContent = "Disconnect";
-          refreshDevices(devSel);
+          stream.getAudioTracks().forEach(function (t) {
+            t.onended = function () {
+              if (ch.stream !== stream) return;
+              disconnectSource();
+              micBtn.textContent = "Enable Mic";
+              showNotice("<strong>Microphone disconnected.</strong> Reconnect it, then tap Enable Mic again on that channel.");
+              refreshDevices();
+            };
+          });
+          var usedTrack = stream.getAudioTracks()[0];
+          var usedId = usedTrack && usedTrack.getSettings ? usedTrack.getSettings().deviceId : null;
+          refreshDevices().then(function () { if (usedId) devSel.value = usedId; });
         }).catch(function (err) {
           showNotice("<strong>Microphone access was blocked.</strong> Allow mic permission for this page, or use the Test Tone source — every mixer control works with it.");
         });
@@ -587,7 +630,7 @@
 
       toneBtn.addEventListener("click", function () {
         ensureCtx();
-        if (!ch.nodes) { ch.nodes = makeNodes(); ch.buf = new Float32Array(ch.nodes.analyser.fftSize); applyFader(ch); }
+        if (!ch.nodes) { ch.nodes = makeNodes(); ch.buf = new Float32Array(ch.nodes.analyser.fftSize); applyFader(ch); applyVoiceState(ch); }
         if (ch.toneOsc) { disconnectSource(); micBtn.textContent = "Enable Mic"; return; }
         disconnectSource(); micBtn.textContent = "Enable Mic";
         var osc = AC.createOscillator(); osc.type = "sine"; osc.frequency.value = 220;
@@ -619,14 +662,12 @@
       /* Processing */
       var procSec = section(body, "Processing");
       var hpfCtl = ctlRow(procSec, sliderRow("High-pass", 20, 300, 1, 70, function (v) { return v + " Hz"; }),
-        function (v) { if (ch.nodes) ch.nodes.hpf.frequency.setTargetAtTime(v, AC.currentTime, 0.03); });
+        function (v) { ch.state.hpf = v; applyVoiceState(ch); });
       var gateGrid = document.createElement("div"); gateGrid.className = "toggle-grid";
       procSec.appendChild(gateGrid);
       var gateBox = switchEl(gateGrid, "Noise gate", true, function (on) { ch.gateOn = on; });
       var compBox = switchEl(gateGrid, "Compressor", true, function (on) {
-        if (!ch.nodes) return;
-        ch.nodes.comp.ratio.setTargetAtTime(on ? 3 : 1, AC.currentTime, 0.03);
-        ch.nodes.comp.threshold.setTargetAtTime(on ? -18 : 0, AC.currentTime, 0.03);
+        ch.state.compOn = on; applyVoiceState(ch);
       });
       var gateCtl = ctlRow(procSec, sliderRow("Gate level", -70, -10, 1, -42, function (v) { return v + " dB"; }),
         function (v) { ch.gateDb = v; });
@@ -635,29 +676,28 @@
       var eqSec = section(body, "EQ");
       function eqFmt(v) { return (v > 0 ? "+" : "") + v + " dB"; }
       var lowCtl = ctlRow(eqSec, sliderRow("Low", -15, 15, 0.5, 0, eqFmt),
-        function (v) { if (ch.nodes) ch.nodes.eqLow.gain.setTargetAtTime(v, AC.currentTime, 0.03); });
+        function (v) { ch.state.low = v; applyVoiceState(ch); });
       var midCtl = ctlRow(eqSec, sliderRow("Mid", -15, 15, 0.5, 0, eqFmt),
-        function (v) { if (ch.nodes) ch.nodes.eqMid.gain.setTargetAtTime(v, AC.currentTime, 0.03); });
+        function (v) { ch.state.mid = v; applyVoiceState(ch); });
       var highCtl = ctlRow(eqSec, sliderRow("High", -15, 15, 0.5, 0, eqFmt),
-        function (v) { if (ch.nodes) ch.nodes.eqHigh.gain.setTargetAtTime(v, AC.currentTime, 0.03); });
+        function (v) { ch.state.high = v; applyVoiceState(ch); });
       var panCtl = ctlRow(eqSec, sliderRow("Pan", -100, 100, 1, defaultPan, function (v) {
           return v === 0 ? "Center" : (v < 0 ? "L" + Math.abs(v) : "R" + v);
-        }), function (v) { if (ch.nodes && ch.nodes.pan) ch.nodes.pan.pan.setTargetAtTime(v / 100, AC.currentTime, 0.03); });
+        }), function (v) { ch.state.pan = v; applyVoiceState(ch); });
 
       preSel.addEventListener("change", function () {
         var p = PRESETS[preSel.value]; if (!p) return;
         ensureCtx();
         if (!ch.nodes) { ch.nodes = makeNodes(); ch.buf = new Float32Array(ch.nodes.analyser.fftSize); applyFader(ch); }
-        hpfCtl.set(p.hpf); ch.nodes.hpf.frequency.value = p.hpf;
-        lowCtl.set(p.low); ch.nodes.eqLow.gain.value = p.low;
-        midCtl.set(p.mid); ch.nodes.eqMid.gain.value = p.mid;
-        highCtl.set(p.high); ch.nodes.eqHigh.gain.value = p.high;
+        hpfCtl.set(p.hpf); ch.state.hpf = p.hpf;
+        lowCtl.set(p.low); ch.state.low = p.low;
+        midCtl.set(p.mid); ch.state.mid = p.mid;
+        highCtl.set(p.high); ch.state.high = p.high;
         gateCtl.set(p.gateDb); ch.gateDb = p.gateDb;
         gateBox.checked = p.gate; ch.gateOn = p.gate;
-        compBox.checked = p.comp;
-        ch.nodes.comp.ratio.value = p.comp ? 3 : 1;
-        ch.nodes.comp.threshold.value = p.comp ? -18 : 0;
-        if (ch.nodes.pan) { panCtl.set(defaultPan); ch.nodes.pan.pan.value = defaultPan / 100; }
+        compBox.checked = p.comp; ch.state.compOn = p.comp;
+        panCtl.set(defaultPan); ch.state.pan = defaultPan;
+        applyVoiceState(ch);
       });
 
       buildFaderZone(body, ch);
@@ -672,6 +712,7 @@
       var liveTag = strip.querySelector('[data-role="livetag"]');
       var ch = {
         kind: "music", nodes: null, muted: false, solo: false, faderDb: -10,
+        state: { low: 0, mid: 0, high: 0, pan: 0 },
         peak: 0, peakHold: 0, clipUntil: 0, buf: null, audioEl: null, objUrl: null,
         hasSource: false, label: function () { return "Music / File"; }
       };
@@ -704,7 +745,7 @@
         ensureCtx();
         if (!ch.nodes) {
           ch.nodes = makeNodes(); ch.buf = new Float32Array(ch.nodes.analyser.fftSize);
-          ch.nodes.hpf.frequency.value = 20; applyFader(ch);
+          ch.nodes.hpf.frequency.value = 20; applyFader(ch); applyMusicState(ch);
           var src = AC.createMediaElementSource(audioEl);
           src.connect(ch.nodes.trim);
         }
@@ -725,14 +766,14 @@
       var eqSec = section(body, "EQ");
       function eqFmt(v) { return (v > 0 ? "+" : "") + v + " dB"; }
       ctlRow(eqSec, sliderRow("Low", -15, 15, 0.5, 0, eqFmt),
-        function (v) { if (ch.nodes) ch.nodes.eqLow.gain.setTargetAtTime(v, AC.currentTime, 0.03); });
+        function (v) { ch.state.low = v; applyMusicState(ch); });
       ctlRow(eqSec, sliderRow("Mid", -15, 15, 0.5, 0, eqFmt),
-        function (v) { if (ch.nodes) ch.nodes.eqMid.gain.setTargetAtTime(v, AC.currentTime, 0.03); });
+        function (v) { ch.state.mid = v; applyMusicState(ch); });
       ctlRow(eqSec, sliderRow("High", -15, 15, 0.5, 0, eqFmt),
-        function (v) { if (ch.nodes) ch.nodes.eqHigh.gain.setTargetAtTime(v, AC.currentTime, 0.03); });
+        function (v) { ch.state.high = v; applyMusicState(ch); });
       ctlRow(eqSec, sliderRow("Pan", -100, 100, 1, 0, function (v) {
           return v === 0 ? "Center" : (v < 0 ? "L" + Math.abs(v) : "R" + v);
-        }), function (v) { if (ch.nodes && ch.nodes.pan) ch.nodes.pan.pan.setTargetAtTime(v / 100, AC.currentTime, 0.03); });
+        }), function (v) { ch.state.pan = v; applyMusicState(ch); });
 
       buildFaderZone(body, ch);
       return ch;
@@ -802,7 +843,7 @@
 
       var sec = section(body, "Output");
       ctlRow(sec, sliderRow("Phones", 0, 100, 1, 90, function (v) { return v + "%"; }),
-        function (v) { if (master) master.gain.gain.setTargetAtTime(v / 100, AC.currentTime, 0.03); });
+        function (v) { masterPhonesPct = v; if (master) master.phones.gain.setTargetAtTime(v / 100, AC.currentTime, 0.03); });
       var limGrid = document.createElement("div"); limGrid.className = "toggle-grid";
       sec.appendChild(limGrid);
       switchEl(limGrid, "Limiter", true, function (on) {
@@ -810,7 +851,7 @@
         master.limiter.ratio.setTargetAtTime(on ? 20 : 1, AC.currentTime, 0.03);
         master.limiter.threshold.setTargetAtTime(on ? -3 : 0, AC.currentTime, 0.03);
       });
-      switchEl(limGrid, "Monitor", false, function (on) {
+      stripMonitorBox = switchEl(limGrid, "Monitor", false, function (on) {
         ensureCtx();
         document.getElementById("monitorToggle").checked = on;
         setMonitor(on);
@@ -850,9 +891,9 @@
 
     /* ---------------- Device list ---------------- */
 
-    function refreshDevices(preferSel) {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
-      navigator.mediaDevices.enumerateDevices().then(function (devs) {
+    function refreshDevices() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return Promise.resolve();
+      return navigator.mediaDevices.enumerateDevices().then(function (devs) {
         var mics = devs.filter(function (d) { return d.kind === "audioinput"; });
         document.querySelectorAll(".strip select").forEach(function (sel) {
           if (sel.getAttribute("aria-label") !== "Microphone device") return;
@@ -1028,7 +1069,7 @@
       addRec("master", "Master mix", "audio", master.recDest.stream);
       /* one track per live channel */
       channels.forEach(function (ch, i) {
-        if (ch.nodes && ch.hasSource) addRec("ch" + i, ch.label(), "audio", ch.nodes.recDest.stream);
+        if (ch.kind === "voice" && ch.nodes && ch.hasSource) addRec("ch" + i, ch.label(), "audio", ch.nodes.recDest.stream);
       });
       if (failed || !recSet.length) {
         recSet = null;
@@ -1169,6 +1210,8 @@
             btn: card.querySelector("button")
           };
           cameras.push(cam);
+          cam.sel.addEventListener("pointerdown", function () { refreshCameras(); });
+          cam.sel.addEventListener("focus", function () { refreshCameras(); });
           cam.thumb.addEventListener("click", function () {
             if (cam.stream) { mainCamIdx = idx; updateCamTags(); }
           });
@@ -1187,7 +1230,18 @@
               cam.btn.textContent = "Disconnect";
               if (!anyCameraLiveBefore(cam)) mainCamIdx = idx;
               updateCamTags();
-              refreshCameras();
+              stream.getVideoTracks().forEach(function (t) {
+                t.onended = function () {
+                  if (cam.stream !== stream) return;
+                  stopCam(cam);
+                  cam.btn.textContent = "Enable Cam " + (idx + 1);
+                  showNotice("<strong>Camera disconnected.</strong> Reconnect it, then tap Enable Cam again.");
+                  refreshCameras();
+                };
+              });
+              var usedTrack = stream.getVideoTracks()[0];
+              var usedId = usedTrack && usedTrack.getSettings ? usedTrack.getSettings().deviceId : null;
+              refreshCameras().then(function () { if (usedId) cam.sel.value = usedId; });
               refreshDevices();
             }).catch(function () {
               showNotice("<strong>Camera access was blocked.</strong> Allow camera permission for this page, pick a different camera, or keep recording audio-only — the mixer and multitrack recording still work.");
@@ -1226,8 +1280,8 @@
         : "Program · No camera";
     }
     function refreshCameras() {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
-      navigator.mediaDevices.enumerateDevices().then(function (devs) {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return Promise.resolve();
+      return navigator.mediaDevices.enumerateDevices().then(function (devs) {
         var cams = devs.filter(function (d) { return d.kind === "videoinput"; });
         cameras.forEach(function (cam) {
           var cur = cam.sel.value;
@@ -1320,6 +1374,7 @@
     var scope = document.getElementById("scope");
     var sctx = scope.getContext("2d");
     var scopeData = new Float32Array(2048);
+    var masterBufL = null, masterBufR = null;
 
     function drawMeter(canvas, level, peakHold, clipHot) {
       if (!canvas) return;
@@ -1361,24 +1416,25 @@
       var now = performance.now();
       channels.forEach(function (ch) {
         if (!ch.nodes || !ch.buf) { drawMeter(ch.meterCanvas, 0, 0, false); return; }
-        var m = measure(ch.nodes.analyser, ch.buf);
+        /* Meter + gate sidechain read the PRE-GATE tap: the gate always hears
+           the input, so it can reopen. A post-gate tap locks the gate shut. */
+        var m = measure(ch.nodes.meter, ch.buf);
         if (m.peak > ch.peakHold) ch.peakHold = m.peak;
         else ch.peakHold *= 0.995;
         if (m.peak >= 0.99) ch.clipUntil = now + 1200;
         drawMeter(ch.meterCanvas, m.peak, ch.peakHold, now < ch.clipUntil);
         if (ch.clipEl) ch.clipEl.className = "clip" + (now < ch.clipUntil ? " hot" : "");
-        /* noise gate: driven by post-EQ level */
         if (ch.kind === "voice") {
           var thresh = dbToLin(ch.gateDb);
-          var target = (ch.gateOn && m.rms < thresh) ? 0 : 1;
-          var cur = ch.nodes.gate.gain.value;
-          var next = cur + (target - cur) * (target > cur ? 0.5 : 0.12);
-          ch.nodes.gate.gain.setTargetAtTime(next, AC.currentTime, 0.015);
+          if (!ch.gateOn || m.rms >= thresh) ch.gateHoldUntil = now + 150;
+          var open = now < ch.gateHoldUntil;
+          ch.gateLevel += ((open ? 1 : 0) - ch.gateLevel) * (open ? 0.45 : 0.07);
+          ch.nodes.gate.gain.value = ch.gateLevel;
         }
       });
       /* master stereo */
-      var lb = new Float32Array(master.aL.fftSize);
-      var rb = new Float32Array(master.aR.fftSize);
+      if (!masterBufL) { masterBufL = new Float32Array(master.aL.fftSize); masterBufR = new Float32Array(master.aR.fftSize); }
+      var lb = masterBufL, rb = masterBufR;
       var ml = measure(master.aL, lb), mr = measure(master.aR, rb);
       if (ml.peak > masterCh.peakHoldL) masterCh.peakHoldL = ml.peak; else masterCh.peakHoldL *= 0.995;
       if (mr.peak > masterCh.peakHoldR) masterCh.peakHoldR = mr.peak; else masterCh.peakHoldR *= 0.995;
@@ -1413,6 +1469,8 @@
     createMusicChannel("CH 3");
     createMasterStrip();
     updateCamTags();
+    refreshDevices();
+    refreshCameras();
     requestAnimationFrame(tick);
     </script>
   </body>
