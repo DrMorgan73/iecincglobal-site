@@ -367,6 +367,20 @@ try {
   check("CH1 meter moves with mic signal (gate passes bursts)", m1.litCount >= 4, JSON.stringify(m1));
   check("CH2 meter moves with mic signal", m2.litCount >= 4, JSON.stringify(m2));
 
+  // ===== 4b. Live device switch: changing the dropdown on a live channel
+  // must re-acquire the stream from the newly selected device =====
+  await setSelect(`document.querySelectorAll(".strip")[0].querySelector('select[aria-label="Microphone device"]')`, "mic-b");
+  await sleep(900);
+  const tagAfterSwitch = await ev(() => document.querySelectorAll(".strip")[0].querySelector('[data-role="livetag"]').textContent);
+  const takeSwitch = await recordTake(3);
+  const hostSwitch = await analyzeAudio(takeSwitch.find(t => t.label === "Host").url);
+  check("live switch CH1 mic-a→mic-b: stream follows dropdown (520Hz on Host)", tagAfterSwitch === "Mic live" && hostSwitch.g520 > 0.01 && hostSwitch.g520 > hostSwitch.g300 * 4, `tag=${tagAfterSwitch} g300=${hostSwitch.g300.toFixed(3)} g520=${hostSwitch.g520.toFixed(3)}`);
+  await setSelect(`document.querySelectorAll(".strip")[0].querySelector('select[aria-label="Microphone device"]')`, "mic-a");
+  await sleep(900);
+  const takeSwitchBack = await recordTake(3);
+  const hostBack = await analyzeAudio(takeSwitchBack.find(t => t.label === "Host").url);
+  check("live switch back CH1 mic-b→mic-a: 300Hz restored on Host", hostBack.g300 > 0.01 && hostBack.g300 > hostBack.g520 * 4, `g300=${hostBack.g300.toFixed(3)} g520=${hostBack.g520.toFixed(3)}`);
+
   // ===== 5. Full record: video + master + per-mic tracks =====
   await clickText("Side-by-Side");
   const take1 = await recordTake(4);
@@ -539,6 +553,60 @@ try {
   const denyNotice = await page2.evaluate(() => document.getElementById("notice").textContent);
   check("permission denied: honest notice, no crash", /blocked/i.test(denyNotice) && errs2.length === 0, denyNotice.slice(0, 80));
   await page2.close();
+
+  // ===== 17. Duplicate device labels (two identical FIFINEs): numbered
+  // "— Microphone One/Two", unique labels unchanged, deviceId binding intact =====
+  const page3 = await browser.newPage();
+  const errs3 = [];
+  page3.on("pageerror", (e) => errs3.push(e.message));
+  await page3.evaluateOnNewDocument(INJECT);
+  await page3.evaluateOnNewDocument(() => {
+    navigator.mediaDevices.enumerateDevices = async () => [
+      { deviceId: "mic-a", kind: "audioinput", label: "USB PnP Audio Device", groupId: "g1" },
+      { deviceId: "mic-b", kind: "audioinput", label: "USB PnP Audio Device", groupId: "g2" },
+      { deviceId: "cam-a", kind: "videoinput", label: "USB Camera", groupId: "g3" },
+      { deviceId: "cam-b", kind: "videoinput", label: "USB Camera", groupId: "g4" },
+      { deviceId: "cam-c", kind: "videoinput", label: "Synthetic Cam C (blue)", groupId: "g5" },
+    ];
+  });
+  await page3.goto("http://127.0.0.1:8931/desk/podcast-mixer.html", { waitUntil: "networkidle0" });
+  await sleep(600);
+  const dupMicOpts = await page3.evaluate(() => [...document.querySelectorAll(".strip select")].filter(s => s.getAttribute("aria-label") === "Microphone device").map(s => [...s.options].map(o => ({ v: o.value, t: o.textContent }))));
+  check("duplicate mic labels numbered Microphone One/Two in enumeration order", dupMicOpts[0].length === 3 && dupMicOpts[0][1].t === "USB PnP Audio Device — Microphone One" && dupMicOpts[0][2].t === "USB PnP Audio Device — Microphone Two" && dupMicOpts[0][1].v === "mic-a" && dupMicOpts[0][2].v === "mic-b", JSON.stringify(dupMicOpts[0]));
+  const dupCamOpts = await page3.evaluate(() => [...document.querySelectorAll(".cam-card select")].map(s => [...s.options].map(o => o.textContent)));
+  check("duplicate cam labels numbered Camera One/Two; unique label unchanged", dupCamOpts[0].includes("USB Camera — Camera One") && dupCamOpts[0].includes("USB Camera — Camera Two") && dupCamOpts[0].includes("Synthetic Cam C (blue)"), JSON.stringify(dupCamOpts[0]));
+  // Bind by deviceId: CH1 -> mic-b (520Hz), CH2 -> mic-a (300Hz); per-mic
+  // tracks prove each numbered entry still maps to its own device.
+  await page3.evaluate(() => {
+    const s1 = document.querySelectorAll(".strip")[0].querySelector('select[aria-label="Microphone device"]');
+    s1.value = "mic-b"; s1.dispatchEvent(new Event("change", { bubbles: true }));
+    const s2 = document.querySelectorAll(".strip")[1].querySelector('select[aria-label="Microphone device"]');
+    s2.value = "mic-a"; s2.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await sleep(200);
+  await page3.evaluate(() => {
+    [...document.querySelectorAll(".strip")[0].querySelectorAll("button")].find(b => b.textContent.includes("Enable Mic")).click();
+    [...document.querySelectorAll(".strip")[1].querySelectorAll("button")].find(b => b.textContent.includes("Enable Mic")).click();
+  });
+  await sleep(600);
+  await page3.evaluate(() => document.getElementById("recBtn").click());
+  await sleep(3000);
+  await page3.evaluate(() => document.getElementById("recBtn").click());
+  for (let i = 0; i < 40; i++) { if (await page3.evaluate(() => document.querySelectorAll("#takes .take-group").length) > 0) break; await sleep(300); }
+  const dupTakes = await page3.evaluate(() => {
+    const g = document.querySelectorAll("#takes .take-group");
+    const last = g[g.length - 1];
+    return [...last.querySelectorAll(".take")].map(r => ({ label: r.querySelector(".meta b").textContent, url: r.querySelector("a").href }));
+  });
+  const dupAnalyze = async (url) => page3.evaluate(async (u) => {
+    const buf = await window.__probe.decode(u);
+    const P = window.__probe;
+    return { g300: P.goertzel(buf, 300), g520: P.goertzel(buf, 520) };
+  }, url);
+  const dupHost = await dupAnalyze(dupTakes.find(t => t.label === "Host").url);
+  const dupGuest = await dupAnalyze(dupTakes.find(t => t.label === "Guest").url);
+  check("numbered entries bind right deviceId: Host=mic-b 520Hz, Guest=mic-a 300Hz", dupHost.g520 > 0.01 && dupHost.g520 > dupHost.g300 * 4 && dupGuest.g300 > 0.01 && dupGuest.g300 > dupGuest.g520 * 4 && errs3.length === 0, `host g300=${dupHost.g300.toFixed(3)} g520=${dupHost.g520.toFixed(3)} | guest g300=${dupGuest.g300.toFixed(3)} g520=${dupGuest.g520.toFixed(3)} errs=${errs3.length}`);
+  await page3.close();
 
   check("no console/page errors across full run", consoleErrors.length === 0, consoleErrors.slice(0, 3).join(" | "));
 } catch (err) {

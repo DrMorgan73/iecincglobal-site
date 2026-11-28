@@ -587,12 +587,14 @@
       }
       ch.disconnectSource = disconnectSource;
 
-      micBtn.addEventListener("click", function () {
+      /* Connect (or re-connect) this channel to the device currently picked
+         in the dropdown. A dropdown change on a live channel calls this
+         directly so the stream always follows the selected device. */
+      function connectMic() {
         ensureCtx();
         if (!ch.nodes) { ch.nodes = makeNodes(); ch.buf = new Float32Array(ch.nodes.analyser.fftSize); applyFader(ch); applyVoiceState(ch); }
-        var wantStop = !!ch.stream;
         disconnectSource();
-        if (wantStop) { micBtn.textContent = "Enable Mic"; return; }
+        micBtn.textContent = "Enable Mic";
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
           showNotice("<strong>Microphone isn't available in this browser view.</strong> The Test Tone source still drives every control on the channel.");
           return;
@@ -626,6 +628,11 @@
         }).catch(function (err) {
           showNotice("<strong>Microphone access was blocked.</strong> Allow mic permission for this page, or use the Test Tone source — every mixer control works with it.");
         });
+      }
+
+      micBtn.addEventListener("click", function () {
+        if (ch.stream) { disconnectSource(); micBtn.textContent = "Enable Mic"; return; }
+        connectMic();
       });
 
       toneBtn.addEventListener("click", function () {
@@ -648,7 +655,7 @@
       });
 
       devSel.addEventListener("change", function () {
-        if (ch.stream) { micBtn.click(); micBtn.click(); }
+        if (ch.stream) connectMic();
       });
 
       /* Preset */
@@ -891,10 +898,33 @@
 
     /* ---------------- Device list ---------------- */
 
+    /* Two identical devices (e.g. a pair of FIFINE T669s) enumerate with the
+       same label ("USB PnP Audio Device"), which makes the dropdowns
+       indistinguishable. When a label repeats, suffix each copy in
+       enumeration order: "USB PnP Audio Device — Microphone One", "— Microphone
+       Two", ... Unique labels are shown unchanged. Selection is always by
+       deviceId; only the displayed text changes. */
+    var NUM_WORDS = ["One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten"];
+    function numberedLabels(devs, kindWord) {
+      var counts = {};
+      devs.forEach(function (d) { if (d.label) counts[d.label] = (counts[d.label] || 0) + 1; });
+      var seen = {};
+      return devs.map(function (d, i) {
+        if (!d.label) return kindWord + " " + (i + 1);
+        if (counts[d.label] > 1) {
+          seen[d.label] = (seen[d.label] || 0) + 1;
+          var n = seen[d.label];
+          return d.label + " — " + kindWord + " " + (NUM_WORDS[n - 1] || n);
+        }
+        return d.label;
+      });
+    }
+
     function refreshDevices() {
       if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return Promise.resolve();
       return navigator.mediaDevices.enumerateDevices().then(function (devs) {
         var mics = devs.filter(function (d) { return d.kind === "audioinput"; });
+        var micLabels = numberedLabels(mics, "Microphone");
         document.querySelectorAll(".strip select").forEach(function (sel) {
           if (sel.getAttribute("aria-label") !== "Microphone device") return;
           var cur = sel.value;
@@ -905,7 +935,7 @@
           mics.forEach(function (d, i) {
             var o = document.createElement("option");
             o.value = d.deviceId;
-            o.textContent = d.label || ("Microphone " + (i + 1));
+            o.textContent = micLabels[i];
             sel.appendChild(o);
           });
           if (cur) sel.value = cur;
@@ -1215,8 +1245,12 @@
           cam.thumb.addEventListener("click", function () {
             if (cam.stream) { mainCamIdx = idx; updateCamTags(); }
           });
-          cam.btn.addEventListener("click", function () {
-            if (cam.stream) { stopCam(cam); cam.btn.textContent = "Enable Cam " + (idx + 1); return; }
+          /* Connect (or re-connect) this slot to the camera currently picked
+             in the dropdown. A dropdown change on a live slot calls this
+             directly so the stream always follows the selected device. */
+          function connectCam() {
+            stopCam(cam);
+            cam.btn.textContent = "Enable Cam " + (idx + 1);
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
               showNotice("<strong>Cameras aren't available in this browser view.</strong> Open this page in Chrome or Safari on macOS to use the video switcher.");
               return;
@@ -1246,9 +1280,13 @@
             }).catch(function () {
               showNotice("<strong>Camera access was blocked.</strong> Allow camera permission for this page, pick a different camera, or keep recording audio-only — the mixer and multitrack recording still work.");
             });
+          }
+          cam.btn.addEventListener("click", function () {
+            if (cam.stream) { stopCam(cam); cam.btn.textContent = "Enable Cam " + (idx + 1); return; }
+            connectCam();
           });
           cam.sel.addEventListener("change", function () {
-            if (cam.stream) { cam.btn.click(); cam.btn.click(); }
+            if (cam.stream) connectCam();
           });
         })(i);
       }
@@ -1283,6 +1321,7 @@
       if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return Promise.resolve();
       return navigator.mediaDevices.enumerateDevices().then(function (devs) {
         var cams = devs.filter(function (d) { return d.kind === "videoinput"; });
+        var camLabels = numberedLabels(cams, "Camera");
         cameras.forEach(function (cam) {
           var cur = cam.sel.value;
           cam.sel.innerHTML = "";
@@ -1292,7 +1331,7 @@
           cams.forEach(function (d, i) {
             var o = document.createElement("option");
             o.value = d.deviceId;
-            o.textContent = d.label || ("Camera " + (i + 1));
+            o.textContent = camLabels[i];
             cam.sel.appendChild(o);
           });
           if (cur) cam.sel.value = cur;
