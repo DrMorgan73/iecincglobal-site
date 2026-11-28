@@ -317,7 +317,7 @@
         <div class="video-grid">
           <div>
             <div class="program-wrap">
-              <canvas id="program" width="1280" height="720" aria-label="Program monitor showing the selected camera layout"></canvas>
+              <canvas id="program" width="1920" height="1080" aria-label="Program monitor showing the selected camera layout"></canvas>
               <span class="program-badge" id="programBadge"><span class="dot"></span><span id="programBadgeText">Program · No camera</span></span>
             </div>
             <div class="layout-row" role="group" aria-label="Program layout">
@@ -1257,16 +1257,24 @@
     var recStateEl = document.getElementById("recState");
 
     function mimePick(kind) {
+      /* Video: H.264 first (hardware-encoded on Macs, universal
+         playback), then VP8 — both far cheaper to encode at 1080p than
+         VP9 in software, which can starve the audio graph on weaker
+         machines. VP9 stays as a late fallback. */
       var opts = kind === "video"
-        ? ["video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm", "video/mp4"]
+        ? ["video/mp4", "video/webm;codecs=vp8,opus", "video/webm", "video/webm;codecs=vp9,opus"]
         : ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg"];
       for (var i = 0; i < opts.length; i++) if (window.MediaRecorder && MediaRecorder.isTypeSupported(opts[i])) return opts[i];
       return "";
     }
     function makeRecorder(stream, kind) {
       var mime = mimePick(kind);
-      var rec = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
-      return rec;
+      var opts = {};
+      if (mime) opts.mimeType = mime;
+      /* HD program recordings: give the 1080p canvas a real video
+         bitrate instead of the browser's low default. */
+      if (kind === "video") { opts.videoBitsPerSecond = 6000000; opts.audioBitsPerSecond = 192000; }
+      return new MediaRecorder(stream, opts);
     }
 
     recBtn.addEventListener("click", function () {
@@ -1430,6 +1438,7 @@
             '<div class="cam-ctl">' +
               '<select aria-label="Camera device"><option value="">Camera — tap Enable Cam</option></select>' +
               '<button class="btn primary small" type="button">Enable Cam ' + (idx + 1) + '</button>' +
+              '<span class="wslot-status" data-role="res"></span>' +
             '</div>';
           list.appendChild(card);
           var cam = {
@@ -1439,7 +1448,8 @@
             thumb: card.querySelector('[data-role="thumb"]'),
             tag: card.querySelector('[data-role="tag"]'),
             sel: card.querySelector("select"),
-            btn: card.querySelector("button")
+            btn: card.querySelector("button"),
+            resEl: card.querySelector('[data-role="res"]')
           };
           cameras.push(cam);
           cam.sel.addEventListener("pointerdown", function () { refreshCameras(); });
@@ -1457,9 +1467,21 @@
               showNotice("<strong>Cameras aren't available in this browser view.</strong> Open this page in Chrome or Safari on macOS to use the video switcher.");
               return;
             }
-            var constraints = { video: { width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false };
-            if (cam.sel.value) constraints.video.deviceId = { exact: cam.sel.value };
-            navigator.mediaDevices.getUserMedia(constraints).then(function (stream) {
+            /* HD always (DrMorgan, 2026-11-28): ask for 1080p, never
+               accept below 720p. If the camera can't do 1080p, retry at
+               720p; a camera that can't reach 720p at all is refused
+               with an honest notice instead of recording SD quietly. */
+            function camConstraints(level) {
+              var video = level === 0
+                ? { width: { ideal: 1920 }, height: { min: 720, ideal: 1080 }, frameRate: { ideal: 30 } }
+                : { width: { ideal: 1280 }, height: { min: 720, ideal: 720 }, frameRate: { ideal: 30 } };
+              if (cam.sel.value) video.deviceId = { exact: cam.sel.value };
+              return { video: video, audio: false };
+            }
+            function blocked() {
+              showNotice("<strong>Camera access was blocked, or the camera can't deliver HD (720p minimum).</strong> Allow camera permission for this page, pick a different camera, or keep recording audio-only — the mixer and multitrack recording still work.");
+            }
+            function onStream(stream) {
               cam.stream = stream;
               cam.video.srcObject = stream;
               cam.video.play().catch(function () {});
@@ -1479,8 +1501,15 @@
               var usedId = usedTrack && usedTrack.getSettings ? usedTrack.getSettings().deviceId : null;
               refreshCameras().then(function () { if (usedId) cam.sel.value = usedId; });
               refreshDevices();
-            }).catch(function () {
-              showNotice("<strong>Camera access was blocked.</strong> Allow camera permission for this page, pick a different camera, or keep recording audio-only — the mixer and multitrack recording still work.");
+              refreshResLabels();
+            }
+            navigator.mediaDevices.getUserMedia(camConstraints(0)).then(onStream).catch(function (err) {
+              if (err && err.name === "OverconstrainedError") {
+                /* This camera can't do 1080p — retry at 720p (still HD). */
+                navigator.mediaDevices.getUserMedia(camConstraints(1)).then(onStream).catch(blocked);
+                return;
+              }
+              blocked();
             });
           }
           cam.btn.addEventListener("click", function () {
@@ -1505,6 +1534,28 @@
         mainCamIdx = next >= 0 ? next : 0;
       }
       updateCamTags();
+    }
+    /* Actual delivered resolution per camera, read from the live track
+       (falling back to the video element's frame size). Shown on every
+       slot so HD is visible, never just claimed: "1920×1080 · HD",
+       "1280×720 · HD", or the real numbers with "· below HD". */
+    function camResolution(cam) {
+      var w = 0, h = 0;
+      var track = cam.stream && cam.stream.getVideoTracks ? cam.stream.getVideoTracks()[0] : null;
+      if (track && track.getSettings) {
+        var s = track.getSettings();
+        w = s.width || 0; h = s.height || 0;
+      }
+      if (!w && cam.video) { w = cam.video.videoWidth || 0; h = cam.video.videoHeight || 0; }
+      return { w: w, h: h };
+    }
+    function refreshResLabels() {
+      cameras.forEach(function (c) {
+        if (!c.resEl) return;
+        if (!c.stream) { c.resEl.textContent = ""; return; }
+        var r = camResolution(c);
+        c.resEl.textContent = r.w ? (r.w + "×" + r.h + (r.h >= 720 ? " · HD" : " · below HD")) : "";
+      });
     }
     function updateCamTags() {
       cameras.forEach(function (c, i) {
@@ -1566,12 +1617,12 @@
       pctx.fillRect(0, 0, W, H);
       if (!live.length) {
         pctx.fillStyle = "#3d3a33";
-        pctx.font = "600 44px 'Barlow Condensed', sans-serif";
+        pctx.font = "600 64px 'Barlow Condensed', sans-serif";
         pctx.textAlign = "center";
-        pctx.fillText("NO CAMERA CONNECTED", W / 2, H / 2 - 8);
-        pctx.font = "500 26px 'Barlow', sans-serif";
+        pctx.fillText("NO CAMERA CONNECTED", W / 2, H / 2 - 10);
+        pctx.font = "500 36px 'Barlow', sans-serif";
         pctx.fillStyle = "#2c2a25";
-        pctx.fillText("Enable a camera to start the program feed — audio recording works without one", W / 2, H / 2 + 34);
+        pctx.fillText("Enable a camera to start the program feed — audio recording works without one", W / 2, H / 2 + 48);
         drawWatermark(W, H);
         return;
       }
@@ -1599,25 +1650,27 @@
       drawWatermark(W, H);
     }
     function camLabel(text, x, y) {
-      pctx.font = "700 22px 'Barlow Condensed', sans-serif";
+      pctx.font = "700 30px 'Barlow Condensed', sans-serif";
       pctx.textAlign = "left";
-      var w = pctx.measureText(text).width + 18;
+      var w = pctx.measureText(text).width + 24;
       pctx.fillStyle = "rgba(0,0,0,.55)";
-      pctx.fillRect(x - 6, y - 24, w, 32);
+      pctx.fillRect(x - 8, y - 33, w, 44);
       pctx.fillStyle = "#fff";
-      pctx.fillText(text, x + 3, y);
+      pctx.fillText(text, x + 4, y);
     }
     function drawWatermark(W, H) {
-      pctx.font = "700 20px 'Barlow Condensed', sans-serif";
+      pctx.font = "700 28px 'Barlow Condensed', sans-serif";
       pctx.textAlign = "right";
       pctx.fillStyle = "rgba(255,255,255,.28)";
-      pctx.fillText("IEC", W - 16, 30);
+      pctx.fillText("IEC", W - 22, 42);
     }
 
     /* ---------------- Meters + scope ---------------- */
 
     var scope = document.getElementById("scope");
     var sctx = scope.getContext("2d");
+    /* Cached once — getComputedStyle every frame forces style recalc. */
+    var scopeAccent = getComputedStyle(document.documentElement).getPropertyValue("--accent") || "#c24e12";
     var scopeData = new Float32Array(2048);
     var masterBufL = null, masterBufR = null;
 
@@ -1654,9 +1707,16 @@
       return { peak: peak, rms: Math.sqrt(sum / buf.length) };
     }
     var scopeBuf = [];
+    var tickCount = 0;
+    var lastDraw = 0;
     function tick() {
       requestAnimationFrame(tick);
-      drawProgram();
+      /* The program canvas is captured at 30fps — drawing it at the
+         display's 60fps wastes half the work. Throttle the 1080p
+         composite to ~30fps; meters/scope still run every frame. */
+      var drawNow = performance.now();
+      if (drawNow - lastDraw >= 33) { drawProgram(); lastDraw = drawNow; }
+      if ((++tickCount % 30) === 0) refreshResLabels();
       if (!AC || !master) return;
       var now = performance.now();
       channels.forEach(function (ch) {
@@ -1696,7 +1756,7 @@
       sctx.clearRect(0, 0, W, H);
       sctx.strokeStyle = "rgba(127,127,127,.35)";
       sctx.beginPath(); sctx.moveTo(0, H / 2); sctx.lineTo(W, H / 2); sctx.stroke();
-      sctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--accent") || "#c24e12";
+      sctx.strokeStyle = scopeAccent;
       sctx.lineWidth = 1.6;
       sctx.beginPath();
       scopeBuf.forEach(function (v, x) {
@@ -1762,6 +1822,7 @@
             '<div class="wslot-code" data-role="code">––––––</div>' +
             '<span class="wslot-link" data-role="link"></span>' +
             '<span class="wslot-status" data-role="status">Start a session to get this camera\'s code.</span>' +
+            '<span class="wslot-status" data-role="res"></span>' +
             '<div class="btn-row">' +
               '<button class="btn small" type="button" data-role="copy" disabled>Copy link</button>' +
               '<button class="btn small" type="button" data-role="drop" disabled>Drop</button>' +
@@ -1784,6 +1845,7 @@
           codeEl: card.querySelector('[data-role="code"]'),
           linkEl: card.querySelector('[data-role="link"]'),
           statusEl: card.querySelector('[data-role="status"]'),
+          resEl: card.querySelector('[data-role="res"]'),
           copyBtn: card.querySelector('[data-role="copy"]'),
           dropBtn: card.querySelector('[data-role="drop"]'),
           moveSel: card.querySelector('[data-role="move"]')
@@ -1914,7 +1976,18 @@
       slot.dropBtn.disabled = false;
       slot.moveSel.disabled = false;
       setSlotStatus(slot, "Live — " + slot.participantName, true);
+      refreshResLabels();
       return true;
+    }
+
+    /* Ask Daily for the highest simulcast layer from every phone, so
+       the mixer receives HD even though its preview thumbs are small.
+       Guarded: older SDK builds without updateReceiveSettings just
+       keep Daily's defaults. The slot's resolution line always shows
+       what actually arrived. */
+    function preferHdLayers() {
+      if (!wirelessCall || !wirelessCall.updateReceiveSettings) return;
+      try { wirelessCall.updateReceiveSettings({ "*": { video: { layer: 2 } } }); } catch (e) {}
     }
 
     function syncWirelessParticipant(participant) {
@@ -1958,7 +2031,7 @@
         setWirelessStatus("Session open — connecting the mixer…", false);
         await loadDailySdk();
         wirelessCall = window.DailyIframe.createCallObject();
-        wirelessCall.on("participant-joined", function (ev) { syncWirelessParticipant(ev && ev.participant); });
+        wirelessCall.on("participant-joined", function (ev) { preferHdLayers(); syncWirelessParticipant(ev && ev.participant); });
         wirelessCall.on("participant-updated", function (ev) { syncWirelessParticipant(ev && ev.participant); });
         wirelessCall.on("track-started", function (ev) { syncWirelessParticipant(ev && ev.participant); });
         wirelessCall.on("participant-left", function (ev) {
@@ -1977,6 +2050,7 @@
           startVideoOff: true,
           startAudioOff: true
         });
+        preferHdLayers();
         /* Phones may already be in the room (rejoin after a mixer reload). */
         var parts = wirelessCall.participants();
         Object.keys(parts).forEach(function (k) { syncWirelessParticipant(parts[k]); });

@@ -142,6 +142,7 @@ const INJECT = () => {
     return s;
   }
   navigator.mediaDevices.getUserMedia = async (constraints) => {
+    synth.lastConstraints = constraints;
     if (window.__denyMedia) {
       const e = new Error("Permission denied"); e.name = "NotAllowedError"; throw e;
     }
@@ -365,6 +366,14 @@ try {
   }
   const camStates = await ev(() => [...document.querySelectorAll("#camList .cam-card video")].map(v => ({ has: !!v.srcObject, w: v.videoWidth, paused: v.paused })));
   check("all 3 cameras live with video frames", camStates.every(c => c.has && c.w > 0), JSON.stringify(camStates));
+  const hdState = await ev(() => ({
+    canvas: [document.getElementById("program").width, document.getElementById("program").height],
+    constraints: window.__synth.lastConstraints && window.__synth.lastConstraints.video,
+    res: [...document.querySelectorAll("#camList .cam-card")].map(c => c.querySelector('[data-role="res"]').textContent),
+  }));
+  check("HD: program canvas is 1920x1080", eq(hdState.canvas, [1920, 1080]), JSON.stringify(hdState.canvas));
+  check("HD: local cameras request 1080p ideal with 720p floor", hdState.constraints && hdState.constraints.width.ideal === 1920 && hdState.constraints.height.ideal === 1080 && hdState.constraints.height.min === 720, JSON.stringify(hdState.constraints));
+  check("HD: slot shows actual resolution honestly (synthetic 640x360 = below HD)", hdState.res.every(t => t === "640×360 · below HD"), JSON.stringify(hdState.res));
   await sleep(400);
   let col = await programColor(0.35, 0.35, 0.3, 0.3);
   check("Single layout: program shows Cam A (red)", isRed(col), JSON.stringify(col));
@@ -845,7 +854,8 @@ try {
     const handlers = {};
     const parts = {};
     const call = {
-      _joinOpts: null, _ejected: [],
+      _joinOpts: null, _ejected: [], _recvSettings: null,
+      updateReceiveSettings(s) { call._recvSettings = s; },
       on(ev, fn) { (handlers[ev] = handlers[ev] || []).push(fn); },
       emit(ev, payload) { (handlers[ev] || []).forEach((fn) => fn(payload)); },
       async join(opts) { call._joinOpts = opts; call.emit("joined-meeting", {}); return {}; },
@@ -921,6 +931,8 @@ try {
   }));
   check("wireless: start mints session, shows 4 codes + join links", eq(wStarted.codes, ["AAAA22", "BBBB33", "CCCC44", "DDDD55"]) && wStarted.links.every((l) => l.includes("/camera.html?code=")) && /Session live/.test(wStarted.session), JSON.stringify(wStarted.codes) + " | " + wStarted.session);
   check("wireless: mixer joins receive-only with owner token", wStarted.joinOpts && wStarted.joinOpts.startVideoOff === true && wStarted.joinOpts.startAudioOff === true && wStarted.joinOpts.token === "owner-tok" && eq(wStarted.api, ["cam-create"]), JSON.stringify(wStarted.joinOpts));
+  const wRecv = await page6.evaluate(() => window.__daily.call._recvSettings);
+  check("wireless HD: mixer requests highest simulcast layer from phones", wRecv && wRecv["*"] && wRecv["*"].video && wRecv["*"].video.layer === 2, JSON.stringify(wRecv));
   // Phone 1 (purple) joins -> first free slot (Cam 2), becomes main
   await page6.evaluate(() => window.__daily.joinPhone("phone-1", "Cam 2", "#7b1fa2"));
   await sleep(900);
@@ -936,6 +948,8 @@ try {
   });
   const w1col = await page6.evaluate(() => window.__probe.regionColor(document.getElementById("program"), 0.35, 0.35, 0.3, 0.3));
   check("wireless: phone 1 takes Cam 2 slot, live, program shows it (purple)", /Live/.test(w1.status) && w1.has && w1.w > 0 && isPurple(w1col) && /Cam 2/.test(w1.badge), `status=${w1.status} tag=${w1.tag} col=${w1col} badge=${w1.badge}`);
+  const w1res = await page6.evaluate(() => document.querySelectorAll("#wirelessList .cam-card")[0].querySelector('[data-role="res"]').textContent);
+  check("wireless HD: slot shows actual received resolution (synthetic 640x360, honest)", w1res === "640×360 · below HD", w1res);
   // Phone 2 (orange) joins -> Cam 3; main unchanged
   await page6.evaluate(() => window.__daily.joinPhone("phone-2", "Cam 3", "#ef6c00"));
   await sleep(900);
@@ -1104,7 +1118,8 @@ try {
       tracks: { video: { state: "playable", persistentTrack: phoneTrack("#7b1fa2") } },
     };
     const call = {
-      _joinOpts: null, _switchedTo: null,
+      _joinOpts: null, _switchedTo: null, _inputSettings: null,
+      updateInputSettings(s) { call._inputSettings = s; },
       on(ev, fn) { (handlers[ev] = handlers[ev] || []).push(fn); },
       emit(ev, payload) { (handlers[ev] || []).forEach((fn) => fn(payload)); },
       async join(opts) {
@@ -1168,7 +1183,12 @@ try {
       api: window.__joinCalls.map((b) => b.action + ":" + (b.code || "")),
     };
   });
-  check("phone: good code joins video-on/mic-off, LIVE badge, preview frames", phLive.badgeOn && /Live/.test(phLive.badge) && phLive.slot === "Cam 2" && phLive.has && phLive.w > 0 && phLive.joinOpts.startAudioOff === true && phLive.joinOpts.startVideoOff === false && phLive.joinOpts.token === "cam-tok", JSON.stringify(phLive).slice(0, 200));
+  check("phone: good code joins video-on/mic-off, LIVE badge, preview frames", phLive.badgeOn && /Live/.test(phLive.badge) && /^Cam 2/.test(phLive.slot) && phLive.has && phLive.w > 0 && phLive.joinOpts.startAudioOff === true && phLive.joinOpts.startVideoOff === false && phLive.joinOpts.token === "cam-tok", JSON.stringify(phLive).slice(0, 200));
+  const phHd = await page8.evaluate(() => ({
+    input: window.__phoneCall._inputSettings,
+    slot: document.getElementById("slotTag").textContent,
+  }));
+  check("phone HD: requests 1080p ideal, shows actual sending resolution", phHd.input && phHd.input.video.width.ideal === 1920 && phHd.input.video.height.ideal === 1080 && /640×360/.test(phHd.slot), JSON.stringify(phHd));
   await page8.evaluate(() => document.getElementById("flipBtn").click());
   await sleep(800);
   const phFlip = await page8.evaluate(() => ({

@@ -132,6 +132,23 @@ var DAILY_SDK_URL = "https://unpkg.com/@daily-co/daily-js";
 var call = null;
 var wakeLock = null;
 var joining = false;
+var slotLabel = "Camera";
+
+/* HD always (DrMorgan, 2026-11-28): ask the phone camera for 1080p.
+   Daily/the browser fall back gracefully on devices that can't reach
+   it; the actual sending resolution is shown on screen either way. */
+function requestHd() {
+  if (!call || !call.updateInputSettings) return;
+  try {
+    call.updateInputSettings({
+      video: {
+        width: { ideal: 1920 },
+        height: { ideal: 1080 },
+        frameRate: { ideal: 30 }
+      }
+    });
+  } catch (e) { /* older SDKs: camera defaults stand */ }
+}
 
 function $(id) { return document.getElementById(id); }
 function setStatus(el, text, kind) {
@@ -167,7 +184,8 @@ document.addEventListener("visibilitychange", function () {
 function showLiveUI(label) {
   $("joinCard").classList.add("hidden");
   $("liveSection").classList.remove("hidden");
-  $("slotTag").textContent = label || "Camera";
+  slotLabel = label || "Camera";
+  $("slotTag").textContent = slotLabel;
 }
 function showJoinUI() {
   $("liveSection").classList.add("hidden");
@@ -193,6 +211,11 @@ function attachLocalPreview() {
       setLiveBadge(true, "Live · sending to mixer");
       setStatus($("liveStatus"), "You are live in the mixer. Keep this page open.", "ok");
     }
+    /* Show the real sending resolution — HD is proven, not claimed. */
+    var s = track.getSettings ? track.getSettings() : {};
+    var w = s.width || video.videoWidth || 0;
+    var h = s.height || video.videoHeight || 0;
+    if (w) $("slotTag").textContent = slotLabel + " · " + w + "×" + h + (h >= 720 ? " HD" : " below HD");
   }
 }
 
@@ -215,6 +238,7 @@ async function joinWithCode(code) {
     setStatus($("joinStatus"), "Code accepted — starting the camera…");
     await loadDailySdk();
     call = window.DailyIframe.createCallObject();
+    requestHd();
     call.on("joined-meeting", function () { attachLocalPreview(); });
     call.on("participant-updated", function (ev) {
       if (ev && ev.participant && ev.participant.local) attachLocalPreview();
@@ -235,6 +259,7 @@ async function joinWithCode(code) {
       startVideoOff: false,
       startAudioOff: true
     });
+    requestHd();
     keepScreenAwake();
     attachLocalPreview();
     refreshFlipButton();
@@ -289,6 +314,7 @@ $("flipBtn").addEventListener("click", async function () {
     var idx = cams.findIndex(function (d) { return d.deviceId === currentId; });
     var next = cams[(idx + 1) % cams.length];
     await call.setInputDevicesAsync({ videoDeviceId: next.deviceId });
+    requestHd();
     attachLocalPreview();
     setStatus($("liveStatus"), "Camera flipped.", "ok");
   } catch (e) {
