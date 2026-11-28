@@ -1135,7 +1135,13 @@
     }
     document.getElementById("rescanBtn").addEventListener("click", function () { rescanDevices(true); });
     window.addEventListener("focus", function () { rescanDevices(false); });
-    document.addEventListener("visibilitychange", function () { if (!document.hidden) rescanDevices(false); });
+    document.addEventListener("visibilitychange", function () {
+      if (!document.hidden) { rescanDevices(false); return; }
+      /* Browsers freeze the program canvas while the tab is hidden —
+         the recorded video holds the last frame (audio keeps going).
+         Say so instead of silently producing a frozen take. */
+      if (recSet) showNotice("<strong>This tab was hidden while recording.</strong> The program video freezes while the tab is hidden (audio keeps recording). Keep this tab visible for the whole take.");
+    });
     setInterval(function () {
       if (document.hidden) return;
       if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
@@ -1249,6 +1255,26 @@
 
     var recSet = null;           // array of { key, label, kind, recorder, chunks, mime }
     var recStart = 0, recTimer = null, recElapsed = 0, recBase = 0, paused = false;
+    var recWarnedLong = false, stopSafetyTimer = null;
+
+    function fmtBytes(n) {
+      if (n < 1024) return n + " B";
+      if (n < 1024 * 1024) return (n / 1024).toFixed(0) + " KB";
+      if (n < 1024 * 1024 * 1024) return (n / (1024 * 1024)).toFixed(1) + " MB";
+      return (n / (1024 * 1024 * 1024)).toFixed(2) + " GB";
+    }
+    /* Live take size in the rec state, so long recordings show their
+       growth; warns once when the take passes 1.5 GB in memory. */
+    function updateRecSize() {
+      if (!recSet) return;
+      var total = 0;
+      recSet.forEach(function (i) { total += i.bytes || 0; });
+      recStateEl.textContent = (paused ? "Paused · " : "Recording ") + recSet.length + (recSet.length === 1 ? " track" : " tracks") + " · " + fmtBytes(total);
+      if (!recWarnedLong && total > 1.5 * 1024 * 1024 * 1024) {
+        recWarnedLong = true;
+        showNotice("<strong>Long take:</strong> this recording is over 1.5 GB and growing in browser memory. Stop and download before it gets too large — very long takes can fail to save.");
+      }
+    }
     function recNow() { return recBase + (AC ? AC.currentTime - recStart : 0); }
     var recBtn = document.getElementById("recBtn");
     var pauseBtn = document.getElementById("pauseBtn");
@@ -1274,7 +1300,11 @@
       /* HD program recordings: give the 1080p canvas a real video
          bitrate instead of the browser's low default. */
       if (kind === "video") { opts.videoBitsPerSecond = 6000000; opts.audioBitsPerSecond = 192000; }
-      return new MediaRecorder(stream, opts);
+      var rec = new MediaRecorder(stream, opts);
+      /* Report the mime we ASKED for when the browser leaves
+         rec.mimeType blank — the download extension must match the
+         actual container, or some players refuse the file. */
+      return { rec: rec, mime: rec.mimeType || mime || (kind === "video" ? "video/webm" : "audio/webm") };
     }
 
     recBtn.addEventListener("click", function () {
@@ -1285,18 +1315,27 @@
         return;
       }
       recSet = [];
-      var pending = 0, failed = false;
+      var pending = 0, failedKinds = [];
       function addRec(key, label, kind, stream) {
         try {
-          var rec = makeRecorder(stream, kind);
-          var item = { key: key, label: label, kind: kind, recorder: rec, chunks: [], mime: rec.mimeType || (kind === "video" ? "video/webm" : "audio/webm") };
-          rec.addEventListener("dataavailable", function (ev) { if (ev.data && ev.data.size) item.chunks.push(ev.data); });
-          rec.addEventListener("stop", function () {
+          var made = makeRecorder(stream, kind);
+          var item = { key: key, label: label, kind: kind, recorder: made.rec, chunks: [], bytes: 0, mime: made.mime, errored: false };
+          var counted = false;
+          item._done = function () {
+            if (counted) return;
+            counted = true;
             pending--;
             if (pending <= 0 && recSet) finishTake();
+          };
+          made.rec.addEventListener("dataavailable", function (ev) {
+            if (ev.data && ev.data.size) { item.chunks.push(ev.data); item.bytes += ev.data.size; }
           });
+          made.rec.addEventListener("stop", item._done);
+          /* A recorder error must never hang the take: count it done
+             (with whatever chunks it produced) and let the rest finish. */
+          made.rec.addEventListener("error", function () { item.errored = true; item._done(); });
           recSet.push(item);
-        } catch (e) { failed = true; }
+        } catch (e) { failedKinds.push(kind); }
       }
       /* program video: composed canvas + mixed audio */
       if (anyCameraLive() && programCanvas.captureStream) {
@@ -1310,14 +1349,31 @@
       channels.forEach(function (ch, i) {
         if (ch.kind === "voice" && ch.nodes && ch.hasSource) addRec("ch" + i, ch.label(), "audio", ch.nodes.recDest.stream);
       });
-      if (failed || !recSet.length) {
+      /* Only a missing master mix aborts the take. A failed video
+         recorder degrades to an honest audio-only recording instead
+         of killing everything (audit 2026-11-28). */
+      if (!recSet.some(function (i) { return i.key === "master"; })) {
         recSet = null;
         showNotice("<strong>The recorder couldn't start.</strong> Try again, or open this page in Chrome or Safari on macOS.");
         return;
       }
       pending = recSet.length;
-      recSet.forEach(function (item) { item.recorder.start(250); });
+      recSet.forEach(function (item) {
+        try { item.recorder.start(250); }
+        catch (e) { item.failedStart = true; item.errored = true; item._done(); }
+      });
+      /* A recorder that failed to START never recorded — remove it
+         from the take entirely (no phantom zero-data row). If the
+         master mix is gone, abort the take honestly. */
+      recSet = recSet.filter(function (i) { return !i.failedStart; });
+      if (!recSet.some(function (i) { return i.key === "master"; })) {
+        var startedRecs = recSet; recSet = null;
+        startedRecs.forEach(function (i) { if (i.recorder.state !== "inactive") { try { i.recorder.stop(); } catch (e) {} } });
+        showNotice("<strong>The recorder couldn't start.</strong> Try again, or open this page in Chrome or Safari on macOS.");
+        return;
+      }
       recStart = AC.currentTime; recBase = 0; recElapsed = 0; paused = false;
+      recWarnedLong = false;
       recDot.className = "rec-dot live";
       recStateEl.textContent = "Recording " + recSet.length + (recSet.length === 1 ? " track" : " tracks");
       recBtn.textContent = "■ Stop";
@@ -1326,8 +1382,13 @@
       if (badge) badge.classList.add("live");
       recTimer = setInterval(function () {
         if (!paused) { recElapsed = recNow(); recTimeEl.textContent = fmtTime(recElapsed); }
+        updateRecSize();
       }, 250);
-      showNotice("");
+      if (!recSet.some(function (i) { return i.key === "video"; })) {
+        showNotice("<strong>Recording audio only — no camera is live.</strong> Enable a camera before recording for program video. Tracks are set when recording starts; a source enabled mid-record joins the master mix but gets no separate track or video.");
+      } else {
+        showNotice("");
+      }
     });
 
     pauseBtn.addEventListener("click", function () {
@@ -1351,7 +1412,14 @@
 
     function stopRecording() {
       if (!paused) recElapsed = recNow();
-      if (recSet) recSet.forEach(function (i) { if (i.recorder.state !== "inactive") i.recorder.stop(); });
+      if (recSet) recSet.forEach(function (i) {
+        if (i.recorder.state !== "inactive") { try { i.recorder.stop(); } catch (e) {} }
+        else if (i._done) i._done();
+      });
+      /* Safety net: a recorder that never fires stop/error (stuck
+         encoder, dropped source) must not hang the take forever —
+         finish with whatever chunks arrived. */
+      stopSafetyTimer = setTimeout(function () { if (recSet) finishTake(); }, 4000);
       clearInterval(recTimer);
       recDot.className = "rec-dot";
       recStateEl.textContent = "Ready";
@@ -1363,6 +1431,7 @@
 
     function finishTake() {
       var items = recSet; recSet = null;
+      if (stopSafetyTimer) { clearTimeout(stopSafetyTimer); stopSafetyTimer = null; }
       takeCount++;
       var dur = recElapsed;
       recTimeEl.textContent = "00:00:00";
@@ -1379,8 +1448,23 @@
         var ob = order[b.key] !== undefined ? order[b.key] : 2;
         return oa - ob;
       });
+      var anyEmpty = false;
       items.forEach(function (item) {
         var blob = new Blob(item.chunks, { type: item.mime });
+        if (!blob.size) {
+          /* Zero bytes means that recorder produced nothing — say so
+             instead of offering a corrupt download. */
+          anyEmpty = true;
+          var erow = document.createElement("div");
+          erow.className = "take";
+          var emeta = document.createElement("div");
+          emeta.className = "meta";
+          emeta.innerHTML = "<b></b><span>no data recorded — this track failed</span>";
+          emeta.querySelector("b").textContent = item.label;
+          erow.appendChild(emeta);
+          group.appendChild(erow);
+          return;
+        }
         var url = URL.createObjectURL(blob);
         var ext = item.kind === "video"
           ? (item.mime.indexOf("mp4") >= 0 ? "mp4" : "webm")
@@ -1410,6 +1494,7 @@
         row.appendChild(dl);
         group.appendChild(row);
       });
+      if (anyEmpty) showNotice("<strong>One track recorded no data</strong> and is marked in the take list. The other tracks are intact — download them before closing this tab.");
       wrap.appendChild(group);
     }
 
